@@ -1,0 +1,4 @@
+rootProject.name = 'backend'
+include(":web")
+include(":core")
+include(":batch")
