@@ -14,13 +14,13 @@ public class News {
     private final NewsProvider newsProvider;
     private final LocalDateTime scrapedTime;
     private final Content originalContent;
-
     private final Content translatedContent;
     private final AiOverview aiOverView;
 
     public News(Long id, NewsProvider newsProvider, LocalDateTime scrapedTime,
                 Content originalContent, Content translatedContent, AiOverview aiOverView) {
-        this.id = id;
+
+        this.id = (id != null && id != 0L) ? id : 0L;
         this.newsProvider = newsProvider;
         this.scrapedTime = scrapedTime != null ? scrapedTime : LocalDateTime.now();
         this.originalContent = originalContent;

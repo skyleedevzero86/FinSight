@@ -1,5 +1,6 @@
 package com.sleekydz86.finsight.core.news.fixture;
 
+import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.*;
 
