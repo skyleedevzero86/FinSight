@@ -1,4 +1,4 @@
-package com.sleekydz86.finsight.web.config.module;
+package com.sleekydz86.finsight.web.config;
 
 import org.springframework.beans.factory.config.YamlPropertiesFactoryBean;
 import org.springframework.core.env.PropertiesPropertySource;
