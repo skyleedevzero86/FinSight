@@ -4,6 +4,6 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConfigurationPropertiesScan("com.sleekydz86.finsight.core.news.adapter.requester")
+@ConfigurationPropertiesScan("com.sleekydz86.finsight.core.news.adapter.requester.properties")
 public class PropertiesScanConfig {
 }

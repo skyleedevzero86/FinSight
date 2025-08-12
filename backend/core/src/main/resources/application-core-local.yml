@@ -23,8 +23,8 @@ spring:
 
 jasypt:
   encryptor:
-    bean: jasyptEncryptor
-    password: ${ENCRYPT_KEY}
+    bean: jasyptStringEncryptor
+    password: ${ENCRYPT_KEY:defaultDevKey123}
 
 news:
   marketaux:
