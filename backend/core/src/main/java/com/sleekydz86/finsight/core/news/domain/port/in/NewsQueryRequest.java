@@ -1,6 +1,6 @@
 package com.sleekydz86.finsight.core.news.domain.port.in;
 
-import com.sleekydz86.finsight.core.news.domain.vo.NewsProvider;
+import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 

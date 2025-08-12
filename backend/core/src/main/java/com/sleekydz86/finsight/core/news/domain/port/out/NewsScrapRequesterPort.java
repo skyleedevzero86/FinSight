@@ -1,6 +1,11 @@
 package com.sleekydz86.finsight.core.news.domain.port.out.requester;
 
+import com.sleekydz86.finsight.core.global.NewsProvider;
+import com.sleekydz86.finsight.core.news.domain.News;
+
+import java.util.List;
+
 public interface NewsScrapRequesterPort {
 
-    void scrap();
+    List<News> scrap(NewsProvider newsProvider);
 }

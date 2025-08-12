@@ -1,6 +1,6 @@
 package com.sleekydz86.finsight.core.news.domain;
 
-import com.sleekydz86.finsight.core.news.domain.vo.NewsProvider;
+import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 
 import java.util.ArrayList;

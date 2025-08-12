@@ -1,8 +1,8 @@
 package com.sleekydz86.finsight.core.news.domain;
 
+import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.vo.AiOverview;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
-import com.sleekydz86.finsight.core.news.domain.vo.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 
 import java.time.LocalDateTime;
@@ -14,6 +14,7 @@ public class News {
     private final NewsProvider newsProvider;
     private final LocalDateTime scrapedTime;
     private final Content originalContent;
+
     private final Content translatedContent;
     private final AiOverview aiOverView;
 
@@ -29,8 +30,12 @@ public class News {
 
     public boolean isContainsNewsProviderAndCategories(List<TargetCategory> categories,
                                                        List<NewsProvider> providers) {
-        return providers.contains(this.newsProvider) &&
-                this.aiOverView.isMatchedCategory(categories);
+
+        boolean isMatchedCategory = (this.aiOverView != null)
+                ? this.aiOverView.isMatchedCategory(categories)
+                : false;
+
+        return providers.contains(this.newsProvider) && isMatchedCategory;
     }
 
     public Long getId() { return id; }
