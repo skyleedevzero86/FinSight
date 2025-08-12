@@ -1,0 +1,16 @@
+app:
+  name: FinSight
+  version: "1.2.3"
+features:
+  - import
+  - export
+  - analytics
+database:
+  host: localhost
+  port: 5432
+  enabled: true
+list:
+  nested:
+    - a
+    - b
+    - c
