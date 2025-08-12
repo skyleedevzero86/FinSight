@@ -8,6 +8,17 @@ import java.util.Properties;
 
 public class YamlPropertySourceFactory extends DefaultPropertySourceFactory {
 
+    /**
+     * Loads YAML from the given EncodedResource and returns it as a PropertiesPropertySource.
+     *
+     * The YAML resource is parsed into a Properties instance via YamlPropertiesFactoryBean.
+     * The returned PropertiesPropertySource is named using the resource filename, or
+     * "unknown" if the filename is unavailable.
+     *
+     * @param name     ignored (not used to determine the property source name)
+     * @param resource the EncodedResource pointing to the YAML file to load
+     * @return a PropertiesPropertySource containing properties parsed from the YAML resource
+     */
     @Override
     public PropertiesPropertySource createPropertySource(String name, EncodedResource resource) {
         YamlPropertiesFactoryBean factory = new YamlPropertiesFactoryBean();

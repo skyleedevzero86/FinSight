@@ -8,6 +8,17 @@ import java.util.Map;
 
 public class DynamicImportSelector implements ImportSelector {
 
+    /**
+     * Selects import candidates by reading the `jobClasses` attribute from the
+     * `@JobIntegrationTest` annotation on the importing class and returning their
+     * fully-qualified class names.
+     *
+     * If the annotation is not present or its `jobClasses` attribute is missing or
+     * not a `Class<?>[]`, an empty array is returned.
+     *
+     * @param importingClassMetadata metadata of the class that triggered this import selector
+     * @return array of fully-qualified class names from `jobClasses`, or an empty array if none
+     */
     @Override
     public String[] selectImports(AnnotationMetadata importingClassMetadata) {
         Map<String, Object> annotationAttributes = importingClassMetadata
