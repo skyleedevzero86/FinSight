@@ -1,4 +1,4 @@
-package com.sleekydz86.finsight.web.config.module;
+package com.sleekydz86.finsight.web.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
