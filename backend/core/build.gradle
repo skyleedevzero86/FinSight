@@ -25,6 +25,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("io.projectreactor:reactor-core:3.6.2")
+    implementation("io.netty:netty-resolver-dns-native-macos:4.1.123.Final:osx-aarch_64")
 }
 
 def generated = file("src/main/generated")
