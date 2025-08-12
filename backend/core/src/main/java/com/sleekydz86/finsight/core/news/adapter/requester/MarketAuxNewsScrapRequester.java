@@ -12,7 +12,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.net.URI;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
@@ -25,6 +28,9 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
     private final Logger log = LoggerFactory.getLogger(MarketAuxNewsScrapRequester.class);
     private final WebClient webClient;
     private final MarketAuxProperties marketAuxProperties;
+
+    private static final DateTimeFormatter API_DATE_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX");
 
     public MarketAuxNewsScrapRequester(WebClient webClient, MarketAuxProperties marketAuxProperties) {
         this.webClient = webClient;
@@ -43,14 +49,16 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
         );
 
         return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path(marketAuxProperties.getBaseUrl())
-                        .queryParam("countries", "us")
-                        .queryParam("group", "economic")
-                        .queryParam("limit", limit)
-                        .queryParam("published_after", formattedPublishedTimeAfter)
-                        .queryParam("api_token", marketAuxProperties.getApiKey())
-                        .build())
+                .uri(
+                        URI.create(
+                                marketAuxProperties.getBaseUrl() + "?" +
+                                        "countries=us&" +
+                                        "group=economic&" +
+                                        "limit=" + limit + "&" +
+                                        "published_after=" + formattedPublishedTimeAfter + "&" +
+                                        "api_token=" + marketAuxProperties.getApiKey()
+                        )
+                )
                 .retrieve()
                 .bodyToMono(MarketAuxResponse.class)
                 .map(response -> response.getData().stream()
@@ -58,7 +66,7 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                                 0L,
                                 NewsMeta.of(
                                         NewsProvider.MARKETAUX,
-                                        newsItem.getPublishedAt(),
+                                        OffsetDateTime.parse(newsItem.getPublishedAt(), API_DATE_FORMATTER),
                                         newsItem.getUrl()
                                 ),
                                 LocalDateTime.now(),

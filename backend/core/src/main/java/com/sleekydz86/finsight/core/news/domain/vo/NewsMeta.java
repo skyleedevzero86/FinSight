@@ -3,6 +3,8 @@ package com.sleekydz86.finsight.core.news.domain.vo;
 import com.sleekydz86.finsight.core.global.NewsProvider;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.Objects;
 
 public class NewsMeta {
@@ -15,6 +17,20 @@ public class NewsMeta {
         this.newsProvider = newsProvider;
         this.newsPublishedTime = newsPublishedTime;
         this.sourceUrl = sourceUrl;
+    }
+
+    public static NewsMeta of(
+            NewsProvider newsProvider,
+            OffsetDateTime newsPublishedTime,
+            String sourceUrl
+    ) {
+        return new NewsMeta(
+                newsProvider,
+                newsPublishedTime
+                        .atZoneSameInstant(ZoneId.of("Asia/Seoul"))
+                        .toLocalDateTime(),
+                sourceUrl
+        );
     }
 
     public static NewsMeta of(NewsProvider newsProvider, String newsPublishedTime, String sourceUrl) {
