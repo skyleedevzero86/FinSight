@@ -1,4 +1,4 @@
-package com.sleekydz86.finsight.core.news.persistence.command;
+package com.sleekydz86.finsight.core.news.adapter.persistence.command;
 
 import static com.querydsl.core.types.PathMetadataFactory.*;
 

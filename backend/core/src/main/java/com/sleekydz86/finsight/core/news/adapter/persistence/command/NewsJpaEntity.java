@@ -1,14 +1,14 @@
-package com.sleekydz86.finsight.core.news.persistence.command;
+package com.sleekydz86.finsight.core.news.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.global.BaseEntity;
 import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import jakarta.persistence.*;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 @Entity
 @Table(name = "news")
@@ -16,39 +16,39 @@ public class NewsJpaEntity extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private final Long id;
+    private Long id;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "news_provider", nullable = false)
-    private final NewsProvider newsProvider;
+    private NewsProvider newsProvider;
 
     @Column(name = "scraped_time", nullable = false)
-    private final LocalDateTime scrapedTime;
+    private LocalDateTime scrapedTime;
 
     @Column(name = "original_title", nullable = false)
-    private final String originalTitle;
+    private String originalTitle;
 
     @Lob
     @Column(name = "original_content", nullable = false)
-    private final String originalContent;
+    private String originalContent;
 
     @Column(name = "ai_translated_title")
-    private final String translatedTitle;
+    private String translatedTitle;
 
     @Lob
     @Column(name = "ai_translated_content")
-    private final String translatedContent;
+    private String translatedContent;
 
     @Lob
     @Column(name = "ai_overview")
-    private final String overview;
+    private String overview;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "ai_sentiment_type")
-    private final SentimentType sentimentType;
+    private SentimentType sentimentType;
 
     @Column(name = "ai_sentiment_score")
-    private final Double sentimentScore;
+    private Double sentimentScore;
 
     @ElementCollection(targetClass = TargetCategory.class)
     @CollectionTable(
@@ -57,20 +57,9 @@ public class NewsJpaEntity extends BaseEntity {
     )
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false)
-    private final List<TargetCategory> targetCategories;
+    private List<TargetCategory> targetCategories = new ArrayList<>();
 
-    protected NewsJpaEntity() {
-        this.id = null;
-        this.newsProvider = null;
-        this.scrapedTime = null;
-        this.originalTitle = null;
-        this.originalContent = null;
-        this.translatedTitle = null;
-        this.translatedContent = null;
-        this.overview = null;
-        this.sentimentType = null;
-        this.sentimentScore = null;
-        this.targetCategories = new ArrayList<>();
+    public NewsJpaEntity() {
     }
 
     public NewsJpaEntity(Long id, NewsProvider newsProvider, LocalDateTime scrapedTime,
@@ -134,45 +123,47 @@ public class NewsJpaEntity extends BaseEntity {
         return targetCategories;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        NewsJpaEntity that = (NewsJpaEntity) o;
-        return Objects.equals(id, that.id) &&
-                newsProvider == that.newsProvider &&
-                Objects.equals(scrapedTime, that.scrapedTime) &&
-                Objects.equals(originalTitle, that.originalTitle) &&
-                Objects.equals(originalContent, that.originalContent) &&
-                Objects.equals(translatedTitle, that.translatedTitle) &&
-                Objects.equals(translatedContent, that.translatedContent) &&
-                Objects.equals(overview, that.overview) &&
-                sentimentType == that.sentimentType &&
-                Objects.equals(sentimentScore, that.sentimentScore) &&
-                Objects.equals(targetCategories, that.targetCategories);
+    public void setId(Long id) {
+        this.id = id;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, newsProvider, scrapedTime, originalTitle, originalContent,
-                translatedTitle, translatedContent, overview, sentimentType,
-                sentimentScore, targetCategories);
+    public void setNewsProvider(NewsProvider newsProvider) {
+        this.newsProvider = newsProvider;
     }
 
-    @Override
-    public String toString() {
-        return "NewsJpaEntity{" +
-                "id=" + id +
-                ", newsProvider=" + newsProvider +
-                ", scrapedTime=" + scrapedTime +
-                ", originalTitle='" + originalTitle + '\'' +
-                ", originalContent='" + originalContent + '\'' +
-                ", translatedTitle='" + translatedTitle + '\'' +
-                ", translatedContent='" + translatedContent + '\'' +
-                ", overview='" + overview + '\'' +
-                ", sentimentType=" + sentimentType +
-                ", sentimentScore=" + sentimentScore +
-                ", targetCategories=" + targetCategories +
-                '}';
+    public void setScrapedTime(LocalDateTime scrapedTime) {
+        this.scrapedTime = scrapedTime;
+    }
+
+    public void setOriginalTitle(String originalTitle) {
+        this.originalTitle = originalTitle;
+    }
+
+    public void setOriginalContent(String originalContent) {
+        this.originalContent = originalContent;
+    }
+
+    public void setTranslatedTitle(String translatedTitle) {
+        this.translatedTitle = translatedTitle;
+    }
+
+    public void setTranslatedContent(String translatedContent) {
+        this.translatedContent = translatedContent;
+    }
+
+    public void setOverview(String overview) {
+        this.overview = overview;
+    }
+
+    public void setSentimentType(SentimentType sentimentType) {
+        this.sentimentType = sentimentType;
+    }
+
+    public void setSentimentScore(Double sentimentScore) {
+        this.sentimentScore = sentimentScore;
+    }
+
+    public void setTargetCategories(List<TargetCategory> targetCategories) {
+        this.targetCategories = targetCategories != null ? targetCategories : new ArrayList<>();
     }
 }
