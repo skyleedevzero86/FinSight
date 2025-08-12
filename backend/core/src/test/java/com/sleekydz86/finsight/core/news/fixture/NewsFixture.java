@@ -3,7 +3,6 @@ package com.sleekydz86.finsight.core.news.fixture;
 import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.*;
-
 import java.time.LocalDateTime;
 import java.util.Collections;
 
@@ -21,7 +20,11 @@ public class NewsFixture {
     public static News 뉴스_생성_블룸버그_비트코인() {
         return new News(
                 1L,
-                NewsProvider.BLOOMBERG,
+                new NewsMeta(
+                        NewsProvider.BLOOMBERG,
+                        LocalDateTime.now(),
+                        "sourceUrl"
+                ),
                 LocalDateTime.now(),
                 new Content("originalTitle", "originalContent"),
                 new Content("translatedTitle", "translatedContent"),
@@ -32,7 +35,11 @@ public class NewsFixture {
     public static News 뉴스_생성_블룸버그_테슬라() {
         return new News(
                 1L,
-                NewsProvider.BLOOMBERG,
+                new NewsMeta(
+                        NewsProvider.BLOOMBERG,
+                        LocalDateTime.now(),
+                        "sourceUrl"
+                ),
                 LocalDateTime.now(),
                 new Content("originalTitle", "originalContent"),
                 new Content("translatedTitle", "translatedContent"),

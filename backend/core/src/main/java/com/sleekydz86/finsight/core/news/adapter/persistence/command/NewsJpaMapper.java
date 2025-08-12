@@ -3,10 +3,7 @@ package com.sleekydz86.finsight.core.news.adapter.persistence.command;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.AiOverview;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
-import org.springframework.stereotype.Component;
-import java.util.ArrayList;
-import java.util.List;
-
+import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -33,9 +30,15 @@ public class NewsJpaMapper {
             );
         }
 
+        NewsMeta newsMeta = new NewsMeta(
+                newsJpaEntity.getNewsProvider(),
+                newsJpaEntity.getNewsPublishedTime(),
+                newsJpaEntity.getSourceUrl()
+        );
+
         return new News(
                 newsJpaEntity.getId() != null ? newsJpaEntity.getId() : 0L,
-                newsJpaEntity.getNewsProvider(),
+                newsMeta,
                 newsJpaEntity.getScrapedTime(),
                 new Content(
                         newsJpaEntity.getOriginalTitle(),
@@ -49,7 +52,9 @@ public class NewsJpaMapper {
     public NewsJpaEntity toEntity(News news) {
         return new NewsJpaEntity(
                 news.getId() == 0L ? null : news.getId(),
-                news.getNewsProvider(),
+                news.getNewsMeta().getNewsProvider(),
+                news.getNewsMeta().getNewsPublishedTime(),
+                news.getNewsMeta().getSourceUrl(),
                 news.getScrapedTime(),
                 news.getOriginalContent().getTitle(),
                 news.getOriginalContent().getContent(),

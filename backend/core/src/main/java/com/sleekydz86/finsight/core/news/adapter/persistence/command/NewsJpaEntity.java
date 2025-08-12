@@ -5,7 +5,6 @@ import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +20,12 @@ public class NewsJpaEntity extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "news_provider", nullable = false)
     private NewsProvider newsProvider;
+
+    @Column(name = "news_published_time", nullable = false)
+    private LocalDateTime newsPublishedTime;
+
+    @Column(name = "source_url", nullable = false)
+    private String sourceUrl;
 
     @Column(name = "scraped_time", nullable = false)
     private LocalDateTime scrapedTime;
@@ -60,14 +65,17 @@ public class NewsJpaEntity extends BaseEntity {
     private List<TargetCategory> targetCategories = new ArrayList<>();
 
     public NewsJpaEntity() {
+
     }
 
-    public NewsJpaEntity(Long id, NewsProvider newsProvider, LocalDateTime scrapedTime,
-                         String originalTitle, String originalContent, String translatedTitle,
-                         String translatedContent, String overview, SentimentType sentimentType,
-                         Double sentimentScore, List<TargetCategory> targetCategories) {
+    public NewsJpaEntity(Long id, NewsProvider newsProvider, LocalDateTime newsPublishedTime, String sourceUrl,
+                         LocalDateTime scrapedTime, String originalTitle, String originalContent,
+                         String translatedTitle, String translatedContent, String overview,
+                         SentimentType sentimentType, Double sentimentScore, List<TargetCategory> targetCategories) {
         this.id = id;
         this.newsProvider = newsProvider;
+        this.newsPublishedTime = newsPublishedTime;
+        this.sourceUrl = sourceUrl;
         this.scrapedTime = scrapedTime;
         this.originalTitle = originalTitle;
         this.originalContent = originalContent;
@@ -85,6 +93,14 @@ public class NewsJpaEntity extends BaseEntity {
 
     public NewsProvider getNewsProvider() {
         return newsProvider;
+    }
+
+    public LocalDateTime getNewsPublishedTime() {
+        return newsPublishedTime;
+    }
+
+    public String getSourceUrl() {
+        return sourceUrl;
     }
 
     public LocalDateTime getScrapedTime() {
@@ -129,6 +145,14 @@ public class NewsJpaEntity extends BaseEntity {
 
     public void setNewsProvider(NewsProvider newsProvider) {
         this.newsProvider = newsProvider;
+    }
+
+    public void setNewsPublishedTime(LocalDateTime newsPublishedTime) {
+        this.newsPublishedTime = newsPublishedTime;
+    }
+
+    public void setSourceUrl(String sourceUrl) {
+        this.sourceUrl = sourceUrl;
     }
 
     public void setScrapedTime(LocalDateTime scrapedTime) {

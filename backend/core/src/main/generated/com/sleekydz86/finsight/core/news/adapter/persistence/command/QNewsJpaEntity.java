@@ -16,7 +16,7 @@ import com.querydsl.core.types.dsl.PathInits;
 @Generated("com.querydsl.codegen.DefaultEntitySerializer")
 public class QNewsJpaEntity extends EntityPathBase<NewsJpaEntity> {
 
-    private static final long serialVersionUID = 1891404023L;
+    private static final long serialVersionUID = -349079528L;
 
     public static final QNewsJpaEntity newsJpaEntity = new QNewsJpaEntity("newsJpaEntity");
 
@@ -29,6 +29,8 @@ public class QNewsJpaEntity extends EntityPathBase<NewsJpaEntity> {
 
     public final EnumPath<com.sleekydz86.finsight.core.global.NewsProvider> newsProvider = createEnum("newsProvider", com.sleekydz86.finsight.core.global.NewsProvider.class);
 
+    public final DateTimePath<java.time.LocalDateTime> newsPublishedTime = createDateTime("newsPublishedTime", java.time.LocalDateTime.class);
+
     public final StringPath originalContent = createString("originalContent");
 
     public final StringPath originalTitle = createString("originalTitle");
@@ -40,6 +42,8 @@ public class QNewsJpaEntity extends EntityPathBase<NewsJpaEntity> {
     public final NumberPath<Double> sentimentScore = createNumber("sentimentScore", Double.class);
 
     public final EnumPath<com.sleekydz86.finsight.core.news.domain.vo.SentimentType> sentimentType = createEnum("sentimentType", com.sleekydz86.finsight.core.news.domain.vo.SentimentType.class);
+
+    public final StringPath sourceUrl = createString("sourceUrl");
 
     public final ListPath<com.sleekydz86.finsight.core.news.domain.vo.TargetCategory, EnumPath<com.sleekydz86.finsight.core.news.domain.vo.TargetCategory>> targetCategories = this.<com.sleekydz86.finsight.core.news.domain.vo.TargetCategory, EnumPath<com.sleekydz86.finsight.core.news.domain.vo.TargetCategory>>createList("targetCategories", com.sleekydz86.finsight.core.news.domain.vo.TargetCategory.class, EnumPath.class, PathInits.DIRECT2);
 
