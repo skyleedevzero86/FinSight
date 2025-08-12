@@ -1,4 +1,4 @@
-package com.sleekydz86.finsight.config;
+package com.sleekydz86.finsight.core.config;
 
 import org.jasypt.encryption.StringEncryptor;
 import org.jasypt.encryption.pbe.PooledPBEStringEncryptor;

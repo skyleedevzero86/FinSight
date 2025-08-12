@@ -1,0 +1,9 @@
+spring:
+  profiles:
+    active: core-local
+
+news:
+  marketaux:
+    api:
+      base-url: https://api.marketaux.com/v1/news/all
+      api-key: fake-api-key
