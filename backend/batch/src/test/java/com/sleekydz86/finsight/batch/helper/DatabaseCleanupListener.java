@@ -13,6 +13,15 @@ public class DatabaseCleanupListener extends AbstractTestExecutionListener {
 
     private static final Logger log = LoggerFactory.getLogger(DatabaseCleanupListener.class);
 
+    /**
+     * Called before each test execution; performs a full test-time database cleanup.
+     *
+     * Retrieves required beans from the test application context and invokes the cleanup
+     * routine that truncates all tables in the test database schema so each test starts
+     * from a clean state.
+     *
+     * @param testContext the Spring TestContext for the current test execution
+     */
     @Override
     public void beforeTestExecution(TestContext testContext) {
         var applicationContext = testContext.getApplicationContext();
@@ -22,6 +31,17 @@ public class DatabaseCleanupListener extends AbstractTestExecutionListener {
         cleanupDatabase(entityManager, transactionManager);
     }
 
+    /**
+     * Truncates all tables in the database PUBLIC schema inside a transaction.
+     *
+     * <p>Starts a transaction via the provided transaction manager, queries
+     * INFORMATION_SCHEMA.TABLES for all table names in the PUBLIC schema, disables
+     * referential integrity, truncates each table, then re-enables referential
+     * integrity. Intended for use in test setup to produce a clean database state.
+     *
+     * <p>Runs within a transactional boundary created by a TransactionTemplate;
+     * if the transactional block fails the transaction will be rolled back.
+     */
     private void cleanupDatabase(EntityManager entityManager, PlatformTransactionManager transactionManager) {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             @SuppressWarnings("unchecked")
