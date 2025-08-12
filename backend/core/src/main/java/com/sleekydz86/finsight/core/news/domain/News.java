@@ -62,6 +62,28 @@ public class News {
                 Objects.equals(aiOverView, news.aiOverView);
     }
 
+    public static News createWithoutAI(
+            NewsMeta newsMeta,
+            LocalDateTime scrapedTime,
+            Content originalContent
+    ) {
+        return new News(
+                0L,
+                newsMeta,
+                scrapedTime,
+                originalContent,
+                null,
+                null
+        );
+    }
+
+    public static News createWithoutAI(
+            NewsMeta newsMeta,
+            Content originalContent
+    ) {
+        return createWithoutAI(newsMeta, LocalDateTime.now(), originalContent);
+    }
+
     @Override
     public int hashCode() {
         return Objects.hash(id, newsProvider, newsMeta, scrapedTime, originalContent, translatedContent, aiOverView);
