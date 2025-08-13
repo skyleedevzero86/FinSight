@@ -9,5 +9,6 @@ public enum TargetCategory {
     NVDA,
     GOOGL,
     META,
-    TSLA
+    TSLA,
+    NONE //없음
 }
