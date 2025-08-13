@@ -1,9 +1,9 @@
-package com.sleekydz86.finsight.core.news.domain.port.out.requester;
+package com.sleekydz86.finsight.core.news.adapter.requester.overview.properties;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sleekydz86.finsight.core.global.AiModel;
-import com.sleekydz86.finsight.core.news.domain.port.out.requester.properties.OpenAiProperties;
+import com.sleekydz86.finsight.core.news.domain.port.out.requester.NewsAiRequester;
 import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatRequest;
 import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatResponse;
 import org.springframework.core.ParameterizedTypeReference;

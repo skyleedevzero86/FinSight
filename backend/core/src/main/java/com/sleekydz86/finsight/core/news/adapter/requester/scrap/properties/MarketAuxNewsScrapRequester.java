@@ -1,7 +1,6 @@
-package com.sleekydz86.finsight.core.news.adapter.requester;
+package com.sleekydz86.finsight.core.news.adapter.requester.scrap.properties;
 
 import com.sleekydz86.finsight.core.global.NewsProvider;
-import com.sleekydz86.finsight.core.news.adapter.requester.MarketAuxProperties;
 import com.sleekydz86.finsight.core.news.adapter.requester.NewsScrapRequester;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
@@ -15,7 +14,6 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;

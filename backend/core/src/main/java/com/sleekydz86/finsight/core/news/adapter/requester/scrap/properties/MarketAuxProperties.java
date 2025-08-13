@@ -1,4 +1,4 @@
-package com.sleekydz86.finsight.core.news.adapter.requester;
+package com.sleekydz86.finsight.core.news.adapter.requester.scrap.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
