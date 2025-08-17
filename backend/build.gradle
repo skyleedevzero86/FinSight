@@ -35,6 +35,8 @@ subprojects {
 		implementation 'io.projectreactor:reactor-core:3.6.0'
 		implementation 'io.projectreactor:reactor-netty:1.1.13'
 		testImplementation 'io.projectreactor:reactor-test:3.6.0'
+		testImplementation "org.mockito:mockito-core:5.8.0"
+		testImplementation "org.mockito:mockito-junit-jupiter:5.8.0"
 	}
 
 	tasks.withType(Test) {
