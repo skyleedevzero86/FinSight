@@ -14,6 +14,7 @@ import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -90,7 +91,10 @@ public class NewsCrawlingTasklet implements Tasklet {
 
     private LocalDateTime parsePublishTimeAfter(String publishTimeAfterParam) {
         try {
-            return LocalDateTime.parse(publishTimeAfterParam, DATE_FORMATTER);
+            LocalDateTime kstDateTime = LocalDateTime.parse(publishTimeAfterParam, DATE_FORMATTER);
+            var kstZoneDateTime = kstDateTime.atZone(ZoneId.of("Asia/Seoul"));
+            var estZoneDateTime = kstZoneDateTime.withZoneSameInstant(ZoneId.of("America/New_York"));
+            return estZoneDateTime.toLocalDateTime();
         } catch (Exception e) {
             log.warn("잘못된 publishTimeAfter 파라미터 형식: {}. 기본값(1일 전)으로 설정합니다.",
                     publishTimeAfterParam);
