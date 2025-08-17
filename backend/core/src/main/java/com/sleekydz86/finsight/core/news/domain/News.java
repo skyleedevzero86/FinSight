@@ -1,10 +1,8 @@
 package com.sleekydz86.finsight.core.news.domain;
 
 import com.sleekydz86.finsight.core.global.NewsProvider;
-import com.sleekydz86.finsight.core.news.domain.vo.AiOverview;
-import com.sleekydz86.finsight.core.news.domain.vo.Content;
-import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
-import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.news.domain.vo.*;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
@@ -100,5 +98,32 @@ public class News {
                 ", translatedContent=" + translatedContent +
                 ", aiOverView=" + aiOverView +
                 '}';
+    }
+
+    public News updateAiAnalysis(
+            String overview,
+            String translatedTitle,
+            String translatedContent,
+            List<TargetCategory> categories,
+            SentimentType sentimentType,
+            Double sentimentRatio) {
+
+        Content newTranslatedContent = new Content(translatedTitle, translatedContent);
+
+        AiOverview newAiOverView = new AiOverview(
+                overview,
+                sentimentType,
+                sentimentRatio,
+                categories
+        );
+
+        return new News(
+                this.id,
+                this.newsMeta,
+                this.scrapedTime,
+                this.originalContent,
+                newTranslatedContent,
+                newAiOverView
+        );
     }
 }
