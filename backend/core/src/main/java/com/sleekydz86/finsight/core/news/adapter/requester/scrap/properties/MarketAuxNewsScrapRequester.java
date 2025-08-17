@@ -50,19 +50,15 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
         );
 
-        URI create = URI.create(
-                marketAuxProperties.getBaseUrl() + "?" +
-                        "countries=us&" +
-                        "group=economic&" +
-                        "limit=" + limit + "&" +
-                        "published_after=" + formattedPublishedTimeAfter + "&" +
-                        "api_token=" + marketAuxProperties.getApiKey()
-        );
-
-        System.out.println("create.toString() = " + create.toString());
-
         return webClient.get()
-                .uri(create)
+                .uri(URI.create(
+                        marketAuxProperties.getBaseUrl() + "?" +
+                                "countries=us&" +
+                                "group=economic&" +
+                                "limit=" + limit + "&" +
+                                "published_after=" + formattedPublishedTimeAfter + "&" +
+                                "api_token=" + marketAuxProperties.getApiKey()
+                ))
                 .retrieve()
                 .bodyToMono(MarketAuxResponse.class)
                 .map(response -> response.getData().stream()
