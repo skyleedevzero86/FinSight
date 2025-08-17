@@ -14,6 +14,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
@@ -42,21 +44,21 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
 
     @Override
     public CompletableFuture<List<News>> scrap(LocalDateTime publishTimeAfter, int limit) {
-        String formattedPublishedTimeAfter = publishTimeAfter.format(
+        ZonedDateTime estZoneDateTime = publishTimeAfter.atZone(ZoneId.of("America/New_York"));
+        ZonedDateTime utcZoneDateTime = estZoneDateTime.withZoneSameInstant(ZoneId.of("UTC"));
+        String formattedPublishedTimeAfter = utcZoneDateTime.format(
                 DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
         );
 
         return webClient.get()
-                .uri(
-                        URI.create(
-                                marketAuxProperties.getBaseUrl() + "?" +
-                                        "countries=us&" +
-                                        "group=economic&" +
-                                        "limit=" + limit + "&" +
-                                        "published_after=" + formattedPublishedTimeAfter + "&" +
-                                        "api_token=" + marketAuxProperties.getApiKey()
-                        )
-                )
+                .uri(URI.create(
+                        marketAuxProperties.getBaseUrl() + "?" +
+                                "countries=us&" +
+                                "group=economic&" +
+                                "limit=" + limit + "&" +
+                                "published_after=" + formattedPublishedTimeAfter + "&" +
+                                "api_token=" + marketAuxProperties.getApiKey()
+                ))
                 .retrieve()
                 .bodyToMono(MarketAuxResponse.class)
                 .map(response -> response.getData().stream()
