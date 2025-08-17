@@ -5,5 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 
 public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
+
     List<NewsJpaEntity> findByOverviewIsNull();
+
+    @Override
+    List<NewsJpaEntity> findAll();
 }

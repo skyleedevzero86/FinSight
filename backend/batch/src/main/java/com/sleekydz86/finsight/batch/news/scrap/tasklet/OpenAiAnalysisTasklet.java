@@ -13,7 +13,7 @@ import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Mono;
+
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -55,8 +55,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
     public void processNewsWithAi(List<News> unAnalyzedNewses) {
         try {
             AiChatResponse analysisResults = newsOpenAiAnalysisRequester
-                    .request(createAiRequest(unAnalyzedNewses))
-                    .block();
+                    .request(createAiRequest(unAnalyzedNewses));
 
             List<News> updatedNewses = updateNewsWithResults(unAnalyzedNewses, analysisResults);
             newsPersistencePort.saveAllNews(updatedNewses);
@@ -74,14 +73,14 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                 ))
                 .collect(Collectors.toList());
 
-        return new AiChatRequest(newsItems);
+        return new AiChatRequest("bulk_analysis", newsItems);
     }
 
     public List<News> updateNewsWithResults(List<News> newses, AiChatResponse response) {
         return IntStream.range(0, newses.size())
                 .mapToObj(i -> {
                     News news = newses.get(i);
-                    AiChatResponse.Analysis analysis = response.getAnalyses().get(i);
+                    AiChatResponse.NewsAnalysis analysis = response.getAnalyses().get(i);
 
                     return news.updateAiAnalysis(
                             analysis.getOverView(),
