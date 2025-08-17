@@ -5,20 +5,21 @@ import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Component
@@ -31,12 +32,6 @@ public class NewsCrawlingTasklet implements Tasklet {
     private final Set<NewsScrapRequester> newsScrapRequesters;
     private final NewsPersistencePort newsPersistencePort;
 
-    @Value("#{jobParameters['publishTimeAfter']}")
-    private String publishTimeAfterParam;
-
-    @Value("#{jobParameters['limit']}")
-    private int limitParam = 3;
-
     public NewsCrawlingTasklet(Set<NewsScrapRequester> newsScrapRequesters,
                                NewsPersistencePort newsPersistencePort) {
         this.newsScrapRequesters = newsScrapRequesters;
@@ -46,7 +41,12 @@ public class NewsCrawlingTasklet implements Tasklet {
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
         try {
-            LocalDateTime publishTimeAfter = parsePublishTimeAfter();
+            JobParameters jobParameters = contribution.getStepExecution().getJobParameters();
+            String publishTimeAfterParam = jobParameters.getString("publishTimeAfter");
+            Long limitLong = jobParameters.getLong("limit");
+            int limitParam = limitLong != null ? limitLong.intValue() : 3;
+
+            LocalDateTime publishTimeAfter = parsePublishTimeAfter(publishTimeAfterParam);
             List<News> newses = scrapAll(publishTimeAfter, limitParam);
             newsPersistencePort.saveAllNews(newses);
 
@@ -60,29 +60,35 @@ public class NewsCrawlingTasklet implements Tasklet {
     }
 
     private List<News> scrapAll(LocalDateTime publishTimeAfter, int limit) {
-        return Flux.fromIterable(newsScrapRequesters)
-                .flatMap(requester -> {
-                    String providerName = requester.supports().getName();
+        List<CompletableFuture<List<News>>> futures = new ArrayList<>();
 
-                    log.info("[{}] 뉴스 수집 시작 - 기준 시간: {}, limit: {}",
-                            providerName, publishTimeAfter, limit);
+        for (NewsScrapRequester requester : newsScrapRequesters) {
+            String providerName = requester.supports().name();
 
-                    return requester.scrap(publishTimeAfter, limit)
-                            .doOnSuccess(newses ->
-                                    log.info("[{}] {}개의 뉴스 수집 완료", providerName, newses.size()))
-                            .onErrorResume(e -> {
-                                log.error("[{}] 뉴스 수집 실패", providerName, e);
-                                return Mono.just(Collections.emptyList());
-                            });
-                })
-                .collectList()
-                .block()
-                .stream()
+            log.info("[{}] 뉴스 수집 시작 - 기준 시간: {}, limit: {}",
+                    providerName, publishTimeAfter, limit);
+
+            CompletableFuture<List<News>> future = requester.scrap(publishTimeAfter, limit)
+                    .handle((newses, throwable) -> {
+                        if (throwable != null) {
+                            log.error("[{}] 뉴스 수집 실패", providerName, throwable);
+                            return Collections.<News>emptyList();
+                        } else {
+                            log.info("[{}] {}개의 뉴스 수집 완료", providerName, newses.size());
+                            return newses;
+                        }
+                    });
+
+            futures.add(future);
+        }
+
+        return futures.stream()
+                .map(CompletableFuture::join)
                 .flatMap(List::stream)
                 .collect(Collectors.toList());
     }
 
-    private LocalDateTime parsePublishTimeAfter() {
+    private LocalDateTime parsePublishTimeAfter(String publishTimeAfterParam) {
         try {
             return LocalDateTime.parse(publishTimeAfterParam, DATE_FORMATTER);
         } catch (Exception e) {
