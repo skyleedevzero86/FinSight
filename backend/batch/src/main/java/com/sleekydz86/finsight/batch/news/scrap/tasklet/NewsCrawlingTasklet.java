@@ -34,7 +34,7 @@ public class NewsCrawlingTasklet implements Tasklet {
     private final NewsPersistencePort newsPersistencePort;
 
     public NewsCrawlingTasklet(Set<NewsScrapRequester> newsScrapRequesters,
-                               NewsPersistencePort newsPersistencePort) {
+            NewsPersistencePort newsPersistencePort) {
         this.newsScrapRequesters = newsScrapRequesters;
         this.newsPersistencePort = newsPersistencePort;
     }

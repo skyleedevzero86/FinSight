@@ -29,8 +29,8 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
     private final WebClient webClient;
     private final MarketAuxProperties marketAuxProperties;
 
-    private static final DateTimeFormatter API_DATE_FORMATTER =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX");
+    private static final DateTimeFormatter API_DATE_FORMATTER = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX");
 
     public MarketAuxNewsScrapRequester(WebClient webClient, MarketAuxProperties marketAuxProperties) {
         this.webClient = webClient;
@@ -47,8 +47,7 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
         ZonedDateTime estZoneDateTime = publishTimeAfter.atZone(ZoneId.of("America/New_York"));
         ZonedDateTime utcZoneDateTime = estZoneDateTime.withZoneSameInstant(ZoneId.of("UTC"));
         String formattedPublishedTimeAfter = utcZoneDateTime.format(
-                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
-        );
+                DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"));
 
         return webClient.get()
                 .uri(URI.create(
@@ -57,8 +56,7 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                                 "group=economic&" +
                                 "limit=" + limit + "&" +
                                 "published_after=" + formattedPublishedTimeAfter + "&" +
-                                "api_token=" + marketAuxProperties.getApiKey()
-                ))
+                                "api_token=" + marketAuxProperties.getApiKey()))
                 .retrieve()
                 .bodyToMono(MarketAuxResponse.class)
                 .map(response -> response.getData().stream()
@@ -67,22 +65,19 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                                 NewsMeta.of(
                                         NewsProvider.MARKETAUX,
                                         OffsetDateTime.parse(newsItem.getPublishedAt(), API_DATE_FORMATTER),
-                                        newsItem.getUrl()
-                                ),
+                                        newsItem.getUrl()),
                                 LocalDateTime.now(),
                                 new Content(
                                         newsItem.getTitle(),
-                                        newsItem.getDescription()
-                                ),
+                                        newsItem.getDescription()),
                                 null,
-                                null
-                        ))
+                                null))
                         .collect(Collectors.toList()))
-                .doOnError(WebClientResponseException.class, ex ->
-                        log.warn("Failed to fetch news from Marketaux API: {} - {}",
+                .doOnError(WebClientResponseException.class,
+                        ex -> log.warn("Failed to fetch news from Marketaux API: {} - {}",
                                 ex.getStatusCode(), ex.getResponseBodyAsString()))
-                .doOnError(throwable -> !(throwable instanceof WebClientResponseException), ex ->
-                        log.error("Unexpected error during Marketaux API call", ex))
+                .doOnError(throwable -> !(throwable instanceof WebClientResponseException),
+                        ex -> log.error("Unexpected error during Marketaux API call", ex))
                 .onErrorReturn(Collections.emptyList())
                 .toFuture();
     }
@@ -92,7 +87,8 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
         private Meta meta;
         private List<NewsItem> data;
 
-        public MarketAuxResponse() {}
+        public MarketAuxResponse() {
+        }
 
         public MarketAuxResponse(List<String> warnings, Meta meta, List<NewsItem> data) {
             this.warnings = warnings;
@@ -131,7 +127,8 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
         private int limit;
         private int page;
 
-        public Meta() {}
+        public Meta() {
+        }
 
         public Meta(int found, int returned, int limit, int page) {
             this.found = found;
@@ -188,12 +185,13 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
         private List<Entity> entities;
         private List<Object> similar;
 
-        public NewsItem() {}
+        public NewsItem() {
+        }
 
         public NewsItem(String uuid, String title, String description, String keywords,
-                        String snippet, String url, String imageUrl, String language,
-                        String publishedAt, String source, Double relevanceScore,
-                        List<Entity> entities, List<Object> similar) {
+                String snippet, String url, String imageUrl, String language,
+                String publishedAt, String source, Double relevanceScore,
+                List<Entity> entities, List<Object> similar) {
             this.uuid = uuid;
             this.title = title;
             this.description = description;
@@ -209,44 +207,109 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
             this.similar = similar;
         }
 
-        public String getUuid() { return uuid; }
-        public void setUuid(String uuid) { this.uuid = uuid; }
+        public String getUuid() {
+            return uuid;
+        }
 
-        public String getTitle() { return title; }
-        public void setTitle(String title) { this.title = title; }
+        public void setUuid(String uuid) {
+            this.uuid = uuid;
+        }
 
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
+        public String getTitle() {
+            return title;
+        }
 
-        public String getKeywords() { return keywords; }
-        public void setKeywords(String keywords) { this.keywords = keywords; }
+        public void setTitle(String title) {
+            this.title = title;
+        }
 
-        public String getSnippet() { return snippet; }
-        public void setSnippet(String snippet) { this.snippet = snippet; }
+        public String getDescription() {
+            return description;
+        }
 
-        public String getUrl() { return url; }
-        public void setUrl(String url) { this.url = url; }
+        public void setDescription(String description) {
+            this.description = description;
+        }
 
-        public String getImageUrl() { return imageUrl; }
-        public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+        public String getKeywords() {
+            return keywords;
+        }
 
-        public String getLanguage() { return language; }
-        public void setLanguage(String language) { this.language = language; }
+        public void setKeywords(String keywords) {
+            this.keywords = keywords;
+        }
 
-        public String getPublishedAt() { return publishedAt; }
-        public void setPublishedAt(String publishedAt) { this.publishedAt = publishedAt; }
+        public String getSnippet() {
+            return snippet;
+        }
 
-        public String getSource() { return source; }
-        public void setSource(String source) { this.source = source; }
+        public void setSnippet(String snippet) {
+            this.snippet = snippet;
+        }
 
-        public Double getRelevanceScore() { return relevanceScore; }
-        public void setRelevanceScore(Double relevanceScore) { this.relevanceScore = relevanceScore; }
+        public String getUrl() {
+            return url;
+        }
 
-        public List<Entity> getEntities() { return entities; }
-        public void setEntities(List<Entity> entities) { this.entities = entities; }
+        public void setUrl(String url) {
+            this.url = url;
+        }
 
-        public List<Object> getSimilar() { return similar; }
-        public void setSimilar(List<Object> similar) { this.similar = similar; }
+        public String getImageUrl() {
+            return imageUrl;
+        }
+
+        public void setImageUrl(String imageUrl) {
+            this.imageUrl = imageUrl;
+        }
+
+        public String getLanguage() {
+            return language;
+        }
+
+        public void setLanguage(String language) {
+            this.language = language;
+        }
+
+        public String getPublishedAt() {
+            return publishedAt;
+        }
+
+        public void setPublishedAt(String publishedAt) {
+            this.publishedAt = publishedAt;
+        }
+
+        public String getSource() {
+            return source;
+        }
+
+        public void setSource(String source) {
+            this.source = source;
+        }
+
+        public Double getRelevanceScore() {
+            return relevanceScore;
+        }
+
+        public void setRelevanceScore(Double relevanceScore) {
+            this.relevanceScore = relevanceScore;
+        }
+
+        public List<Entity> getEntities() {
+            return entities;
+        }
+
+        public void setEntities(List<Entity> entities) {
+            this.entities = entities;
+        }
+
+        public List<Object> getSimilar() {
+            return similar;
+        }
+
+        public void setSimilar(List<Object> similar) {
+            this.similar = similar;
+        }
     }
 
     public static class Entity {
@@ -261,11 +324,12 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
         private Double sentimentScore;
         private List<Highlight> highlights;
 
-        public Entity() {}
+        public Entity() {
+        }
 
         public Entity(String symbol, String name, String exchange, String exchangeLong,
-                      String country, String type, String industry, Double matchScore,
-                      Double sentimentScore, List<Highlight> highlights) {
+                String country, String type, String industry, Double matchScore,
+                Double sentimentScore, List<Highlight> highlights) {
             this.symbol = symbol;
             this.name = name;
             this.exchange = exchange;
@@ -278,35 +342,85 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
             this.highlights = highlights;
         }
 
-        public String getSymbol() { return symbol; }
-        public void setSymbol(String symbol) { this.symbol = symbol; }
+        public String getSymbol() {
+            return symbol;
+        }
 
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
+        public void setSymbol(String symbol) {
+            this.symbol = symbol;
+        }
 
-        public String getExchange() { return exchange; }
-        public void setExchange(String exchange) { this.exchange = exchange; }
+        public String getName() {
+            return name;
+        }
 
-        public String getExchangeLong() { return exchangeLong; }
-        public void setExchangeLong(String exchangeLong) { this.exchangeLong = exchangeLong; }
+        public void setName(String name) {
+            this.name = name;
+        }
 
-        public String getCountry() { return country; }
-        public void setCountry(String country) { this.country = country; }
+        public String getExchange() {
+            return exchange;
+        }
 
-        public String getType() { return type; }
-        public void setType(String type) { this.type = type; }
+        public void setExchange(String exchange) {
+            this.exchange = exchange;
+        }
 
-        public String getIndustry() { return industry; }
-        public void setIndustry(String industry) { this.industry = industry; }
+        public String getExchangeLong() {
+            return exchangeLong;
+        }
 
-        public Double getMatchScore() { return matchScore; }
-        public void setMatchScore(Double matchScore) { this.matchScore = matchScore; }
+        public void setExchangeLong(String exchangeLong) {
+            this.exchangeLong = exchangeLong;
+        }
 
-        public Double getSentimentScore() { return sentimentScore; }
-        public void setSentimentScore(Double sentimentScore) { this.sentimentScore = sentimentScore; }
+        public String getCountry() {
+            return country;
+        }
 
-        public List<Highlight> getHighlights() { return highlights; }
-        public void setHighlights(List<Highlight> highlights) { this.highlights = highlights; }
+        public void setCountry(String country) {
+            this.country = country;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public void setType(String type) {
+            this.type = type;
+        }
+
+        public String getIndustry() {
+            return industry;
+        }
+
+        public void setIndustry(String industry) {
+            this.industry = industry;
+        }
+
+        public Double getMatchScore() {
+            return matchScore;
+        }
+
+        public void setMatchScore(Double matchScore) {
+            this.matchScore = matchScore;
+        }
+
+        public Double getSentimentScore() {
+            return sentimentScore;
+        }
+
+        public void setSentimentScore(Double sentimentScore) {
+            this.sentimentScore = sentimentScore;
+        }
+
+        public List<Highlight> getHighlights() {
+            return highlights;
+        }
+
+        public void setHighlights(List<Highlight> highlights) {
+            this.highlights = highlights;
+        }
     }
 
     public static class Highlight {
@@ -314,7 +428,8 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
         private double sentiment;
         private String highlightedIn;
 
-        public Highlight() {}
+        public Highlight() {
+        }
 
         public Highlight(String highlight, double sentiment, String highlightedIn) {
             this.highlight = highlight;
@@ -322,13 +437,28 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
             this.highlightedIn = highlightedIn;
         }
 
-        public String getHighlight() { return highlight; }
-        public void setHighlight(String highlight) { this.highlight = highlight; }
+        public String getHighlight() {
+            return highlight;
+        }
 
-        public double getSentiment() { return sentiment; }
-        public void setSentiment(double sentiment) { this.sentiment = sentiment; }
+        public void setHighlight(String highlight) {
+            this.highlight = highlight;
+        }
 
-        public String getHighlightedIn() { return highlightedIn; }
-        public void setHighlightedIn(String highlightedIn) { this.highlightedIn = highlightedIn; }
+        public double getSentiment() {
+            return sentiment;
+        }
+
+        public void setSentiment(double sentiment) {
+            this.sentiment = sentiment;
+        }
+
+        public String getHighlightedIn() {
+            return highlightedIn;
+        }
+
+        public void setHighlightedIn(String highlightedIn) {
+            this.highlightedIn = highlightedIn;
+        }
     }
 }

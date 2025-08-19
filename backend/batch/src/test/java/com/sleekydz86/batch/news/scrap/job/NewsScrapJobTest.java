@@ -33,75 +33,68 @@ import static org.mockito.Mockito.when;
 
 @SpringBatchTest
 @SpringBootTest(properties = {
-        "spring.main.allow-bean-definition-overriding=true",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.sql.init.mode=never"
+                "spring.main.allow-bean-definition-overriding=true",
+                "spring.jpa.hibernate.ddl-auto=create-drop",
+                "spring.sql.init.mode=never"
 })
 public class NewsScrapJobTest {
 
-    @Autowired
-    private JobLauncherTestUtils jobLauncherTestUtils;
+        @Autowired
+        private JobLauncherTestUtils jobLauncherTestUtils;
 
-    @MockitoBean
-    private NewsScrapRequester newsScrapRequester;
+        @MockitoBean
+        private NewsScrapRequester newsScrapRequester;
 
-    @MockitoBean
-    private NewsOpenAiAnalysisRequester newsOpenAiAnalysisRequester;
+        @MockitoBean
+        private NewsOpenAiAnalysisRequester newsOpenAiAnalysisRequester;
 
-    @MockitoBean
-    private NewsJpaRepository newsJpaRepository;
+        @MockitoBean
+        private NewsJpaRepository newsJpaRepository;
 
-    @Test
-    public void 뉴스를_크롤링하고_ai_분석을_정상적으로_진행한다() throws Exception {
-        JobParameters params = new JobParametersBuilder()
-                .addString("publishTimeAfter", "2025-08-14T00:00:00")
-                .addLong("limit", 5L)
-                .addLong("runTime", System.currentTimeMillis())
-                .toJobParameters();
+        @Test
+        public void 뉴스를_크롤링하고_ai_분석을_정상적으로_진행한다() throws Exception {
+                JobParameters params = new JobParametersBuilder()
+                                .addString("publishTimeAfter", "2025-08-14T00:00:00")
+                                .addLong("limit", 5L)
+                                .addLong("runTime", System.currentTimeMillis())
+                                .toJobParameters();
 
-        List<News> newsList = Arrays.asList(
-                News.createWithoutAI(
-                        new NewsMeta(
-                                NewsProvider.MARKETAUX,
-                                LocalDateTime.now(),
-                                "https://example.com"
-                        ),
-                        new Content("title", "content")
-                )
-        );
+                List<News> newsList = Arrays.asList(
+                                News.createWithoutAI(
+                                                new NewsMeta(
+                                                                NewsProvider.MARKETAUX,
+                                                                LocalDateTime.now(),
+                                                                "https://example.com"),
+                                                new Content("title", "content")));
 
-        AiChatResponse aiResponse = new AiChatResponse(
-                Arrays.asList(
-                        new AiChatResponse.NewsAnalysis(
-                                "ai overview",
-                                "ai translated title",
-                                "ai translated content",
-                                Arrays.asList(TargetCategory.BTC),
-                                SentimentType.POSITIVE,
-                                1.0
-                        )
-                )
-        );
+                AiChatResponse aiResponse = new AiChatResponse(
+                                Arrays.asList(
+                                                new AiChatResponse.NewsAnalysis(
+                                                                "ai overview",
+                                                                "ai translated title",
+                                                                "ai translated content",
+                                                                Arrays.asList(TargetCategory.BTC),
+                                                                SentimentType.POSITIVE,
+                                                                1.0)));
 
-        NewsJpaEntity mockEntity = new NewsJpaEntity();
-        mockEntity.setOverview("ai overview");
-        List<NewsJpaEntity> mockEntities = Arrays.asList(mockEntity);
+                NewsJpaEntity mockEntity = new NewsJpaEntity();
+                mockEntity.setOverview("ai overview");
+                List<NewsJpaEntity> mockEntities = Arrays.asList(mockEntity);
 
-        when(newsScrapRequester.supports()).thenReturn(NewsProvider.MARKETAUX);
-        when(newsScrapRequester.scrap(any(LocalDateTime.class), any(Integer.class)))
-                .thenReturn(CompletableFuture.completedFuture(newsList));
-        when(newsOpenAiAnalysisRequester.request(any(AiChatRequest.class)))
-                .thenReturn(aiResponse);
-        when(newsJpaRepository.findAll()).thenReturn(mockEntities);
+                when(newsScrapRequester.supports()).thenReturn(NewsProvider.MARKETAUX);
+                when(newsScrapRequester.scrap(any(LocalDateTime.class), any(Integer.class)))
+                                .thenReturn(CompletableFuture.completedFuture(newsList));
+                when(newsOpenAiAnalysisRequester.request(any(AiChatRequest.class)))
+                                .thenReturn(aiResponse);
+                when(newsJpaRepository.findAll()).thenReturn(mockEntities);
 
-        JobExecution result = jobLauncherTestUtils.launchJob(params);
+                JobExecution result = jobLauncherTestUtils.launchJob(params);
 
-        List<NewsJpaEntity> foundNewses = newsJpaRepository.findAll();
+                List<NewsJpaEntity> foundNewses = newsJpaRepository.findAll();
 
-        assertAll(
-                () -> assertEquals("COMPLETED", result.getExitStatus().getExitCode()),
-                () -> assertEquals(1, foundNewses.size()),
-                () -> assertEquals("ai overview", foundNewses.get(0).getOverview())
-        );
-    }
+                assertAll(
+                                () -> assertEquals("COMPLETED", result.getExitStatus().getExitCode()),
+                                () -> assertEquals(1, foundNewses.size()),
+                                () -> assertEquals("ai overview", foundNewses.get(0).getOverview()));
+        }
 }
