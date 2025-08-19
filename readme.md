@@ -1,5 +1,7 @@
 # 📈 FinSight
 
+<img width="1136" height="492" alt="image" src="https://github.com/user-attachments/assets/327254f4-7c52-4323-80cb-e8e9ddcb73f4" />
+
 ## 프로젝트 소개
 
 FinSight 프로젝트는 미국 경제 뉴스를 주기적으로 크롤링하고, 이를 기반으로 SPY, QQQ과 같은 ETF와, 비트코인, Big7(애플, 마이크로소프트, 엔비디아 등)과 같은 자산에 미치는 영향을 LLM 챗봇
