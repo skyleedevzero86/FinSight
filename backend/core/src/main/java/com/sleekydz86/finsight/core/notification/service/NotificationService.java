@@ -1,7 +1,9 @@
 package com.sleekydz86.finsight.core.notification.service;
 
 import com.sleekydz86.finsight.core.news.domain.News;
+import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.user.domain.User;
+import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.notification.domain.port.out.NotificationSenderPort;
 import org.springframework.stereotype.Service;
@@ -15,7 +17,7 @@ public class NotificationService {
     private final NotificationSenderPort notificationSenderPort;
 
     public NotificationService(UserPersistencePort userPersistencePort,
-            NotificationSenderPort notificationSenderPort) {
+                               NotificationSenderPort notificationSenderPort) {
         this.userPersistencePort = userPersistencePort;
         this.notificationSenderPort = notificationSenderPort;
     }

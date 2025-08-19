@@ -1,5 +1,6 @@
 package com.sleekydz86.finsight.core.user.adapter.persistence.command;
 
+import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

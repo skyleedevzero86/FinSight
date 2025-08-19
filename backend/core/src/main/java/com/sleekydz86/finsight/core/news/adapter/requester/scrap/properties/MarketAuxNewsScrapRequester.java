@@ -5,6 +5,8 @@ import com.sleekydz86.finsight.core.news.adapter.requester.NewsScrapRequester;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
+import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -30,7 +32,7 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
     private final MarketAuxProperties marketAuxProperties;
 
     private static final DateTimeFormatter API_DATE_FORMATTER = DateTimeFormatter
-            .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSX");
+            .ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
 
     public MarketAuxNewsScrapRequester(WebClient webClient, MarketAuxProperties marketAuxProperties) {
         this.webClient = webClient;
@@ -53,25 +55,14 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                 .uri(URI.create(
                         marketAuxProperties.getBaseUrl() + "?" +
                                 "countries=us&" +
-                                "group=economic&" +
+                                "filter_entities=true&" +
                                 "limit=" + limit + "&" +
                                 "published_after=" + formattedPublishedTimeAfter + "&" +
                                 "api_token=" + marketAuxProperties.getApiKey()))
                 .retrieve()
                 .bodyToMono(MarketAuxResponse.class)
                 .map(response -> response.getData().stream()
-                        .map(newsItem -> new News(
-                                0L,
-                                NewsMeta.of(
-                                        NewsProvider.MARKETAUX,
-                                        OffsetDateTime.parse(newsItem.getPublishedAt(), API_DATE_FORMATTER),
-                                        newsItem.getUrl()),
-                                LocalDateTime.now(),
-                                new Content(
-                                        newsItem.getTitle(),
-                                        newsItem.getDescription()),
-                                null,
-                                null))
+                        .map(this::convertToNews)
                         .collect(Collectors.toList()))
                 .doOnError(WebClientResponseException.class,
                         ex -> log.warn("Failed to fetch news from Marketaux API: {} - {}",
@@ -82,43 +73,81 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                 .toFuture();
     }
 
+    private News convertToNews(NewsItem newsItem) {
+
+        SentimentType sentimentType = convertSentimentScore(newsItem.getAverageSentimentScore());
+
+        List<TargetCategory> categories = extractTargetCategories(newsItem.getEntities());
+
+        return News.createWithoutAI(
+                NewsMeta.of(
+                        NewsProvider.MARKETAUX,
+                        OffsetDateTime.parse(newsItem.getPublishedAt(), API_DATE_FORMATTER),
+                        newsItem.getUrl()
+                ),
+                new Content(
+                        newsItem.getTitle(),
+                        newsItem.getDescription()
+                )
+        );
+    }
+
+    private SentimentType convertSentimentScore(Double sentimentScore) {
+        if (sentimentScore == null) {
+            return SentimentType.NEUTRAL;
+        }
+        
+        if (sentimentScore > 0.1) {
+            return SentimentType.POSITIVE;
+        } else if (sentimentScore < -0.1) {
+            return SentimentType.NEGATIVE;
+        } else {
+            return SentimentType.NEUTRAL;
+        }
+    }
+
+    private List<TargetCategory> extractTargetCategories(List<Entity> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return List.of(TargetCategory.NONE);
+        }
+
+        return entities.stream()
+                .map(Entity::getSymbol)
+                .filter(symbol -> symbol != null && !symbol.isEmpty())
+                .map(this::mapSymbolToCategory)
+                .filter(category -> category != TargetCategory.NONE)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private TargetCategory mapSymbolToCategory(String symbol) {
+        if (symbol == null) return TargetCategory.NONE;
+        
+        return switch (symbol.toUpperCase()) {
+            case "SPY" -> TargetCategory.SPY;
+            case "QQQ" -> TargetCategory.QQQ;
+            case "BTC" -> TargetCategory.BTC;
+            case "AAPL" -> TargetCategory.AAPL;
+            case "MSFT" -> TargetCategory.MSFT;
+            case "NVDA" -> TargetCategory.NVDA;
+            case "GOOGL" -> TargetCategory.GOOGL;
+            case "META" -> TargetCategory.META;
+            case "TSLA" -> TargetCategory.TSLA;
+            default -> TargetCategory.NONE;
+        };
+    }
+
     public static class MarketAuxResponse {
         private List<String> warnings;
         private Meta meta;
         private List<NewsItem> data;
 
-        public MarketAuxResponse() {
-        }
-
-        public MarketAuxResponse(List<String> warnings, Meta meta, List<NewsItem> data) {
-            this.warnings = warnings;
-            this.meta = meta;
-            this.data = data;
-        }
-
-        public List<String> getWarnings() {
-            return warnings;
-        }
-
-        public void setWarnings(List<String> warnings) {
-            this.warnings = warnings;
-        }
-
-        public Meta getMeta() {
-            return meta;
-        }
-
-        public void setMeta(Meta meta) {
-            this.meta = meta;
-        }
-
-        public List<NewsItem> getData() {
-            return data;
-        }
-
-        public void setData(List<NewsItem> data) {
-            this.data = data;
-        }
+        public List<String> getWarnings() { return warnings; }
+        public void setWarnings(List<String> warnings) { this.warnings = warnings; }
+        public Meta getMeta() { return meta; }
+        public void setMeta(Meta meta) { this.meta = meta; }
+        public List<NewsItem> getData() { return data; }
+        public void setData(List<NewsItem> data) { this.data = data; }
     }
 
     public static class Meta {
@@ -127,47 +156,14 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
         private int limit;
         private int page;
 
-        public Meta() {
-        }
-
-        public Meta(int found, int returned, int limit, int page) {
-            this.found = found;
-            this.returned = returned;
-            this.limit = limit;
-            this.page = page;
-        }
-
-        public int getFound() {
-            return found;
-        }
-
-        public void setFound(int found) {
-            this.found = found;
-        }
-
-        public int getReturned() {
-            return returned;
-        }
-
-        public void setReturned(int returned) {
-            this.returned = returned;
-        }
-
-        public int getLimit() {
-            return limit;
-        }
-
-        public void setLimit(int limit) {
-            this.limit = limit;
-        }
-
-        public int getPage() {
-            return page;
-        }
-
-        public void setPage(int page) {
-            this.page = page;
-        }
+        public int getFound() { return found; }
+        public void setFound(int found) { this.found = found; }
+        public int getReturned() { return returned; }
+        public void setReturned(int returned) { this.returned = returned; }
+        public int getLimit() { return limit; }
+        public void setLimit(int limit) { this.limit = limit; }
+        public int getPage() { return page; }
+        public void setPage(int page) { this.page = page; }
     }
 
     public static class NewsItem {
@@ -185,131 +181,43 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
         private List<Entity> entities;
         private List<Object> similar;
 
-        public NewsItem() {
+        public Double getAverageSentimentScore() {
+            if (entities == null || entities.isEmpty()) {
+                return null;
+            }
+            
+            return entities.stream()
+                    .mapToDouble(entity -> entity.getSentimentScore() != null ? entity.getSentimentScore() : 0.0)
+                    .average()
+                    .orElse(0.0);
         }
 
-        public NewsItem(String uuid, String title, String description, String keywords,
-                String snippet, String url, String imageUrl, String language,
-                String publishedAt, String source, Double relevanceScore,
-                List<Entity> entities, List<Object> similar) {
-            this.uuid = uuid;
-            this.title = title;
-            this.description = description;
-            this.keywords = keywords;
-            this.snippet = snippet;
-            this.url = url;
-            this.imageUrl = imageUrl;
-            this.language = language;
-            this.publishedAt = publishedAt;
-            this.source = source;
-            this.relevanceScore = relevanceScore;
-            this.entities = entities;
-            this.similar = similar;
-        }
-
-        public String getUuid() {
-            return uuid;
-        }
-
-        public void setUuid(String uuid) {
-            this.uuid = uuid;
-        }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public void setDescription(String description) {
-            this.description = description;
-        }
-
-        public String getKeywords() {
-            return keywords;
-        }
-
-        public void setKeywords(String keywords) {
-            this.keywords = keywords;
-        }
-
-        public String getSnippet() {
-            return snippet;
-        }
-
-        public void setSnippet(String snippet) {
-            this.snippet = snippet;
-        }
-
-        public String getUrl() {
-            return url;
-        }
-
-        public void setUrl(String url) {
-            this.url = url;
-        }
-
-        public String getImageUrl() {
-            return imageUrl;
-        }
-
-        public void setImageUrl(String imageUrl) {
-            this.imageUrl = imageUrl;
-        }
-
-        public String getLanguage() {
-            return language;
-        }
-
-        public void setLanguage(String language) {
-            this.language = language;
-        }
-
-        public String getPublishedAt() {
-            return publishedAt;
-        }
-
-        public void setPublishedAt(String publishedAt) {
-            this.publishedAt = publishedAt;
-        }
-
-        public String getSource() {
-            return source;
-        }
-
-        public void setSource(String source) {
-            this.source = source;
-        }
-
-        public Double getRelevanceScore() {
-            return relevanceScore;
-        }
-
-        public void setRelevanceScore(Double relevanceScore) {
-            this.relevanceScore = relevanceScore;
-        }
-
-        public List<Entity> getEntities() {
-            return entities;
-        }
-
-        public void setEntities(List<Entity> entities) {
-            this.entities = entities;
-        }
-
-        public List<Object> getSimilar() {
-            return similar;
-        }
-
-        public void setSimilar(List<Object> similar) {
-            this.similar = similar;
-        }
+        public String getUuid() { return uuid; }
+        public void setUuid(String uuid) { this.uuid = uuid; }
+        public String getTitle() { return title; }
+        public void setTitle(String title) { this.title = title; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+        public String getKeywords() { return keywords; }
+        public void setKeywords(String keywords) { this.keywords = keywords; }
+        public String getSnippet() { return snippet; }
+        public void setSnippet(String snippet) { this.snippet = snippet; }
+        public String getUrl() { return url; }
+        public void setUrl(String url) { this.url = url; }
+        public String getImageUrl() { return imageUrl; }
+        public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+        public String getLanguage() { return language; }
+        public void setLanguage(String language) { this.language = language; }
+        public String getPublishedAt() { return publishedAt; }
+        public void setPublishedAt(String publishedAt) { this.publishedAt = publishedAt; }
+        public String getSource() { return source; }
+        public void setSource(String source) { this.source = source; }
+        public Double getRelevanceScore() { return relevanceScore; }
+        public void setRelevanceScore(Double relevanceScore) { this.relevanceScore = relevanceScore; }
+        public List<Entity> getEntities() { return entities; }
+        public void setEntities(List<Entity> entities) { this.entities = entities; }
+        public List<Object> getSimilar() { return similar; }
+        public void setSimilar(List<Object> similar) { this.similar = similar; }
     }
 
     public static class Entity {
@@ -324,141 +232,38 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
         private Double sentimentScore;
         private List<Highlight> highlights;
 
-        public Entity() {
-        }
-
-        public Entity(String symbol, String name, String exchange, String exchangeLong,
-                String country, String type, String industry, Double matchScore,
-                Double sentimentScore, List<Highlight> highlights) {
-            this.symbol = symbol;
-            this.name = name;
-            this.exchange = exchange;
-            this.exchangeLong = exchangeLong;
-            this.country = country;
-            this.type = type;
-            this.industry = industry;
-            this.matchScore = matchScore;
-            this.sentimentScore = sentimentScore;
-            this.highlights = highlights;
-        }
-
-        public String getSymbol() {
-            return symbol;
-        }
-
-        public void setSymbol(String symbol) {
-            this.symbol = symbol;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getExchange() {
-            return exchange;
-        }
-
-        public void setExchange(String exchange) {
-            this.exchange = exchange;
-        }
-
-        public String getExchangeLong() {
-            return exchangeLong;
-        }
-
-        public void setExchangeLong(String exchangeLong) {
-            this.exchangeLong = exchangeLong;
-        }
-
-        public String getCountry() {
-            return country;
-        }
-
-        public void setCountry(String country) {
-            this.country = country;
-        }
-
-        public String getType() {
-            return type;
-        }
-
-        public void setType(String type) {
-            this.type = type;
-        }
-
-        public String getIndustry() {
-            return industry;
-        }
-
-        public void setIndustry(String industry) {
-            this.industry = industry;
-        }
-
-        public Double getMatchScore() {
-            return matchScore;
-        }
-
-        public void setMatchScore(Double matchScore) {
-            this.matchScore = matchScore;
-        }
-
-        public Double getSentimentScore() {
-            return sentimentScore;
-        }
-
-        public void setSentimentScore(Double sentimentScore) {
-            this.sentimentScore = sentimentScore;
-        }
-
-        public List<Highlight> getHighlights() {
-            return highlights;
-        }
-
-        public void setHighlights(List<Highlight> highlights) {
-            this.highlights = highlights;
-        }
+        public String getSymbol() { return symbol; }
+        public void setSymbol(String symbol) { this.symbol = symbol; }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getExchange() { return exchange; }
+        public void setExchange(String exchange) { this.exchange = exchange; }
+        public String getExchangeLong() { return exchangeLong; }
+        public void setExchangeLong(String exchangeLong) { this.exchangeLong = exchangeLong; }
+        public String getCountry() { return country; }
+        public void setCountry(String country) { this.country = country; }
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+        public String getIndustry() { return industry; }
+        public void setIndustry(String industry) { this.industry = industry; }
+        public Double getMatchScore() { return matchScore; }
+        public void setMatchScore(Double matchScore) { this.matchScore = matchScore; }
+        public Double getSentimentScore() { return sentimentScore; }
+        public void setSentimentScore(Double sentimentScore) { this.sentimentScore = sentimentScore; }
+        public List<Highlight> getHighlights() { return highlights; }
+        public void setHighlights(List<Highlight> highlights) { this.highlights = highlights; }
     }
 
     public static class Highlight {
         private String highlight;
-        private double sentiment;
+        private Double sentiment;
         private String highlightedIn;
 
-        public Highlight() {
-        }
-
-        public Highlight(String highlight, double sentiment, String highlightedIn) {
-            this.highlight = highlight;
-            this.sentiment = sentiment;
-            this.highlightedIn = highlightedIn;
-        }
-
-        public String getHighlight() {
-            return highlight;
-        }
-
-        public void setHighlight(String highlight) {
-            this.highlight = highlight;
-        }
-
-        public double getSentiment() {
-            return sentiment;
-        }
-
-        public void setSentiment(double sentiment) {
-            this.sentiment = sentiment;
-        }
-
-        public String getHighlightedIn() {
-            return highlightedIn;
-        }
-
-        public void setHighlightedIn(String highlightedIn) {
-            this.highlightedIn = highlightedIn;
-        }
+        public String getHighlight() { return highlight; }
+        public void setHighlight(String highlight) { this.highlight = highlight; }
+        public Double getSentiment() { return sentiment; }
+        public void setSentiment(Double sentiment) { this.sentiment = sentiment; }
+        public String getHighlightedIn() { return highlightedIn; }
+        public void setHighlightedIn(String highlightedIn) { this.highlightedIn = highlightedIn; }
     }
 }

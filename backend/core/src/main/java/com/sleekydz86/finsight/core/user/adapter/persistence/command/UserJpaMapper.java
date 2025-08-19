@@ -13,16 +13,25 @@ import java.util.List;
 public class UserJpaMapper {
 
     public User toDomain(UserJpaEntity entity) {
-        return new User(
-                entity.getId(),
+        User user = new User(
                 entity.getEmail(),
                 entity.getPassword(),
-                entity.getUsername(),
-                entity.getRole(),
-                entity.isActive(),
-                entity.getLastLoginAt(),
-                new ArrayList<>(entity.getWatchlist()),
-                new ArrayList<>(entity.getNotificationPreferences()));
+                entity.getUsername()
+        );
+
+        // ID 설정
+        if (entity.getId() != null) {
+            user.setId(entity.getId());
+        }
+
+        // 추가 속성들 설정
+        user.setRole(entity.getRole());
+        user.setActive(entity.isActive());
+        user.setLastLoginAt(entity.getLastLoginAt());
+        user.setWatchlist(new ArrayList<>(entity.getWatchlist()));
+        user.setNotificationPreferences(new ArrayList<>(entity.getNotificationPreferences()));
+
+        return user;
     }
 
     public UserJpaEntity toEntity(User user) {
@@ -35,6 +44,7 @@ public class UserJpaMapper {
                 user.isActive(),
                 user.getLastLoginAt(),
                 new ArrayList<>(user.getWatchlist()),
-                new ArrayList<>(user.getNotificationPreferences()));
+                new ArrayList<>(user.getNotificationPreferences())
+        );
     }
 }

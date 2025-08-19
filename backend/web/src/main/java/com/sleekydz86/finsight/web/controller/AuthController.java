@@ -2,10 +2,12 @@ package com.sleekydz86.finsight.web.controller;
 
 import com.sleekydz86.finsight.core.auth.domain.JwtToken;
 import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
+import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserRegistrationRequest;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.sleekydz86.finsight.core.user.domain.User;
 
 @RestController
 @RequestMapping("/auth")

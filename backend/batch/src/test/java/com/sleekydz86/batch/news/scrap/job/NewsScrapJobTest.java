@@ -53,6 +53,7 @@ public class NewsScrapJobTest {
 
         @Test
         public void 뉴스를_크롤링하고_ai_분석을_정상적으로_진행한다() throws Exception {
+                // Given
                 JobParameters params = new JobParametersBuilder()
                                 .addString("publishTimeAfter", "2025-08-14T00:00:00")
                                 .addLong("limit", 5L)
@@ -65,22 +66,24 @@ public class NewsScrapJobTest {
                                                                 NewsProvider.MARKETAUX,
                                                                 LocalDateTime.now(),
                                                                 "https://example.com"),
-                                                new Content("title", "content")));
+                                                new Content("SoftBank makes surprise $2 billion bet on Intel's AI revival",
+                                                                "SoftBank buys $2 billion of Intel stock, boosting US chipmaker and its own AI ambitions.")));
 
                 AiChatResponse aiResponse = new AiChatResponse(
                                 Arrays.asList(
                                                 new AiChatResponse.NewsAnalysis(
-                                                                "ai overview",
-                                                                "ai translated title",
-                                                                "ai translated content",
-                                                                Arrays.asList(TargetCategory.BTC),
+                                                                "소프트뱅크가 인텔에 20억 달러 투자하여 AI 부활을 지원",
+                                                                "소프트뱅크, 인텔의 AI 부활에 20억 달러 투자",
+                                                                "소프트뱅크가 인텔 주식에 20억 달러를 투자하여 미국 반도체 업체와 자체 AI 야망을 부양시킵니다.",
+                                                                Arrays.asList(TargetCategory.NVDA, TargetCategory.MSFT),
                                                                 SentimentType.POSITIVE,
-                                                                1.0)));
+                                                                0.8)));
 
                 NewsJpaEntity mockEntity = new NewsJpaEntity();
-                mockEntity.setOverview("ai overview");
+                mockEntity.setOverview("소프트뱅크가 인텔에 20억 달러 투자하여 AI 부활을 지원");
                 List<NewsJpaEntity> mockEntities = Arrays.asList(mockEntity);
 
+                // When
                 when(newsScrapRequester.supports()).thenReturn(NewsProvider.MARKETAUX);
                 when(newsScrapRequester.scrap(any(LocalDateTime.class), any(Integer.class)))
                                 .thenReturn(CompletableFuture.completedFuture(newsList));
@@ -90,11 +93,13 @@ public class NewsScrapJobTest {
 
                 JobExecution result = jobLauncherTestUtils.launchJob(params);
 
+                // Then
                 List<NewsJpaEntity> foundNewses = newsJpaRepository.findAll();
 
                 assertAll(
                                 () -> assertEquals("COMPLETED", result.getExitStatus().getExitCode()),
                                 () -> assertEquals(1, foundNewses.size()),
-                                () -> assertEquals("ai overview", foundNewses.get(0).getOverview()));
+                                () -> assertEquals("소프트뱅크가 인텔에 20억 달러 투자하여 AI 부활을 지원",
+                                                foundNewses.get(0).getOverview()));
         }
 }

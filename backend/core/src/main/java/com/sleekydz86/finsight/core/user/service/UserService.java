@@ -9,6 +9,7 @@ import com.sleekydz86.finsight.core.user.domain.port.in.UserQueryUseCase;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserRegistrationRequest;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserUpdateRequest;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.WatchlistUpdateRequest;
+import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
