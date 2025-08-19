@@ -20,10 +20,7 @@ public class QUserJpaEntity extends EntityPathBase<UserJpaEntity> {
 
     public static final QUserJpaEntity userJpaEntity = new QUserJpaEntity("userJpaEntity");
 
-    public final com.sleekydz86.finsight.core.global.QBaseEntity _super = new com.sleekydz86.finsight.core.global.QBaseEntity(this);
-
-    //inherited
-    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
+    public final DateTimePath<java.time.LocalDateTime> createdAt = createDateTime("createdAt", java.time.LocalDateTime.class);
 
     public final StringPath email = createString("email");
 
@@ -39,8 +36,7 @@ public class QUserJpaEntity extends EntityPathBase<UserJpaEntity> {
 
     public final EnumPath<com.sleekydz86.finsight.core.user.domain.UserRole> role = createEnum("role", com.sleekydz86.finsight.core.user.domain.UserRole.class);
 
-    //inherited
-    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = createDateTime("updatedAt", java.time.LocalDateTime.class);
 
     public final StringPath username = createString("username");
 

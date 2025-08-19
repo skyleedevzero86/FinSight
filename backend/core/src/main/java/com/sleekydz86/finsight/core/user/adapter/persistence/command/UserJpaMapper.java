@@ -16,18 +16,17 @@ public class UserJpaMapper {
         User user = new User(
                 entity.getEmail(),
                 entity.getPassword(),
-                entity.getUsername()
-        );
+                entity.getUsername());
 
-        // ID 설정
         if (entity.getId() != null) {
             user.setId(entity.getId());
         }
 
-        // 추가 속성들 설정
         user.setRole(entity.getRole());
         user.setActive(entity.isActive());
         user.setLastLoginAt(entity.getLastLoginAt());
+        user.setCreatedAt(entity.getCreatedAt());
+        user.setUpdatedAt(entity.getUpdatedAt());
         user.setWatchlist(new ArrayList<>(entity.getWatchlist()));
         user.setNotificationPreferences(new ArrayList<>(entity.getNotificationPreferences()));
 
@@ -44,7 +43,6 @@ public class UserJpaMapper {
                 user.isActive(),
                 user.getLastLoginAt(),
                 new ArrayList<>(user.getWatchlist()),
-                new ArrayList<>(user.getNotificationPreferences())
-        );
+                new ArrayList<>(user.getNotificationPreferences()));
     }
 }

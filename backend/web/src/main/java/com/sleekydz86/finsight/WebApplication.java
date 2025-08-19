@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Import;
 
 @ConfigurationPropertiesScan
 @Import(ApplicationComponentScanConfig.class)
-@SpringBootApplication(scanBasePackages = {"com.sleekydz86.finsight"})
+@SpringBootApplication(scanBasePackages = { "com.sleekydz86.finsight" })
 public class WebApplication {
 
     public static void main(String[] args) {

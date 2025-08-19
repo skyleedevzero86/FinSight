@@ -1,4 +1,4 @@
-package com.sleekydz86.finsight.core.news.domain.port.out.requester;
+package com.sleekydz86.finsight.core.news.domain.port.out;
 
 import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.News;
