@@ -26,7 +26,7 @@ public class NewsScrapScheduler {
     private final Job newsScrapJob;
 
     public NewsScrapScheduler(JobLauncher jobLauncher,
-                              @Qualifier("newsScrapJob") Job newsScrapJob) {
+            @Qualifier("newsScrapJob") Job newsScrapJob) {
         this.jobLauncher = jobLauncher;
         this.newsScrapJob = newsScrapJob;
     }

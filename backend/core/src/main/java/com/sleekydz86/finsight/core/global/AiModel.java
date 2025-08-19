@@ -5,5 +5,7 @@ public enum AiModel {
     CHATGPT,
     GEMINI,
     GROK,
-    CLAUDE
+    CLAUDE,
+    LLAMA,
+    GEMMA
 }

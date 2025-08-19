@@ -34,7 +34,7 @@ public class NewsCrawlingTasklet implements Tasklet {
     private final NewsPersistencePort newsPersistencePort;
 
     public NewsCrawlingTasklet(Set<NewsScrapRequester> newsScrapRequesters,
-                               NewsPersistencePort newsPersistencePort) {
+            NewsPersistencePort newsPersistencePort) {
         this.newsScrapRequesters = newsScrapRequesters;
         this.newsPersistencePort = newsPersistencePort;
     }
@@ -45,14 +45,20 @@ public class NewsCrawlingTasklet implements Tasklet {
             JobParameters jobParameters = contribution.getStepExecution().getJobParameters();
             String publishTimeAfterParam = jobParameters.getString("publishTimeAfter");
             Long limitLong = jobParameters.getLong("limit");
-            int limitParam = limitLong != null ? limitLong.intValue() : 3;
+            int limitParam = limitLong != null ? limitLong.intValue() : 10;
 
             LocalDateTime publishTimeAfter = parsePublishTimeAfter(publishTimeAfterParam);
             List<News> newses = scrapAll(publishTimeAfter, limitParam);
-            newsPersistencePort.saveAllNews(newses);
 
-            log.info("총 {}개의 뉴스 저장 완료 (기준 시간: {}, limit: {})",
-                    newses.size(), publishTimeAfter, limitParam);
+            if (!newses.isEmpty()) {
+                newsPersistencePort.saveAllNews(newses);
+                log.info("총 {}개의 뉴스 저장 완료 (기준 시간: {}, limit: {})",
+                        newses.size(), publishTimeAfter, limitParam);
+            } else {
+                log.info("수집된 뉴스가 없습니다 (기준 시간: {}, limit: {})",
+                        publishTimeAfter, limitParam);
+            }
+
             return RepeatStatus.FINISHED;
         } catch (Exception e) {
             log.error("뉴스 수집 중 오류 발생", e);

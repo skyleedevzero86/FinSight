@@ -28,7 +28,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
     private final NewsOpenAiAnalysisRequester newsOpenAiAnalysisRequester;
 
     public OpenAiAnalysisTasklet(NewsPersistencePort newsPersistencePort,
-                                 NewsOpenAiAnalysisRequester newsOpenAiAnalysisRequester) {
+            NewsOpenAiAnalysisRequester newsOpenAiAnalysisRequester) {
         this.newsPersistencePort = newsPersistencePort;
         this.newsOpenAiAnalysisRequester = newsOpenAiAnalysisRequester;
     }
@@ -69,8 +69,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
         List<AiChatRequest.NewsItemRequest> newsItems = newses.stream()
                 .map(news -> new AiChatRequest.NewsItemRequest(
                         news.getOriginalContent().getTitle(),
-                        news.getOriginalContent().getContent()
-                ))
+                        news.getOriginalContent().getContent()))
                 .collect(Collectors.toList());
 
         return new AiChatRequest("bulk_analysis", newsItems);
@@ -88,8 +87,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                             analysis.getTranslatedContent(),
                             analysis.getCategories(),
                             analysis.getSentimentType(),
-                            analysis.getSentimentRatio()
-                    );
+                            analysis.getSentimentRatio());
                 })
                 .collect(Collectors.toList());
     }
