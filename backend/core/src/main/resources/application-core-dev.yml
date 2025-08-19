@@ -27,7 +27,6 @@ news:
       base-url: https://api.marketaux.com/v1/news/all
       api-key: ENC(GwgX3neJ1aq7pY4FMftsDXfBV8oaL0P4PdwSbB1DhNWwMhs+jOlswfRmDeXgatL6qOvAHBFoaUA=)
 
-
 ai:
   openai:
     api:
