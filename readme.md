@@ -1,6 +1,6 @@
 # 📈 FinSight
 
-<img width="1136" height="492" alt="image" src="https://github.com/user-attachments/assets/327254f4-7c52-4323-80cb-e8e9ddcb73f4" />
+<img width="1136" height="505" alt="image" src="https://github.com/user-attachments/assets/a106a5d4-f7ba-4be0-be3b-daca917b7a2a" />
 
 ## 프로젝트 소개
 
