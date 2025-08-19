@@ -5,8 +5,8 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @ComponentScan(basePackages = {
-        "com.sleekydz86.core",
-        "com.sleekydz86.finsight.web"
+                "com.sleekydz86.finsight.core",
+                "com.sleekydz86.finsight.web"
 })
 public class ModuleConfig {
 }

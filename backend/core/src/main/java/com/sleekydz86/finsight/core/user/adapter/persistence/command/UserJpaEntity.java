@@ -1,6 +1,5 @@
 package com.sleekydz86.finsight.core.user.adapter.persistence.command;
 
-import com.sleekydz86.finsight.core.global.BaseEntity;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
@@ -11,7 +10,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "users")
-public class UserJpaEntity extends BaseEntity {
+public class UserJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,6 +35,12 @@ public class UserJpaEntity extends BaseEntity {
     @Column(name = "last_login_at")
     private LocalDateTime lastLoginAt;
 
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
     @ElementCollection(targetClass = TargetCategory.class)
     @CollectionTable(name = "user_watchlist", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
@@ -52,8 +57,8 @@ public class UserJpaEntity extends BaseEntity {
     }
 
     public UserJpaEntity(Long id, String email, String password, String username, UserRole role,
-            boolean isActive, LocalDateTime lastLoginAt, List<TargetCategory> watchlist,
-            List<NotificationType> notificationPreferences) {
+                         boolean isActive, LocalDateTime lastLoginAt, List<TargetCategory> watchlist,
+                         List<NotificationType> notificationPreferences) {
         this.id = id;
         this.email = email;
         this.password = password;
@@ -120,6 +125,22 @@ public class UserJpaEntity extends BaseEntity {
 
     public void setLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public List<TargetCategory> getWatchlist() {

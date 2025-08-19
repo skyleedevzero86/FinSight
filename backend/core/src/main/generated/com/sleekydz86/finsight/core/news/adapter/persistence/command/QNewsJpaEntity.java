@@ -20,10 +20,7 @@ public class QNewsJpaEntity extends EntityPathBase<NewsJpaEntity> {
 
     public static final QNewsJpaEntity newsJpaEntity = new QNewsJpaEntity("newsJpaEntity");
 
-    public final com.sleekydz86.finsight.core.global.QBaseEntity _super = new com.sleekydz86.finsight.core.global.QBaseEntity(this);
-
-    //inherited
-    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
+    public final DateTimePath<java.time.LocalDateTime> createdAt = createDateTime("createdAt", java.time.LocalDateTime.class);
 
     public final NumberPath<Long> id = createNumber("id", Long.class);
 
@@ -51,8 +48,7 @@ public class QNewsJpaEntity extends EntityPathBase<NewsJpaEntity> {
 
     public final StringPath translatedTitle = createString("translatedTitle");
 
-    //inherited
-    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = createDateTime("updatedAt", java.time.LocalDateTime.class);
 
     public QNewsJpaEntity(String variable) {
         super(NewsJpaEntity.class, forVariable(variable));

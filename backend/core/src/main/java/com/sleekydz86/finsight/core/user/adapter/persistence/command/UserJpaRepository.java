@@ -17,6 +17,6 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
     @Query("SELECT u FROM UserJpaEntity u WHERE u.isActive = true")
     List<UserJpaEntity> findAllActiveUsers();
 
-    @Query("SELECT u FROM UserJpaEntity u WHERE u.watchlist IN :categories")
+    @Query("SELECT DISTINCT u FROM UserJpaEntity u JOIN u.watchlist w WHERE w IN :categories")
     List<UserJpaEntity> findByWatchlistCategories(@Param("categories") List<TargetCategory> categories);
 }

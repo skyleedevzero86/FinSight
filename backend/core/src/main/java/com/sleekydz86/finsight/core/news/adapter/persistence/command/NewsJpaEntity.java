@@ -1,6 +1,5 @@
 package com.sleekydz86.finsight.core.news.adapter.persistence.command;
 
-import com.sleekydz86.finsight.core.global.BaseEntity;
 import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
@@ -11,7 +10,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "news")
-public class NewsJpaEntity extends BaseEntity {
+public class NewsJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,13 +55,16 @@ public class NewsJpaEntity extends BaseEntity {
     private Double sentimentScore;
 
     @ElementCollection(targetClass = TargetCategory.class)
-    @CollectionTable(
-            name = "news_target_categories",
-            joinColumns = @JoinColumn(name = "news_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
-    )
+    @CollectionTable(name = "news_target_categories", joinColumns = @JoinColumn(name = "news_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT)))
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false)
     private List<TargetCategory> targetCategories = new ArrayList<>();
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt = LocalDateTime.now();
 
     public NewsJpaEntity() {
     }
@@ -188,5 +190,21 @@ public class NewsJpaEntity extends BaseEntity {
 
     public void setTargetCategories(List<TargetCategory> targetCategories) {
         this.targetCategories = targetCategories != null ? targetCategories : new ArrayList<>();
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

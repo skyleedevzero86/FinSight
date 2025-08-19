@@ -1,4 +1,9 @@
-package com.sleekydz86.finsight.config;
+package com.sleekydz86.finsight.core.config;
 
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+
+@Configuration
+@EnableJpaAuditing
 public class PersistenceConfig {
 }

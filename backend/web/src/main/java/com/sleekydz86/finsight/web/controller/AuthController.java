@@ -7,7 +7,6 @@ import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserRegistrationRequ
 import com.sleekydz86.finsight.core.user.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.sleekydz86.finsight.core.user.domain.User;
 
 @RestController
 @RequestMapping("/auth")
