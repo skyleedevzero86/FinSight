@@ -30,7 +30,7 @@ public class NewsController {
     @PostMapping("/scrap")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Newses> scrapNews() {
-        Newses newses = newsCommandUseCase.scrapNewses();
+        Newses newses = newsCommandUseCase.scrapNewses().join();
         return ResponseEntity.ok(newses);
     }
 

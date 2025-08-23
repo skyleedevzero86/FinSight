@@ -1,54 +1,15 @@
-plugins {
-    id 'org.springframework.boot' version '3.5.4' apply false
-    id 'io.spring.dependency-management' version '1.1.7' apply false
-    id 'java'
-}
-
-group = 'com.sleekydz86'
-version = '0.0.1-SNAPSHOT'
-
-repositories {
-    mavenCentral()
-}
-
-subprojects {
-    apply plugin: 'java'
-    apply plugin: 'org.springframework.boot'
-    apply plugin: 'io.spring.dependency-management'
-    apply plugin: 'java-test-fixtures'
-
-    java {
-        sourceCompatibility = JavaVersion.VERSION_21
-        targetCompatibility = JavaVersion.VERSION_21
-    }
-
-    repositories {
-        mavenCentral()
-    }
-
-    dependencies {
-        implementation(project(":core"))
-        implementation 'org.springframework.boot:spring-boot-starter-web'
-        implementation 'org.springframework.boot:spring-boot-starter-validation'
-        implementation 'org.springframework.boot:spring-boot-starter-actuator'
-        implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
-        implementation 'io.jsonwebtoken:jjwt-impl:0.12.6'
-        implementation 'io.jsonwebtoken:jjwt-jackson:0.12.6'
-        implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
-        testImplementation 'org.springframework.boot:spring-boot-starter-test'
-        testImplementation 'io.rest-assured:rest-assured:5.5.0'
-        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-        developmentOnly 'org.springframework.boot:spring-boot-devtools'
-    }
-
-    tasks.withType(Test) {
-        useJUnitPlatform()
-    }
-}
 dependencies {
     implementation project(':core')
-}
-
-tasks.test {
-    useJUnitPlatform()
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'io.rest-assured:rest-assured:5.5.0'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
 }
