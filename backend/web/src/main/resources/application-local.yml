@@ -8,9 +8,15 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 9379
+      password: 123456
+
 swagger:
   url: http://localhost:8080/api
 
 jwt:
-  secret: jwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscret
+  secret: jwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscret
   expiration-period: 10000

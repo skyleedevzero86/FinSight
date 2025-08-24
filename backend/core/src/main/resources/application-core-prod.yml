@@ -52,8 +52,8 @@ spring:
     type: redis
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      port: ${REDIS_PORT:9379}
+      password: ${REDIS_PASSWORD:123456}
       timeout: 2000ms
       lettuce:
         pool:
