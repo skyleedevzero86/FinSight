@@ -1,110 +1,160 @@
 package com.sleekydz86.finsight.batch.news.scrap.tasklet;
 
+import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.adapter.requester.NewsScrapRequester;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.StepContribution;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Component
-@StepScope
 public class NewsCrawlingTasklet implements Tasklet {
 
     private static final Logger log = LoggerFactory.getLogger(NewsCrawlingTasklet.class);
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
-    private final Set<NewsScrapRequester> newsScrapRequesters;
+    private final Map<NewsProvider, NewsScrapRequester> newsScrapRequesters;
     private final NewsPersistencePort newsPersistencePort;
 
-    public NewsCrawlingTasklet(Set<NewsScrapRequester> newsScrapRequesters,
+    private final ConcurrentHashMap<NewsProvider, AtomicInteger> scrapedNewsCount = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<NewsProvider, AtomicInteger> errorCount = new ConcurrentHashMap<>();
+    private final AtomicInteger totalScrapedCount = new AtomicInteger(0);
+
+    public NewsCrawlingTasklet(
+            List<NewsScrapRequester> newsScrapRequesters,
             NewsPersistencePort newsPersistencePort) {
-        this.newsScrapRequesters = newsScrapRequesters;
+        this.newsScrapRequesters = newsScrapRequesters.stream()
+                .collect(Collectors.toMap(
+                        NewsScrapRequester::supports,
+                        requester -> requester
+                ));
         this.newsPersistencePort = newsPersistencePort;
     }
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+        log.info("Starting news crawling tasklet");
+
+        LocalDateTime publishTimeAfter = LocalDateTime.now().minusHours(24);
+        int limit = 100;
+
         try {
-            JobParameters jobParameters = contribution.getStepExecution().getJobParameters();
-            String publishTimeAfterParam = jobParameters.getString("publishTimeAfter");
-            Long limitLong = jobParameters.getLong("limit");
-            int limitParam = limitLong != null ? limitLong.intValue() : 10;
+            List<CompletableFuture<List<News>>> scrapingFutures = newsScrapRequesters.entrySet().stream()
+                    .map(entry -> {
+                        NewsProvider provider = entry.getKey();
+                        NewsScrapRequester requester = entry.getValue();
 
-            LocalDateTime publishTimeAfter = parsePublishTimeAfter(publishTimeAfterParam);
-            List<News> newses = scrapAll(publishTimeAfter, limitParam);
+                        return executeScrapingForProvider(provider, requester, publishTimeAfter, limit)
+                                .whenComplete((result, throwable) -> {
+                                    if (throwable != null) {
+                                        log.error("Error scraping news from provider: {}", provider, throwable);
+                                        errorCount.computeIfAbsent(provider, k -> new AtomicInteger(0)).incrementAndGet();
+                                    } else {
+                                        log.info("Successfully scraped {} news from provider: {}",
+                                                result.size(), provider);
+                                        scrapedNewsCount.computeIfAbsent(provider, k -> new AtomicInteger(0))
+                                                .addAndGet(result.size());
+                                        totalScrapedCount.addAndGet(result.size());
+                                    }
+                                });
+                    })
+                    .toList();
 
-            if (!newses.isEmpty()) {
-                newsPersistencePort.saveAllNews(newses);
-                log.info("총 {}개의 뉴스 저장 완료 (기준 시간: {}, limit: {})",
-                        newses.size(), publishTimeAfter, limitParam);
+            CompletableFuture.allOf(scrapingFutures.toArray(new CompletableFuture[0])).join();
+
+            List<News> allScrapedNews = scrapingFutures.stream()
+                    .map(CompletableFuture::join)
+                    .flatMap(List::stream)
+                    .toList();
+
+            if (!allScrapedNews.isEmpty()) {
+                log.info("Saving {} scraped news articles", allScrapedNews.size());
+                newsPersistencePort.saveAllNews(allScrapedNews);
+                log.info("Successfully saved all scraped news articles");
             } else {
-                log.info("수집된 뉴스가 없습니다 (기준 시간: {}, limit: {})",
-                        publishTimeAfter, limitParam);
+                log.warn("No news articles were scraped");
             }
 
-            return RepeatStatus.FINISHED;
+            contribution.incrementWriteCount(allScrapedNews.size());
+            log.info("News crawling tasklet completed successfully. Total scraped: {}", totalScrapedCount.get());
+
         } catch (Exception e) {
-            log.error("뉴스 수집 중 오류 발생", e);
+            log.error("Error during news crawling tasklet execution", e);
             throw e;
         }
+
+        return RepeatStatus.FINISHED;
     }
 
-    private List<News> scrapAll(LocalDateTime publishTimeAfter, int limit) {
-        List<CompletableFuture<List<News>>> futures = new ArrayList<>();
+    private CompletableFuture<List<News>> executeScrapingForProvider(
+            NewsProvider provider,
+            NewsScrapRequester requester,
+            LocalDateTime publishTimeAfter,
+            int limit) {
 
-        for (NewsScrapRequester requester : newsScrapRequesters) {
-            String providerName = requester.supports().name();
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                log.debug("Starting scraping for provider: {} with limit: {}", provider, limit);
 
-            log.info("[{}] 뉴스 수집 시작 - 기준 시간: {}, limit: {}",
-                    providerName, publishTimeAfter, limit);
+                List<News> scrapedNews = requester.scrap(publishTimeAfter, limit).get();
 
-            CompletableFuture<List<News>> future = requester.scrap(publishTimeAfter, limit)
-                    .handle((newses, throwable) -> {
-                        if (throwable != null) {
-                            log.error("[{}] 뉴스 수집 실패", providerName, throwable);
-                            return Collections.<News>emptyList();
-                        } else {
-                            log.info("[{}] {}개의 뉴스 수집 완료", providerName, newses.size());
-                            return newses;
-                        }
-                    });
+                log.debug("Completed scraping for provider: {}. Found {} articles",
+                        provider, scrapedNews.size());
 
-            futures.add(future);
+                return scrapedNews;
+
+            } catch (Exception e) {
+                log.error("Failed to scrape news from provider: {}", provider, e);
+                throw new RuntimeException("Scraping failed for provider: " + provider, e);
+            }
+        });
+    }
+
+    public CrawlingMetrics getCrawlingMetrics() {
+        return new CrawlingMetrics(
+                scrapedNewsCount.entrySet().stream()
+                        .collect(ConcurrentHashMap::new,
+                                (map, entry) -> map.put(entry.getKey(), entry.getValue().get()),
+                                ConcurrentHashMap::putAll),
+                errorCount.entrySet().stream()
+                        .collect(ConcurrentHashMap::new,
+                                (map, entry) -> map.put(entry.getKey(), entry.getValue().get()),
+                                ConcurrentHashMap::putAll),
+                totalScrapedCount.get()
+        );
+    }
+
+    public void resetMetrics() {
+        scrapedNewsCount.clear();
+        errorCount.clear();
+        totalScrapedCount.set(0);
+        log.info("Crawling metrics reset");
+    }
+
+    public record CrawlingMetrics(
+            ConcurrentHashMap<NewsProvider, Integer> scrapedNewsCount,
+            ConcurrentHashMap<NewsProvider, Integer> errorCount,
+            int totalScrapedCount
+    ) {
+        public int getTotalErrors() {
+            return errorCount.values().stream().mapToInt(Integer::intValue).sum();
         }
 
-        return futures.stream()
-                .map(CompletableFuture::join)
-                .flatMap(List::stream)
-                .collect(Collectors.toList());
-    }
-
-    private LocalDateTime parsePublishTimeAfter(String publishTimeAfterParam) {
-        try {
-            LocalDateTime kstDateTime = LocalDateTime.parse(publishTimeAfterParam, DATE_FORMATTER);
-            var kstZoneDateTime = kstDateTime.atZone(ZoneId.of("Asia/Seoul"));
-            var estZoneDateTime = kstZoneDateTime.withZoneSameInstant(ZoneId.of("America/New_York"));
-            return estZoneDateTime.toLocalDateTime();
-        } catch (Exception e) {
-            log.warn("잘못된 publishTimeAfter 파라미터 형식: {}. 기본값(1일 전)으로 설정합니다.",
-                    publishTimeAfterParam);
-            return LocalDateTime.now().minusDays(1);
+        public double getSuccessRate() {
+            if (totalScrapedCount == 0) return 0.0;
+            return (double) (totalScrapedCount - getTotalErrors()) / totalScrapedCount * 100;
         }
     }
 }

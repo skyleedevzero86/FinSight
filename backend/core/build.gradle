@@ -25,14 +25,12 @@ dependencies {
     implementation 'com.github.ben-manes.caffeine:caffeine'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'io.micrometer:micrometer-core'
-    implementation 'com.bucket4j:bucket4j-core:8.7.0'
-    implementation 'com.bucket4j:bucket4j-redis:8.7.0'
-    implementation 'io.lettuce:lettuce-core'
-    implementation 'com.bucket4j:bucket4j_7-redis-lettuce:8.7.0'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:mysql'
     testImplementation 'io.projectreactor:reactor-test'
     implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
+
 }
 
 def generated = file("src/main/generated")

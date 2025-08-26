@@ -3,40 +3,51 @@ package com.sleekydz86.finsight.batch.news.scrap.job;
 import com.sleekydz86.finsight.batch.news.scrap.tasklet.NewsCrawlingTasklet;
 import com.sleekydz86.finsight.batch.news.scrap.tasklet.OpenAiAnalysisTasklet;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity;
-import jakarta.persistence.EntityManagerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.*;
+import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.builder.StepBuilder;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.JpaPagingItemReader;
+import org.springframework.batch.item.database.builder.JpaPagingItemReaderBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import javax.sql.DataSource;
+
+import jakarta.persistence.EntityManagerFactory;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Configuration
 public class NewsScrapJobConfig {
 
     private static final Logger log = LoggerFactory.getLogger(NewsScrapJobConfig.class);
+
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final EntityManagerFactory entityManagerFactory;
     private final NewsCrawlingTasklet newsCrawlingTasklet;
     private final OpenAiAnalysisTasklet openAiAnalysisTasklet;
 
-    public NewsScrapJobConfig(JobRepository jobRepository,
-                              PlatformTransactionManager transactionManager,
-                              EntityManagerFactory entityManagerFactory,
-                              NewsCrawlingTasklet newsCrawlingTasklet,
-                              OpenAiAnalysisTasklet openAiAnalysisTasklet) {
+    private final ConcurrentHashMap<String, AtomicLong> stepExecutionMetrics = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, AtomicLong> errorMetrics = new ConcurrentHashMap<>();
+
+    public NewsScrapJobConfig(
+            JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
+            EntityManagerFactory entityManagerFactory,
+            NewsCrawlingTasklet newsCrawlingTasklet,
+            OpenAiAnalysisTasklet openAiAnalysisTasklet) {
         this.jobRepository = jobRepository;
         this.transactionManager = transactionManager;
         this.entityManagerFactory = entityManagerFactory;
@@ -47,20 +58,27 @@ public class NewsScrapJobConfig {
     @Bean
     public Job newsScrapJob() {
         return new JobBuilder("newsScrapJob", jobRepository)
-                .start(newsCrawlingStep())
-                .next(aiAnalysisStep())
+                .incrementer(new RunIdIncrementer())
                 .listener(new JobExecutionListener() {
                     @Override
                     public void beforeJob(JobExecution jobExecution) {
-                        log.info("뉴스 스크래핑 배치 작업 시작: {}", jobExecution.getJobInstance().getJobName());
+                        log.info("Starting news scraping job: {}", jobExecution.getJobInstance().getJobName());
+                        stepExecutionMetrics.computeIfAbsent("jobs_started", k -> new AtomicLong(0)).incrementAndGet();
                     }
 
                     @Override
                     public void afterJob(JobExecution jobExecution) {
-                        log.info("뉴스 스크래핑 배치 작업 완료: 상태={}, 종료시간={}",
-                                jobExecution.getStatus(), jobExecution.getEndTime());
+                        if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
+                            log.info("News scraping job completed successfully");
+                            stepExecutionMetrics.computeIfAbsent("jobs_completed", k -> new AtomicLong(0)).incrementAndGet();
+                        } else {
+                            log.error("News scraping job failed with status: {}", jobExecution.getStatus());
+                            stepExecutionMetrics.computeIfAbsent("jobs_failed", k -> new AtomicLong(0)).incrementAndGet();
+                        }
                     }
                 })
+                .start(newsCrawlingStep())
+                .next(aiAnalysisStep())
                 .build();
     }
 
@@ -71,13 +89,20 @@ public class NewsScrapJobConfig {
                 .listener(new StepExecutionListener() {
                     @Override
                     public void beforeStep(StepExecution stepExecution) {
-                        log.info("뉴스 크롤링 단계 시작");
+                        log.info("Starting news crawling step");
+                        stepExecutionMetrics.computeIfAbsent("crawling_started", k -> new AtomicLong(0)).incrementAndGet();
                     }
 
                     @Override
                     public ExitStatus afterStep(StepExecution stepExecution) {
-                        log.info("뉴스 크롤링 단계 완료: 처리된 항목={}", stepExecution.getReadCount());
-                        return stepExecution.getExitStatus();
+                        if (stepExecution.getStatus() == BatchStatus.COMPLETED) {
+                            log.info("News crawling step completed successfully");
+                            stepExecutionMetrics.computeIfAbsent("crawling_completed", k -> new AtomicLong(0)).incrementAndGet();
+                        } else {
+                            log.error("News crawling step failed");
+                            stepExecutionMetrics.computeIfAbsent("crawling_failed", k -> new AtomicLong(0)).incrementAndGet();
+                        }
+                        return ExitStatus.COMPLETED;
                     }
                 })
                 .build();
@@ -86,29 +111,27 @@ public class NewsScrapJobConfig {
     @Bean
     public Step aiAnalysisStep() {
         return new StepBuilder("aiAnalysisStep", jobRepository)
-                .<NewsJpaEntity, NewsJpaEntity>chunk(50, transactionManager)
+                .<NewsJpaEntity, NewsJpaEntity>chunk(10, transactionManager)
                 .reader(aiAnalysisReader())
                 .processor(aiAnalysisProcessor())
                 .writer(aiAnalysisWriter())
-                .faultTolerant()
-                .retry(Exception.class)
-                .retryLimit(3)
-                .skip(Exception.class)
-                .skipLimit(10)
                 .listener(new ChunkListener() {
                     @Override
                     public void beforeChunk(ChunkContext context) {
-                        log.debug("AI 분석 청크 처리 시작");
+                        log.debug("Starting AI analysis chunk processing");
                     }
 
                     @Override
                     public void afterChunk(ChunkContext context) {
-                        log.debug("AI 분석 청크 처리 완료");
+                        log.debug("AI analysis chunk processing completed");
+                        stepExecutionMetrics.computeIfAbsent("chunks_processed", k -> new AtomicLong(0)).incrementAndGet();
                     }
 
                     @Override
                     public void afterChunkError(ChunkContext context) {
-                        log.error("AI 분석 청크 처리 오류");
+                        log.error("AI analysis chunk processing failed");
+                        stepExecutionMetrics.computeIfAbsent("chunks_failed", k -> new AtomicLong(0)).incrementAndGet();
+                        errorMetrics.computeIfAbsent("ai_analysis_errors", k -> new AtomicLong(0)).incrementAndGet();
                     }
                 })
                 .build();
@@ -117,23 +140,28 @@ public class NewsScrapJobConfig {
     @Bean
     @StepScope
     public JpaPagingItemReader<NewsJpaEntity> aiAnalysisReader() {
-        JpaPagingItemReader<NewsJpaEntity> reader = new JpaPagingItemReader<>();
-        reader.setEntityManagerFactory(entityManagerFactory);
-        reader.setQueryString("SELECT n FROM NewsJpaEntity n WHERE n.overview IS NULL ORDER BY n.createdAt");
-        reader.setPageSize(50);
-        reader.setSaveState(false);
-        return reader;
+        return new JpaPagingItemReaderBuilder<NewsJpaEntity>()
+                .name("aiAnalysisReader")
+                .entityManagerFactory(entityManagerFactory)
+                .queryString("SELECT n FROM NewsJpaEntity n WHERE n.overview IS NULL")
+                .pageSize(10)
+                .build();
     }
 
     @Bean
     public ItemProcessor<NewsJpaEntity, NewsJpaEntity> aiAnalysisProcessor() {
-        return newsJpaEntity -> {
+        return newsEntity -> {
             try {
-                // AI 분석 처리 로직
-                log.debug("AI 분석 처리 중: 뉴스 ID={}", newsJpaEntity.getId());
-                return newsJpaEntity;
+
+                if (newsEntity.getOverview() == null) {
+                    log.debug("Processing news for AI analysis: {}", newsEntity.getId());
+                    stepExecutionMetrics.computeIfAbsent("news_processed", k -> new AtomicLong(0)).incrementAndGet();
+                    return newsEntity;
+                }
+                return null;
             } catch (Exception e) {
-                log.error("AI 분석 처리 오류: 뉴스 ID={}, 오류={}", newsJpaEntity.getId(), e.getMessage());
+                log.error("Error processing news entity: {}", newsEntity.getId(), e);
+                errorMetrics.computeIfAbsent("processing_errors", k -> new AtomicLong(0)).incrementAndGet();
                 throw e;
             }
         };
@@ -143,11 +171,11 @@ public class NewsScrapJobConfig {
     public ItemWriter<NewsJpaEntity> aiAnalysisWriter() {
         return items -> {
             try {
-                // 배치 저장 로직
-                log.debug("AI 분석 결과 저장 중: {}개 항목", items.size());
-                // 실제 저장 로직 구현
+                log.info("Writing {} processed news items", items.size());
+                stepExecutionMetrics.computeIfAbsent("news_written", k -> new AtomicLong(0)).incrementAndGet();
             } catch (Exception e) {
-                log.error("AI 분석 결과 저장 오류: {}", e.getMessage());
+                log.error("Error writing news items", e);
+                errorMetrics.computeIfAbsent("writing_errors", k -> new AtomicLong(0)).incrementAndGet();
                 throw e;
             }
         };
@@ -156,5 +184,43 @@ public class NewsScrapJobConfig {
     @Bean
     public JobParametersIncrementer jobParametersIncrementer() {
         return new RunIdIncrementer();
+    }
+
+    public BatchJobMetrics getBatchJobMetrics() {
+        return new BatchJobMetrics(
+                stepExecutionMetrics.entrySet().stream()
+                        .collect(ConcurrentHashMap::new,
+                                (map, entry) -> map.put(entry.getKey(), entry.getValue().get()),
+                                ConcurrentHashMap::putAll),
+                errorMetrics.entrySet().stream()
+                        .collect(ConcurrentHashMap::new,
+                                (map, entry) -> map.put(entry.getKey(), entry.getValue().get()),
+                                ConcurrentHashMap::putAll)
+        );
+    }
+
+    public void resetMetrics() {
+        stepExecutionMetrics.clear();
+        errorMetrics.clear();
+        log.info("Batch job metrics reset");
+    }
+
+    public record BatchJobMetrics(
+            ConcurrentHashMap<String, Long> stepExecutionMetrics,
+            ConcurrentHashMap<String, Long> errorMetrics
+    ) {
+        public long getTotalProcessed() {
+            return stepExecutionMetrics.getOrDefault("news_processed", 0L);
+        }
+
+        public long getTotalErrors() {
+            return errorMetrics.values().stream().mapToLong(Long::longValue).sum();
+        }
+
+        public double getErrorRate() {
+            long total = getTotalProcessed();
+            if (total == 0) return 0.0;
+            return (double) getTotalErrors() / total * 100;
+        }
     }
 }

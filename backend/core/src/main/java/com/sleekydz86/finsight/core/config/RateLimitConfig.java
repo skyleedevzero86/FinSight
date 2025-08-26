@@ -1,16 +1,20 @@
 package com.sleekydz86.finsight.core.config;
 
-import com.bucket4j.Bandwidth;
-import com.bucket4j.Bucket;
-import com.bucket4j.BucketConfiguration;
-import com.bucket4j.Refill;
-import com.bucket4j.distributed.proxy.ProxyManager;
-import io.github.bucket4j.redis.lettuce.LettuceProxyManager;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.BucketConfiguration;
+import io.github.bucket4j.Refill;
+import io.github.bucket4j.distributed.proxy.ProxyManager;
+import io.github.bucket4j.redis.lettuce.cas.LettuceBasedProxyManager;
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.codec.ByteArrayCodec;
+import io.lettuce.core.codec.StringCodec;
+import io.lettuce.core.codec.RedisCodec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
 
 import java.time.Duration;
 
@@ -25,6 +29,12 @@ public class RateLimitConfig {
 
     @Value("${security.rate-limit.strict-requests-per-minute:10}")
     private int strictRequestsPerMinute;
+
+    @Value("${spring.redis.host:localhost}")
+    private String redisHost;
+
+    @Value("${spring.redis.port:9379}")
+    private int redisPort;
 
     @Bean
     public Bucket createBucket() {
@@ -53,10 +63,24 @@ public class RateLimitConfig {
                 .build();
     }
 
+    @Bean(destroyMethod = "shutdown")
+    @Profile("core-prod")
+    public RedisClient redisClient() {
+        String uri = "redis://" + redisHost + ":" + redisPort;
+        return RedisClient.create(uri);
+    }
+
+    @Bean(destroyMethod = "close")
+    @Profile("core-prod")
+    public StatefulRedisConnection<String, byte[]> redisConnection(RedisClient redisClient) {
+        RedisCodec<String, byte[]> codec = RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE);
+        return redisClient.connect(codec);
+    }
+
     @Bean
     @Profile("core-prod")
-    public ProxyManager<String> proxyManager(RedisConnectionFactory connectionFactory) {
-        return LettuceProxyManager.builderFor(connectionFactory).build();
+    public ProxyManager<String> proxyManager(StatefulRedisConnection<String, byte[]> connection) {
+        return LettuceBasedProxyManager.builderFor(connection).build();
     }
 
     @Bean

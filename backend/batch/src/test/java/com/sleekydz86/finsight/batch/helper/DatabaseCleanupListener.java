@@ -1,12 +1,15 @@
-package com.sleekydz86.finsight.batch.helper.annotations;
+package com.sleekydz86.finsight.batch.helper;
 
 import jakarta.persistence.EntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
+
 import java.util.List;
 
 public class DatabaseCleanupListener extends AbstractTestExecutionListener {
@@ -15,31 +18,36 @@ public class DatabaseCleanupListener extends AbstractTestExecutionListener {
 
     @Override
     public void beforeTestExecution(TestContext testContext) {
-        var applicationContext = testContext.getApplicationContext();
-        var transactionManager = applicationContext.getBean(PlatformTransactionManager.class);
-        var entityManager = applicationContext.getBean(EntityManager.class);
+        EntityManager entityManager = testContext.getApplicationContext().getBean(EntityManager.class);
+        PlatformTransactionManager transactionManager = testContext.getApplicationContext().getBean(PlatformTransactionManager.class);
 
         cleanupDatabase(entityManager, transactionManager);
     }
 
     private void cleanupDatabase(EntityManager entityManager, PlatformTransactionManager transactionManager) {
-        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            @SuppressWarnings("unchecked")
-            List<String> tableNames = entityManager
-                    .createNativeQuery("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'PUBLIC'")
-                    .getResultList();
+        TransactionStatus status = transactionManager.getTransaction(new DefaultTransactionDefinition());
 
-            log.debug("Starting database cleanup for {} tables", tableNames.size());
-
-            entityManager.createNativeQuery("SET REFERENTIAL_INTEGRITY FALSE").executeUpdate();
+        try {
+            List<String> tableNames = List.of(
+                    "news_target_categories", "news", "user_watchlist",
+                    "user_notification_preferences", "users", "BATCH_STEP_EXECUTION_CONTEXT",
+                    "BATCH_STEP_EXECUTION", "BATCH_JOB_EXECUTION_CONTEXT",
+                    "BATCH_JOB_EXECUTION_PARAMS", "BATCH_JOB_EXECUTION", "BATCH_JOB_INSTANCE"
+            );
 
             for (String tableName : tableNames) {
-                entityManager.createNativeQuery("TRUNCATE TABLE \"" + tableName + "\"").executeUpdate();
-                log.debug("Truncated table: {}", tableName);
+                try {
+                    entityManager.createNativeQuery("DELETE FROM " + tableName).executeUpdate();
+                } catch (Exception e) {
+                    log.debug("Table {} not found or already empty", tableName);
+                }
             }
 
-            entityManager.createNativeQuery("SET REFERENTIAL_INTEGRITY TRUE").executeUpdate();
-            log.debug("Database cleanup completed");
-        });
+            transactionManager.commit(status);
+            log.info("Database cleanup completed successfully");
+        } catch (Exception e) {
+            transactionManager.rollback(status);
+            log.error("Database cleanup failed", e);
+        }
     }
 }

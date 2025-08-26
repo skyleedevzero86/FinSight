@@ -1,8 +1,8 @@
 package com.sleekydz86.finsight.core.auth.filter;
 
-import com.bucket4j.Bandwidth;
-import com.bucket4j.Bucket;
-import com.bucket4j.Refill;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Refill;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -97,9 +97,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private ClientRateLimitInfo getOrCreateClientInfo(String clientIp) {
         return clientCounters.computeIfAbsent(clientIp, k -> {
-            // 최대 클라이언트 수 제한
             if (clientCounters.size() >= MAX_CLIENTS) {
-                // 가장 오래된 클라이언트 제거
                 String oldestClient = clientCounters.keySet().iterator().next();
                 clientCounters.remove(oldestClient);
             }
@@ -110,16 +108,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private void addRateLimitHeaders(HttpServletResponse response, Bucket bucket) {
         response.setHeader("X-RateLimit-Limit", String.valueOf(getBucketCapacity(bucket)));
         response.setHeader("X-RateLimit-Remaining", String.valueOf(getBucketAvailableTokens(bucket)));
-        response.setHeader("X-RateLimit-Reset", String.valueOf(System.currentTimeMillis() + 60000)); // 1분 후
+        response.setHeader("X-RateLimit-Reset", String.valueOf(System.currentTimeMillis() + 60000));
     }
 
     private long getBucketCapacity(Bucket bucket) {
-        // Bucket4j의 내부 상태를 통해 용량 정보 추출
         return 100;
     }
 
     private long getBucketAvailableTokens(Bucket bucket) {
-        // Bucket4j의 내부 상태를 통해 사용 가능한 토큰 수 추출
         return 50;
     }
 
@@ -128,7 +124,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private void cleanupOldClientInfo() {
-        // 1분마다 정리 (실제로는 별도 스케줄러로 관리하는 것이 좋음)
         if (System.currentTimeMillis() % 60000 < 1000) {
             clientCounters.entrySet().removeIf(entry ->
                     entry.getValue().isExpired(300000));
