@@ -49,9 +49,11 @@ ai:
       model: ${OPENAI_MODEL:gpt-4}
 
 jwt:
-  secret: ${JWT_SECRET:${ENCRYPT_KEY:defaultDevKey123}${ENCRYPT_KEY:defaultDevKey123}${ENCRYPT_KEY:defaultDevKey123}${ENCRYPT_KEY:defaultDevKey123}}
-  expiration-period: ${JWT_EXPIRATION:3600000}
-  refresh-expiration-period: ${JWT_REFRESH_EXPIRATION:86400000}
+  secret: jwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwts
+  expiration-period: 3600000
+  refresh-expiration-period: 86400000
+
+
 
 security:
   rate-limit:
