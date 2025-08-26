@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.batch.news.scrap.tasklet;
 
+import com.sleekydz86.finsight.core.global.exception.AiAnalysisFailedException;
+import com.sleekydz86.finsight.core.global.exception.DatabaseConnectionException;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaRepository;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsAiAnalysisRequesterPort;
@@ -152,14 +154,19 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                         }
                     } catch (Exception fallbackEx) {
                         log.warn("Fallback analysis also failed for news: {}", newsEntity.getId(), fallbackEx);
+                        throw new AiAnalysisFailedException(AiModel.GEMMA.name(), "Fallback analysis failed: " + fallbackEx.getMessage());
                     }
 
-                    return false;
+                    throw new AiAnalysisFailedException(selectedModel.name(), "No analysis results returned");
                 }
 
             } catch (Exception e) {
                 log.error("Error during AI analysis for news: {}", newsEntity.getId(), e);
                 failedAnalysisCount.incrementAndGet();
+
+                if (e instanceof AiAnalysisFailedException) {
+                    throw e;
+                }
 
                 try {
                     newsEntity.setOverview("AI 분석 실패로 인한 기본 요약");
@@ -169,6 +176,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                     log.info("Saved basic fallback data for news: {}", newsEntity.getId());
                 } catch (Exception saveEx) {
                     log.error("Failed to save fallback data for news: {}", newsEntity.getId(), saveEx);
+                    throw new DatabaseConnectionException("H2", "Failed to save fallback data: " + saveEx.getMessage());
                 }
 
                 return false;
@@ -224,8 +232,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                 modelUsageCount.entrySet().stream()
                         .collect(ConcurrentHashMap::new,
                                 (map, entry) -> map.put(entry.getKey(), entry.getValue().get()),
-                                ConcurrentHashMap::putAll)
-        );
+                                ConcurrentHashMap::putAll));
     }
 
     public void resetMetrics() {
@@ -242,15 +249,16 @@ public class OpenAiAnalysisTasklet implements Tasklet {
             int successfulAnalysisCount,
             int failedAnalysisCount,
             long totalProcessingTime,
-            ConcurrentHashMap<AiModel, Integer> modelUsageCount
-    ) {
+            ConcurrentHashMap<AiModel, Integer> modelUsageCount) {
         public double getSuccessRate() {
-            if (processedNewsCount == 0) return 0.0;
+            if (processedNewsCount == 0)
+                return 0.0;
             return (double) successfulAnalysisCount / processedNewsCount * 100;
         }
 
         public double getAverageProcessingTime() {
-            if (successfulAnalysisCount == 0) return 0.0;
+            if (successfulAnalysisCount == 0)
+                return 0.0;
             return (double) totalProcessingTime / successfulAnalysisCount;
         }
 

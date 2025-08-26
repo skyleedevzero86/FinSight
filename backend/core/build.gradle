@@ -30,6 +30,11 @@ dependencies {
     testImplementation 'io.projectreactor:reactor-test'
     implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    testCompileOnly 'org.projectlombok:lombok'
+    testAnnotationProcessor 'org.projectlombok:lombok'
+
 
 }
 

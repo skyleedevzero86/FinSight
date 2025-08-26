@@ -2,6 +2,9 @@ package com.sleekydz86.finsight.core.auth.service;
 
 import com.sleekydz86.finsight.core.auth.domain.JwtToken;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
+import com.sleekydz86.finsight.core.global.exception.AuthenticationFailedException;
+import com.sleekydz86.finsight.core.global.exception.InvalidTokenException;
+import com.sleekydz86.finsight.core.global.exception.TokenExpiredException;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -29,15 +33,27 @@ public class AuthenticationService {
     }
 
     public JwtToken authenticate(String email, String password) {
-        User user = userPersistencePort.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("이메일은 필수입니다");
+        }
+
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("비밀번호는 필수입니다");
+        }
+
+        Optional<User> userOpt = userPersistencePort.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            throw new AuthenticationFailedException(email);
+        }
+
+        User user = userOpt.get();
 
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new IllegalArgumentException("Invalid email or password");
+            throw new AuthenticationFailedException(email);
         }
 
         if (!user.isActive()) {
-            throw new IllegalStateException("User account is deactivated");
+            throw new AuthenticationFailedException(email);
         }
 
         user.updateLastLogin();
@@ -53,11 +69,23 @@ public class AuthenticationService {
     }
 
     public JwtToken refreshToken(String refreshToken) {
-        if (!jwtTokenUtil.validateToken(refreshToken)) {
-            throw new IllegalArgumentException("Invalid refresh token");
+
+
+        if (refreshToken == null || refreshToken.trim().isEmpty()) {
+            throw new InvalidTokenException("refresh");
         }
 
-        String email = jwtTokenUtil.getEmailFromToken(refreshToken);
+        try {
+            if (!jwtTokenUtil.validateToken(refreshToken)) {
+                throw new InvalidTokenException("refresh");
+            }
+
+            if (jwtTokenUtil.isTokenExpired(refreshToken)) {
+                throw new TokenExpiredException("refresh");
+            }
+
+
+            String email = jwtTokenUtil.getEmailFromToken(refreshToken);
         User user = userPersistencePort.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 

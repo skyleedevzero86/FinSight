@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.web.controller;
 
+import com.sleekydz86.finsight.core.global.exception.InvalidPasswordException;
+import com.sleekydz86.finsight.core.global.exception.UserNotFoundException;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserUpdateRequest;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.WatchlistUpdateRequest;
@@ -11,6 +13,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/users")
@@ -22,19 +25,30 @@ public class UserController {
         this.userService = userService;
     }
 
+
     @GetMapping("/{userId}")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<User> getUser(@PathVariable Long userId) {
-        return userService.findById(userId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        try {
+            Optional<User> user = userService.findById(userId);
+            return ResponseEntity.ok(user.get());
+        } catch (UserNotFoundException e) {
+            // 글로벌 예외 처리기가 처리하므로 여기서는 로깅만
+            throw e;
+        }
     }
 
     @PutMapping("/{userId}")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
     public ResponseEntity<User> updateUser(@PathVariable Long userId, @RequestBody UserUpdateRequest request) {
-        User updatedUser = userService.updateUser(userId, request);
-        return ResponseEntity.ok(updatedUser);
+        try {
+            User updatedUser = userService.updateUser(userId, request);
+            return ResponseEntity.ok(updatedUser);
+        } catch (UserNotFoundException e) {
+            throw e;
+        } catch (InvalidPasswordException e) {
+            throw e;
+        }
     }
 
     @PutMapping("/{userId}/watchlist")

@@ -1,5 +1,8 @@
 package com.sleekydz86.finsight.core.user.service;
 
+import com.sleekydz86.finsight.core.global.exception.InvalidPasswordException;
+import com.sleekydz86.finsight.core.global.exception.UserAlreadyExistsException;
+import com.sleekydz86.finsight.core.global.exception.UserNotFoundException;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
@@ -35,8 +38,19 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
     @Override
     @CacheEvict(value = "userCache", key = "#request.email")
     public User registerUser(UserRegistrationRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("사용자 등록 정보는 필수입니다");
+        }
+
         if (userPersistencePort.existsByEmail(request.getEmail())) {
-            throw new IllegalArgumentException("Email already exists");
+            throw new UserAlreadyExistsException(request.getEmail());
+        }
+
+        PasswordValidationService.PasswordValidationResult validationResult =
+                passwordValidationService.validatePassword(request.getPassword());
+
+        if (!validationResult.isValid()) {
+            throw new InvalidPasswordException(validationResult.getErrors());
         }
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
@@ -47,13 +61,29 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
     @Override
     @Cacheable(value = "userCache", key = "#userId")
     public Optional<User> findById(Long userId) {
-        return userPersistencePort.findById(userId);
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("유효하지 않은 사용자 ID입니다: " + userId);
+        }
+
+        Optional<User> user = userPersistencePort.findById(userId);
+        if (user.isEmpty()) {
+            throw new UserNotFoundException(userId);
+        }
+        return user;
     }
 
     @Override
     @Cacheable(value = "userCache", key = "#email")
     public Optional<User> findByEmail(String email) {
-        return userPersistencePort.findByEmail(email);
+        if (email == null || email.trim().isEmpty()) {
+            throw new IllegalArgumentException("이메일은 필수입니다");
+        }
+
+        Optional<User> user = userPersistencePort.findByEmail(email);
+        if (user.isEmpty()) {
+            throw new UserNotFoundException(email);
+        }
+        return user;
     }
 
     @Override
