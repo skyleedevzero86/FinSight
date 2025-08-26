@@ -1,94 +1,208 @@
 package com.sleekydz86.finsight.batch.news.scrap.tasklet;
 
-import com.sleekydz86.finsight.core.news.adapter.requester.overview.properties.NewsOpenAiAnalysisRequester;
-import com.sleekydz86.finsight.core.news.domain.News;
-import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
-import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatRequest;
-import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatResponse;
+import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity;
+import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaRepository;
+import com.sleekydz86.finsight.core.news.domain.port.out.NewsAiAnalysisRequesterPort;
+import com.sleekydz86.finsight.core.global.AiModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.StepContribution;
-import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
-@StepScope
 public class OpenAiAnalysisTasklet implements Tasklet {
 
     private static final Logger log = LoggerFactory.getLogger(OpenAiAnalysisTasklet.class);
 
-    private final NewsPersistencePort newsPersistencePort;
-    private final NewsOpenAiAnalysisRequester newsOpenAiAnalysisRequester;
+    private final NewsJpaRepository newsJpaRepository;
+    private final NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort;
 
-    public OpenAiAnalysisTasklet(NewsPersistencePort newsPersistencePort,
-            NewsOpenAiAnalysisRequester newsOpenAiAnalysisRequester) {
-        this.newsPersistencePort = newsPersistencePort;
-        this.newsOpenAiAnalysisRequester = newsOpenAiAnalysisRequester;
+    private final AtomicInteger processedNewsCount = new AtomicInteger(0);
+    private final AtomicInteger successfulAnalysisCount = new AtomicInteger(0);
+    private final AtomicInteger failedAnalysisCount = new AtomicInteger(0);
+    private final AtomicLong totalProcessingTime = new AtomicLong(0);
+    private final ConcurrentHashMap<AiModel, AtomicInteger> modelUsageCount = new ConcurrentHashMap<>();
+
+    public OpenAiAnalysisTasklet(
+            NewsJpaRepository newsJpaRepository,
+            NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort) {
+        this.newsJpaRepository = newsJpaRepository;
+        this.newsAiAnalysisRequesterPort = newsAiAnalysisRequesterPort;
     }
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
-        try {
-            List<News> unAnalyzedNewses = newsPersistencePort.findByOverviewIsNull().getNewses();
+        log.info("Starting AI analysis tasklet");
 
-            if (!unAnalyzedNewses.isEmpty()) {
-                log.info("AI 분석을 진행합니다.");
-                processNewsWithAi(unAnalyzedNewses);
-            } else {
-                log.info("AI 분석할 새로운 뉴스가 없습니다");
+        int pageSize = 50;
+        int pageNumber = 0;
+        boolean hasMoreData = true;
+
+        try {
+            while (hasMoreData) {
+                Pageable pageable = PageRequest.of(pageNumber, pageSize);
+                Page<NewsJpaEntity> newsPage = newsJpaRepository.findByOverviewIsNull(pageable);
+
+                if (newsPage.isEmpty()) {
+                    log.info("No more news articles to analyze. Stopping at page: {}", pageNumber);
+                    hasMoreData = false;
+                    break;
+                }
+
+                log.info("Processing page {} with {} news articles", pageNumber, newsPage.getContent().size());
+
+                List<CompletableFuture<Boolean>> analysisFutures = newsPage.getContent().stream()
+                        .map(this::processNewsAnalysis)
+                        .toList();
+
+                CompletableFuture.allOf(analysisFutures.toArray(new CompletableFuture[0])).join();
+
+                long successfulCount = analysisFutures.stream()
+                        .map(CompletableFuture::join)
+                        .filter(Boolean::booleanValue)
+                        .count();
+
+                log.info("Page {} completed. Successfully analyzed: {}/{}",
+                        pageNumber, successfulCount, newsPage.getContent().size());
+
+                pageNumber++;
+
+                if (pageNumber > 100) {
+                    log.warn("Reached maximum page limit (100). Stopping processing.");
+                    break;
+                }
             }
 
-            return RepeatStatus.FINISHED;
+            log.info("AI analysis tasklet completed successfully. Total processed: {}", processedNewsCount.get());
+
         } catch (Exception e) {
-            log.error("AI 분석 중 오류 발생", e);
+            log.error("Error during AI analysis tasklet execution", e);
             throw e;
         }
+
+        return RepeatStatus.FINISHED;
     }
 
-    public void processNewsWithAi(List<News> unAnalyzedNewses) {
+    private CompletableFuture<Boolean> processNewsAnalysis(NewsJpaEntity newsEntity) {
+        return CompletableFuture.supplyAsync(() -> {
+            long startTime = System.currentTimeMillis();
+
+            try {
+                log.debug("Starting AI analysis for news: {}", newsEntity.getId());
+                processedNewsCount.incrementAndGet();
+
+                AiModel selectedModel = AiModel.CHATGPT;
+
+                var aiChatRequest = createAiChatRequest(newsEntity);
+
+                var analyzedNews = newsAiAnalysisRequesterPort.analyseNewses(selectedModel, aiChatRequest);
+
+                if (analyzedNews != null && !analyzedNews.isEmpty()) {
+
+                    updateNewsEntityWithAnalysis(newsEntity, analyzedNews.get(0));
+
+                    newsJpaRepository.save(newsEntity);
+
+                    successfulAnalysisCount.incrementAndGet();
+                    modelUsageCount.computeIfAbsent(selectedModel, k -> new AtomicInteger(0)).incrementAndGet();
+
+                    long processingTime = System.currentTimeMillis() - startTime;
+                    totalProcessingTime.addAndGet(processingTime);
+
+                    log.debug("AI analysis completed for news: {} in {}ms", newsEntity.getId(), processingTime);
+                    return true;
+
+                } else {
+                    log.warn("AI analysis returned no results for news: {}", newsEntity.getId());
+                    failedAnalysisCount.incrementAndGet();
+                    return false;
+                }
+
+            } catch (Exception e) {
+                log.error("Error during AI analysis for news: {}", newsEntity.getId(), e);
+                failedAnalysisCount.incrementAndGet();
+                return false;
+            }
+        });
+    }
+
+    private Object createAiChatRequest(NewsJpaEntity newsEntity) {
+        return new Object() {
+            public String getTitle() { return newsEntity.getOriginalTitle(); }
+            public String getContent() { return newsEntity.getOriginalContent(); }
+        };
+    }
+
+    private void updateNewsEntityWithAnalysis(NewsJpaEntity newsEntity, Object analyzedNews) {
+
         try {
-            AiChatResponse analysisResults = newsOpenAiAnalysisRequester
-                    .request(createAiRequest(unAnalyzedNewses));
+            // 분석 결과에서 필요한 정보를 추출하여 엔티티 업데이트
 
-            List<News> updatedNewses = updateNewsWithResults(unAnalyzedNewses, analysisResults);
-            newsPersistencePort.saveAllNews(updatedNewses);
+
+            log.debug("Updated news entity {} with AI analysis results", newsEntity.getId());
+
         } catch (Exception e) {
-            log.error("벌크 분석 실패: {}", e.getMessage());
-            throw e;
+            log.error("Error updating news entity with AI analysis results: {}", newsEntity.getId(), e);
         }
     }
 
-    private AiChatRequest createAiRequest(List<News> newses) {
-        List<AiChatRequest.NewsItemRequest> newsItems = newses.stream()
-                .map(news -> new AiChatRequest.NewsItemRequest(
-                        news.getOriginalContent().getTitle(),
-                        news.getOriginalContent().getContent()))
-                .collect(Collectors.toList());
-
-        return new AiChatRequest("bulk_analysis", newsItems);
+    public AiAnalysisMetrics getAiAnalysisMetrics() {
+        return new AiAnalysisMetrics(
+                processedNewsCount.get(),
+                successfulAnalysisCount.get(),
+                failedAnalysisCount.get(),
+                totalProcessingTime.get(),
+                modelUsageCount.entrySet().stream()
+                        .collect(ConcurrentHashMap::new,
+                                (map, entry) -> map.put(entry.getKey(), entry.getValue().get()),
+                                ConcurrentHashMap::putAll)
+        );
     }
 
-    public List<News> updateNewsWithResults(List<News> newses, AiChatResponse response) {
-        return IntStream.range(0, newses.size())
-                .mapToObj(i -> {
-                    News news = newses.get(i);
-                    AiChatResponse.NewsAnalysis analysis = response.getAnalyses().get(i);
+    public void resetMetrics() {
+        processedNewsCount.set(0);
+        successfulAnalysisCount.set(0);
+        failedAnalysisCount.set(0);
+        totalProcessingTime.set(0);
+        modelUsageCount.clear();
+        log.info("AI analysis metrics reset");
+    }
 
-                    return news.updateAiAnalysis(
-                            analysis.getOverView(),
-                            analysis.getTranslatedTitle(),
-                            analysis.getTranslatedContent(),
-                            analysis.getCategories(),
-                            analysis.getSentimentType(),
-                            analysis.getSentimentRatio());
-                })
-                .collect(Collectors.toList());
+    public record AiAnalysisMetrics(
+            int processedNewsCount,
+            int successfulAnalysisCount,
+            int failedAnalysisCount,
+            long totalProcessingTime,
+            ConcurrentHashMap<AiModel, Integer> modelUsageCount
+    ) {
+        public double getSuccessRate() {
+            if (processedNewsCount == 0) return 0.0;
+            return (double) successfulAnalysisCount / processedNewsCount * 100;
+        }
+
+        public double getAverageProcessingTime() {
+            if (successfulAnalysisCount == 0) return 0.0;
+            return (double) totalProcessingTime / successfulAnalysisCount;
+        }
+
+        public AiModel getMostUsedModel() {
+            return modelUsageCount.entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey)
+                    .orElse(AiModel.CHATGPT);
+        }
     }
 }

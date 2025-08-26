@@ -1,25 +1,42 @@
 package com.sleekydz86.finsight.core.auth.filter;
 
+import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Refill;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+
 import java.io.IOException;
+import java.time.Duration;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final Logger logger = LoggerFactory.getLogger(RateLimitFilter.class);
-    private final Bucket bucket;
 
-    public RateLimitFilter(Bucket bucket) {
-        this.bucket = bucket;
+    private final Bucket defaultBucket;
+    private final Bucket strictBucket;
+    private final Bucket adminBucket;
+
+    private final ConcurrentHashMap<String, ClientRateLimitInfo> clientCounters = new ConcurrentHashMap<>();
+    private static final int MAX_CLIENTS = 10000;
+
+    public RateLimitFilter(@Qualifier("createBucket") Bucket defaultBucket,
+                           @Qualifier("strictBucket") Bucket strictBucket,
+                           @Qualifier("adminBucket") Bucket adminBucket) {
+        this.defaultBucket = defaultBucket;
+        this.strictBucket = strictBucket;
+        this.adminBucket = adminBucket;
     }
 
     @Override
@@ -27,43 +44,121 @@ public class RateLimitFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String clientIp = getClientIpAddress(request);
+        String requestPath = request.getRequestURI();
+        String method = request.getMethod();
+
+        ClientRateLimitInfo clientInfo = getOrCreateClientInfo(clientIp);
+
+        Bucket bucket = selectBucket(requestPath, method, clientInfo);
 
         if (bucket.tryConsume(1)) {
-            logger.debug("Rate limit passed for IP: {}, URI: {}", clientIp, request.getRequestURI());
+
+            clientInfo.incrementRequestCount();
+            addRateLimitHeaders(response, bucket);
             filterChain.doFilter(request, response);
         } else {
-            logger.warn("Rate limit exceeded for IP: {}, URI: {}", clientIp, request.getRequestURI());
 
+            logger.warn("Rate limit exceeded for IP: {}, Path: {}, Method: {}", clientIp, requestPath, method);
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setContentType("application/json");
-            response.setCharacterEncoding("UTF-8");
+            response.getWriter().write("{\"error\":\"Rate limit exceeded\",\"retryAfter\":\"" +
+                    getRetryAfterSeconds(bucket) + " seconds\"}");
 
-            String jsonResponse = """
-                {
-                    "error": "Rate limit exceeded",
-                    "message": "Too many requests. Please try again later.",
-                    "status": 429,
-                    "timestamp": "%s"
-                }
-                """.formatted(java.time.LocalDateTime.now().toString());
+            clientInfo.incrementBlockedCount();
+        }
 
-            response.getWriter().write(jsonResponse);
+        cleanupOldClientInfo();
+    }
+
+    private Bucket selectBucket(String requestPath, String method, ClientRateLimitInfo clientInfo) {
+
+        if (isAdminPath(requestPath)) {
+            return adminBucket;
+        }
+
+        if (isSensitivePath(requestPath, method)) {
+            return strictBucket;
+        }
+
+        return defaultBucket;
+    }
+
+    private boolean isAdminPath(String requestPath) {
+        return requestPath.startsWith("/admin") ||
+                requestPath.startsWith("/actuator") ||
+                requestPath.contains("/management");
+    }
+
+    private boolean isSensitivePath(String requestPath, String method) {
+        return (requestPath.startsWith("/auth/login") && "POST".equals(method)) ||
+                (requestPath.startsWith("/auth/register") && "POST".equals(method)) ||
+                (requestPath.startsWith("/auth/refresh") && "POST".equals(method));
+    }
+
+    private ClientRateLimitInfo getOrCreateClientInfo(String clientIp) {
+        return clientCounters.computeIfAbsent(clientIp, k -> {
+            if (clientCounters.size() >= MAX_CLIENTS) {
+                String oldestClient = clientCounters.keySet().iterator().next();
+                clientCounters.remove(oldestClient);
+            }
+            return new ClientRateLimitInfo();
+        });
+    }
+
+    private void addRateLimitHeaders(HttpServletResponse response, Bucket bucket) {
+        response.setHeader("X-RateLimit-Limit", String.valueOf(getBucketCapacity(bucket)));
+        response.setHeader("X-RateLimit-Remaining", String.valueOf(getBucketAvailableTokens(bucket)));
+        response.setHeader("X-RateLimit-Reset", String.valueOf(System.currentTimeMillis() + 60000));
+    }
+
+    private long getBucketCapacity(Bucket bucket) {
+        return 100;
+    }
+
+    private long getBucketAvailableTokens(Bucket bucket) {
+        return 50;
+    }
+
+    private long getRetryAfterSeconds(Bucket bucket) {
+        return 60;
+    }
+
+    private void cleanupOldClientInfo() {
+        if (System.currentTimeMillis() % 60000 < 1000) {
+            clientCounters.entrySet().removeIf(entry ->
+                    entry.getValue().isExpired(300000));
         }
     }
 
     private String getClientIpAddress(HttpServletRequest request) {
-        String[] headerNames = {
-                "X-Forwarded-For",
-                "X-Real-IP",
-                "Proxy-Client-IP",
-                "WL-Proxy-Client-IP"
-        };
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+            return xForwardedFor.split(",")[0].trim();
+        }
 
-        for (String headerName : headerNames) {
-            String ip = request.getHeader(headerName);
-            if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-                return ip.contains(",") ? ip.split(",")[0].trim() : ip;
-            }
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
+            return xRealIp;
+        }
+
+        String xForwarded = request.getHeader("X-Forwarded");
+        if (xForwarded != null && !xForwarded.isEmpty() && !"unknown".equalsIgnoreCase(xForwarded)) {
+            return xForwarded;
+        }
+
+        String xClusterClientIp = request.getHeader("X-Cluster-Client-IP");
+        if (xClusterClientIp != null && !xClusterClientIp.isEmpty() && !"unknown".equalsIgnoreCase(xClusterClientIp)) {
+            return xClusterClientIp;
+        }
+
+        String httpClientIp = request.getHeader("HTTP_CLIENT_IP");
+        if (httpClientIp != null && !httpClientIp.isEmpty() && !"unknown".equalsIgnoreCase(httpClientIp)) {
+            return httpClientIp;
+        }
+
+        String httpXForwardedFor = request.getHeader("HTTP_X_FORWARDED_FOR");
+        if (httpXForwardedFor != null && !httpXForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(httpXForwardedFor)) {
+            return httpXForwardedFor;
         }
 
         return request.getRemoteAddr();
@@ -71,11 +166,38 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        String path = request.getRequestURI().toLowerCase();
-        return path.contains("/css/") ||
-                path.contains("/js/") ||
-                path.contains("/images/") ||
-                path.contains("/actuator/health") ||
-                path.contains("/actuator/metrics");
+        String path = request.getRequestURI();
+        return path.startsWith("/static/") ||
+                path.startsWith("/css/") ||
+                path.startsWith("/js/") ||
+                path.startsWith("/images/") ||
+                path.equals("/health") ||
+                path.equals("/actuator/health");
+    }
+
+    private static class ClientRateLimitInfo {
+        private final AtomicInteger requestCount = new AtomicInteger(0);
+        private final AtomicInteger blockedCount = new AtomicInteger(0);
+        private final long lastAccessTime = System.currentTimeMillis();
+
+        public void incrementRequestCount() {
+            requestCount.incrementAndGet();
+        }
+
+        public void incrementBlockedCount() {
+            blockedCount.incrementAndGet();
+        }
+
+        public boolean isExpired(long maxAge) {
+            return System.currentTimeMillis() - lastAccessTime > maxAge;
+        }
+
+        public int getRequestCount() {
+            return requestCount.get();
+        }
+
+        public int getBlockedCount() {
+            return blockedCount.get();
+        }
     }
 }

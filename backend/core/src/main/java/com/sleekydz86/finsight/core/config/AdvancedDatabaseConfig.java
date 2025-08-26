@@ -6,21 +6,25 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.sql.DataSource;
 import java.util.Properties;
 
 @Configuration
+@EnableTransactionManagement
 @EnableJpaRepositories(
         basePackages = "com.sleekydz86.finsight.core",
         entityManagerFactoryRef = "entityManagerFactory",
         transactionManagerRef = "transactionManager"
 )
+@Profile("core-prod")
 public class AdvancedDatabaseConfig {
 
     @Bean
@@ -39,6 +43,9 @@ public class AdvancedDatabaseConfig {
         config.setValidationTimeout(5000);
         config.setInitializationFailTimeout(-1);
         config.setConnectionInitSql("SET NAMES utf8mb4");
+        config.setAutoCommit(false);
+        config.setReadOnly(false);
+        config.setTransactionIsolation("TRANSACTION_READ_COMMITTED");
         return config;
     }
 
@@ -70,6 +77,14 @@ public class AdvancedDatabaseConfig {
         properties.setProperty("hibernate.cache.use_second_level_cache", "true");
         properties.setProperty("hibernate.cache.use_query_cache", "true");
         properties.setProperty("hibernate.cache.region.factory_class", "org.hibernate.cache.jcache.JCacheRegionFactory");
+        properties.setProperty("hibernate.jdbc.batch_size", "50");
+        properties.setProperty("hibernate.order_inserts", "true");
+        properties.setProperty("hibernate.order_updates", "true");
+        properties.setProperty("hibernate.jdbc.batch_versioned_data", "true");
+        properties.setProperty("hibernate.connection.provider_disables_autocommit", "true");
+        properties.setProperty("hibernate.cache.use_second_level_cache", "true");
+        properties.setProperty("hibernate.cache.use_query_cache", "true");
+        properties.setProperty("hibernate.cache.region.factory_class", "org.hibernate.cache.jcache.JCacheRegionFactory");
         em.setJpaProperties(properties);
 
         return em;
@@ -80,6 +95,8 @@ public class AdvancedDatabaseConfig {
     public PlatformTransactionManager transactionManager() {
         JpaTransactionManager transactionManager = new JpaTransactionManager();
         transactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
+        transactionManager.setDefaultTimeout(30);
+        transactionManager.setRollbackOnCommitFailure(true);
         return transactionManager;
     }
 }

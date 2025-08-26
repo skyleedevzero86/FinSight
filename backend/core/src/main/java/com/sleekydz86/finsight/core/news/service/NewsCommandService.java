@@ -3,59 +3,81 @@ package com.sleekydz86.finsight.core.news.service;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.Newses;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsCommandUseCase;
-import com.sleekydz86.finsight.core.news.domain.port.out.NewsScrapRequesterPort;
-import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
-import com.sleekydz86.finsight.core.global.NewsProvider;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
 import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.annotation.Counted;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.stream.Collectors;
+import java.util.concurrent.Executor;
 
 @Service
-@Transactional
 public class NewsCommandService implements NewsCommandUseCase {
 
-    private final NewsScrapRequesterPort newsScrapRequesterPort;
-    private final NewsPersistencePort newsPersistencePort;
+    private static final Logger log = LoggerFactory.getLogger(NewsCommandService.class);
 
-    public NewsCommandService(NewsScrapRequesterPort newsScrapRequesterPort,
-                              NewsPersistencePort newsPersistencePort) {
-        this.newsScrapRequesterPort = newsScrapRequesterPort;
-        this.newsPersistencePort = newsPersistencePort;
+    private final NewsScrapService newsScrapService;
+    private final NewsAiProcessingService newsAiProcessingService;
+    private final NewsPersistenceService newsPersistenceService;
+    private final NewsNotificationService newsNotificationService;
+    private final Executor newsProcessingExecutor;
+
+    public NewsCommandService(NewsScrapService newsScrapService,
+                              NewsAiProcessingService newsAiProcessingService,
+                              NewsPersistenceService newsPersistenceService,
+                              NewsNotificationService newsNotificationService,
+                              @Qualifier("newsProcessingExecutor") Executor newsProcessingExecutor) {
+        this.newsScrapService = newsScrapService;
+        this.newsAiProcessingService = newsAiProcessingService;
+        this.newsPersistenceService = newsPersistenceService;
+        this.newsNotificationService = newsNotificationService;
+        this.newsProcessingExecutor = newsProcessingExecutor;
     }
 
     @Override
     @Async("newsProcessingExecutor")
     @Timed("news.scrap.duration")
+    @Counted("news.scrap.count")
     @CircuitBreaker(name = "newsScrapCircuitBreaker")
     @Retry(name = "newsScrapRetry")
     @TimeLimiter(name = "newsScrapTimeLimiter")
     @CacheEvict(value = "newsCache", allEntries = true)
     public CompletableFuture<Newses> scrapNewses() {
-        List<NewsProvider> providers = List.of(NewsProvider.MARKETAUX);
+        try {
+            log.info("뉴스 스크래핑 작업 시작");
 
-        List<CompletableFuture<List<News>>> futures = providers.stream()
-                .map(provider -> CompletableFuture.supplyAsync(() ->
-                        newsScrapRequesterPort.scrap(provider)))
-                .collect(Collectors.toList());
+            List<News> scrapedNews = newsScrapService.scrapNewsFromProviders();
 
-        CompletableFuture<Void> allFutures = CompletableFuture.allOf(
-                futures.toArray(new CompletableFuture[0]));
+            if (scrapedNews.isEmpty()) {
+                log.warn("스크래핑된 뉴스가 없습니다");
+                return CompletableFuture.completedFuture(new Newses(List.of()));
+            }
 
-        return allFutures.thenApply(v -> {
-            List<News> allNewses = futures.stream()
-                    .map(CompletableFuture::join)
-                    .flatMap(List::stream)
-                    .collect(Collectors.toList());
+            List<News> analyzedNews = newsAiProcessingService.processNewsWithAI(scrapedNews);
 
-            return newsPersistencePort.saveAllNews(allNewses);
-        });
+            Newses savedNewses = newsPersistenceService.saveNewsToDatabase(analyzedNews);
+
+            newsNotificationService.sendNotificationsForImportantNews(savedNewses.getNewses());
+
+            log.info("뉴스 스크래핑 작업 완료: {} 건", savedNewses.getNewses().size());
+            return CompletableFuture.completedFuture(savedNewses);
+
+        } catch (Exception e) {
+            log.error("뉴스 스크래핑 작업 중 오류 발생", e);
+            throw new RuntimeException("뉴스 스크래핑 실패", e);
+        }
+    }
+
+    public Newses scrapNewsesFallback(Exception e) {
+        log.error("Circuit Breaker 폴백 실행: {}", e.getMessage());
+        return new Newses(List.of());
     }
 }

@@ -1,9 +1,23 @@
 spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:9379}
+      password: ${REDIS_PASSWORD:123456}
+
   datasource:
-    url: jdbc:mysql://localhost:3306/reddoor?useSSL=false&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&allowPublicKeyRetrieval=true
-    username: root
-    password: root
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:finsight}?useSSL=false&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:1234}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -14,6 +28,7 @@ spring:
         default_batch_fetch_size: 100
         jdbc:
           time_zone: UTC
+    open-in-view: false
 
 jasypt:
   encryptor:
@@ -23,16 +38,41 @@ jasypt:
 news:
   marketaux:
     api:
-      base-url: https://api.marketaux.com/v1/news/all
-      api-key: ENC(GwgX3neJ1aq7pY4FMftsDXfBV8oaL0P4PdwSbB1DhNWwMhs+jOlswfRmDeXgatL6qOvAHBFoaUA=)
+      base-url: ${MARKETAUX_API_URL:https://api.marketaux.com/v1/news/all}
+      api-key: ${MARKETAUX_API_KEY}
 
 ai:
   openai:
     api:
-      base-url: https://api.openai.com/v1/chat/completions
-      api-key: ENC(RVPBdVd3aCOrGv2rLcYDGk191+fgilIk4eM4A/sDj1RD/GhkDiX9hns7Hfnm9MByIN0lvBoKTqMltx4yjnuK0r/p8EZ57M5hPxDxxSYRR0YL+w7UWPfaVVVdL2kBaNO0ZaTLrwTr+B/HF4bh5umIEEiuMxo0lOW4kGmR50k0M5je7KTmbGhDku36Om41vldEgG/X5AvUcoNufcVegwJXmv1ZsHv1OsaY6iefrBVfnf8=)
-      model: ENC(V+IVyNhCCM6NHjD3smTC3btlOBXbKNwd)
+      base-url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
+      api-key: ${OPENAI_API_KEY}
+      model: ${OPENAI_MODEL:gpt-4}
 
 jwt:
-  secret: jwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscret
-  expiration-period: 3600000
+  secret: ${JWT_SECRET:${ENCRYPT_KEY:defaultDevKey123}${ENCRYPT_KEY:defaultDevKey123}${ENCRYPT_KEY:defaultDevKey123}${ENCRYPT_KEY:defaultDevKey123}}
+  expiration-period: ${JWT_EXPIRATION:3600000}
+  refresh-expiration-period: ${JWT_REFRESH_EXPIRATION:86400000}
+
+security:
+  rate-limit:
+    default-requests-per-minute: ${RATE_LIMIT_DEFAULT:100}
+    admin-requests-per-minute: ${RATE_LIMIT_ADMIN:1000}
+    strict-requests-per-minute: ${RATE_LIMIT_STRICT:10}
+  password:
+    min-length: ${PASSWORD_MIN_LENGTH:12}
+    require-special-chars: ${PASSWORD_REQUIRE_SPECIAL:true}
+    require-numbers: ${PASSWORD_REQUIRE_NUMBERS:true}
+    require-uppercase: ${PASSWORD_REQUIRE_UPPERCASE:true}
+
+logging:
+  level:
+    com.sleekydz86.finsight: ${LOG_LEVEL:INFO}
+    org.springframework.security: ${SECURITY_LOG_LEVEL:WARN}
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:WARN}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+    max-size: 100MB
+    max-history: 30

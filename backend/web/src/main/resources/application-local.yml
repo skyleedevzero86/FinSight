@@ -1,16 +1,25 @@
-server:
-  servlet:
-    context-path: /api
-
 spring:
-  servlet:
-    multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
 
-swagger:
-  url: http://localhost:8080/api
+logging:
+  level:
+    com.sleekydz86.finsight: DEBUG
+    org.springframework.batch: DEBUG
 
-jwt:
-  secret: jwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscret
-  expiration-period: 10000
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

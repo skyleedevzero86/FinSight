@@ -1,4 +1,4 @@
-package com.sleekydz86.finsight.config;
+package com.sleekydz86.finsight.core.config;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;

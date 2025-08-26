@@ -1,5 +1,4 @@
 dependencies {
-    // Spring Core
     implementation 'org.springframework:spring-context'
     implementation 'org.springframework:spring-tx'
     implementation 'org.springframework:spring-web'
@@ -8,7 +7,6 @@ dependencies {
     implementation 'com.github.ulisesbocchio:jasypt-spring-boot-starter:3.0.5'
     runtimeOnly 'com.h2database:h2'
     runtimeOnly 'com.mysql:mysql-connector-j'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
@@ -27,10 +25,12 @@ dependencies {
     implementation 'com.github.ben-manes.caffeine:caffeine'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'io.micrometer:micrometer-core'
-    implementation 'com.bucket4j:bucket4j-core:8.7.0'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:mysql'
     testImplementation 'io.projectreactor:reactor-test'
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+
+
 }
 
 def generated = file("src/main/generated")

@@ -7,10 +7,12 @@ import io.github.resilience4j.bulkhead.BulkheadConfig;
 import io.github.resilience4j.ratelimiter.RateLimiterConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import java.time.Duration;
 
 @Configuration
+@Profile("core-prod")
 public class AdvancedResilienceConfig {
 
     @Bean
