@@ -165,3 +165,17 @@ security:
   rate-limit:
     requests-per-minute: 100
     burst-capacity: 200
+
+# API 키 설정 (환경변수로 관리)
+news:
+  marketaux:
+    api:
+      base-url: ${MARKETAUX_BASE_URL:https://api.marketaux.com/v1/news/all}
+      api-key: ${MARKETAUX_API_KEY}
+
+ai:
+  openai:
+    api:
+      base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1/chat/completions}
+      api-key: ${OPENAI_API_KEY}
+      model: ${OPENAI_MODEL:gpt-4}

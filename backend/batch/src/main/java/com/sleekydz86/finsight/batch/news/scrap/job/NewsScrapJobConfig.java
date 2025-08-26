@@ -3,6 +3,7 @@ package com.sleekydz86.finsight.batch.news.scrap.job;
 import com.sleekydz86.finsight.batch.news.scrap.tasklet.NewsCrawlingTasklet;
 import com.sleekydz86.finsight.batch.news.scrap.tasklet.OpenAiAnalysisTasklet;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity;
+import jakarta.persistence.EntityManagerFactory;
 import org.springframework.batch.core.*;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
@@ -17,7 +18,6 @@ import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.orm.jpa.JpaTransactionManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
@@ -28,18 +28,18 @@ public class NewsScrapJobConfig {
     private static final Logger log = LoggerFactory.getLogger(NewsScrapJobConfig.class);
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
-    private final DataSource dataSource;
+    private final EntityManagerFactory entityManagerFactory;
     private final NewsCrawlingTasklet newsCrawlingTasklet;
     private final OpenAiAnalysisTasklet openAiAnalysisTasklet;
 
     public NewsScrapJobConfig(JobRepository jobRepository,
                               PlatformTransactionManager transactionManager,
-                              DataSource dataSource,
+                              EntityManagerFactory entityManagerFactory,
                               NewsCrawlingTasklet newsCrawlingTasklet,
                               OpenAiAnalysisTasklet openAiAnalysisTasklet) {
         this.jobRepository = jobRepository;
         this.transactionManager = transactionManager;
-        this.dataSource = dataSource;
+        this.entityManagerFactory = entityManagerFactory;
         this.newsCrawlingTasklet = newsCrawlingTasklet;
         this.openAiAnalysisTasklet = openAiAnalysisTasklet;
     }
@@ -116,16 +116,9 @@ public class NewsScrapJobConfig {
 
     @Bean
     @StepScope
-    public ItemReader<NewsJpaEntity> aiAnalysisReader() {
+    public JpaPagingItemReader<NewsJpaEntity> aiAnalysisReader() {
         JpaPagingItemReader<NewsJpaEntity> reader = new JpaPagingItemReader<>();
-
-        if (transactionManager instanceof JpaTransactionManager) {
-            JpaTransactionManager jpaTransactionManager = (JpaTransactionManager) transactionManager;
-            reader.setEntityManagerFactory(jpaTransactionManager.getEntityManagerFactory());
-        } else {
-            throw new IllegalStateException("JpaTransactionManager가 필요합니다");
-        }
-
+        reader.setEntityManagerFactory(entityManagerFactory);
         reader.setQueryString("SELECT n FROM NewsJpaEntity n WHERE n.overview IS NULL ORDER BY n.createdAt");
         reader.setPageSize(50);
         reader.setSaveState(false);
