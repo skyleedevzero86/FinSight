@@ -4,6 +4,9 @@ import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEnti
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaRepository;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsAiAnalysisRequesterPort;
 import com.sleekydz86.finsight.core.global.AiModel;
+import com.sleekydz86.finsight.core.news.domain.vo.Content;
+import com.sleekydz86.finsight.core.news.domain.News;
+import com.sleekydz86.finsight.core.news.service.AiModelSelectionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.StepContribution;
@@ -29,6 +32,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
 
     private final NewsJpaRepository newsJpaRepository;
     private final NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort;
+    private final AiModelSelectionService aiModelSelectionService;
 
     private final AtomicInteger processedNewsCount = new AtomicInteger(0);
     private final AtomicInteger successfulAnalysisCount = new AtomicInteger(0);
@@ -38,9 +42,11 @@ public class OpenAiAnalysisTasklet implements Tasklet {
 
     public OpenAiAnalysisTasklet(
             NewsJpaRepository newsJpaRepository,
-            NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort) {
+            NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort,
+            AiModelSelectionService aiModelSelectionService) {
         this.newsJpaRepository = newsJpaRepository;
         this.newsAiAnalysisRequesterPort = newsAiAnalysisRequesterPort;
+        this.aiModelSelectionService = aiModelSelectionService;
     }
 
     @Override
@@ -103,17 +109,18 @@ public class OpenAiAnalysisTasklet implements Tasklet {
             try {
                 log.debug("Starting AI analysis for news: {}", newsEntity.getId());
                 processedNewsCount.incrementAndGet();
+                AiModel selectedModel = selectOptimalModel(newsEntity);
+                log.debug("Selected AI model: {} for news: {}", selectedModel, newsEntity.getId());
 
-                AiModel selectedModel = AiModel.CHATGPT;
+                Content aiChatRequest = new Content(
+                        newsEntity.getOriginalTitle(),
+                        newsEntity.getOriginalContent()
+                );
 
-                var aiChatRequest = createAiChatRequest(newsEntity);
-
-                var analyzedNews = newsAiAnalysisRequesterPort.analyseNewses(selectedModel, aiChatRequest);
+                List<News> analyzedNews = newsAiAnalysisRequesterPort.analyseNewses(selectedModel, aiChatRequest);
 
                 if (analyzedNews != null && !analyzedNews.isEmpty()) {
-
                     updateNewsEntityWithAnalysis(newsEntity, analyzedNews.get(0));
-
                     newsJpaRepository.save(newsEntity);
 
                     successfulAnalysisCount.incrementAndGet();
@@ -122,7 +129,8 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                     long processingTime = System.currentTimeMillis() - startTime;
                     totalProcessingTime.addAndGet(processingTime);
 
-                    log.debug("AI analysis completed for news: {} in {}ms", newsEntity.getId(), processingTime);
+                    log.debug("AI analysis completed for news: {} in {}ms using model: {}",
+                            newsEntity.getId(), processingTime, selectedModel);
                     return true;
 
                 } else {
@@ -139,18 +147,37 @@ public class OpenAiAnalysisTasklet implements Tasklet {
         });
     }
 
-    private Object createAiChatRequest(NewsJpaEntity newsEntity) {
-        return new Object() {
-            public String getTitle() { return newsEntity.getOriginalTitle(); }
-            public String getContent() { return newsEntity.getOriginalContent(); }
-        };
+    private AiModel selectOptimalModel(NewsJpaEntity newsEntity) {
+        String content = newsEntity.getOriginalContent();
+
+        if (content.length() > 5000) {
+            return AiModel.CHATGPT;
+        } else if (content.length() > 2000) {
+            return AiModel.CHATGPT;
+        } else {
+            return AiModel.GEMMA;
+        }
     }
 
-    private void updateNewsEntityWithAnalysis(NewsJpaEntity newsEntity, Object analyzedNews) {
-
+    private void updateNewsEntityWithAnalysis(NewsJpaEntity newsEntity, News analyzedNews) {
         try {
-            // 분석 결과에서 필요한 정보를 추출하여 엔티티 업데이트
+            if (analyzedNews.getAiOverView() != null) {
+                newsEntity.setOverview(analyzedNews.getAiOverView().getOverview());
 
+                if (analyzedNews.getAiOverView().getSentimentType() != null) {
+                    newsEntity.setSentimentType(analyzedNews.getAiOverView().getSentimentType());
+                }
+
+                double sentimentScore = analyzedNews.getAiOverView().getSentimentScore();
+                if (sentimentScore != 0.0) {
+                    newsEntity.setSentimentScore(sentimentScore);
+                }
+            }
+
+            if (analyzedNews.getTranslatedContent() != null) {
+                newsEntity.setTranslatedTitle(analyzedNews.getTranslatedContent().getTitle());
+                newsEntity.setTranslatedContent(analyzedNews.getTranslatedContent().getContent());
+            }
 
             log.debug("Updated news entity {} with AI analysis results", newsEntity.getId());
 
