@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.news.domain.port.out.NewsAiAnalysisRequester
 import com.sleekydz86.finsight.core.global.AiModel;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.News;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.service.AiModelSelectionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,6 +110,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
             try {
                 log.debug("Starting AI analysis for news: {}", newsEntity.getId());
                 processedNewsCount.incrementAndGet();
+
                 AiModel selectedModel = selectOptimalModel(newsEntity);
                 log.debug("Selected AI model: {} for news: {}", selectedModel, newsEntity.getId());
 
@@ -136,12 +138,39 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                 } else {
                     log.warn("AI analysis returned no results for news: {}", newsEntity.getId());
                     failedAnalysisCount.incrementAndGet();
+
+                    try {
+                        log.info("Attempting fallback analysis for news: {}", newsEntity.getId());
+                        List<News> fallbackNews = newsAiAnalysisRequesterPort.analyseNewses(AiModel.GEMMA, aiChatRequest);
+
+                        if (fallbackNews != null && !fallbackNews.isEmpty()) {
+                            updateNewsEntityWithAnalysis(newsEntity, fallbackNews.get(0));
+                            newsJpaRepository.save(newsEntity);
+                            successfulAnalysisCount.incrementAndGet();
+                            log.info("Fallback analysis succeeded for news: {}", newsEntity.getId());
+                            return true;
+                        }
+                    } catch (Exception fallbackEx) {
+                        log.warn("Fallback analysis also failed for news: {}", newsEntity.getId(), fallbackEx);
+                    }
+
                     return false;
                 }
 
             } catch (Exception e) {
                 log.error("Error during AI analysis for news: {}", newsEntity.getId(), e);
                 failedAnalysisCount.incrementAndGet();
+
+                try {
+                    newsEntity.setOverview("AI 분석 실패로 인한 기본 요약");
+                    newsEntity.setSentimentType(SentimentType.NEUTRAL);
+                    newsEntity.setSentimentScore(0.5);
+                    newsJpaRepository.save(newsEntity);
+                    log.info("Saved basic fallback data for news: {}", newsEntity.getId());
+                } catch (Exception saveEx) {
+                    log.error("Failed to save fallback data for news: {}", newsEntity.getId(), saveEx);
+                }
+
                 return false;
             }
         });
