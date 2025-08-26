@@ -1,5 +1,4 @@
 dependencies {
-    // Spring Core
     implementation 'org.springframework:spring-context'
     implementation 'org.springframework:spring-tx'
     implementation 'org.springframework:spring-web'
@@ -27,6 +26,9 @@ dependencies {
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'io.micrometer:micrometer-core'
     implementation 'com.bucket4j:bucket4j-core:8.7.0'
+    implementation 'com.bucket4j:bucket4j-redis:8.7.0'
+    implementation 'io.lettuce:lettuce-core'
+    implementation 'com.bucket4j:bucket4j_7-redis-lettuce:8.7.0'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:mysql'
     testImplementation 'io.projectreactor:reactor-test'
