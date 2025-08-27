@@ -1,9 +1,15 @@
 package com.sleekydz86.finsight.batch.news.scrap.tasklet;
 
+import com.sleekydz86.finsight.core.global.exception.AiAnalysisFailedException;
+import com.sleekydz86.finsight.core.global.exception.DatabaseConnectionException;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaRepository;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsAiAnalysisRequesterPort;
 import com.sleekydz86.finsight.core.global.AiModel;
+import com.sleekydz86.finsight.core.news.domain.vo.Content;
+import com.sleekydz86.finsight.core.news.domain.News;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
+import com.sleekydz86.finsight.core.news.service.AiModelSelectionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.StepContribution;
@@ -29,6 +35,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
 
     private final NewsJpaRepository newsJpaRepository;
     private final NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort;
+    private final AiModelSelectionService aiModelSelectionService;
 
     private final AtomicInteger processedNewsCount = new AtomicInteger(0);
     private final AtomicInteger successfulAnalysisCount = new AtomicInteger(0);
@@ -38,9 +45,11 @@ public class OpenAiAnalysisTasklet implements Tasklet {
 
     public OpenAiAnalysisTasklet(
             NewsJpaRepository newsJpaRepository,
-            NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort) {
+            NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort,
+            AiModelSelectionService aiModelSelectionService) {
         this.newsJpaRepository = newsJpaRepository;
         this.newsAiAnalysisRequesterPort = newsAiAnalysisRequesterPort;
+        this.aiModelSelectionService = aiModelSelectionService;
     }
 
     @Override
@@ -104,16 +113,18 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                 log.debug("Starting AI analysis for news: {}", newsEntity.getId());
                 processedNewsCount.incrementAndGet();
 
-                AiModel selectedModel = AiModel.CHATGPT;
+                AiModel selectedModel = selectOptimalModel(newsEntity);
+                log.debug("Selected AI model: {} for news: {}", selectedModel, newsEntity.getId());
 
-                var aiChatRequest = createAiChatRequest(newsEntity);
+                Content aiChatRequest = new Content(
+                        newsEntity.getOriginalTitle(),
+                        newsEntity.getOriginalContent()
+                );
 
-                var analyzedNews = newsAiAnalysisRequesterPort.analyseNewses(selectedModel, aiChatRequest);
+                List<News> analyzedNews = newsAiAnalysisRequesterPort.analyseNewses(selectedModel, aiChatRequest);
 
                 if (analyzedNews != null && !analyzedNews.isEmpty()) {
-
                     updateNewsEntityWithAnalysis(newsEntity, analyzedNews.get(0));
-
                     newsJpaRepository.save(newsEntity);
 
                     successfulAnalysisCount.incrementAndGet();
@@ -122,35 +133,88 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                     long processingTime = System.currentTimeMillis() - startTime;
                     totalProcessingTime.addAndGet(processingTime);
 
-                    log.debug("AI analysis completed for news: {} in {}ms", newsEntity.getId(), processingTime);
+                    log.debug("AI analysis completed for news: {} in {}ms using model: {}",
+                            newsEntity.getId(), processingTime, selectedModel);
                     return true;
 
                 } else {
                     log.warn("AI analysis returned no results for news: {}", newsEntity.getId());
                     failedAnalysisCount.incrementAndGet();
-                    return false;
+
+                    try {
+                        log.info("Attempting fallback analysis for news: {}", newsEntity.getId());
+                        List<News> fallbackNews = newsAiAnalysisRequesterPort.analyseNewses(AiModel.GEMMA, aiChatRequest);
+
+                        if (fallbackNews != null && !fallbackNews.isEmpty()) {
+                            updateNewsEntityWithAnalysis(newsEntity, fallbackNews.get(0));
+                            newsJpaRepository.save(newsEntity);
+                            successfulAnalysisCount.incrementAndGet();
+                            log.info("Fallback analysis succeeded for news: {}", newsEntity.getId());
+                            return true;
+                        }
+                    } catch (Exception fallbackEx) {
+                        log.warn("Fallback analysis also failed for news: {}", newsEntity.getId(), fallbackEx);
+                        throw new AiAnalysisFailedException(AiModel.GEMMA.name(), "Fallback analysis failed: " + fallbackEx.getMessage());
+                    }
+
+                    throw new AiAnalysisFailedException(selectedModel.name(), "No analysis results returned");
                 }
 
             } catch (Exception e) {
                 log.error("Error during AI analysis for news: {}", newsEntity.getId(), e);
                 failedAnalysisCount.incrementAndGet();
+
+                if (e instanceof AiAnalysisFailedException) {
+                    throw e;
+                }
+
+                try {
+                    newsEntity.setOverview("AI 분석 실패로 인한 기본 요약");
+                    newsEntity.setSentimentType(SentimentType.NEUTRAL);
+                    newsEntity.setSentimentScore(0.5);
+                    newsJpaRepository.save(newsEntity);
+                    log.info("Saved basic fallback data for news: {}", newsEntity.getId());
+                } catch (Exception saveEx) {
+                    log.error("Failed to save fallback data for news: {}", newsEntity.getId(), saveEx);
+                    throw new DatabaseConnectionException("H2", "Failed to save fallback data: " + saveEx.getMessage());
+                }
+
                 return false;
             }
         });
     }
 
-    private Object createAiChatRequest(NewsJpaEntity newsEntity) {
-        return new Object() {
-            public String getTitle() { return newsEntity.getOriginalTitle(); }
-            public String getContent() { return newsEntity.getOriginalContent(); }
-        };
+    private AiModel selectOptimalModel(NewsJpaEntity newsEntity) {
+        String content = newsEntity.getOriginalContent();
+
+        if (content.length() > 5000) {
+            return AiModel.CHATGPT;
+        } else if (content.length() > 2000) {
+            return AiModel.CHATGPT;
+        } else {
+            return AiModel.GEMMA;
+        }
     }
 
-    private void updateNewsEntityWithAnalysis(NewsJpaEntity newsEntity, Object analyzedNews) {
-
+    private void updateNewsEntityWithAnalysis(NewsJpaEntity newsEntity, News analyzedNews) {
         try {
-            // 분석 결과에서 필요한 정보를 추출하여 엔티티 업데이트
+            if (analyzedNews.getAiOverView() != null) {
+                newsEntity.setOverview(analyzedNews.getAiOverView().getOverview());
 
+                if (analyzedNews.getAiOverView().getSentimentType() != null) {
+                    newsEntity.setSentimentType(analyzedNews.getAiOverView().getSentimentType());
+                }
+
+                double sentimentScore = analyzedNews.getAiOverView().getSentimentScore();
+                if (sentimentScore != 0.0) {
+                    newsEntity.setSentimentScore(sentimentScore);
+                }
+            }
+
+            if (analyzedNews.getTranslatedContent() != null) {
+                newsEntity.setTranslatedTitle(analyzedNews.getTranslatedContent().getTitle());
+                newsEntity.setTranslatedContent(analyzedNews.getTranslatedContent().getContent());
+            }
 
             log.debug("Updated news entity {} with AI analysis results", newsEntity.getId());
 
@@ -168,8 +232,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                 modelUsageCount.entrySet().stream()
                         .collect(ConcurrentHashMap::new,
                                 (map, entry) -> map.put(entry.getKey(), entry.getValue().get()),
-                                ConcurrentHashMap::putAll)
-        );
+                                ConcurrentHashMap::putAll));
     }
 
     public void resetMetrics() {
@@ -186,15 +249,16 @@ public class OpenAiAnalysisTasklet implements Tasklet {
             int successfulAnalysisCount,
             int failedAnalysisCount,
             long totalProcessingTime,
-            ConcurrentHashMap<AiModel, Integer> modelUsageCount
-    ) {
+            ConcurrentHashMap<AiModel, Integer> modelUsageCount) {
         public double getSuccessRate() {
-            if (processedNewsCount == 0) return 0.0;
+            if (processedNewsCount == 0)
+                return 0.0;
             return (double) successfulAnalysisCount / processedNewsCount * 100;
         }
 
         public double getAverageProcessingTime() {
-            if (successfulAnalysisCount == 0) return 0.0;
+            if (successfulAnalysisCount == 0)
+                return 0.0;
             return (double) totalProcessingTime / successfulAnalysisCount;
         }
 

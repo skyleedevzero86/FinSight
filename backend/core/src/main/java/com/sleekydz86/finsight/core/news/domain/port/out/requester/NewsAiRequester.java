@@ -7,7 +7,5 @@ import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatRes
 public interface NewsAiRequester {
 
     AiModel supports();
-
-    //AiChatResponse request(AiChatRequest aiChatRequest);
     AiChatResponse request(AiChatRequest aiChatRequest) throws Exception;
 }

@@ -1,3 +1,19 @@
 spring:
   profiles:
     active: core-local
+
+exception:
+  handling:
+    enabled: true
+    include-stack-trace: false
+    include-message: true
+    include-binding-errors: true
+    include-exception: false
+    log-level: WARN
+    trace-id-header: X-Trace-Id
+    correlation-id-header: X-Correlation-Id
+
+logging:
+  level:
+    com.sleekydz86.finsight.core.global.exception: DEBUG
+    org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: DEBUG

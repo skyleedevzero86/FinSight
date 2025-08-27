@@ -88,3 +88,15 @@ cache:
   news:
     ttl: 3600
     max-size: 10000
+
+ai:
+  djl:
+    model:
+      name: cardiffnlp/twitter-roberta-base-sentiment-latest
+    engine: pytorch
+    device: cpu
+    performance:
+      enable-caching: true
+      cache-size: 5000
+      enable-batching: true
+      batch-timeout: 500
