@@ -50,28 +50,29 @@ subprojects {
 			dependency 'io.lettuce:lettuce-core:6.6.0.RELEASE'
 		}
 	}
+
 	dependencies {
+
+		implementation 'org.springframework.boot:spring-boot-starter-web'
+		implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
 		testImplementation 'org.springframework.boot:spring-boot-starter-test'
 		testImplementation 'org.junit.jupiter:junit-jupiter-api'
 		testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 		testImplementation "org.mockito:mockito-core:5.8.0"
 		testImplementation "org.mockito:mockito-junit-jupiter:5.8.0"
-		implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+		testImplementation 'org.springframework:spring-test'
 
 		implementation "com.bucket4j:bucket4j_jdk17-core:8.15.0"
 		implementation "com.bucket4j:bucket4j_jdk17-lettuce:8.15.0"
 		implementation "com.bucket4j:bucket4j_jdk17-redis:8.15.0"
 		implementation "com.bucket4j:bucket4j-redis:8.15.0"
 		implementation "io.lettuce:lettuce-core:6.6.0.RELEASE"
-		implementation 'org.springframework:spring-web:6.1.0'
 		implementation 'javax.xml.bind:jaxb-api:2.3.1'
 		implementation 'org.glassfish.jaxb:jaxb-runtime:2.3.6'
 
 		implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
 		implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
-		testImplementation 'org.springframework:spring-test'
-
-
 	}
 
 	tasks.withType(Test) {

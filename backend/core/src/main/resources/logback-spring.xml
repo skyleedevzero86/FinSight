@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <property name="LOG_LEVEL" value="INFO"/>
+    <property name="LOG_PATTERN" value="%clr(%d{HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
     <springProfile name="prod">
         <property name="LOG_LEVEL" value="WARN"/>
         <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{requestId}] [%X{userId}] - %msg%n"/>
@@ -100,6 +104,7 @@
             <totalSizeCap>2GB</totalSizeCap>
         </rollingPolicy>
     </appender>
+
     <logger name="SECURITY_AUDIT" level="INFO" additivity="false">
         <appender-ref ref="SECURITY_AUDIT_FILE"/>
     </logger>
@@ -107,6 +112,7 @@
     <logger name="PERFORMANCE" level="INFO" additivity="false">
         <appender-ref ref="PERFORMANCE_FILE"/>
     </logger>
+
     <logger name="com.sleekydz86.finsight.core.auth.filter.RateLimitFilter" level="INFO"/>
     <logger name="com.sleekydz86.finsight.core.auth.filter.SecurityAuditFilter" level="INFO"/>
     <logger name="org.springframework.security" level="DEBUG"/>
@@ -114,15 +120,17 @@
     <logger name="com.sleekydz86.finsight.core.news.service" level="INFO"/>
     <logger name="com.sleekydz86.finsight.core.user.service" level="INFO"/>
     <logger name="com.sleekydz86.finsight.batch" level="INFO"/>
-    <logger name="org.hibernate.SQL" level="WARN"/>
-    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="WARN"/>
+    <logger name="org.hibernate.SQL" level="DEBUG"/>
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="TRACE"/>
     <logger name="com.zaxxer.hikari" level="INFO"/>
     <logger name="io.github.resilience4j" level="INFO"/>
+
     <root level="${LOG_LEVEL}">
         <appender-ref ref="CONSOLE"/>
         <appender-ref ref="FILE"/>
         <appender-ref ref="ERROR_FILE"/>
     </root>
+
     <springProfile name="prod">
         <root level="WARN">
             <appender-ref ref="FILE"/>
