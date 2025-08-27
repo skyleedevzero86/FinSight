@@ -47,6 +47,25 @@ ai:
       base-url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
       api-key: ${OPENAI_API_KEY}
       model: ${OPENAI_MODEL:gpt-4}
+  djl:
+    model:
+      name: cardiffnlp/twitter-roberta-base-sentiment-latest
+      type: sentiment
+      max-length: 512
+      batch-size: 32
+      timeout: 30000
+    engine: pytorch
+    device: cpu
+    model-cache-dir: ${user.home}/.cache/djl
+    thread-pool-size: 4
+    fallback:
+      enabled: true
+      external-api: true
+    performance:
+      enable-caching: true
+      cache-size: 1000
+      enable-batching: true
+      batch-timeout: 1000
 
 jwt:
   secret: jwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwts

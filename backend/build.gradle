@@ -73,6 +73,15 @@ subprojects {
 
 		implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
 		implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+
+		implementation 'ai.djl:api:0.24.0'
+		implementation 'ai.djl.huggingface:tokenizers:0.24.0'
+		implementation 'ai.djl.pytorch:pytorch-engine:0.24.0'
+		implementation 'ai.djl.pytorch:pytorch-jni:0.24.0'
+		implementation 'ai.djl.pytorch:pytorch-native-cpu:0.24.0'
+
+		implementation 'ai.djl.onnxruntime:onnxruntime-engine:0.24.0'
+		implementation 'ai.djl.tensorflow:tensorflow-engine:0.24.0'
 	}
 
 	tasks.withType(Test) {

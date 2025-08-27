@@ -14,12 +14,29 @@ public class HuggingFaceProperties {
     private String defaultModel;
     private String token;
 
-    public Map<String, ModelInfo> getModels() { return models; }
-    public void setModels(Map<String, ModelInfo> models) { this.models = models; }
-    public String getDefaultModel() { return defaultModel; }
-    public void setDefaultModel(String defaultModel) { this.defaultModel = defaultModel; }
-    public String getToken() { return token; }
-    public void setToken(String token) { this.token = token; }
+    public Map<String, ModelInfo> getModels() {
+        return models;
+    }
+
+    public void setModels(Map<String, ModelInfo> models) {
+        this.models = models;
+    }
+
+    public String getDefaultModel() {
+        return defaultModel;
+    }
+
+    public void setDefaultModel(String defaultModel) {
+        this.defaultModel = defaultModel;
+    }
+
+    public String getToken() {
+        return token;
+    }
+
+    public void setToken(String token) {
+        this.token = token;
+    }
 
     public static class ModelInfo {
         private String name;
@@ -27,13 +44,36 @@ public class HuggingFaceProperties {
         private int timeout;
         private String description;
 
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-        public String getUrl() { return url; }
-        public void setUrl(String url) { this.url = url; }
-        public int getTimeout() { return timeout; }
-        public void setTimeout(int timeout) { this.timeout = timeout; }
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public void setUrl(String url) {
+            this.url = url;
+        }
+
+        public int getTimeout() {
+            return timeout;
+        }
+
+        public void setTimeout(int timeout) {
+            this.timeout = timeout;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public void setDescription(String description) {
+            this.description = description;
+        }
     }
 }

@@ -120,7 +120,8 @@ public class AiModelSelectionService {
         AtomicLong usage = modelUsageCount.get(model);
         AtomicLong errors = modelErrorCount.get(model);
 
-        if (usage.get() == 0) return 0.0;
+        if (usage.get() == 0)
+            return 0.0;
         return (double) errors.get() / usage.get();
     }
 
