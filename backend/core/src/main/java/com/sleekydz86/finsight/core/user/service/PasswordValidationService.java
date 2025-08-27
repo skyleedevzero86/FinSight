@@ -33,36 +33,41 @@ public class PasswordValidationService {
     public PasswordValidationResult validatePassword(String password) {
         List<String> errors = new ArrayList<>();
 
-        if (password == null || password.length() < minLength) {
-            errors.add("비밀번호는 최소 " + minLength + "자 이상이어야 합니다.");
+        if (password == null || password.isEmpty()) {
+            errors.add("Password cannot be empty");
+            return new PasswordValidationResult(false, errors);
+        }
+
+        if (password.length() < minLength) {
+            errors.add("Password must be at least " + minLength + " characters long");
         }
 
         if (requireSpecialChars && !SPECIAL_CHARS_PATTERN.matcher(password).find()) {
-            errors.add("비밀번호는 최소 1개의 특수문자를 포함해야 합니다.");
+            errors.add("Password must contain at least one special character");
         }
 
         if (requireNumbers && !NUMBERS_PATTERN.matcher(password).find()) {
-            errors.add("비밀번호는 최소 1개의 숫자를 포함해야 합니다.");
+            errors.add("Password must contain at least one number");
         }
 
         if (requireUppercase && !UPPERCASE_PATTERN.matcher(password).find()) {
-            errors.add("비밀번호는 최소 1개의 대문자를 포함해야 합니다.");
+            errors.add("Password must contain at least one uppercase letter");
         }
 
         if (requireLowercase && !LOWERCASE_PATTERN.matcher(password).find()) {
-            errors.add("비밀번호는 최소 1개의 소문자를 포함해야 합니다.");
+            errors.add("Password must contain at least one lowercase letter");
         }
 
         if (hasConsecutiveCharacters(password)) {
-            errors.add("비밀번호에 연속된 3개 이상의 문자를 사용할 수 없습니다.");
+            errors.add("Password cannot contain consecutive characters");
         }
 
         if (hasRepeatedCharacters(password)) {
-            errors.add("비밀번호에 동일한 문자가 3번 이상 반복될 수 없습니다.");
+            errors.add("Password cannot contain repeated characters");
         }
 
         if (isCommonWeakPassword(password)) {
-            errors.add("너무 일반적이거나 예측 가능한 비밀번호입니다.");
+            errors.add("Password is too common or weak");
         }
 
         return new PasswordValidationResult(errors.isEmpty(), errors);
@@ -70,12 +75,14 @@ public class PasswordValidationService {
 
     private boolean hasConsecutiveCharacters(String password) {
         for (int i = 0; i < password.length() - 2; i++) {
-            char c1 = password.charAt(i);
-            char c2 = password.charAt(i + 1);
-            char c3 = password.charAt(i + 2);
+            char current = password.charAt(i);
+            char next = password.charAt(i + 1);
+            char nextNext = password.charAt(i + 2);
 
-            if ((c2 == c1 + 1 && c3 == c2 + 1) || (c2 == c1 - 1 && c3 == c2 - 1)) {
-                return true;
+            if (Character.isLetter(current) && Character.isLetter(next) && Character.isLetter(nextNext)) {
+                if (next == current + 1 && nextNext == next + 1) {
+                    return true;
+                }
             }
         }
         return false;
@@ -83,11 +90,11 @@ public class PasswordValidationService {
 
     private boolean hasRepeatedCharacters(String password) {
         for (int i = 0; i < password.length() - 2; i++) {
-            char c1 = password.charAt(i);
-            char c2 = password.charAt(i + 1);
-            char c3 = password.charAt(i + 2);
+            char current = password.charAt(i);
+            char next = password.charAt(i + 1);
+            char nextNext = password.charAt(i + 2);
 
-            if (c1 == c2 && c2 == c3) {
+            if (current == next && next == nextNext) {
                 return true;
             }
         }
@@ -96,19 +103,12 @@ public class PasswordValidationService {
 
     private boolean isCommonWeakPassword(String password) {
         String lowerPassword = password.toLowerCase();
+        List<String> weakPasswords = List.of(
+                "password", "123456", "qwerty", "admin", "letmein",
+                "welcome", "monkey", "dragon", "master", "hello"
+        );
 
-        String[] weakPatterns = {
-                "password", "123456", "qwerty", "admin", "user",
-                "letmein", "welcome", "monkey", "dragon", "master"
-        };
-
-        for (String pattern : weakPatterns) {
-            if (lowerPassword.contains(pattern)) {
-                return true;
-            }
-        }
-
-        return false;
+        return weakPasswords.contains(lowerPassword);
     }
 
     public static class PasswordValidationResult {
@@ -124,11 +124,14 @@ public class PasswordValidationService {
             return isValid;
         }
 
-        public List<String> errors() {
+        public List<String> getErrors() {
             return errors;
         }
 
         public String getErrorMessage() {
+            if (errors.isEmpty()) {
+                return "Password is valid";
+            }
             return String.join("; ", errors);
         }
     }

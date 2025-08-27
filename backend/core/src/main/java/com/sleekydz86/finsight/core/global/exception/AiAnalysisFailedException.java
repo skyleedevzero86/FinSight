@@ -1,21 +1,26 @@
 package com.sleekydz86.finsight.core.global.exception;
 
 public class AiAnalysisFailedException extends BaseException {
-    private final String model;
-    private final String reason;
+    private final String modelName;
 
-    public AiAnalysisFailedException(String model, String reason) {
-        super("AI 분석에 실패했습니다. 모델: " + model + ", 사유: " + reason,
-                "NEWS_003", "AI Analysis Failed", 500);
-        this.model = model;
-        this.reason = reason;
+    public AiAnalysisFailedException(String modelName, String message) {
+        super("AI 분석에 실패했습니다: " + message,
+                "AI_ANALYSIS_FAILED",
+                "AI Analysis Error",
+                500);
+        this.modelName = modelName;
     }
 
-    public String getModel() {
-        return model;
+    public AiAnalysisFailedException(String modelName, String message, Throwable cause) {
+        super("AI 분석에 실패했습니다: " + message,
+                "AI_ANALYSIS_FAILED",
+                "AI Analysis Error",
+                500,
+                cause);
+        this.modelName = modelName;
     }
 
-    public String getReason() {
-        return reason;
+    public String getModelName() {
+        return modelName;
     }
 }
