@@ -1,6 +1,7 @@
+
 HELP.md
 jobstudy/**
-!**/generated/**
+**/generated/**
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar

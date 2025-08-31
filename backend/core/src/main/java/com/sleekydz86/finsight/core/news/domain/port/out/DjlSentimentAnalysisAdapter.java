@@ -7,7 +7,7 @@ import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ZooModel;
 import ai.djl.translate.TranslateException;
-import com.sleekydz86.finsight.core.news.domain.port.out.DjlSentimentAnalysisPort;
+import ai.djl.huggingface.translator.TextClassificationTranslatorFactory;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.DjlSentimentResult;
 import org.slf4j.Logger;
@@ -19,9 +19,6 @@ import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
@@ -31,98 +28,89 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
     @Value("${ai.djl.model.name:cardiffnlp/twitter-roberta-base-sentiment-latest}")
     private String modelName;
 
-    @Value("${ai.djl.model.type:sentiment}")
-    private String modelType;
+    @Value("${ai.djl.enabled:true}")
+    private boolean djlEnabled;
 
-    @Value("${ai.djl.model.max-length:512}")
-    private int maxLength;
-
-    @Value("${ai.djl.model.batch-size:32}")
-    private int batchSize;
-
-    @Value("${ai.djl.model.timeout:30000}")
-    private long timeout;
-
-    private ZooModel<String, float[]> model;
-    private final Map<String, String[]> labelMappings = new ConcurrentHashMap<>();
-    private final AtomicInteger totalRequests = new AtomicInteger(0);
-    private final AtomicInteger successfulRequests = new AtomicInteger(0);
-    private final AtomicInteger failedRequests = new AtomicInteger(0);
-    private final AtomicLong totalProcessingTime = new AtomicLong(0);
-
-    private static final String[] DEFAULT_LABELS = {"Negative", "Neutral", "Positive"};
-    private static final Map<String, String[]> MODEL_LABELS = Map.of(
-            "cardiffnlp/twitter-roberta-base-sentiment-latest", new String[]{"Negative", "Neutral", "Positive"},
-            "cardiffnlp/twitter-roberta-base-sentiment", new String[]{"Negative", "Neutral", "Positive"},
-            "nlptown/bert-base-multilingual-uncased-sentiment", new String[]{"1 star", "2 stars", "3 stars", "4 stars", "5 stars"},
-            "finiteautomata/bertweet-base-sentiment-analysis", new String[]{"NEG", "NEU", "POS"}
-    );
+    private ZooModel<String, ai.djl.modality.Classifications> model;
+    private boolean modelAvailable = false;
 
     @PostConstruct
     public void initialize() {
+        if (!djlEnabled) {
+            log.info("DJL 모델이 비활성화되었습니다.");
+            return;
+        }
+
         try {
             loadModel();
+            modelAvailable = true;
             log.info("DJL 감정분석 모델 로드 완료: {}", modelName);
         } catch (Exception e) {
-            log.error("DJL 감정분석 모델 로드 실패: {}", e.getMessage(), e);
+            log.error("DJL 감정분석 모델 로드 실패, 폴백 모드로 전환: {}", e.getMessage());
+            modelAvailable = false;
         }
     }
 
     private void loadModel() throws ModelNotFoundException, MalformedModelException, IOException {
-        Criteria<String, float[]> criteria = Criteria.builder()
-                .optApplication(Application.NLP.SENTIMENT_ANALYSIS)
-                .setTypes(String.class, float[].class)
-                .optModelUrls("https://huggingface.co/" + modelName)
-                .optEngine("PyTorch")
-                .optProgress(new ai.djl.training.util.ProgressBar())
-                .build();
 
-        model = criteria.loadModel();
+        try {
+            Criteria<String, ai.djl.modality.Classifications> criteria = Criteria.builder()
+                    .setTypes(String.class, ai.djl.modality.Classifications.class)
+                    .optModelUrls("djl://ai.djl.huggingface.pytorch/" + modelName)
+                    .optEngine("PyTorch")
+                    .optOption("translatorFactory", "ai.djl.huggingface.translator.TextClassificationTranslatorFactory")
+                    .build();
 
-        String[] labels = MODEL_LABELS.getOrDefault(modelName, DEFAULT_LABELS);
-        labelMappings.put(modelName, labels);
+            model = criteria.loadModel();
+            log.info("HuggingFace 모델 로드 성공: {}", modelName);
+            return;
+        } catch (Exception e) {
+            log.warn("HuggingFace 모델 로드 실패, 로컬 모델 시도: {}", e.getMessage());
+        }
 
-        log.info("모델 {} 로드 완료, 라벨: {}", modelName, Arrays.toString(labels));
+        try {
+            Criteria<String, ai.djl.modality.Classifications> criteria = Criteria.builder()
+                    .optApplication(Application.NLP.SENTIMENT_ANALYSIS)
+                    .setTypes(String.class, ai.djl.modality.Classifications.class)
+                    .optFilter("backbone", "distilbert")
+                    .optEngine("PyTorch")
+                    .build();
+
+            model = criteria.loadModel();
+            log.info("로컬 DistilBERT 모델 로드 성공");
+        } catch (Exception e) {
+            log.error("모든 모델 로드 방법 실패: {}", e.getMessage());
+            throw e;
+        }
     }
 
     @Override
     public DjlSentimentResult analyzeSentiment(String text) {
+        if (!modelAvailable || model == null) {
+            return createFallbackResult(text, "모델을 사용할 수 없습니다");
+        }
+
         long startTime = System.currentTimeMillis();
-        totalRequests.incrementAndGet();
 
-        try {
-            if (model == null) {
-                throw new IllegalStateException("모델이 로드되지 않았습니다");
-            }
+        try (Predictor<String, ai.djl.modality.Classifications> predictor = model.newPredictor()) {
+            ai.djl.modality.Classifications result = predictor.predict(text);
 
-            String processedText = preprocessText(text);
-
-            try (Predictor<String, float[]> predictor = model.newPredictor()) {
-                float[] logits = predictor.predict(processedText);
-
-                DjlSentimentResult result = processResults(logits, text);
-                result.setProcessingTimeMs(System.currentTimeMillis() - startTime);
-
-                successfulRequests.incrementAndGet();
-                totalProcessingTime.addAndGet(result.getProcessingTimeMs());
-
-                return result;
-            }
-
-        } catch (Exception e) {
-            failedRequests.incrementAndGet();
-            log.error("감정분석 실패: {}", e.getMessage(), e);
+            String topClass = result.best().getClassName();
+            double confidence = result.best().getProbability();
 
             return DjlSentimentResult.builder()
-                    .label("NEUTRAL")
-                    .score(0.0)
-                    .confidence(0.0)
-                    .success(false)
-                    .errorMessage(e.getMessage())
-                    .processingTimeMs(System.currentTimeMillis() - startTime)
+                    .label(mapLabelToStandard(topClass))
+                    .score(confidence)
+                    .confidence(confidence)
+                    .success(true)
                     .modelName(modelName)
                     .originalText(text)
+                    .processingTimeMs(System.currentTimeMillis() - startTime)
                     .build();
+
+        } catch (Exception e) {
+            log.error("감정분석 처리 실패: {}", e.getMessage());
+            return createFallbackResult(text, e.getMessage());
         }
     }
 
@@ -133,40 +121,15 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
 
     @Override
     public List<DjlSentimentResult> analyzeSentimentBatch(List<String> texts) {
-        List<DjlSentimentResult> results = new ArrayList<>();
-
-        for (String text : texts) {
-            try {
-                DjlSentimentResult result = analyzeSentiment(text);
-                results.add(result);
-            } catch (Exception e) {
-                log.error("배치 처리 중 오류 발생: {}", e.getMessage());
-                results.add(DjlSentimentResult.builder()
-                        .label("NEUTRAL")
-                        .score(0.0)
-                        .confidence(0.0)
-                        .success(false)
-                        .errorMessage(e.getMessage())
-                        .modelName(modelName)
-                        .originalText(text)
-                        .build());
-            }
-        }
-
-        return results;
+        return texts.stream()
+                .map(this::analyzeSentiment)
+                .toList();
     }
 
     @Override
     public DjlSentimentResult analyzeNewsContent(Content content) {
         if (content == null) {
-            return DjlSentimentResult.builder()
-                    .label("NEUTRAL")
-                    .score(0.0)
-                    .confidence(0.0)
-                    .success(false)
-                    .errorMessage("콘텐츠가 null입니다")
-                    .modelName(modelName)
-                    .build();
+            return createFallbackResult("", "콘텐츠가 null입니다");
         }
 
         String combinedText = content.getTitle() + ". " + content.getContent();
@@ -175,98 +138,45 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
 
     @Override
     public boolean isModelAvailable() {
-        return model != null;
+        return modelAvailable && model != null;
     }
 
     @Override
     public List<String> getAvailableModels() {
-        return new ArrayList<>(MODEL_LABELS.keySet());
+        return Arrays.asList(
+                "cardiffnlp/twitter-roberta-base-sentiment-latest",
+                "distilbert-base-uncased-finetuned-sst-2-english"
+        );
     }
 
     @Override
     public Map<String, Object> getModelMetadata() {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("modelName", modelName);
-        metadata.put("modelType", modelType);
-        metadata.put("maxLength", maxLength);
-        metadata.put("batchSize", batchSize);
-        metadata.put("timeout", timeout);
         metadata.put("isAvailable", isModelAvailable());
-        metadata.put("totalRequests", totalRequests.get());
-        metadata.put("successfulRequests", successfulRequests.get());
-        metadata.put("failedRequests", failedRequests.get());
-        metadata.put("totalProcessingTime", totalProcessingTime.get());
-
-        if (totalRequests.get() > 0) {
-            metadata.put("successRate", (double) successfulRequests.get() / totalRequests.get());
-            metadata.put("averageProcessingTime", (double) totalProcessingTime.get() / successfulRequests.get());
-        }
-
+        metadata.put("enabled", djlEnabled);
         return metadata;
     }
 
-    private String preprocessText(String text) {
-        if (text == null || text.trim().isEmpty()) {
-            return "";
-        }
-
-        if (text.length() > maxLength) {
-            text = text.substring(0, maxLength);
-        }
-
-        text = text.replaceAll("@\\w+", "@user")
-                .replaceAll("http[s]?://\\S+", "http")
-                .replaceAll("[\\r\\n\\t]+", " ")
-                .trim();
-
-        return text;
+    private String mapLabelToStandard(String originalLabel) {
+        return switch (originalLabel.toUpperCase()) {
+            case "NEGATIVE", "NEG", "0" -> "NEGATIVE";
+            case "POSITIVE", "POS", "1" -> "POSITIVE";
+            default -> "NEUTRAL";
+        };
     }
 
-    private DjlSentimentResult processResults(float[] logits, String originalText) {
-        String[] labels = labelMappings.getOrDefault(modelName, DEFAULT_LABELS);
-
-        double[] probabilities = softmax(logits);
-
-        int maxIndex = 0;
-        double maxValue = probabilities[0];
-        for (int i = 1; i < probabilities.length; i++) {
-            if (probabilities[i] > maxValue) {
-                maxValue = probabilities[i];
-                maxIndex = i;
-            }
-        }
-
+    private DjlSentimentResult createFallbackResult(String text, String errorMessage) {
         return DjlSentimentResult.builder()
-                .label(labels[maxIndex])
-                .score(probabilities[maxIndex])
-                .confidence(probabilities[maxIndex])
-                .success(true)
+                .label("NEUTRAL")
+                .score(0.5)
+                .confidence(0.0)
+                .success(false)
+                .errorMessage(errorMessage)
                 .modelName(modelName)
-                .originalText(originalText)
+                .originalText(text)
+                .processingTimeMs(0L)
                 .build();
-    }
-
-    private double[] softmax(float[] logits) {
-        double[] exp = new double[logits.length];
-        double sum = 0.0;
-
-        double max = logits[0];
-        for (int i = 1; i < logits.length; i++) {
-            if (logits[i] > max) {
-                max = logits[i];
-            }
-        }
-
-        for (int i = 0; i < logits.length; i++) {
-            exp[i] = Math.exp(logits[i] - max);
-            sum += exp[i];
-        }
-
-        for (int i = 0; i < exp.length; i++) {
-            exp[i] /= sum;
-        }
-
-        return exp;
     }
 
     @PreDestroy
