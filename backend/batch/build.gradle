@@ -27,13 +27,11 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
-    
-    // DJL for AI analysis
+
     implementation 'ai.djl:api:0.24.0'
     implementation 'ai.djl.pytorch:pytorch-engine:0.24.0'
     implementation 'ai.djl.huggingface:tokenizers:0.24.0'
-    
-    // Lombok
+
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     
