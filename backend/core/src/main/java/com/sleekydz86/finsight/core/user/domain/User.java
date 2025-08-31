@@ -202,4 +202,81 @@ public class User {
     public int hashCode() {
         return Objects.hash(id, email);
     }
+
+    public static UserBuilder builder() {
+        return new UserBuilder();
+    }
+
+    public static class UserBuilder {
+        private Long id;
+        private String email;
+        private String username;
+        private String password;
+        private UserRole role;
+        private List<TargetCategory> watchlist;
+        private List<NotificationType> notificationPreferences;
+        private LocalDateTime lastLoginAt;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+        private boolean active;
+
+        public UserBuilder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public UserBuilder email(String email) {
+            this.email = email;
+            return this;
+        }
+
+        public UserBuilder username(String username) {
+            this.username = username;
+            return this;
+        }
+
+        public UserBuilder password(String password) {
+            this.password = password;
+            return this;
+        }
+
+        public UserBuilder role(UserRole role) {
+            this.role = role;
+            return this;
+        }
+
+        public UserBuilder watchlist(List<TargetCategory> watchlist) {
+            this.watchlist = watchlist;
+            return this;
+        }
+
+        public UserBuilder notificationPreferences(List<NotificationType> notificationPreferences) {
+            this.notificationPreferences = notificationPreferences;
+            return this;
+        }
+
+        public UserBuilder lastLoginAt(LocalDateTime lastLoginAt) {
+            this.lastLoginAt = lastLoginAt;
+            return this;
+        }
+
+        public UserBuilder createdAt(LocalDateTime createdAt) {
+            this.createdAt = createdAt;
+            return this;
+        }
+
+        public UserBuilder updatedAt(LocalDateTime updatedAt) {
+            this.updatedAt = updatedAt;
+            return this;
+        }
+
+        public UserBuilder active(boolean active) {
+            this.active = active;
+            return this;
+        }
+
+        public User build() {
+            return new User(id, email, username, password, role, active, lastLoginAt, watchlist, notificationPreferences);
+        }
+    }
 }

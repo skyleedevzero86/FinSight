@@ -79,7 +79,6 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
 
         model = criteria.loadModel();
 
-        // 라벨 매핑 설정
         String[] labels = MODEL_LABELS.getOrDefault(modelName, DEFAULT_LABELS);
         labelMappings.put(modelName, labels);
 
@@ -101,7 +100,7 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
             try (Predictor<String, float[]> predictor = model.newPredictor()) {
                 float[] logits = predictor.predict(processedText);
 
-                DjlSentimentResult result = processResults(logits, processedText);
+                DjlSentimentResult result = processResults(logits, text);
                 result.setProcessingTimeMs(System.currentTimeMillis() - startTime);
 
                 successfulRequests.incrementAndGet();
@@ -118,8 +117,11 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
                     .label("NEUTRAL")
                     .score(0.0)
                     .confidence(0.0)
+                    .success(false)
                     .errorMessage(e.getMessage())
                     .processingTimeMs(System.currentTimeMillis() - startTime)
+                    .modelName(modelName)
+                    .originalText(text)
                     .build();
         }
     }
@@ -143,7 +145,10 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
                         .label("NEUTRAL")
                         .score(0.0)
                         .confidence(0.0)
+                        .success(false)
                         .errorMessage(e.getMessage())
+                        .modelName(modelName)
+                        .originalText(text)
                         .build());
             }
         }
@@ -158,11 +163,12 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
                     .label("NEUTRAL")
                     .score(0.0)
                     .confidence(0.0)
+                    .success(false)
                     .errorMessage("콘텐츠가 null입니다")
+                    .modelName(modelName)
                     .build();
         }
 
-        // 제목과 내용을 결합하여 분석
         String combinedText = content.getTitle() + ". " + content.getContent();
         return analyzeSentiment(combinedText);
     }
@@ -204,12 +210,10 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
             return "";
         }
 
-        // 텍스트 길이 제한
         if (text.length() > maxLength) {
             text = text.substring(0, maxLength);
         }
 
-        // 특수 문자 처리
         text = text.replaceAll("@\\w+", "@user")
                 .replaceAll("http[s]?://\\S+", "http")
                 .replaceAll("[\\r\\n\\t]+", " ")
@@ -218,33 +222,27 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
         return text;
     }
 
-    private DjlSentimentResult processResults(float[] logits, String processedText) {
+    private DjlSentimentResult processResults(float[] logits, String originalText) {
         String[] labels = labelMappings.getOrDefault(modelName, DEFAULT_LABELS);
 
-        // 소프트맥스 적용
         double[] probabilities = softmax(logits);
 
-        // 최고 점수 찾기
         int maxIndex = 0;
+        double maxValue = probabilities[0];
         for (int i = 1; i < probabilities.length; i++) {
-            if (probabilities[i] > probabilities[maxIndex]) {
+            if (probabilities[i] > maxValue) {
+                maxValue = probabilities[i];
                 maxIndex = i;
             }
-        }
-
-        // 모든 점수 매핑
-        Map<String, Double> allScores = new HashMap<>();
-        for (int i = 0; i < labels.length && i < probabilities.length; i++) {
-            allScores.put(labels[i], probabilities[i]);
         }
 
         return DjlSentimentResult.builder()
                 .label(labels[maxIndex])
                 .score(probabilities[maxIndex])
                 .confidence(probabilities[maxIndex])
-                .allScores(allScores)
-                .tokens(Arrays.asList(processedText.split("\\s+")))
+                .success(true)
                 .modelName(modelName)
+                .originalText(originalText)
                 .build();
     }
 
@@ -252,7 +250,12 @@ public class DjlSentimentAnalysisAdapter implements DjlSentimentAnalysisPort {
         double[] exp = new double[logits.length];
         double sum = 0.0;
 
-        double max = Arrays.stream(logits).mapToDouble(f -> f).max().orElse(0);
+        double max = logits[0];
+        for (int i = 1; i < logits.length; i++) {
+            if (logits[i] > max) {
+                max = logits[i];
+            }
+        }
 
         for (int i = 0; i < logits.length; i++) {
             exp[i] = Math.exp(logits[i] - max);

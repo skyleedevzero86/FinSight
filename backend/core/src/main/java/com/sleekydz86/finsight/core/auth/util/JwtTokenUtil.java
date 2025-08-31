@@ -1,163 +1,142 @@
 package com.sleekydz86.finsight.core.auth.util;
 
-import com.sleekydz86.finsight.core.global.exception.AuthenticationFailedException;
-import com.sleekydz86.finsight.core.user.domain.UserRole;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import com.sleekydz86.finsight.core.user.domain.UserRole;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.UUID;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class JwtTokenUtil {
 
     private static final Logger log = LoggerFactory.getLogger(JwtTokenUtil.class);
 
-    @Value("${jwt.secret}")
+    @Value("${jwt.secret:defaultSecretKeyForDevelopmentOnly}")
     private String secret;
 
-    @Value("${jwt.expiration-period}")
-    private long expirationPeriod;
+    @Value("${jwt.access-token.expiration:3600000}")
+    private long accessTokenExpiration;
 
-    @Value("${jwt.refresh-expiration-period:86400000}")
-    private long refreshExpirationPeriod;
+    @Value("${jwt.refresh-token.expiration:2592000000}")
+    private long refreshTokenExpiration;
+
+    @Value("${jwt.issuer:finsight}")
+    private String issuer;
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = secret.getBytes();
-        return Keys.hmacShaKeyFor(keyBytes);
+        return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
     public String generateAccessToken(String email, UserRole role) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expirationPeriod);
-
-        return Jwts.builder()
-                .setSubject(email)
-                .claim("role", role.name())
-                .claim("type", "ACCESS")
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .setId(generateJti())
-                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
-                .compact();
+        return generateToken(email, "ACCESS", role, accessTokenExpiration);
     }
 
     public String generateRefreshToken(String email) {
-        Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + refreshExpirationPeriod);
+        return generateToken(email, "REFRESH", null, refreshTokenExpiration);
+    }
+
+    private String generateToken(String email, String tokenType, UserRole role, long expiration) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("tokenType", tokenType);
+        if (role != null) {
+            claims.put("role", role.name());
+        }
 
         return Jwts.builder()
+                .setClaims(claims)
                 .setSubject(email)
-                .claim("type", "REFRESH")
-                .setIssuedAt(now)
-                .setExpiration(expiryDate)
-                .setId(generateJti())
-                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
+                .setIssuer(issuer)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .signWith(getSigningKey())
                 .compact();
-    }
-
-    private String generateJti() {
-        return UUID.randomUUID().toString();
-    }
-
-    public String getEmailFromToken(String token) {
-        return getClaimFromToken(token, Claims::getSubject);
-    }
-
-    public Date getExpirationDateFromToken(String token) {
-        return getClaimFromToken(token, Claims::getExpiration);
-    }
-
-    public UserRole getRoleFromToken(String token) {
-        String roleStr = getClaimFromToken(token, claims -> claims.get("role", String.class));
-        return roleStr != null ? UserRole.valueOf(roleStr) : UserRole.USER;
-    }
-
-    public String getTokenType(String token) {
-        return getClaimFromToken(token, claims -> claims.get("type", String.class));
     }
 
     public boolean validateToken(String token) {
         try {
-            Claims claims = getAllClaimsFromToken(token);
-
-            String tokenType = claims.get("type", String.class);
-            if (tokenType == null) {
-                log.warn("Token type is missing");
-                return false;
-            }
-
-            if (isTokenExpired(token)) {
-                log.warn("Token is expired");
-                return false;
-            }
-
-            String jti = claims.getId();
-            if (jti == null || jti.isEmpty()) {
-                log.warn("Token JTI is missing");
-                return false;
-            }
-
-            log.debug("Token validation successful for type: {}", tokenType);
-            return true;
-
-        } catch (Exception e) {
-            log.error("Token validation failed", e);
-            return false;
-        }
-    }
-
-    private <T> T getClaimFromToken(String token, java.util.function.Function<Claims, T> claimsResolver) {
-        final Claims claims = getAllClaimsFromToken(token);
-        return claimsResolver.apply(claims);
-    }
-
-    private Claims getAllClaimsFromToken(String token) {
-        try {
-
-            return Jwts.parser()
+            Jwts.parser()
                     .verifyWith(getSigningKey())
                     .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
-        } catch (Exception e) {
-            log.error("Failed to parse JWT token", e);
-            throw new AuthenticationFailedException("Invalid token format");
+                    .parseSignedClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("Token validation failed: {}", e.getMessage());
+            return false;
         }
     }
 
     public boolean isTokenExpired(String token) {
         try {
-            Date expiration = getExpirationDateFromToken(token);
-            return expiration.before(new Date());
+            Claims claims = getClaimsFromToken(token);
+            return claims.getExpiration().before(new Date());
         } catch (Exception e) {
-            log.error("Failed to check token expiration", e);
+            log.warn("Token expiration check failed: {}", e.getMessage());
             return true;
         }
     }
 
-    public boolean isRefreshToken(String token) {
+    public String getEmailFromToken(String token) {
         try {
-            String tokenType = getTokenType(token);
-            return "REFRESH".equals(tokenType);
+            Claims claims = getClaimsFromToken(token);
+            return claims.getSubject();
         } catch (Exception e) {
-            log.error("Failed to check token type", e);
+            log.warn("Failed to extract email from token: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    public UserRole getRoleFromToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            String roleStr = claims.get("role", String.class);
+            return roleStr != null ? UserRole.valueOf(roleStr) : null;
+        } catch (Exception e) {
+            log.warn("Failed to extract role from token: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    private Claims getClaimsFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public long getExpirationPeriod() {
+        return accessTokenExpiration;
+    }
+
+    public boolean validateRefreshToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            String tokenType = claims.get("tokenType", String.class);
+            return "REFRESH".equals(tokenType) && !isTokenExpired(token);
+        } catch (Exception e) {
+            log.warn("리프레시 토큰 검증 실패: {}", e.getMessage());
             return false;
         }
     }
 
-    public long getExpirationPeriod() {
-        return expirationPeriod;
+    public String getEmailFromRefreshToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            return claims.getSubject();
+        } catch (Exception e) {
+            log.warn("리프레시 토큰에서 이메일 추출 실패: {}", e.getMessage());
+            return null;
+        }
     }
 
-    public long getRefreshExpirationPeriod() {
-        return refreshExpirationPeriod;
+    public long getAccessTokenExpiration() {
+        return accessTokenExpiration;
     }
 }

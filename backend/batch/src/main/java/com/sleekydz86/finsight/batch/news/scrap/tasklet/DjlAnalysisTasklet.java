@@ -90,12 +90,10 @@ public class DjlAnalysisTasklet implements Tasklet {
         processedNewsCount.incrementAndGet();
 
         try {
-
             String content = newsEntity.getOriginalTitle() + ". " + newsEntity.getOriginalContent();
             DjlSentimentResult sentimentResult = djlSentimentAnalysisPort.analyzeSentiment(content);
 
             if (sentimentResult.isSuccess()) {
-
                 updateNewsEntityWithAnalysis(newsEntity, sentimentResult);
 
                 sentimentDistribution.computeIfAbsent(sentimentResult.toSentimentType(),
@@ -119,25 +117,25 @@ public class DjlAnalysisTasklet implements Tasklet {
     }
 
     private void updateNewsEntityWithAnalysis(NewsJpaEntity newsEntity, DjlSentimentResult sentimentResult) {
-
         newsEntity.setSentimentType(sentimentResult.toSentimentType());
-
         newsEntity.setSentimentScore(sentimentResult.getScore());
-
         String overview = String.format("감정분석 결과: %s (신뢰도: %.2f%%)",
                 sentimentResult.getLabel(), sentimentResult.getConfidence() * 100);
         newsEntity.setOverview(overview);
-
         newsJpaRepository.save(newsEntity);
     }
 
     public DjlAnalysisMetrics getAnalysisMetrics() {
+        ConcurrentHashMap<SentimentType, Integer> convertedDistribution = new ConcurrentHashMap<>();
+        sentimentDistribution.forEach((key, value) ->
+                convertedDistribution.put(key, value.get()));
+
         return new DjlAnalysisMetrics(
                 processedNewsCount.get(),
                 successfulAnalysisCount.get(),
                 failedAnalysisCount.get(),
                 totalProcessingTime.get(),
-                new ConcurrentHashMap<>(sentimentDistribution)
+                convertedDistribution
         );
     }
 

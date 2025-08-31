@@ -16,6 +16,41 @@ public class JwtToken {
         this.tokenType = "Bearer";
     }
 
+    public static JwtTokenBuilder builder() {
+        return new JwtTokenBuilder();
+    }
+
+    public static class JwtTokenBuilder {
+        private String accessToken;
+        private String refreshToken;
+        private LocalDateTime expiresAt;
+        private String tokenType = "Bearer";
+
+        public JwtTokenBuilder accessToken(String accessToken) {
+            this.accessToken = accessToken;
+            return this;
+        }
+
+        public JwtTokenBuilder refreshToken(String refreshToken) {
+            this.refreshToken = refreshToken;
+            return this;
+        }
+
+        public JwtTokenBuilder expiresIn(LocalDateTime expiresAt) {
+            this.expiresAt = expiresAt;
+            return this;
+        }
+
+        public JwtTokenBuilder tokenType(String tokenType) {
+            this.tokenType = tokenType;
+            return this;
+        }
+
+        public JwtToken build() {
+            return new JwtToken(accessToken, refreshToken, expiresAt);
+        }
+    }
+
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(expiresAt);
     }

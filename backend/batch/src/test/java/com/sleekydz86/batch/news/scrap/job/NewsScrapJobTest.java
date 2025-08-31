@@ -9,36 +9,59 @@ import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.test.JobLauncherTestUtils;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.batch.test.context.SpringBatchTest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
-@JobIntegrationTest(jobClasses = {NewsScrapJobConfig.class})
+@JobIntegrationTest(jobClasses = {NewsScrapJobConfig.class, NewsScrapJobTest.TestConfig.class})
 @SpringBootTest(properties = {
         "spring.main.allow-bean-definition-overriding=true",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.sql.init.mode=never"
 })
+@SpringBatchTest
+@ExtendWith(MockitoExtension.class)
 @ActiveProfiles("test")
 public class NewsScrapJobTest {
 
         @Autowired
         private JobLauncherTestUtils jobLauncherTestUtils;
 
-        @MockBean
-        private NewsScrapRequester newsScrapRequester;
+        @TestConfiguration
+        static class TestConfig {
+                @Bean
+                @Primary
+                public NewsScrapRequester newsScrapRequester() {
+                        return mock(NewsScrapRequester.class);
+                }
 
-        @MockBean
-        private NewsOpenAiAnalysisRequester newsOpenAiAnalysisRequester;
+                @Bean
+                @Primary
+                public NewsOpenAiAnalysisRequester newsOpenAiAnalysisRequester() {
+                        return mock(NewsOpenAiAnalysisRequester.class);
+                }
 
-        @MockBean
-        private NewsJpaRepository newsJpaRepository;
+                @Bean
+                @Primary
+                public NewsJpaRepository newsJpaRepository() {
+                        return mock(NewsJpaRepository.class);
+                }
+        }
 
         @Test
         public void 뉴스를_크롤링하고_ai_분석을_정상적으로_진행한다() throws Exception {
+                // given
+
                 // when
                 JobExecution jobExecution = jobLauncherTestUtils.launchJob();
 

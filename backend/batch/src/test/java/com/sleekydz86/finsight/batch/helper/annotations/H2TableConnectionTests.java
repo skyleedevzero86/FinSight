@@ -19,7 +19,6 @@ public class H2TableConnectionTests {
     public void printTableSchemas() {
         log.info("테이블 정보 조회 테스트");
 
-        @SuppressWarnings("unchecked")
         List<String> tables = entityManager
                 .createNativeQuery(
                         "SELECT TABLE_NAME " +
@@ -31,7 +30,7 @@ public class H2TableConnectionTests {
         log.info("=== H2 Database Schema 조회 ===");
 
         for (String tableName : tables) {
-            @SuppressWarnings("unchecked")
+
             List<Object[]> columns = entityManager
                     .createNativeQuery(
                             "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, IS_NULLABLE " +

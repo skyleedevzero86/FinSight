@@ -1,20 +1,26 @@
 package com.sleekydz86.finsight.core.user.adapter.persistence.command;
 
+import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaEntity;
+import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaMapper;
+import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaRepository;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.user.domain.NotificationType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Propagation;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Repository
-@Transactional(readOnly = true)
+@Transactional
 public class UserRepositoryImpl implements UserPersistencePort {
+
+    private static final Logger log = LoggerFactory.getLogger(UserRepositoryImpl.class);
 
     private final UserJpaRepository userJpaRepository;
     private final UserJpaMapper userJpaMapper;
@@ -25,70 +31,70 @@ public class UserRepositoryImpl implements UserPersistencePort {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public User save(User user) {
-        try {
-            var entity = userJpaMapper.toEntity(user);
-            var savedEntity = userJpaRepository.save(entity);
-            return userJpaMapper.toDomain(savedEntity);
-        } catch (Exception e) {
-            throw new RuntimeException("사용자 저장 실패", e);
-        }
+        log.debug("사용자 저장: {}", user.getEmail());
+
+        UserJpaEntity entity = userJpaMapper.toEntity(user);
+        entity.setUpdatedAt(LocalDateTime.now());
+
+        UserJpaEntity savedEntity = userJpaRepository.save(entity);
+        log.debug("사용자 저장 완료: {} (ID: {})", user.getEmail(), savedEntity.getId());
+
+        return userJpaMapper.toDomain(savedEntity);
     }
 
     @Override
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public Optional<User> findById(Long id) {
-        try {
-            return userJpaRepository.findById(id)
-                    .map(userJpaMapper::toDomain);
-        } catch (Exception e) {
-            throw new RuntimeException("사용자 조회 실패: " + id, e);
-        }
+        log.debug("사용자 ID로 조회: {}", id);
+
+        return userJpaRepository.findById(id)
+                .map(userJpaMapper::toDomain);
     }
 
     @Override
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public Optional<User> findByEmail(String email) {
-        try {
-            return userJpaRepository.findByEmail(email)
-                    .map(userJpaMapper::toDomain);
-        } catch (Exception e) {
-            throw new RuntimeException("이메일로 사용자 조회 실패: " + email, e);
-        }
+        log.debug("사용자 이메일로 조회: {}", email);
+
+        return userJpaRepository.findByEmail(email)
+                .map(userJpaMapper::toDomain);
     }
 
     @Override
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public boolean existsByEmail(String email) {
-        try {
-            return userJpaRepository.existsByEmail(email);
-        } catch (Exception e) {
-            throw new RuntimeException("이메일 존재 확인 실패: " + email, e);
-        }
+        return userJpaRepository.existsByEmail(email);
+    }
+
+    public List<User> findAllActiveUsers() {
+        log.debug("활성 사용자 목록 조회");
+
+        return userJpaRepository.findAllActiveUsers()
+                .stream()
+                .map(userJpaMapper::toDomain)
+                .toList();
     }
 
     @Override
-    @Transactional(readOnly = true, isolation = Isolation.READ_COMMITTED)
     public List<User> findByWatchlistCategories(List<TargetCategory> categories) {
-        try {
-            // N+1 쿼리 방지를 위한 단일 쿼리 사용
-            List<UserJpaEntity> entities = userJpaRepository.findByWatchlistCategories(categories);
-            return entities.stream()
-                    .map(userJpaMapper::toDomain)
-                    .collect(Collectors.toList());
-        } catch (Exception e) {
-            throw new RuntimeException("워치리스트 카테고리로 사용자 조회 실패", e);
-        }
+        log.debug("관심 종목으로 사용자 조회: {}", categories);
+
+        return userJpaRepository.findByWatchlistCategories(categories)
+                .stream()
+                .map(userJpaMapper::toDomain)
+                .toList();
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.READ_COMMITTED)
     public void deleteById(Long id) {
-        try {
-            userJpaRepository.deleteById(id);
-        } catch (Exception e) {
-            throw new RuntimeException("사용자 삭제 실패: " + id, e);
-        }
+        log.debug("사용자 삭제: {}", id);
+        userJpaRepository.deleteById(id);
+    }
+
+    public List<User> findAll() {
+        log.debug("전체 사용자 목록 조회");
+
+        return userJpaRepository.findAll()
+                .stream()
+                .map(userJpaMapper::toDomain)
+                .toList();
     }
 }
