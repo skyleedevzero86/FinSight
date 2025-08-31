@@ -38,7 +38,8 @@ class NewsAiProcessingServiceIntegrationTest {
     @Test
     void processNewsWithAI_ValidContent_ReturnsProcessedNews() {
         Content content = new Content("Test Title", "Test content for AI analysis");
-        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
+        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
         News news = News.createWithoutAI(newsMeta, content);
 
         when(newsAiAnalysisRequesterPort.analyseNewses(any(), any()))
@@ -64,7 +65,8 @@ class NewsAiProcessingServiceIntegrationTest {
     @Test
     void processNewsWithAI_EmptyContent_ReturnsOriginalNews() {
         Content content = new Content("", "");
-        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
+        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
         News news = News.createWithoutAI(newsMeta, content);
 
         News result = service.processNewsWithAI(news);
@@ -78,7 +80,8 @@ class NewsAiProcessingServiceIntegrationTest {
     @Test
     void processNewsWithAI_ExceptionOccurs_ReturnsOriginalNews() {
         Content content = new Content("Test Title", "Test content");
-        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
+        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
         News news = News.createWithoutAI(newsMeta, content);
 
         when(newsAiAnalysisRequesterPort.analyseNewses(any(), any()))
@@ -97,8 +100,10 @@ class NewsAiProcessingServiceIntegrationTest {
         Content content1 = new Content("Title 1", "Content 1");
         Content content2 = new Content("Title 2", "Content 2");
 
-        NewsMeta newsMeta1 = NewsMeta.of(NewsProvider.BLOOMBERG, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test1.com");
-        NewsMeta newsMeta2 = NewsMeta.of(NewsProvider.MARKETAUX, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test2.com");
+        NewsMeta newsMeta1 = NewsMeta.of(NewsProvider.BLOOMBERG,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test1.com");
+        NewsMeta newsMeta2 = NewsMeta.of(NewsProvider.MARKETAUX,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test2.com");
 
         News news1 = News.createWithoutAI(newsMeta1, content1);
         News news2 = News.createWithoutAI(newsMeta2, content2);
@@ -142,7 +147,8 @@ class NewsAiProcessingServiceIntegrationTest {
     @Test
     void processNewsWithAI_ContentWithSpecialCharacters_HandlesCorrectly() {
         Content content = new Content("Test @user Title", "Content with http://example.com and special chars!");
-        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
+        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
         News news = News.createWithoutAI(newsMeta, content);
 
         when(newsAiAnalysisRequesterPort.analyseNewses(any(), any()))
@@ -159,7 +165,8 @@ class NewsAiProcessingServiceIntegrationTest {
     void processNewsWithAI_LongContent_HandlesCorrectly() {
         String longContent = "A".repeat(1000);
         Content content = new Content("Long Title", longContent);
-        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
+        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
         News news = News.createWithoutAI(newsMeta, content);
 
         when(newsAiAnalysisRequesterPort.analyseNewses(any(), any()))
@@ -175,15 +182,15 @@ class NewsAiProcessingServiceIntegrationTest {
     @Test
     void processNewsWithAI_NewsWithExistingAiOverview_UpdatesCorrectly() {
         Content content = new Content("Test Title", "Test content");
-        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
+        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
         News news = News.createWithoutAI(newsMeta, content);
 
         AiOverview existingOverview = new AiOverview(
                 "Existing overview",
                 SentimentType.NEUTRAL,
                 0.5,
-                List.of(TargetCategory.SPY)
-        );
+                List.of(TargetCategory.SPY));
 
         News newsWithAi = news.updateAiAnalysis(
                 existingOverview.getOverview(),
@@ -191,8 +198,7 @@ class NewsAiProcessingServiceIntegrationTest {
                 "Translated content",
                 existingOverview.getTargetCategories(),
                 existingOverview.getSentimentType(),
-                existingOverview.getSentimentScore()
-        );
+                existingOverview.getSentimentScore());
 
         when(newsAiAnalysisRequesterPort.analyseNewses(any(), any()))
                 .thenReturn(List.of(newsWithAi));
@@ -207,7 +213,8 @@ class NewsAiProcessingServiceIntegrationTest {
     @Test
     void processNewsWithAI_ServiceUnavailable_HandlesGracefully() {
         Content content = new Content("Test Title", "Test content");
-        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
+        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
         News news = News.createWithoutAI(newsMeta, content);
 
         when(newsAiAnalysisRequesterPort.analyseNewses(any(), any()))
@@ -223,7 +230,8 @@ class NewsAiProcessingServiceIntegrationTest {
     @Test
     void processNewsWithAI_TimeoutScenario_HandlesCorrectly() {
         Content content = new Content("Test Title", "Test content");
-        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
+        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
         News news = News.createWithoutAI(newsMeta, content);
 
         when(newsAiAnalysisRequesterPort.analyseNewses(any(), any()))
@@ -239,7 +247,8 @@ class NewsAiProcessingServiceIntegrationTest {
     @Test
     void processNewsWithAI_InvalidContent_HandlesCorrectly() {
         Content content = new Content(null, null);
-        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG, LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
+        NewsMeta newsMeta = NewsMeta.of(NewsProvider.BLOOMBERG,
+                LocalDateTime.now().atZone(ZoneId.systemDefault()).toOffsetDateTime(), "http://test.com");
         News news = News.createWithoutAI(newsMeta, content);
 
         News result = service.processNewsWithAI(news);
