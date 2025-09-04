@@ -1,10 +1,14 @@
 package com.sleekydz86.finsight.web.controller;
 
 import com.sleekydz86.finsight.core.auth.domain.JwtToken;
+import com.sleekydz86.finsight.core.auth.dto.LoginRequest;
+import com.sleekydz86.finsight.core.auth.dto.RefreshTokenRequest;
 import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
+import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserRegistrationRequest;
 import com.sleekydz86.finsight.core.user.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,53 +25,20 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<JwtToken> login(@RequestBody LoginRequest request) {
-        JwtToken token = authenticationService.authenticate(request.getEmail(), request.getPassword());
-        return ResponseEntity.ok(token);
+    public ResponseEntity<ApiResponse<JwtToken>> login(@RequestBody @Valid LoginRequest request) {
+        JwtToken token = authenticationService.login(request);
+        return ResponseEntity.ok(ApiResponse.success(token, "로그인 성공"));
     }
 
     @PostMapping("/register")
-    public ResponseEntity<User> register(@RequestBody UserRegistrationRequest request) {
+    public ResponseEntity<ApiResponse<User>> register(@RequestBody @Valid UserRegistrationRequest request) {
         User user = userService.registerUser(request);
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(ApiResponse.success(user, "회원가입 성공"));
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<JwtToken> refresh(@RequestBody RefreshTokenRequest request) {
-        JwtToken token = authenticationService.refreshToken(request.getRefreshToken());
-        return ResponseEntity.ok(token);
-    }
-
-    public static class LoginRequest {
-        private String email;
-        private String password;
-
-        public String getEmail() {
-            return email;
-        }
-
-        public void setEmail(String email) {
-            this.email = email;
-        }
-
-        public String getPassword() {
-            return password;
-        }
-
-        public void setPassword(String password) {
-            this.password = password;
-        }
-    }
-
-    public static class RefreshTokenRequest {
-        private String refreshToken;
-
-        public String getRefreshToken() {
-            return refreshToken;
-        }
-
-        public void setRefreshToken(String refreshToken) {
-            this.refreshToken = refreshToken;
-        }
+    public ResponseEntity<ApiResponse<JwtToken>> refresh(@RequestBody @Valid RefreshTokenRequest request) {
+        JwtToken token = authenticationService.refresh(request);
+        return ResponseEntity.ok(ApiResponse.success(token, "토큰 갱신 성공"));
     }
 }

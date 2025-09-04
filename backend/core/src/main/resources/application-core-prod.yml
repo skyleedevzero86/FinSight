@@ -119,3 +119,41 @@ cache:
   news:
     ttl: ${NEWS_CACHE_TTL:3600}
     max-size: ${NEWS_CACHE_MAX_SIZE:10000}
+
+news:
+  data-processing:
+    normalization:
+      enabled: true
+      min-title-length: 10
+      max-title-length: 200
+      min-content-length: 50
+      max-content-length: 10000
+      remove-html-tags: true
+      remove-control-characters: true
+      remove-special-characters: false
+      enable-content-hashing: true
+
+    deduplication:
+      enabled: true
+      url-based: true
+      title-based: true
+      content-similarity: true
+      similarity-threshold: 0.8
+      time-based: true
+      min-time-interval-minutes: 30
+      enable-advanced-algorithms: true
+      max-cache-size: 10000
+
+    quality-validation:
+      enabled: true
+      min-quality-score: 50
+      validate-urls: true
+      validate-content: true
+      validate-ai-analysis: true
+      log-quality-issues: true
+
+    batch-processing:
+      enabled: true
+      batch-size: 100
+      max-concurrent-batches: 5
+      timeout-seconds: 300

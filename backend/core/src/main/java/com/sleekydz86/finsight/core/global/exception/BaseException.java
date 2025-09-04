@@ -1,8 +1,5 @@
 package com.sleekydz86.finsight.core.global.exception;
 
-import lombok.Getter;
-
-@Getter
 public abstract class BaseException extends RuntimeException {
     private final String errorCode;
     private final String errorType;
@@ -20,5 +17,17 @@ public abstract class BaseException extends RuntimeException {
         this.errorCode = errorCode;
         this.errorType = errorType;
         this.httpStatus = httpStatus;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public String getErrorType() {
+        return errorType;
+    }
+
+    public int getHttpStatus() {
+        return httpStatus;
     }
 }

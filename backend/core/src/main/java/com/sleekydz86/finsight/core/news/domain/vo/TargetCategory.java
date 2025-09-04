@@ -10,5 +10,6 @@ public enum TargetCategory {
     GOOGL,
     META,
     TSLA,
-    NONE //없음
+    BITCOIN,
+    NONE
 }

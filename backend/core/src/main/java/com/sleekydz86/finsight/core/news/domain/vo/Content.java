@@ -6,6 +6,11 @@ public class Content {
     private final String title;
     private final String content;
 
+    public Content() {
+        this.title = null;
+        this.content = null;
+    }
+
     public Content(String title, String content) {
         this.title = title;
         this.content = content;
@@ -21,8 +26,10 @@ public class Content {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Content content1 = (Content) o;
         return Objects.equals(title, content1.title) &&
                 Objects.equals(content, content1.content);

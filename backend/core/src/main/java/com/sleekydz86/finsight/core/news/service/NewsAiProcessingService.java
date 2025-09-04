@@ -42,4 +42,12 @@ public class NewsAiProcessingService {
         }
         return news;
     }
+
+    public News processNewsWithAI(News news) {
+        if (news == null) {
+            return null;
+        }
+        return analyzeNewsWithAI(news);
+    }
+
 }

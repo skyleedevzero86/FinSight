@@ -1,12 +1,7 @@
 package com.sleekydz86.finsight.core.global.exception.dto;
 
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-
 import java.time.LocalDateTime;
 
-@Getter
-@SuperBuilder
 public class ErrorResponse {
     private final LocalDateTime timestamp;
     private final int status;
@@ -28,5 +23,25 @@ public class ErrorResponse {
         this.error = error;
         this.message = message;
         this.path = path;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public String getError() {
+        return error;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public String getPath() {
+        return path;
     }
 }

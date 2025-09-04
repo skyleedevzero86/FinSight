@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.web.controller;
 
+import com.sleekydz86.finsight.core.global.dto.ApiResponse;
+import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.Newses;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsCommandUseCase;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsQueryUseCase;
@@ -46,5 +48,26 @@ public class NewsController {
         NewsQueryRequest request = new NewsQueryRequest(startDate, endDate, sentimentType, newsProviders, categories);
         Newses newses = newsQueryUseCase.findAllByFilters(request);
         return ResponseEntity.ok(newses);
+    }
+
+    @GetMapping("/personalized/{userId}")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Newses>> getPersonalizedNews(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        NewsQueryRequest request = new NewsQueryRequest(null, null, null, null, null);
+        Newses newses = newsQueryUseCase.findAllByFilters(request);
+        return ResponseEntity.ok(ApiResponse.success(newses, "개인화된 뉴스 조회 성공"));
+    }
+
+    @GetMapping("/trending")
+    public ResponseEntity<ApiResponse<List<News>>> getTrendingNews() {
+        NewsQueryRequest request = new NewsQueryRequest(null, null, null, null, null);
+        Newses newses = newsQueryUseCase.findAllByFilters(request);
+        List<News> trendingNews = newses.getNewses().stream()
+                .limit(10)
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(trendingNews, "트렌딩 뉴스 조회 성공"));
     }
 }

@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatReq
 import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -24,6 +25,15 @@ public class LlamaAnalysisRequester implements NewsAiRequester {
     private final WebClient webClient;
     private final HuggingFaceProperties huggingFaceProperties;
     private final ObjectMapper mapper;
+
+    @Autowired
+    public LlamaAnalysisRequester(WebClient.Builder webClientBuilder,
+                                  HuggingFaceProperties huggingFaceProperties,
+                                  ObjectMapper mapper) {
+        this.webClient = webClientBuilder.build();
+        this.huggingFaceProperties = huggingFaceProperties;
+        this.mapper = mapper;
+    }
 
     public LlamaAnalysisRequester(WebClient webClient,
                                   HuggingFaceProperties huggingFaceProperties,
@@ -62,7 +72,7 @@ public class LlamaAnalysisRequester implements NewsAiRequester {
                     .retrieve()
                     .bodyToMono(String.class)
                     .flatMap(this::parseResponse)
-                    .onErrorMap(throwable -> handleError(throwable));
+                    .onErrorMap(this::handleError);
 
         } catch (Exception e) {
             return Mono.error(new RuntimeException("프롬프트 생성 중 오류: " + e.getMessage(), e));

@@ -1,6 +1,7 @@
+application-core-local.yml_2
 HELP.md
 jobstudy/**
-!**/generated/**
+**/generated/**
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
