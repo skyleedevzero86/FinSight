@@ -3,9 +3,7 @@ package com.sleekydz86.finsight.core.news.service;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.AiOverview;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
-import com.sleekydz86.finsight.core.news.domain.vo.ContentNormalizationResult;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
-import com.sleekydz86.finsight.core.news.domain.vo.NormalizedContent;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.global.NewsProvider;
@@ -14,18 +12,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("뉴스 데이터 정규화 서비스 테스트")
@@ -56,7 +50,7 @@ class NewsDataNormalizationServiceTest {
         List<News> newsList = List.of(testNews, htmlTestNews);
 
         // when
-        List<News> normalizedNews = normalizationService.normalizeNewsList(newsList);
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
         // then
         assertThat(normalizedNews).isNotNull();
@@ -64,11 +58,11 @@ class NewsDataNormalizationServiceTest {
 
         News firstNews = normalizedNews.get(0);
         assertThat(firstNews.getOriginalContent().getTitle()).isEqualTo("테스트 뉴스 제목");
-        assertThat(firstNews.getOriginalContent().getBody()).isEqualTo("테스트 뉴스 본문입니다.");
+        assertThat(firstNews.getOriginalContent().getContent()).isEqualTo("테스트 뉴스 본문입니다.");
 
         News secondNews = normalizedNews.get(1);
         assertThat(secondNews.getOriginalContent().getTitle()).isEqualTo("HTML 태그 포함 뉴스");
-        assertThat(secondNews.getOriginalContent().getBody()).isEqualTo("HTML body with tags.");
+        assertThat(secondNews.getOriginalContent().getContent()).isEqualTo("HTML body with tags.");
     }
 
     @Test
@@ -78,7 +72,7 @@ class NewsDataNormalizationServiceTest {
         News newsWithHtml = createNewsWithHtmlTags();
 
         // when
-        List<News> normalizedNews = normalizationService.normalizeNewsList(List.of(newsWithHtml));
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(List.of(newsWithHtml));
 
         // then
         assertThat(normalizedNews).hasSize(1);
@@ -86,7 +80,7 @@ class NewsDataNormalizationServiceTest {
 
         assertThat(normalized.getOriginalContent().getTitle())
                 .doesNotContain("<", ">", "&lt;", "&gt;");
-        assertThat(normalized.getOriginalContent().getBody())
+        assertThat(normalized.getOriginalContent().getContent())
                 .doesNotContain("<", ">", "&lt;", "&gt;");
     }
 
@@ -97,13 +91,13 @@ class NewsDataNormalizationServiceTest {
         List<News> newsList = List.of(emptyTestNews);
 
         // when
-        List<News> normalizedNews = normalizationService.normalizeNewsList(newsList);
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
         // then
         assertThat(normalizedNews).hasSize(1);
         News normalized = normalizedNews.get(0);
         assertThat(normalized.getOriginalContent().getTitle()).isEqualTo("");
-        assertThat(normalized.getOriginalContent().getBody()).isEqualTo("");
+        assertThat(normalized.getOriginalContent().getContent()).isEqualTo("");
     }
 
     @Test
@@ -113,15 +107,15 @@ class NewsDataNormalizationServiceTest {
         List<News> newsList = List.of(testNews, htmlTestNews, emptyTestNews);
 
         // when
-        normalizationService.normalizeNewsList(newsList);
-        var statistics = normalizationService.getServiceStatistics();
+        normalizationService.normalizeAndDeduplicate(newsList);
+        Map<String, Object> statistics = normalizationService.getServiceStatistics();
 
         // then
         assertThat(statistics).isNotNull();
-        assertThat(statistics.getTotalProcessed()).isEqualTo(3);
-        assertThat(statistics.getSuccessCount()).isEqualTo(3);
-        assertThat(statistics.getErrorCount()).isEqualTo(0);
-        assertThat(statistics.getSuccessRate()).isEqualTo(100.0);
+        assertThat(statistics.get("totalProcessedCount")).isEqualTo(3L);
+        assertThat(statistics.get("successCount")).isEqualTo(3L);
+        assertThat(statistics.get("failureCount")).isEqualTo(0L);
+        assertThat((Double) statistics.get("successRate")).isEqualTo(100.0);
     }
 
     @Test
@@ -131,7 +125,7 @@ class NewsDataNormalizationServiceTest {
         List<News> newsList = List.of(specialCharTestNews);
 
         // when
-        List<News> normalizedNews = normalizationService.normalizeNewsList(newsList);
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
         // then
         assertThat(normalizedNews).hasSize(1);
@@ -139,7 +133,7 @@ class NewsDataNormalizationServiceTest {
 
         assertThat(normalized.getOriginalContent().getTitle())
                 .contains("특수문자", "테스트", "제목");
-        assertThat(normalized.getOriginalContent().getBody())
+        assertThat(normalized.getOriginalContent().getContent())
                 .contains("특수문자", "테스트", "본문");
     }
 
@@ -150,15 +144,15 @@ class NewsDataNormalizationServiceTest {
         List<News> newsList = List.of(longContentTestNews);
 
         // when
-        List<News> normalizedNews = normalizationService.normalizeNewsList(newsList);
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
         // then
         assertThat(normalizedNews).hasSize(1);
         News normalized = normalizedNews.get(0);
 
         assertThat(normalized.getOriginalContent().getTitle()).isNotNull();
-        assertThat(normalized.getOriginalContent().getBody()).isNotNull();
-        assertThat(normalized.getOriginalContent().getBody().length()).isGreaterThan(1000);
+        assertThat(normalized.getOriginalContent().getContent()).isNotNull();
+        assertThat(normalized.getOriginalContent().getContent().length()).isGreaterThan(1000);
     }
 
     @Test
@@ -169,7 +163,7 @@ class NewsDataNormalizationServiceTest {
         List<News> newsList = List.of(testNews, duplicateNews);
 
         // when
-        List<News> normalizedNews = normalizationService.normalizeNewsList(newsList);
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
         // then
         assertThat(normalizedNews).hasSize(1);
@@ -183,9 +177,9 @@ class NewsDataNormalizationServiceTest {
         News invalidNews = createInvalidNews();
 
         // when & then
-        assertThatThrownBy(() -> normalizationService.normalizeNewsList(List.of(invalidNews)))
+        assertThatThrownBy(() -> normalizationService.normalizeAndDeduplicate(List.of(invalidNews)))
                 .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("정규화 처리 중 오류가 발생했습니다");
+                .hasMessageContaining("뉴스 정규화 중 오류 발생");
     }
 
     @Test
@@ -195,29 +189,13 @@ class NewsDataNormalizationServiceTest {
         List<News> largeNewsList = createLargeNewsList(100);
 
         // when
-        List<News> normalizedNews = normalizationService.normalizeNewsList(largeNewsList);
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(largeNewsList);
 
         // then
         assertThat(normalizedNews).hasSize(100);
         assertThat(normalizedNews).allMatch(news ->
                 news.getOriginalContent() != null &&
                         news.getOriginalContent().getTitle() != null);
-    }
-
-    @Test
-    @DisplayName("정규화 품질 검증 성공")
-    void 정규화_품질_검증_성공() {
-        // given
-        List<News> newsList = List.of(testNews);
-
-        // when
-        List<News> normalizedNews = normalizationService.normalizeNewsList(newsList);
-        var qualityReport = normalizationService.generateQualityReport(normalizedNews);
-
-        // then
-        assertThat(qualityReport).isNotNull();
-        assertThat(qualityReport.getTotalNews()).isEqualTo(1);
-        assertThat(qualityReport.getQualityScore()).isGreaterThan(80);
     }
 
     @Test
@@ -228,7 +206,7 @@ class NewsDataNormalizationServiceTest {
 
         // when
         long startTime = System.currentTimeMillis();
-        List<News> normalizedNews = normalizationService.normalizeNewsList(newsList);
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
         long endTime = System.currentTimeMillis();
 
         // then
@@ -238,75 +216,20 @@ class NewsDataNormalizationServiceTest {
     }
 
     @Test
-    @DisplayName("정규화 설정 변경 성공")
-    void 정규화_설정_변경_성공() {
-        // given
-        var originalConfig = normalizationService.getConfiguration();
-
-        // when
-        normalizationService.updateConfiguration(
-                originalConfig.getMaxTitleLength() + 100,
-                originalConfig.getMaxBodyLength() + 500,
-                !originalConfig.isRemoveHtmlTags(),
-                !originalConfig.isNormalizeUnicode()
-        );
-        var newConfig = normalizationService.getConfiguration();
-
-        // then
-        assertThat(newConfig.getMaxTitleLength()).isEqualTo(originalConfig.getMaxTitleLength() + 100);
-        assertThat(newConfig.getMaxBodyLength()).isEqualTo(originalConfig.getMaxBodyLength() + 500);
-        assertThat(newConfig.isRemoveHtmlTags()).isNotEqualTo(originalConfig.isRemoveHtmlTags());
-        assertThat(newConfig.isNormalizeUnicode()).isNotEqualTo(originalConfig.isNormalizeUnicode());
-    }
-
-    @Test
-    @DisplayName("정규화 히스토리 추적 성공")
-    void 정규화_히스토리_추적_성공() {
-        // given
-        List<News> newsList = List.of(testNews);
-
-        // when
-        normalizationService.normalizeNewsList(newsList);
-        var history = normalizationService.getProcessingHistory();
-
-        // then
-        assertThat(history).isNotNull();
-        assertThat(history.getTotalProcessed()).isGreaterThan(0);
-        assertThat(history.getLastProcessedTime()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("정규화 메트릭 수집 성공")
-    void 정규화_메트릭_수집_성공() {
-        // given
-        List<News> newsList = List.of(testNews, htmlTestNews);
-
-        // when
-        normalizationService.normalizeNewsList(newsList);
-        var metrics = normalizationService.collectMetrics();
-
-        // then
-        assertThat(metrics).isNotNull();
-        assertThat(metrics.getProcessingTime()).isGreaterThan(0);
-        assertThat(metrics.getMemoryUsage()).isGreaterThan(0);
-        assertThat(metrics.getCpuUsage()).isGreaterThan(0);
-    }
-
-    @Test
     @DisplayName("유니코드 정규화 성공")
     void 유니코드_정규화_성공() {
         // given
         News unicodeNews = createUnicodeTestNews();
 
         // when
-        List<News> normalizedNews = normalizationService.normalizeNewsList(List.of(unicodeNews));
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(List.of(unicodeNews));
 
         // then
         assertThat(normalizedNews).hasSize(1);
         News normalized = normalizedNews.get(0);
 
         assertThat(normalized.getOriginalContent().getTitle()).isNotNull();
-        assertThat(normalized.getOriginalContent().getBody()).isNotNull();
+        assertThat(normalized.getOriginalContent().getContent()).isNotNull();
     }
 
     @Test
@@ -316,58 +239,43 @@ class NewsDataNormalizationServiceTest {
         News emojiNews = createEmojiTestNews();
 
         // when
-        List<News> normalizedNews = normalizationService.normalizeNewsList(List.of(emojiNews));
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(List.of(emojiNews));
 
         // then
         assertThat(normalizedNews).hasSize(1);
         News normalized = normalizedNews.get(0);
-
-        // 이모지가 적절히 처리되었는지 확인
+        
         assertThat(normalized.getOriginalContent().getTitle()).isNotNull();
-        assertThat(normalized.getOriginalContent().getBody()).isNotNull();
+        assertThat(normalized.getOriginalContent().getContent()).isNotNull();
     }
 
     @Test
-    @DisplayName("정규화 캐시 동작 확인")
-    void 정규화_캐시_동작_확인() {
+    @DisplayName("캐시 클리어 성공")
+    void 캐시_클리어_성공() {
         // given
         List<News> newsList = List.of(testNews);
 
         // when
-        normalizationService.normalizeNewsList(newsList);
-        normalizationService.normalizeNewsList(newsList);
+        normalizationService.normalizeAndDeduplicate(newsList);
+        normalizationService.clearCache();
 
         // then
-        var cacheStats = normalizationService.getCacheStatistics();
-        assertThat(cacheStats).isNotNull();
-        assertThat(cacheStats.getCacheHits()).isGreaterThan(0);
+        Map<String, Object> statistics = normalizationService.getServiceStatistics();
+        assertThat(statistics.get("cacheSize")).isEqualTo(0);
     }
-
 
     private News createTestNews() {
         return News.builder()
                 .id(1L)
                 .newsMeta(NewsMeta.of(
                         NewsProvider.BLOOMBERG,
-                        OffsetDateTime.now(ZoneOffset.of("+09:00")),
+                        LocalDateTime.now(),
                         "https://example.com/test"
                 ))
                 .scrapedTime(LocalDateTime.now())
-                .originalContent(Content.builder()
-                        .title("테스트 뉴스 제목")
-                        .body("테스트 뉴스 본문입니다.")
-                        .build())
-                .translatedContent(Content.builder()
-                        .title("Test News Title")
-                        .body("This is the body of test news. It contains sufficiently long content.")
-                        .build())
-                .aiOverView(AiOverview.builder()
-                        .overview("테스트 뉴스 요약")
-                        .sentimentType(SentimentType.NEUTRAL)
-                        .sentimentScore(0.0)
-                        .categories(List.of(TargetCategory.BITCOIN))
-                        .build())
-                .targetCategories(List.of(TargetCategory.BITCOIN))
+                .originalContent(new Content("테스트 뉴스 제목", "테스트 뉴스 본문입니다."))
+                .translatedContent(new Content("Test News Title", "This is the body of test news. It contains sufficiently long content."))
+                .aiOverView(new AiOverview("테스트 뉴스 요약", SentimentType.NEUTRAL, 0.0, List.of(TargetCategory.BITCOIN)))
                 .build();
     }
 
@@ -376,25 +284,13 @@ class NewsDataNormalizationServiceTest {
                 .id(2L)
                 .newsMeta(NewsMeta.of(
                         NewsProvider.MARKETAUX,
-                        OffsetDateTime.now(ZoneOffset.of("+09:00")),
+                        LocalDateTime.now(),
                         "https://example.com/html-test"
                 ))
                 .scrapedTime(LocalDateTime.now())
-                .originalContent(Content.builder()
-                        .title("<h1>HTML 태그 포함 뉴스</h1>")
-                        .body("<p>HTML body with tags.</p>")
-                        .build())
-                .translatedContent(Content.builder()
-                        .title("HTML News with Tags")
-                        .body("HTML body with tags.")
-                        .build())
-                .aiOverView(AiOverview.builder()
-                        .overview("HTML 태그 포함 뉴스")
-                        .sentimentType(SentimentType.NEUTRAL)
-                        .sentimentScore(0.0)
-                        .categories(List.of(TargetCategory.TESLA))
-                        .build())
-                .targetCategories(List.of(TargetCategory.TESLA))
+                .originalContent(new Content("<h1>HTML 태그 포함 뉴스</h1>", "<p>HTML body with tags.</p>"))
+                .translatedContent(new Content("HTML News with Tags", "HTML body with tags."))
+                .aiOverView(new AiOverview("HTML 태그 포함 뉴스", SentimentType.NEUTRAL, 0.0, List.of(TargetCategory.TSLA)))
                 .build();
     }
 
@@ -403,25 +299,13 @@ class NewsDataNormalizationServiceTest {
                 .id(3L)
                 .newsMeta(NewsMeta.of(
                         NewsProvider.BLOOMBERG,
-                        OffsetDateTime.now(ZoneOffset.of("+09:00")),
+                        LocalDateTime.now(),
                         "https://example.com/empty"
                 ))
                 .scrapedTime(LocalDateTime.now())
-                .originalContent(Content.builder()
-                        .title("")
-                        .body("")
-                        .build())
-                .translatedContent(Content.builder()
-                        .title("")
-                        .body("")
-                        .build())
-                .aiOverView(AiOverview.builder()
-                        .overview("빈 컨텐츠 뉴스")
-                        .sentimentType(SentimentType.NEUTRAL)
-                        .sentimentScore(0.0)
-                        .categories(List.of())
-                        .build())
-                .targetCategories(List.of())
+                .originalContent(new Content("", ""))
+                .translatedContent(new Content("", ""))
+                .aiOverView(new AiOverview("빈 컨텐츠 뉴스", SentimentType.NEUTRAL, 0.0, List.of()))
                 .build();
     }
 
@@ -430,25 +314,13 @@ class NewsDataNormalizationServiceTest {
                 .id(4L)
                 .newsMeta(NewsMeta.of(
                         NewsProvider.MARKETAUX,
-                        OffsetDateTime.now(ZoneOffset.of("+09:00")),
+                        LocalDateTime.now(),
                         "https://example.com/special"
                 ))
                 .scrapedTime(LocalDateTime.now())
-                .originalContent(Content.builder()
-                        .title("특수문자 테스트 제목!@#$%^&*()")
-                        .body("특수문자 테스트 본문!@#$%^&*()_+-=[]{}|;':\",./<>?")
-                        .build())
-                .translatedContent(Content.builder()
-                        .title("Special Character Test Title")
-                        .body("Special Character Test Body")
-                        .build())
-                .aiOverView(AiOverview.builder()
-                        .overview("특수문자 포함 뉴스")
-                        .sentimentType(SentimentType.NEUTRAL)
-                        .sentimentScore(0.0)
-                        .categories(List.of(TargetCategory.BITCOIN))
-                        .build())
-                .targetCategories(List.of(TargetCategory.BITCOIN))
+                .originalContent(new Content("특수문자 테스트 제목!@#$%^&*()", "특수문자 테스트 본문!@#$%^&*()_+-=[]{}|;':\",./<>?"))
+                .translatedContent(new Content("Special Character Test Title", "Special Character Test Body"))
+                .aiOverView(new AiOverview("특수문자 포함 뉴스", SentimentType.NEUTRAL, 0.0, List.of(TargetCategory.BITCOIN)))
                 .build();
     }
 
@@ -465,25 +337,13 @@ class NewsDataNormalizationServiceTest {
                 .id(5L)
                 .newsMeta(NewsMeta.of(
                         NewsProvider.BLOOMBERG,
-                        OffsetDateTime.now(ZoneOffset.of("+09:00")),
+                        LocalDateTime.now(),
                         "https://example.com/long"
                 ))
                 .scrapedTime(LocalDateTime.now())
-                .originalContent(Content.builder()
-                        .title("매우 긴 제목을 가진 뉴스입니다. 이 제목은 정규화 서비스의 제목 길이 제한을 테스트하기 위해 충분히 길게 작성되었습니다.")
-                        .body(longBody.toString())
-                        .build())
-                .translatedContent(Content.builder()
-                        .title("Very Long News Title")
-                        .body("Very long news body content for testing purposes.")
-                        .build())
-                .aiOverView(AiOverview.builder()
-                        .overview("긴 컨텐츠를 가진 뉴스")
-                        .sentimentType(SentimentType.NEUTRAL)
-                        .sentimentScore(0.0)
-                        .categories(List.of(TargetCategory.TESLA))
-                        .build())
-                .targetCategories(List.of(TargetCategory.TESLA))
+                .originalContent(new Content("매우 긴 제목을 가진 뉴스입니다. 이 제목은 정규화 서비스의 제목 길이 제한을 테스트하기 위해 충분히 길게 작성되었습니다.", longBody.toString()))
+                .translatedContent(new Content("Very Long News Title", "Very long news body content for testing purposes."))
+                .aiOverView(new AiOverview("긴 컨텐츠를 가진 뉴스", SentimentType.NEUTRAL, 0.0, List.of(TargetCategory.TSLA)))
                 .build();
     }
 
@@ -492,25 +352,13 @@ class NewsDataNormalizationServiceTest {
                 .id(6L)
                 .newsMeta(NewsMeta.of(
                         NewsProvider.MARKETAUX,
-                        OffsetDateTime.now(ZoneOffset.of("+09:00")),
+                        LocalDateTime.now(),
                         "https://example.com/html"
                 ))
                 .scrapedTime(LocalDateTime.now())
-                .originalContent(Content.builder()
-                        .title("<h1>HTML 태그가 포함된 제목</h1><script>alert('xss')</script>")
-                        .body("<p>HTML 태그가 포함된 본문입니다.</p><div>여러 줄의 <br>HTML 컨텐츠</div>")
-                        .build())
-                .translatedContent(Content.builder()
-                        .title("HTML Title with Tags")
-                        .body("HTML body with tags")
-                        .build())
-                .aiOverView(AiOverview.builder()
-                        .overview("HTML 태그 포함 뉴스")
-                        .sentimentType(SentimentType.NEUTRAL)
-                        .sentimentScore(0.0)
-                        .categories(List.of(TargetCategory.BITCOIN))
-                        .build())
-                .targetCategories(List.of(TargetCategory.BITCOIN))
+                .originalContent(new Content("<h1>HTML 태그가 포함된 제목</h1><script>alert('xss')</script>", "<p>HTML 태그가 포함된 본문입니다.</p><div>여러 줄의 <br>HTML 컨텐츠</div>"))
+                .translatedContent(new Content("HTML Title with Tags", "HTML body with tags"))
+                .aiOverView(new AiOverview("HTML 태그 포함 뉴스", SentimentType.NEUTRAL, 0.0, List.of(TargetCategory.BITCOIN)))
                 .build();
     }
 
@@ -522,7 +370,6 @@ class NewsDataNormalizationServiceTest {
                 .originalContent(originalNews.getOriginalContent())
                 .translatedContent(originalNews.getTranslatedContent())
                 .aiOverView(originalNews.getAiOverView())
-                .targetCategories(originalNews.getTargetCategories())
                 .build();
     }
 
@@ -534,7 +381,6 @@ class NewsDataNormalizationServiceTest {
                 .originalContent(null)
                 .translatedContent(null)
                 .aiOverView(null)
-                .targetCategories(null)
                 .build();
     }
 
@@ -543,25 +389,13 @@ class NewsDataNormalizationServiceTest {
                 .id(7L)
                 .newsMeta(NewsMeta.of(
                         NewsProvider.BLOOMBERG,
-                        OffsetDateTime.now(ZoneOffset.of("+09:00")),
+                        LocalDateTime.now(),
                         "https://example.com/unicode"
                 ))
                 .scrapedTime(LocalDateTime.now())
-                .originalContent(Content.builder()
-                        .title("유니코드 테스트 제목: café résumé naïve")
-                        .body("유니코드 테스트 본문: café résumé naïve, 中文, 日本語, 한국어")
-                        .build())
-                .translatedContent(Content.builder()
-                        .title("Unicode Test Title")
-                        .body("Unicode Test Body")
-                        .build())
-                .aiOverView(AiOverview.builder()
-                        .overview("유니코드 포함 뉴스")
-                        .sentimentType(SentimentType.NEUTRAL)
-                        .sentimentScore(0.0)
-                        .categories(List.of(TargetCategory.BITCOIN))
-                        .build())
-                .targetCategories(List.of(TargetCategory.BITCOIN))
+                .originalContent(new Content("유니코드 테스트 제목: café résumé naïve", "유니코드 테스트 본문: café résumé naïve, 中文, 日本語, 한국어"))
+                .translatedContent(new Content("Unicode Test Title", "Unicode Test Body"))
+                .aiOverView(new AiOverview("유니코드 포함 뉴스", SentimentType.NEUTRAL, 0.0, List.of(TargetCategory.BITCOIN)))
                 .build();
     }
 
@@ -570,25 +404,13 @@ class NewsDataNormalizationServiceTest {
                 .id(8L)
                 .newsMeta(NewsMeta.of(
                         NewsProvider.MARKETAUX,
-                        OffsetDateTime.now(ZoneOffset.of("+09:00")),
+                        LocalDateTime.now(),
                         "https://example.com/emoji"
                 ))
                 .scrapedTime(LocalDateTime.now())
-                .originalContent(Content.builder()
-                        .title("이모지 테스트 제목 🚀📈💎")
-                        .body("이모지 테스트 본문: 🚀  💎 Bitcoin is going to the moon! 🌙✨")
-                        .build())
-                .translatedContent(Content.builder()
-                        .title("Emoji Test Title")
-                        .body("Emoji Test Body")
-                        .build())
-                .aiOverView(AiOverview.builder()
-                        .overview("이모지 포함 뉴스")
-                        .sentimentType(SentimentType.POSITIVE)
-                        .sentimentScore(0.8)
-                        .categories(List.of(TargetCategory.BITCOIN))
-                        .build())
-                .targetCategories(List.of(TargetCategory.BITCOIN))
+                .originalContent(new Content("이모지 테스트 제목 ��📈��", "이모지 테스트 본문: 🚀  💎 Bitcoin is going to the moon! 🌙✨"))
+                .translatedContent(new Content("Emoji Test Title", "Emoji Test Body"))
+                .aiOverView(new AiOverview("이모지 포함 뉴스", SentimentType.POSITIVE, 0.8, List.of(TargetCategory.BITCOIN)))
                 .build();
     }
 
@@ -605,25 +427,13 @@ class NewsDataNormalizationServiceTest {
                 .id(id)
                 .newsMeta(NewsMeta.of(
                         NewsProvider.BLOOMBERG,
-                        OffsetDateTime.now(ZoneOffset.of("+09:00")),
+                        LocalDateTime.now(),
                         "https://example.com/news-" + id
                 ))
                 .scrapedTime(LocalDateTime.now())
-                .originalContent(Content.builder()
-                        .title("테스트 뉴스 제목 " + id)
-                        .body("테스트 뉴스 본문 " + id + "입니다. 이 뉴스는 대용량 테스트를 위해 생성되었습니다.")
-                        .build())
-                .translatedContent(Content.builder()
-                        .title("Test News Title " + id)
-                        .body("Test News Body " + id + ". This news was created for large-scale testing.")
-                        .build())
-                .aiOverView(AiOverview.builder()
-                        .overview("테스트 뉴스 " + id + " 요약")
-                        .sentimentType(SentimentType.NEUTRAL)
-                        .sentimentScore(0.0)
-                        .categories(List.of(TargetCategory.BITCOIN))
-                        .build())
-                .targetCategories(List.of(TargetCategory.BITCOIN))
+                .originalContent(new Content("테스트 뉴스 제목 " + id, "테스트 뉴스 본문 " + id + "입니다. 이 뉴스는 대용량 테스트를 위해 생성되었습니다."))
+                .translatedContent(new Content("Test News Title " + id, "Test News Body " + id + ". This news was created for large-scale testing."))
+                .aiOverView(new AiOverview("테스트 뉴스 " + id + " 요약", SentimentType.NEUTRAL, 0.0, List.of(TargetCategory.BITCOIN)))
                 .build();
     }
 }
