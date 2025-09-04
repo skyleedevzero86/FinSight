@@ -22,7 +22,6 @@ repositories {
 }
 
 dependencies {
-
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-security'
@@ -31,33 +30,60 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
     implementation 'org.springframework.boot:spring-boot-starter-cache'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     implementation 'io.jsonwebtoken:jjwt-impl:0.12.6'
     implementation 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+
+    // Database
     implementation 'com.h2database:h2'
     implementation 'com.mysql:mysql-connector-j:9.3.0'
+
+    // QueryDSL
     implementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
     annotationProcessor 'com.querydsl:querydsl-apt:5.1.0:jakarta'
     annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
     annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+
+    // Rate Limiting - 수정된 의존성
     implementation 'com.bucket4j:bucket4j-core:8.7.0'
     implementation 'com.bucket4j:bucket4j-redis:8.7.0'
+    implementation 'io.lettuce:lettuce-core:6.3.0.RELEASE'
+
+    // Resilience
     implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
     implementation 'io.github.resilience4j:resilience4j-micrometer:2.2.0'
     implementation 'io.micrometer:micrometer-registry-prometheus'
+
+    // DJL - 수정된 의존성
     implementation 'ai.djl:api:0.24.0'
     implementation 'ai.djl.pytorch:pytorch-engine:0.24.0'
     implementation 'ai.djl.huggingface:tokenizers:0.24.0'
     implementation 'ai.djl.huggingface:huggingface:0.24.0'
     implementation 'ai.djl.sentencepiece:sentencepiece:0.24.0'
-    runtimeOnly 'ai.djl.pytorch:pytorch-native-auto:1.13.1'
+    runtimeOnly 'ai.djl.pytorch:pytorch-native-cpu:1.13.1'
+    runtimeOnly 'ai.djl.pytorch:pytorch-jni:1.13.1'
+
+    // Encryption
     implementation 'com.github.ulisesbocchio:jasypt-spring-boot-starter:3.0.5'
+
+    // Caching
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
+
+    // Lombok - 수정된 의존성
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    // Validation - 추가된 의존성
+    implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+
+    // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+    // Logging
     implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 }
 

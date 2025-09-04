@@ -66,7 +66,7 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
             OffsetDateTime publishedTime = OffsetDateTime.parse(item.published_at);
             NewsMeta newsMeta = NewsMeta.of(
                     NewsProvider.MARKETAUX,
-                    publishedTime,
+                    publishedTime.toLocalDateTime(),
                     item.url);
 
             Content originalContent = new Content(item.title, item.description);
@@ -77,11 +77,12 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
 
             NewsMeta fallbackMeta = NewsMeta.of(
                     NewsProvider.MARKETAUX,
-                    OffsetDateTime.now(),
+                    LocalDateTime.now(),
                     item.url != null ? item.url : "https://api.marketaux.com");
             Content fallbackContent = new Content(
                     item.title != null ? item.title : "Unknown Title",
                     item.description != null ? item.description : "No description available");
+
             return News.createWithoutAI(fallbackMeta, fallbackContent);
         }
     }
