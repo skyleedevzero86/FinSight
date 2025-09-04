@@ -244,7 +244,7 @@ class NewsDataNormalizationServiceTest {
         // then
         assertThat(normalizedNews).hasSize(1);
         News normalized = normalizedNews.get(0);
-        
+
         assertThat(normalized.getOriginalContent().getTitle()).isNotNull();
         assertThat(normalized.getOriginalContent().getContent()).isNotNull();
     }
