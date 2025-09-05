@@ -7,8 +7,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "board_reactions",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"board_id", "user_email"}))
+@Table(name = "board_reactions", uniqueConstraints = @UniqueConstraint(columnNames = { "board_id", "user_email" }))
 public class BoardReactionJpaEntity extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,32 +23,56 @@ public class BoardReactionJpaEntity extends BaseEntity {
     @Column(name = "reaction_type", nullable = false)
     private ReactionType reactionType;
 
-    public BoardReactionJpaEntity() {}
+    public BoardReactionJpaEntity() {
+    }
 
-    public BoardReactionJpaEntity(Long id, Long boardId, String userEmail, ReactionType reactionType, LocalDateTime createdAt) {
+    public BoardReactionJpaEntity(Long id, Long boardId, String userEmail, ReactionType reactionType,
+            LocalDateTime createdAt) {
         this.id = id;
         this.boardId = boardId;
         this.userEmail = userEmail;
         this.reactionType = reactionType;
-        this.createdAt = createdAt;
+        this.setCreatedAt(createdAt);
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public Long getBoardId() { return boardId; }
-    public void setBoardId(Long boardId) { this.boardId = boardId; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getUserEmail() { return userEmail; }
-    public void setUserEmail(String userEmail) { this.userEmail = userEmail; }
+    public Long getBoardId() {
+        return boardId;
+    }
 
-    public ReactionType getReactionType() { return reactionType; }
-    public void setReactionType(ReactionType reactionType) { this.reactionType = reactionType; }
+    public void setBoardId(Long boardId) {
+        this.boardId = boardId;
+    }
+
+    public String getUserEmail() {
+        return userEmail;
+    }
+
+    public void setUserEmail(String userEmail) {
+        this.userEmail = userEmail;
+    }
+
+    public ReactionType getReactionType() {
+        return reactionType;
+    }
+
+    public void setReactionType(ReactionType reactionType) {
+        this.reactionType = reactionType;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         BoardReactionJpaEntity that = (BoardReactionJpaEntity) o;
         return id != null && id.equals(that.id);
     }

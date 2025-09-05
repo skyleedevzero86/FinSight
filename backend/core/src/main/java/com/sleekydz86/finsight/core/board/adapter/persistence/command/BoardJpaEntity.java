@@ -58,12 +58,13 @@ public class BoardJpaEntity extends BaseEntity {
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<BoardFileJpaEntity> files = new ArrayList<>();
 
-    public BoardJpaEntity() {}
+    public BoardJpaEntity() {
+    }
 
     public BoardJpaEntity(Long id, String title, String content, String authorEmail, BoardType boardType,
-                          BoardStatus status, int viewCount, int likeCount, int dislikeCount,
-                          int commentCount, int reportCount, List<String> hashtags,
-                          LocalDateTime createdAt, LocalDateTime updatedAt) {
+            BoardStatus status, int viewCount, int likeCount, int dislikeCount,
+            int commentCount, int reportCount, List<String> hashtags,
+            LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.title = title;
         this.content = content;
@@ -76,53 +77,120 @@ public class BoardJpaEntity extends BaseEntity {
         this.commentCount = commentCount;
         this.reportCount = reportCount;
         this.hashtags = hashtags != null ? hashtags : new ArrayList<>();
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
+        this.setCreatedAt(createdAt);
+        this.setUpdatedAt(updatedAt);
     }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public Long getId() {
+        return id;
+    }
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getContent() { return content; }
-    public void setContent(String content) { this.content = content; }
+    public String getTitle() {
+        return title;
+    }
 
-    public String getAuthorEmail() { return authorEmail; }
-    public void setAuthorEmail(String authorEmail) { this.authorEmail = authorEmail; }
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
-    public BoardType getBoardType() { return boardType; }
-    public void setBoardType(BoardType boardType) { this.boardType = boardType; }
+    public String getContent() {
+        return content;
+    }
 
-    public BoardStatus getStatus() { return status; }
-    public void setStatus(BoardStatus status) { this.status = status; }
+    public void setContent(String content) {
+        this.content = content;
+    }
 
-    public int getViewCount() { return viewCount; }
-    public void setViewCount(int viewCount) { this.viewCount = viewCount; }
+    public String getAuthorEmail() {
+        return authorEmail;
+    }
 
-    public int getLikeCount() { return likeCount; }
-    public void setLikeCount(int likeCount) { this.likeCount = likeCount; }
+    public void setAuthorEmail(String authorEmail) {
+        this.authorEmail = authorEmail;
+    }
 
-    public int getDislikeCount() { return dislikeCount; }
-    public void setDislikeCount(int dislikeCount) { this.dislikeCount = dislikeCount; }
+    public BoardType getBoardType() {
+        return boardType;
+    }
 
-    public int getCommentCount() { return commentCount; }
-    public void setCommentCount(int commentCount) { this.commentCount = commentCount; }
+    public void setBoardType(BoardType boardType) {
+        this.boardType = boardType;
+    }
 
-    public int getReportCount() { return reportCount; }
-    public void setReportCount(int reportCount) { this.reportCount = reportCount; }
+    public BoardStatus getStatus() {
+        return status;
+    }
 
-    public List<String> getHashtags() { return hashtags; }
-    public void setHashtags(List<String> hashtags) { this.hashtags = hashtags; }
+    public void setStatus(BoardStatus status) {
+        this.status = status;
+    }
 
-    public List<BoardFileJpaEntity> getFiles() { return files; }
-    public void setFiles(List<BoardFileJpaEntity> files) { this.files = files; }
+    public int getViewCount() {
+        return viewCount;
+    }
+
+    public void setViewCount(int viewCount) {
+        this.viewCount = viewCount;
+    }
+
+    public int getLikeCount() {
+        return likeCount;
+    }
+
+    public void setLikeCount(int likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public int getDislikeCount() {
+        return dislikeCount;
+    }
+
+    public void setDislikeCount(int dislikeCount) {
+        this.dislikeCount = dislikeCount;
+    }
+
+    public int getCommentCount() {
+        return commentCount;
+    }
+
+    public void setCommentCount(int commentCount) {
+        this.commentCount = commentCount;
+    }
+
+    public int getReportCount() {
+        return reportCount;
+    }
+
+    public void setReportCount(int reportCount) {
+        this.reportCount = reportCount;
+    }
+
+    public List<String> getHashtags() {
+        return hashtags;
+    }
+
+    public void setHashtags(List<String> hashtags) {
+        this.hashtags = hashtags;
+    }
+
+    public List<BoardFileJpaEntity> getFiles() {
+        return files;
+    }
+
+    public void setFiles(List<BoardFileJpaEntity> files) {
+        this.files = files;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         BoardJpaEntity that = (BoardJpaEntity) o;
         return id != null && id.equals(that.id);
     }

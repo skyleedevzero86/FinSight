@@ -11,8 +11,9 @@ import com.sleekydz86.finsight.core.board.domain.port.out.BoardReactionPersisten
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardReportPersistencePort;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardScrapPersistencePort;
 import com.sleekydz86.finsight.core.comment.domain.ReactionType;
-import com.sleekydz86.finsight.core.global.exception.BaseException;
+import com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException;
 import com.sleekydz86.finsight.core.global.exception.UserNotFoundException;
+import com.sleekydz86.finsight.core.global.exception.CommentAlreadyReportedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -72,7 +73,7 @@ public class BoardCommandService implements BoardCommandUseCase {
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
 
         if (!existingBoard.getAuthorEmail().equals(userEmail)) {
-            throw new BaseException("권한이 없습니다", "UNAUTHORIZED", "AUTHORIZATION_ERROR", 403);
+            throw new InsufficientPermissionException("게시글 수정 권한이 없습니다");
         }
 
         Board updatedBoard = existingBoard.updateContent(
@@ -95,7 +96,7 @@ public class BoardCommandService implements BoardCommandUseCase {
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
 
         if (!existingBoard.getAuthorEmail().equals(userEmail)) {
-            throw new BaseException("권한이 없습니다", "UNAUTHORIZED", "AUTHORIZATION_ERROR", 403);
+            throw new InsufficientPermissionException("게시글 삭제 권한이 없습니다");
         }
 
         boardPersistencePort.deleteById(boardId);
@@ -109,23 +110,34 @@ public class BoardCommandService implements BoardCommandUseCase {
         Board board = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
 
-        // Check if user already liked
         Optional<BoardReaction> existingReaction = boardReactionPersistencePort
                 .findByBoardIdAndUserEmail(boardId, userEmail);
 
         if (existingReaction.isPresent()) {
-            boardReactionPersistencePort.deleteByBoardIdAndUserEmail(boardId, userEmail);
-            Board updatedBoard = board.incrementDislike();
-            return boardPersistencePort.save(updatedBoard);
+            BoardReaction reaction = existingReaction.get();
+            if (reaction.getReactionType() == ReactionType.LIKE) {
+                boardReactionPersistencePort.deleteByBoardIdAndUserEmail(boardId, userEmail);
+                Board updatedBoard = board.decrementLike();
+                return boardPersistencePort.save(updatedBoard);
+            } else {
+                boardReactionPersistencePort.deleteByBoardIdAndUserEmail(boardId, userEmail);
+                Board updatedBoard = board.decrementDislike().incrementLike();
+                boardReactionPersistencePort.save(BoardReaction.builder()
+                        .boardId(boardId)
+                        .userEmail(userEmail)
+                        .reactionType(ReactionType.LIKE)
+                        .build());
+                return boardPersistencePort.save(updatedBoard);
+            }
         } else {
-            BoardReaction reaction = BoardReaction.builder()
+            // User hasn't reacted, add like
+            Board updatedBoard = board.incrementLike();
+            boardReactionPersistencePort.save(BoardReaction.builder()
                     .boardId(boardId)
                     .userEmail(userEmail)
                     .reactionType(ReactionType.LIKE)
-                    .build();
-            boardReactionPersistencePort.save(reaction);
+                    .build());
 
-            Board updatedBoard = board.incrementLike();
             return boardPersistencePort.save(updatedBoard);
         }
     }
@@ -141,18 +153,31 @@ public class BoardCommandService implements BoardCommandUseCase {
                 .findByBoardIdAndUserEmail(boardId, userEmail);
 
         if (existingReaction.isPresent()) {
-            boardReactionPersistencePort.deleteByBoardIdAndUserEmail(boardId, userEmail);
-            Board updatedBoard = board.incrementLike();
-            return boardPersistencePort.save(updatedBoard);
+            BoardReaction reaction = existingReaction.get();
+            if (reaction.getReactionType() == ReactionType.DISLIKE) {
+                boardReactionPersistencePort.deleteByBoardIdAndUserEmail(boardId, userEmail);
+                Board updatedBoard = board.decrementDislike();
+                return boardPersistencePort.save(updatedBoard);
+            } else {
+
+                boardReactionPersistencePort.deleteByBoardIdAndUserEmail(boardId, userEmail);
+                Board updatedBoard = board.decrementLike().incrementDislike();
+                boardReactionPersistencePort.save(BoardReaction.builder()
+                        .boardId(boardId)
+                        .userEmail(userEmail)
+                        .reactionType(ReactionType.DISLIKE)
+                        .build());
+                return boardPersistencePort.save(updatedBoard);
+            }
         } else {
-            BoardReaction reaction = BoardReaction.builder()
+
+            Board updatedBoard = board.incrementDislike();
+            boardReactionPersistencePort.save(BoardReaction.builder()
                     .boardId(boardId)
                     .userEmail(userEmail)
                     .reactionType(ReactionType.DISLIKE)
-                    .build();
-            boardReactionPersistencePort.save(reaction);
+                    .build());
 
-            Board updatedBoard = board.incrementDislike();
             return boardPersistencePort.save(updatedBoard);
         }
     }
@@ -168,7 +193,7 @@ public class BoardCommandService implements BoardCommandUseCase {
                 .findByBoardIdAndReporterEmail(boardId, userEmail);
 
         if (existingReport.isPresent()) {
-            throw new BaseException("이미 신고한 게시글입니다", "ALREADY_REPORTED", "VALIDATION_ERROR", 400);
+            throw new CommentAlreadyReportedException(boardId, userEmail);
         }
 
         BoardReport report = BoardReport.builder()
@@ -212,7 +237,7 @@ public class BoardCommandService implements BoardCommandUseCase {
                 .findByBoardIdAndUserEmail(boardId, userEmail);
 
         if (existingScrap.isPresent()) {
-            throw new BaseException("이미 스크랩한 게시글입니다", "ALREADY_SCRAPPED", "VALIDATION_ERROR", 400);
+            throw new CommentAlreadyReportedException(boardId, userEmail);
         }
 
         BoardScrap scrap = BoardScrap.builder()
@@ -236,29 +261,43 @@ public class BoardCommandService implements BoardCommandUseCase {
     }
 
     @Override
-    public BoardFile uploadFile(Long boardId, String originalFileName, String storedFileName,
-                                String filePath, String contentType, Long fileSize) {
-        log.info("Uploading file for board {}", boardId);
+    public BoardFile uploadFile(String userEmail, Long boardId, String fileName, String filePath, long fileSize) {
+        log.info("User {} uploading file {} to board {}", userEmail, fileName, boardId);
+
+        Board board = boardPersistencePort.findById(boardId)
+                .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
+
+        if (!board.getAuthorEmail().equals(userEmail)) {
+            throw new InsufficientPermissionException("파일 업로드 권한이 없습니다");
+        }
 
         BoardFile file = BoardFile.builder()
                 .boardId(boardId)
-                .originalFileName(originalFileName)
-                .storedFileName(storedFileName)
+                .fileName(fileName)
                 .filePath(filePath)
-                .contentType(contentType)
                 .fileSize(fileSize)
                 .uploadedAt(LocalDateTime.now())
                 .build();
 
         BoardFile savedFile = boardFilePersistencePort.save(file);
-        log.info("File uploaded successfully with ID: {}", savedFile.getId());
+        log.info("File {} uploaded successfully to board {}", fileName, boardId);
 
         return savedFile;
     }
 
     @Override
-    public void deleteFile(Long fileId) {
-        log.info("Deleting file {}", fileId);
+    public void deleteFile(String userEmail, Long fileId) {
+        log.info("User {} deleting file {}", userEmail, fileId);
+
+        BoardFile file = boardFilePersistencePort.findById(fileId)
+                .orElseThrow(() -> new UserNotFoundException("파일을 찾을 수 없습니다"));
+
+        Board board = boardPersistencePort.findById(file.getBoardId())
+                .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
+
+        if (!board.getAuthorEmail().equals(userEmail)) {
+            throw new InsufficientPermissionException("파일 삭제 권한이 없습니다");
+        }
 
         boardFilePersistencePort.deleteById(fileId);
         log.info("File {} deleted successfully", fileId);
