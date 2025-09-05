@@ -7,8 +7,12 @@ import java.util.Optional;
 
 public interface BoardScrapPersistencePort {
     BoardScrap save(BoardScrap scrap);
+
     Optional<BoardScrap> findByBoardIdAndUserEmail(Long boardId, String userEmail);
+
     void deleteByBoardIdAndUserEmail(Long boardId, String userEmail);
+
     List<BoardScrap> findByUserEmail(String userEmail, int page, int size);
+
     long countByUserEmail(String userEmail);
 }

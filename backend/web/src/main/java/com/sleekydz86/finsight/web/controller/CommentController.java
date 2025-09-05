@@ -31,7 +31,7 @@ public class CommentController {
     private final CommentQueryUseCase commentQueryUseCase;
 
     public CommentController(CommentCommandUseCase commentCommandUseCase,
-                             CommentQueryUseCase commentQueryUseCase) {
+            CommentQueryUseCase commentQueryUseCase) {
         this.commentCommandUseCase = commentCommandUseCase;
         this.commentQueryUseCase = commentQueryUseCase;
     }
@@ -116,6 +116,7 @@ public class CommentController {
         return ResponseEntity.ok(ApiResponse.success(null, "댓글이 신고되었습니다"));
     }
 
+    // 타겟별 댓글 조회 (뉴스, 게시판 등)
     @GetMapping("/target/{targetId}")
     public ResponseEntity<ApiResponse<Comments>> getCommentsByTarget(
             @PathVariable Long targetId,
@@ -129,6 +130,36 @@ public class CommentController {
         Comments comments = commentQueryUseCase.getCommentsByTargetIdWithPagination(targetId, type, page, size);
 
         return ResponseEntity.ok(ApiResponse.success(comments, "댓글 목록을 조회했습니다"));
+    }
+
+    // 뉴스 댓글 조회
+    @GetMapping("/news/{newsId}")
+    public ResponseEntity<ApiResponse<Comments>> getNewsComments(
+            @PathVariable Long newsId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        log.info("Getting comments for news: {}, page: {}, size: {}", newsId, page, size);
+
+        Comments comments = commentQueryUseCase.getCommentsByTargetIdWithPagination(
+                newsId, CommentType.NEWS, page, size);
+
+        return ResponseEntity.ok(ApiResponse.success(comments, "뉴스 댓글을 조회했습니다"));
+    }
+
+    // 게시판 댓글 조회
+    @GetMapping("/board/{boardId}")
+    public ResponseEntity<ApiResponse<Comments>> getBoardComments(
+            @PathVariable Long boardId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+
+        log.info("Getting comments for board: {}, page: {}, size: {}", boardId, page, size);
+
+        Comments comments = commentQueryUseCase.getCommentsByTargetIdWithPagination(
+                boardId, CommentType.BOARD, page, size);
+
+        return ResponseEntity.ok(ApiResponse.success(comments, "게시판 댓글을 조회했습니다"));
     }
 
     @GetMapping("/{commentId}")
@@ -180,8 +211,7 @@ public class CommentController {
 
         Map<String, Boolean> reactionStatus = Map.of(
                 "hasLiked", hasLiked,
-                "hasDisliked", hasDisliked
-        );
+                "hasDisliked", hasDisliked);
 
         return ResponseEntity.ok(ApiResponse.success(reactionStatus, "반응 상태를 조회했습니다"));
     }

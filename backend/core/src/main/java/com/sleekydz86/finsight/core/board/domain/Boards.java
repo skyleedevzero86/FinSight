@@ -6,33 +6,41 @@ import java.util.stream.Collectors;
 
 public class Boards {
     private final List<Board> boards;
+    private final long totalElements;
 
     public Boards() {
         this.boards = new ArrayList<>();
+        this.totalElements = 0;
     }
 
     public Boards(List<Board> boards) {
         this.boards = boards != null ? boards : new ArrayList<>();
+        this.totalElements = this.boards.size();
+    }
+
+    public Boards(List<Board> boards, long totalElements) {
+        this.boards = boards != null ? boards : new ArrayList<>();
+        this.totalElements = totalElements;
     }
 
     public Boards addBoard(Board board) {
         List<Board> newBoards = new ArrayList<>(this.boards);
         newBoards.add(board);
-        return new Boards(newBoards);
+        return new Boards(newBoards, this.totalElements + 1);
     }
 
     public Boards removeBoard(Long boardId) {
         List<Board> newBoards = this.boards.stream()
                 .filter(board -> !board.getId().equals(boardId))
                 .collect(Collectors.toList());
-        return new Boards(newBoards);
+        return new Boards(newBoards, Math.max(0, this.totalElements - 1));
     }
 
     public Boards updateBoard(Long boardId, Board updatedBoard) {
         List<Board> newBoards = this.boards.stream()
                 .map(board -> board.getId().equals(boardId) ? updatedBoard : board)
                 .collect(Collectors.toList());
-        return new Boards(newBoards);
+        return new Boards(newBoards, this.totalElements);
     }
 
     public List<Board> getActiveBoards() {
@@ -63,6 +71,10 @@ public class Boards {
         return boards.size();
     }
 
+    public long getTotalElements() {
+        return totalElements;
+    }
+
     public int getActiveCount() {
         return (int) boards.stream().filter(Board::isActive).count();
     }
@@ -77,8 +89,10 @@ public class Boards {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Boards boards1 = (Boards) o;
         return boards.equals(boards1.boards);
     }
@@ -92,6 +106,7 @@ public class Boards {
     public String toString() {
         return "Boards{" +
                 "boards=" + boards +
+                ", totalElements=" + totalElements +
                 '}';
     }
 }

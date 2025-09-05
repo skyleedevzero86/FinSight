@@ -1,16 +1,16 @@
 package com.sleekydz86.finsight.core.board.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.board.domain.Board;
-import com.sleekydz86.finsight.core.board.domain.BoardStatus;
 import com.sleekydz86.finsight.core.board.domain.BoardType;
+import com.sleekydz86.finsight.core.board.domain.BoardStatus;
 import com.sleekydz86.finsight.core.board.domain.Boards;
-import com.sleekydz86.finsight.core.board.domain.port.in.dto.BoardSearchRequest;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort;
-import org.springframework.data.domain.Page;
+import com.sleekydz86.finsight.core.board.domain.port.in.dto.BoardSearchRequest;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,64 +41,54 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
     @Override
     public Boards findBySearchRequest(BoardSearchRequest request) {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        Page<BoardJpaEntity> page;
 
-        BoardType boardType = request.getBoardType();
-        String keyword = request.getKeyword();
-        BoardSearchRequest.SearchType searchType = request.getSearchType();
-
-        if (boardType == null) {
-            boardType = BoardType.COMMUNITY;
-        }
-
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            switch (searchType) {
-                case TITLE:
-                    page = boardJpaRepository.findByBoardTypeAndStatusAndTitleContainingOrContentContaining(
-                            boardType, BoardStatus.ACTIVE, keyword, pageable);
-                    break;
-                case CONTENT:
-                    page = boardJpaRepository.findByBoardTypeAndStatusAndTitleContainingOrContentContaining(
-                            boardType, BoardStatus.ACTIVE, keyword, pageable);
-                    break;
-                case HASHTAG:
-                    page = boardJpaRepository.findByBoardTypeAndStatusAndHashtagsContaining(
-                            boardType, BoardStatus.ACTIVE, keyword, pageable);
-                    break;
-                case ALL:
-                default:
-                    page = boardJpaRepository.findByBoardTypeAndStatusAndTitleContainingOrContentContaining(
-                            boardType, BoardStatus.ACTIVE, keyword, pageable);
-                    break;
-            }
+        if (request.getKeyword() != null && !request.getKeyword().trim().isEmpty()) {
+            return searchByKeyword(request, pageable);
+        } else if (request.getHashtag() != null && !request.getHashtag().trim().isEmpty()) {
+            return searchByHashtag(request, pageable);
+        } else if (request.getStartDate() != null && request.getEndDate() != null) {
+            return searchByDateRange(request, pageable);
+        } else if (request.getBoardType() != null) {
+            return searchByBoardType(request, pageable);
         } else {
-            page = boardJpaRepository.findByBoardTypeAndStatusOrderByCreatedAtDesc(
-                    boardType, BoardStatus.ACTIVE, pageable);
+            return searchByBoardType(request, pageable);
         }
-
-        return boardJpaMapper.toDomainList(page.getContent());
     }
 
     @Override
     public Boards findByBoardType(BoardType boardType, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<BoardJpaEntity> pageResult = boardJpaRepository.findByBoardTypeAndStatusOrderByCreatedAtDesc(
+        var pageResult = boardJpaRepository.findByBoardTypeAndStatusOrderByCreatedAtDesc(
                 boardType, BoardStatus.ACTIVE, pageable);
-        return boardJpaMapper.toDomainList(pageResult.getContent());
+
+        List<Board> boards = pageResult.getContent().stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+
+        return new Boards(boards, pageResult.getTotalElements());
     }
 
     @Override
     public Boards findByAuthorEmail(String authorEmail, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<BoardJpaEntity> pageResult = boardJpaRepository.findByAuthorEmailAndStatusOrderByCreatedAtDesc(
+        var pageResult = boardJpaRepository.findByAuthorEmailAndStatusOrderByCreatedAtDesc(
                 authorEmail, BoardStatus.ACTIVE, pageable);
-        return boardJpaMapper.toDomainList(pageResult.getContent());
+
+        List<Board> boards = pageResult.getContent().stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+
+        return new Boards(boards, pageResult.getTotalElements());
     }
 
     @Override
     public Boards findReportedBoards() {
         List<BoardJpaEntity> entities = boardJpaRepository.findReportedBoards(BoardStatus.ACTIVE);
-        return boardJpaMapper.toDomainList(entities);
+        List<Board> boards = entities.stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+
+        return new Boards(boards, boards.size());
     }
 
     @Override
@@ -106,7 +96,11 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
         Pageable pageable = PageRequest.of(0, limit);
         List<BoardJpaEntity> entities = boardJpaRepository.findPopularBoards(
                 BoardType.COMMUNITY, BoardStatus.ACTIVE, pageable);
-        return boardJpaMapper.toDomainList(entities);
+        List<Board> boards = entities.stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+
+        return new Boards(boards, boards.size());
     }
 
     @Override
@@ -114,7 +108,11 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
         Pageable pageable = PageRequest.of(0, limit);
         List<BoardJpaEntity> entities = boardJpaRepository.findLatestBoards(
                 BoardType.COMMUNITY, BoardStatus.ACTIVE, pageable);
-        return boardJpaMapper.toDomainList(entities);
+        List<Board> boards = entities.stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+
+        return new Boards(boards, boards.size());
     }
 
     @Override
@@ -134,21 +132,71 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
 
     @Override
     public List<Board> findPreviousAndNext(Long boardId, BoardType boardType) {
-        Pageable pageable = PageRequest.of(0, 1);
+        Pageable pageable = PageRequest.of(0, 2);
 
         List<BoardJpaEntity> previous = boardJpaRepository.findPreviousBoard(
                 boardType, BoardStatus.ACTIVE, boardId, pageable);
         List<BoardJpaEntity> next = boardJpaRepository.findNextBoard(
                 boardType, BoardStatus.ACTIVE, boardId, pageable);
 
-        List<Board> result = List.of();
+        List<Board> result = new java.util.ArrayList<>();
         if (!previous.isEmpty()) {
-            result = List.of(boardJpaMapper.toDomain(previous.get(0)));
+            result.add(boardJpaMapper.toDomain(previous.get(0)));
         }
         if (!next.isEmpty()) {
-            result = List.of(boardJpaMapper.toDomain(next.get(0)));
+            result.add(boardJpaMapper.toDomain(next.get(0)));
         }
 
         return result;
+    }
+
+    @Override
+    public void incrementViewCount(Long boardId) {
+        boardJpaRepository.incrementViewCount(boardId);
+    }
+
+    private Boards searchByKeyword(BoardSearchRequest request, Pageable pageable) {
+        var pageResult = boardJpaRepository.findByBoardTypeAndStatusAndTitleContainingOrContentContaining(
+                request.getBoardType(), BoardStatus.ACTIVE, request.getKeyword(), pageable);
+
+        List<Board> boards = pageResult.getContent().stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+
+        return new Boards(boards, pageResult.getTotalElements());
+    }
+
+    private Boards searchByHashtag(BoardSearchRequest request, Pageable pageable) {
+        var pageResult = boardJpaRepository.findByBoardTypeAndStatusAndHashtagsContaining(
+                request.getBoardType(), BoardStatus.ACTIVE, request.getHashtag(), pageable);
+
+        List<Board> boards = pageResult.getContent().stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+
+        return new Boards(boards, pageResult.getTotalElements());
+    }
+
+    private Boards searchByDateRange(BoardSearchRequest request, Pageable pageable) {
+        var pageResult = boardJpaRepository.findByBoardTypeAndStatusAndCreatedAtBetween(
+                request.getBoardType(), BoardStatus.ACTIVE,
+                request.getStartDate(), request.getEndDate(), pageable);
+
+        List<Board> boards = pageResult.getContent().stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+
+        return new Boards(boards, pageResult.getTotalElements());
+    }
+
+    private Boards searchByBoardType(BoardSearchRequest request, Pageable pageable) {
+        var pageResult = boardJpaRepository.findByBoardTypeAndStatusOrderByCreatedAtDesc(
+                request.getBoardType(), BoardStatus.ACTIVE, pageable);
+
+        List<Board> boards = pageResult.getContent().stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+
+        return new Boards(boards, pageResult.getTotalElements());
     }
 }

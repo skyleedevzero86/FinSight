@@ -3,51 +3,24 @@ package com.sleekydz86.finsight.core.board.domain;
 import java.time.LocalDateTime;
 
 public class BoardScrap {
-    private final Long id;
-    private final Long boardId;
-    private final String userEmail;
-    private final LocalDateTime scrapedAt;
+    private Long id;
+    private Long boardId;
+    private String userEmail;
+    private LocalDateTime scrapedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public BoardScrap() {
-        this.id = null;
-        this.boardId = null;
-        this.userEmail = "";
-        this.scrapedAt = LocalDateTime.now();
     }
 
-    public BoardScrap(Long id, Long boardId, String userEmail, LocalDateTime scrapedAt) {
+    public BoardScrap(Long id, Long boardId, String userEmail, LocalDateTime scrapedAt,
+            LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.boardId = boardId;
         this.userEmail = userEmail;
         this.scrapedAt = scrapedAt;
-    }
-
-    public Long getId() { return id; }
-    public Long getBoardId() { return boardId; }
-    public String getUserEmail() { return userEmail; }
-    public LocalDateTime getScrapedAt() { return scrapedAt; }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        BoardScrap that = (BoardScrap) o;
-        return id != null && id.equals(that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return id != null ? id.hashCode() : 0;
-    }
-
-    @Override
-    public String toString() {
-        return "BoardScrap{" +
-                "id=" + id +
-                ", boardId=" + boardId +
-                ", userEmail='" + userEmail + '\'' +
-                ", scrapedAt=" + scrapedAt +
-                '}';
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public static Builder builder() {
@@ -58,7 +31,9 @@ public class BoardScrap {
         private Long id;
         private Long boardId;
         private String userEmail;
-        private LocalDateTime scrapedAt = LocalDateTime.now();
+        private LocalDateTime scrapedAt;
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
 
         public Builder id(Long id) {
             this.id = id;
@@ -80,8 +55,54 @@ public class BoardScrap {
             return this;
         }
 
-        public BoardScrap build() {
-            return new BoardScrap(id, boardId, userEmail, scrapedAt);
+        public Builder createdAt(LocalDateTime createdAt) {
+            this.createdAt = createdAt;
+            return this;
         }
+
+        public Builder updatedAt(LocalDateTime updatedAt) {
+            this.updatedAt = updatedAt;
+            return this;
+        }
+
+        public BoardScrap build() {
+            return new BoardScrap(id, boardId, userEmail, scrapedAt, createdAt, updatedAt);
+        }
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getBoardId() {
+        return boardId;
+    }
+
+    public String getUserEmail() {
+        return userEmail;
+    }
+
+    public LocalDateTime getScrapedAt() {
+        return scrapedAt;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    @Override
+    public String toString() {
+        return "BoardScrap{" +
+                "id=" + id +
+                ", boardId=" + boardId +
+                ", userEmail='" + userEmail + '\'' +
+                ", scrapedAt=" + scrapedAt +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
+                '}';
     }
 }

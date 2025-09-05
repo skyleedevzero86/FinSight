@@ -2,7 +2,6 @@ package com.sleekydz86.finsight.core.board.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.global.BaseEntity;
 import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -22,15 +21,16 @@ public class BoardScrapJpaEntity extends BaseEntity {
     private LocalDateTime scrapedAt;
 
     public BoardScrapJpaEntity() {
+        super();
     }
 
     public BoardScrapJpaEntity(Long id, Long boardId, String userEmail, LocalDateTime scrapedAt,
             LocalDateTime createdAt) {
+        super();
         this.id = id;
         this.boardId = boardId;
         this.userEmail = userEmail;
         this.scrapedAt = scrapedAt;
-        this.setCreatedAt(createdAt);
     }
 
     public Long getId() {
@@ -77,7 +77,7 @@ public class BoardScrapJpaEntity extends BaseEntity {
 
     @Override
     public int hashCode() {
-        return id != null ? id.hashCode() : 0;
+        return getClass().hashCode();
     }
 
     @Override
