@@ -11,12 +11,16 @@ import java.util.stream.Collectors;
 public class Newses {
     private final List<News> newses;
 
+    public Newses() {
+        this.newses = new ArrayList<>();
+    }
+
     public Newses(List<News> newses) {
-        this.newses = newses;
+        this.newses = newses != null ? newses : new ArrayList<>();
     }
 
     public List<News> findAllNewsesFilteredOfCategoriesAndProviders(List<TargetCategory> categories,
-                                                                    List<NewsProvider> providers) {
+            List<NewsProvider> providers) {
         List<NewsProvider> filteredProviders = getFilteredProviders(providers);
 
         return newses.stream()
@@ -40,8 +44,10 @@ public class Newses {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Newses newses1 = (Newses) o;
         return Objects.equals(newses, newses1.newses);
     }

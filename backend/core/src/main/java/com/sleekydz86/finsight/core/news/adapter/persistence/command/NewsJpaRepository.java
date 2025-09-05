@@ -13,6 +13,7 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
 
     Page<NewsJpaEntity> findByOverviewIsNull(Pageable pageable);
 
+
     @Override
     List<NewsJpaEntity> findAll();
 }
