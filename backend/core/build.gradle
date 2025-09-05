@@ -56,13 +56,14 @@ dependencies {
     implementation 'io.github.resilience4j:resilience4j-micrometer:2.2.0'
     implementation 'io.micrometer:micrometer-registry-prometheus'
 
-    // DJL - 수정된 의존성
+    // DJL
     implementation 'ai.djl:api:0.24.0'
     implementation 'ai.djl.pytorch:pytorch-engine:0.24.0'
     implementation 'ai.djl.huggingface:tokenizers:0.24.0'
     implementation 'ai.djl.huggingface:huggingface:0.24.0'
     implementation 'ai.djl.sentencepiece:sentencepiece:0.24.0'
-    runtimeOnly 'ai.djl.pytorch:pytorch-native-cpu:1.13.1'
+    //runtimeOnly 'ai.djl.pytorch:pytorch-native-cpu:1.13.1'
+    runtimeOnly 'ai.djl.pytorch:pytorch-native-cpu:2.0.1'
     runtimeOnly 'ai.djl.pytorch:pytorch-jni:1.13.1'
 
     // Encryption
@@ -71,11 +72,11 @@ dependencies {
     // Caching
     implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
 
-    // Lombok - 수정된 의존성
+    // Lombok
     compileOnly 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
-    // Validation - 추가된 의존성
+    // Validation
     implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
 
     // Test
@@ -85,6 +86,21 @@ dependencies {
 
     // Logging
     implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
+    implementation 'org.hibernate.validator:hibernate-validator:8.0.1.Final'
+
+    // NLP 라이브러리
+    implementation 'org.apache.opennlp:opennlp-tools:2.3.0'
+    implementation 'edu.stanford.nlp:stanford-corenlp:4.5.0'
+    implementation 'org.apache.lucene:lucene-analyzers-common:8.11.2'
+
+    // 머신러닝 라이브러리
+    implementation 'org.apache.spark:spark-mllib_2.12:3.4.0'
+    implementation 'org.deeplearning4j:deeplearning4j-core:1.0.0-M2.1'
+    implementation 'org.nd4j:nd4j-native-platform:1.0.0-M2.1'
+
+    // 수치 계산
+    implementation 'org.apache.commons:commons-math3:3.6.1'
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
 }
 
 def generatedDir = layout.buildDirectory.dir("generated/querydsl").get().asFile

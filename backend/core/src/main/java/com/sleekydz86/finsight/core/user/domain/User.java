@@ -66,7 +66,6 @@ public class User {
         this.role = UserRole.USER;
     }
 
-    // JPA Entity에서 Domain으로 변환할 때 사용하는 생성자
     public User(Long id, String email, String password, String username, UserRole role,
             boolean isActive, LocalDateTime lastLoginAt, List<TargetCategory> watchlist,
             List<NotificationType> notificationPreferences) {

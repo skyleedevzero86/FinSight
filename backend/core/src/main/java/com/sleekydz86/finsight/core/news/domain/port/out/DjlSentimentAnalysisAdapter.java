@@ -6,8 +6,6 @@ import ai.djl.inference.Predictor;
 import ai.djl.repository.zoo.Criteria;
 import ai.djl.repository.zoo.ModelNotFoundException;
 import ai.djl.repository.zoo.ZooModel;
-import ai.djl.translate.TranslateException;
-import ai.djl.huggingface.translator.TextClassificationTranslatorFactory;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.DjlSentimentResult;
 import org.slf4j.Logger;
