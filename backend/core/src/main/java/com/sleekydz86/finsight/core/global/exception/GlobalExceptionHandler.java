@@ -263,6 +263,36 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
     }
 
+    @ExceptionHandler(CommentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCommentNotFoundException(CommentNotFoundException ex, WebRequest request) {
+        log.error("Comment not found: {}", ex.getCommentId());
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                ex.getHttpStatus(),
+                ex.getErrorType(),
+                ex.getMessage(),
+                getRequestPath(request)
+        );
+
+        return ResponseEntity.status(ex.getHttpStatus()).body(errorResponse);
+    }
+
+    @ExceptionHandler(CommentAlreadyReportedException.class)
+    public ResponseEntity<ErrorResponse> handleCommentAlreadyReportedException(CommentAlreadyReportedException ex, WebRequest request) {
+        log.error("Comment already reported: {} by user: {}", ex.getCommentId(), ex.getUserEmail());
+
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                ex.getHttpStatus(),
+                ex.getErrorType(),
+                ex.getMessage(),
+                getRequestPath(request)
+        );
+
+        return ResponseEntity.status(ex.getHttpStatus()).body(errorResponse);
+    }
+
     private String getLocalizedMessage(String code, Locale locale) {
         try {
             return messageSource.getMessage(code, null, locale);
