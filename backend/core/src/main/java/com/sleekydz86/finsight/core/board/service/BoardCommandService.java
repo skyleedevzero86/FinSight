@@ -79,8 +79,7 @@ public class BoardCommandService implements BoardCommandUseCase {
         Board updatedBoard = existingBoard.updateContent(
                 request.getTitle(),
                 request.getContent(),
-                request.getHashtags()
-        );
+                request.getHashtags());
 
         Board savedBoard = boardPersistencePort.save(updatedBoard);
         log.info("Board {} updated successfully", boardId);
@@ -159,7 +158,6 @@ public class BoardCommandService implements BoardCommandUseCase {
                 Board updatedBoard = board.decrementDislike();
                 return boardPersistencePort.save(updatedBoard);
             } else {
-
                 boardReactionPersistencePort.deleteByBoardIdAndUserEmail(boardId, userEmail);
                 Board updatedBoard = board.decrementLike().incrementDislike();
                 boardReactionPersistencePort.save(BoardReaction.builder()
@@ -170,7 +168,6 @@ public class BoardCommandService implements BoardCommandUseCase {
                 return boardPersistencePort.save(updatedBoard);
             }
         } else {
-
             Board updatedBoard = board.incrementDislike();
             boardReactionPersistencePort.save(BoardReaction.builder()
                     .boardId(boardId)

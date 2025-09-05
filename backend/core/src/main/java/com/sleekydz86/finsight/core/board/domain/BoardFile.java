@@ -24,7 +24,7 @@ public class BoardFile {
     }
 
     public BoardFile(Long id, Long boardId, String originalFileName, String storedFileName,
-                     String filePath, String contentType, Long fileSize, LocalDateTime uploadedAt) {
+            String filePath, String contentType, Long fileSize, LocalDateTime uploadedAt) {
         this.id = id;
         this.boardId = boardId;
         this.originalFileName = originalFileName;
@@ -35,19 +35,44 @@ public class BoardFile {
         this.uploadedAt = uploadedAt;
     }
 
-    public Long getId() { return id; }
-    public Long getBoardId() { return boardId; }
-    public String getOriginalFileName() { return originalFileName; }
-    public String getStoredFileName() { return storedFileName; }
-    public String getFilePath() { return filePath; }
-    public String getContentType() { return contentType; }
-    public Long getFileSize() { return fileSize; }
-    public LocalDateTime getUploadedAt() { return uploadedAt; }
+    public Long getId() {
+        return id;
+    }
+
+    public Long getBoardId() {
+        return boardId;
+    }
+
+    public String getOriginalFileName() {
+        return originalFileName;
+    }
+
+    public String getStoredFileName() {
+        return storedFileName;
+    }
+
+    public String getFilePath() {
+        return filePath;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public Long getFileSize() {
+        return fileSize;
+    }
+
+    public LocalDateTime getUploadedAt() {
+        return uploadedAt;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         BoardFile boardFile = (BoardFile) o;
         return id != null && id.equals(boardFile.id);
     }
@@ -117,6 +142,12 @@ public class BoardFile {
 
         public Builder fileSize(Long fileSize) {
             this.fileSize = fileSize;
+            return this;
+        }
+
+        public Builder fileName(String fileName) {
+            this.originalFileName = fileName;
+            this.storedFileName = fileName;
             return this;
         }
 

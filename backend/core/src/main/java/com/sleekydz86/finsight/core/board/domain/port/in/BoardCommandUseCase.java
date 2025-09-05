@@ -9,15 +9,24 @@ import com.sleekydz86.finsight.core.board.domain.port.in.dto.BoardUpdateRequest;
 
 public interface BoardCommandUseCase {
     Board createBoard(String userEmail, BoardCreateRequest request);
+
     Board updateBoard(String userEmail, Long boardId, BoardUpdateRequest request);
+
     void deleteBoard(String userEmail, Long boardId);
+
     Board likeBoard(String userEmail, Long boardId);
+
     Board dislikeBoard(String userEmail, Long boardId);
+
     void reportBoard(String userEmail, Long boardId, BoardReportRequest request);
+
     void blockBoard(Long boardId);
+
     BoardScrap scrapBoard(String userEmail, Long boardId);
+
     void unscrapBoard(String userEmail, Long boardId);
-    BoardFile uploadFile(Long boardId, String originalFileName, String storedFileName,
-                         String filePath, String contentType, Long fileSize);
-    void deleteFile(Long fileId);
+
+    BoardFile uploadFile(String userEmail, Long boardId, String fileName, String filePath, long fileSize);
+
+    void deleteFile(String userEmail, Long fileId);
 }

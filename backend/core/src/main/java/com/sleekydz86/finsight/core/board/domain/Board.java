@@ -43,9 +43,9 @@ public class Board {
     }
 
     public Board(Long id, String title, String content, String authorEmail, BoardType boardType,
-                 BoardStatus status, int viewCount, int likeCount, int dislikeCount,
-                 int commentCount, int reportCount, List<String> hashtags, List<BoardFile> files,
-                 LocalDateTime createdAt, LocalDateTime updatedAt, List<Board> replies) {
+            BoardStatus status, int viewCount, int likeCount, int dislikeCount,
+            int commentCount, int reportCount, List<String> hashtags, List<BoardFile> files,
+            LocalDateTime createdAt, LocalDateTime updatedAt, List<Board> replies) {
         this.id = id;
         this.title = title;
         this.content = content;
@@ -113,6 +113,20 @@ public class Board {
                 this.createdAt, this.updatedAt, this.replies);
     }
 
+    public Board decrementLike() {
+        return new Board(this.id, this.title, this.content, this.authorEmail, this.boardType,
+                this.status, this.viewCount, Math.max(0, this.likeCount - 1), this.dislikeCount,
+                this.commentCount, this.reportCount, this.hashtags, this.files,
+                this.createdAt, this.updatedAt, this.replies);
+    }
+
+    public Board decrementDislike() {
+        return new Board(this.id, this.title, this.content, this.authorEmail, this.boardType,
+                this.status, this.viewCount, this.likeCount, Math.max(0, this.dislikeCount - 1),
+                this.commentCount, this.reportCount, this.hashtags, this.files,
+                this.createdAt, this.updatedAt, this.replies);
+    }
+
     public Board updateCommentCount(int commentCount) {
         return new Board(this.id, this.title, this.content, this.authorEmail, this.boardType,
                 this.status, this.viewCount, this.likeCount, this.dislikeCount,
@@ -140,27 +154,76 @@ public class Board {
         return status == BoardStatus.HIDDEN;
     }
 
-    public Long getId() { return id; }
-    public String getTitle() { return title; }
-    public String getContent() { return content; }
-    public String getAuthorEmail() { return authorEmail; }
-    public BoardType getBoardType() { return boardType; }
-    public BoardStatus getStatus() { return status; }
-    public int getViewCount() { return viewCount; }
-    public int getLikeCount() { return likeCount; }
-    public int getDislikeCount() { return dislikeCount; }
-    public int getCommentCount() { return commentCount; }
-    public int getReportCount() { return reportCount; }
-    public List<String> getHashtags() { return hashtags; }
-    public List<BoardFile> getFiles() { return files; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public LocalDateTime getUpdatedAt() { return updatedAt; }
-    public List<Board> getReplies() { return replies; }
+    public Long getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public String getAuthorEmail() {
+        return authorEmail;
+    }
+
+    public BoardType getBoardType() {
+        return boardType;
+    }
+
+    public BoardStatus getStatus() {
+        return status;
+    }
+
+    public int getViewCount() {
+        return viewCount;
+    }
+
+    public int getLikeCount() {
+        return likeCount;
+    }
+
+    public int getDislikeCount() {
+        return dislikeCount;
+    }
+
+    public int getCommentCount() {
+        return commentCount;
+    }
+
+    public int getReportCount() {
+        return reportCount;
+    }
+
+    public List<String> getHashtags() {
+        return hashtags;
+    }
+
+    public List<BoardFile> getFiles() {
+        return files;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public List<Board> getReplies() {
+        return replies;
+    }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Board board = (Board) o;
         return id != null && id.equals(board.id);
     }
