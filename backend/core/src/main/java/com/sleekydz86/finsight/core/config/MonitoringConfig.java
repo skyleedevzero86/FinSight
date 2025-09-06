@@ -1,17 +1,17 @@
 package com.sleekydz86.finsight.core.config;
 
-import io.micrometer.core.aop.TimedAspect;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 @Configuration
-@Profile("core-local")
 public class MonitoringConfig {
 
     @Bean
-    public TimedAspect timedAspect(MeterRegistry registry) {
-        return new TimedAspect(registry);
+    public Timer requestTimer(MeterRegistry meterRegistry) {
+        return Timer.builder("http.requests")
+                .description("HTTP request duration")
+                .register(meterRegistry);
     }
 }

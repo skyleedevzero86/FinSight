@@ -7,19 +7,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class AdvancedMonitoringConfig {
+public class AdvancedMetricsConfig {
 
     @Bean
     public Counter requestCounter(MeterRegistry meterRegistry) {
         return Counter.builder("http.requests.total")
                 .description("Total number of HTTP requests")
-                .register(meterRegistry);
-    }
-
-    @Bean
-    public Counter errorCounter(MeterRegistry meterRegistry) {
-        return Counter.builder("http.errors.total")
-                .description("Total number of HTTP errors")
                 .register(meterRegistry);
     }
 
@@ -31,9 +24,9 @@ public class AdvancedMonitoringConfig {
     }
 
     @Bean
-    public Counter businessLogicCounter(MeterRegistry meterRegistry) {
-        return Counter.builder("business.logic.executions")
-                .description("Total number of business logic executions")
+    public Counter errorCounter(MeterRegistry meterRegistry) {
+        return Counter.builder("http.errors.total")
+                .description("Total number of HTTP errors")
                 .register(meterRegistry);
     }
 }
