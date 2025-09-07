@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Import;
 @EnableAspectJAutoProxy
 @Import({
         AdvancedAopConfig.class,
-        AdvancedCacheConfig.class,
+        UnifiedCacheConfig.class,
         AdvancedDatabaseConfig.class,
         AdvancedSecurityConfig.class,
         AdvancedAsyncConfig.class,

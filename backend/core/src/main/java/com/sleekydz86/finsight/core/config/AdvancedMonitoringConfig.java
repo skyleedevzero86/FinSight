@@ -10,23 +10,23 @@ import org.springframework.context.annotation.Configuration;
 public class AdvancedMonitoringConfig {
 
     @Bean
-    public Counter requestCounter(MeterRegistry meterRegistry) {
-        return Counter.builder("http.requests.total")
-                .description("Total number of HTTP requests")
+    public Counter monitoringRequestCounter(MeterRegistry meterRegistry) {
+        return Counter.builder("monitoring.http.requests.total")
+                .description("Total number of HTTP requests for monitoring")
                 .register(meterRegistry);
     }
 
     @Bean
-    public Counter errorCounter(MeterRegistry meterRegistry) {
-        return Counter.builder("http.errors.total")
-                .description("Total number of HTTP errors")
+    public Counter monitoringErrorCounter(MeterRegistry meterRegistry) {
+        return Counter.builder("monitoring.http.errors.total")
+                .description("Total number of HTTP errors for monitoring")
                 .register(meterRegistry);
     }
 
     @Bean
-    public Timer requestTimer(MeterRegistry meterRegistry) {
-        return Timer.builder("http.request.duration")
-                .description("HTTP request duration")
+    public Timer monitoringRequestTimer(MeterRegistry meterRegistry) {
+        return Timer.builder("monitoring.http.request.duration")
+                .description("HTTP request duration for monitoring")
                 .register(meterRegistry);
     }
 

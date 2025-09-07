@@ -5,11 +5,16 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target({ElementType.METHOD, ElementType.TYPE})
+@Target({ ElementType.METHOD, ElementType.TYPE })
 @Retention(RetentionPolicy.RUNTIME)
 public @interface PerformanceMonitor {
     long threshold() default 1000;
+
     boolean includeArgs() default false;
+
     boolean includeResult() default false;
+
     String metricName() default "";
+
+    String operation() default "";
 }

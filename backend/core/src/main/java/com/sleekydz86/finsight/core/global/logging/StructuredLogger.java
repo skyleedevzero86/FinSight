@@ -1,10 +1,10 @@
 package com.sleekydz86.finsight.core.global.logging;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -18,36 +18,57 @@ public class StructuredLogger {
 
     public void logInfo(String message, Map<String, Object> context) {
         Map<String, Object> logData = createLogData("INFO", message, context);
-        logger.info(objectMapper.writeValueAsString(logData));
+        logSafely(logger::info, logData);
     }
 
     public void logWarn(String message, Map<String, Object> context) {
         Map<String, Object> logData = createLogData("WARN", message, context);
-        logger.warn(objectMapper.writeValueAsString(logData));
+        logSafely(logger::warn, logData);
     }
 
     public void logError(String message, Map<String, Object> context, Throwable throwable) {
         Map<String, Object> logData = createLogData("ERROR", message, context);
         logData.put("exception", throwable.getClass().getSimpleName());
         logData.put("exceptionMessage", throwable.getMessage());
-        logger.error(objectMapper.writeValueAsString(logData), throwable);
+        logSafelyWithThrowable(logger::error, logData, throwable);
     }
 
     public void logSecurity(String message, Map<String, Object> context) {
         Map<String, Object> logData = createLogData("SECURITY", message, context);
-        logger.warn(objectMapper.writeValueAsString(logData));
+        logSafely(logger::warn, logData);
     }
 
     public void logPerformance(String operation, long duration, Map<String, Object> context) {
         Map<String, Object> logData = createLogData("PERFORMANCE", "Operation completed", context);
         logData.put("operation", operation);
         logData.put("duration", duration);
-        logger.info(objectMapper.writeValueAsString(logData));
+        logSafely(logger::info, logData);
     }
 
     public void logBusiness(String message, Map<String, Object> context) {
         Map<String, Object> logData = createLogData("BUSINESS", message, context);
-        logger.info(objectMapper.writeValueAsString(logData));
+        logSafely(logger::info, logData);
+    }
+
+    private void logSafely(LogFunction logFunction, Map<String, Object> logData) {
+        try {
+            String jsonString = objectMapper.writeValueAsString(logData);
+            logFunction.log(jsonString);
+        } catch (JsonProcessingException e) {
+            logger.warn("Failed to convert log data to JSON: {}", e.getMessage());
+            logFunction.log(logData.toString());
+        }
+    }
+
+    private void logSafelyWithThrowable(LogFunctionWithThrowable logFunction, Map<String, Object> logData, Throwable throwable) {
+        try {
+            String jsonString = objectMapper.writeValueAsString(logData);
+            logFunction.log(jsonString, throwable);
+        } catch (JsonProcessingException e) {
+            // JSON 변환 실패 시 기본 로깅으로 폴백
+            logger.warn("Failed to convert log data to JSON: {}", e.getMessage());
+            logFunction.log(logData.toString(), throwable);
+        }
     }
 
     private Map<String, Object> createLogData(String level, String message, Map<String, Object> context) {
@@ -64,5 +85,15 @@ public class StructuredLogger {
         }
 
         return logData;
+    }
+
+    @FunctionalInterface
+    private interface LogFunction {
+        void log(String message);
+    }
+
+    @FunctionalInterface
+    private interface LogFunctionWithThrowable {
+        void log(String message, Throwable throwable);
     }
 }

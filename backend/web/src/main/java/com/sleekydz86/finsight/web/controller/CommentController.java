@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.web.controller;
 
 import com.sleekydz86.finsight.core.comment.domain.Comment;
 import com.sleekydz86.finsight.core.comment.domain.Comments;
+import com.sleekydz86.finsight.core.comment.domain.CommentType;
 import com.sleekydz86.finsight.core.comment.domain.port.in.CommentCommandUseCase;
 import com.sleekydz86.finsight.core.comment.domain.port.in.CommentQueryUseCase;
 import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentCreateRequest;
@@ -39,23 +40,23 @@ public class CommentController {
     @LogExecution("게시판 댓글 조회")
     @PerformanceMonitor(threshold = 2000, operation = "comment_list")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<PaginationResponse<CommentResponse>>> getCommentsByBoard(
+    public ResponseEntity<ApiResponse<Comments>> getCommentsByBoard(
             @PathVariable Long boardId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         try {
             if (boardId == null || boardId <= 0) {
-                throw new ValidationException("유효하지 않은 게시판 ID입니다");
+                throw new ValidationException("유효하지 않은 게시판 ID입니다", List.of("INVALID_BOARD_ID"));
             }
             if (page < 0) {
-                throw new ValidationException("페이지 번호는 0 이상이어야 합니다");
+                throw new ValidationException("페이지 번호는 0 이상이어야 합니다", List.of("INVALID_PAGE"));
             }
             if (size <= 0 || size > 100) {
-                throw new ValidationException("페이지 크기는 1-100 사이여야 합니다");
+                throw new ValidationException("페이지 크기는 1-100 사이여야 합니다", List.of("INVALID_SIZE"));
             }
 
-            PaginationResponse<CommentResponse> response = commentQueryUseCase.getCommentsByBoard(boardId, page, size);
-            return ResponseEntity.ok(ApiResponse.success(response, "댓글 목록을 성공적으로 조회했습니다"));
+            Comments comments = commentQueryUseCase.getCommentsByTargetIdWithPagination(boardId, CommentType.BOARD, page, size);
+            return ResponseEntity.ok(ApiResponse.success(comments, "댓글 목록을 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
             throw e;
         } catch (Exception e) {
@@ -67,13 +68,13 @@ public class CommentController {
     @LogExecution("댓글 상세 조회")
     @PerformanceMonitor(threshold = 1000, operation = "comment_detail")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<CommentResponse>> getCommentDetail(@PathVariable Long commentId) {
+    public ResponseEntity<ApiResponse<Comment>> getCommentDetail(@PathVariable Long commentId) {
         try {
             if (commentId == null || commentId <= 0) {
-                throw new ValidationException("유효하지 않은 댓글 ID입니다");
+                throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
-            CommentResponse response = commentQueryUseCase.getCommentById(commentId);
-            return ResponseEntity.ok(ApiResponse.success(response, "댓글 상세 정보를 성공적으로 조회했습니다"));
+            Comment comment = commentQueryUseCase.getCommentById(commentId);
+            return ResponseEntity.ok(ApiResponse.success(comment, "댓글 상세 정보를 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
             throw e;
         } catch (Exception e) {
@@ -112,7 +113,7 @@ public class CommentController {
         try {
             String userEmail = getCurrentUserEmail(authentication);
             if (commentId == null || commentId <= 0) {
-                throw new ValidationException("유효하지 않은 댓글 ID입니다");
+                throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
             validateUpdateRequest(request);
             Comment comment = commentCommandUseCase.updateComment(userEmail, commentId, request);
@@ -134,7 +135,7 @@ public class CommentController {
         try {
             String userEmail = getCurrentUserEmail(authentication);
             if (commentId == null || commentId <= 0) {
-                throw new ValidationException("유효하지 않은 댓글 ID입니다");
+                throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
             commentCommandUseCase.deleteComment(userEmail, commentId);
             return ResponseEntity.ok(ApiResponse.success(null, "댓글이 성공적으로 삭제되었습니다"));
@@ -155,7 +156,7 @@ public class CommentController {
         try {
             String userEmail = getCurrentUserEmail(authentication);
             if (commentId == null || commentId <= 0) {
-                throw new ValidationException("유효하지 않은 댓글 ID입니다");
+                throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
             Comment comment = commentCommandUseCase.likeComment(userEmail, commentId);
             return ResponseEntity.ok(ApiResponse.success(comment, "댓글 좋아요가 성공적으로 처리되었습니다"));
@@ -176,7 +177,7 @@ public class CommentController {
         try {
             String userEmail = getCurrentUserEmail(authentication);
             if (commentId == null || commentId <= 0) {
-                throw new ValidationException("유효하지 않은 댓글 ID입니다");
+                throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
             Comment comment = commentCommandUseCase.dislikeComment(userEmail, commentId);
             return ResponseEntity.ok(ApiResponse.success(comment, "댓글 싫어요가 성공적으로 처리되었습니다"));
@@ -198,7 +199,7 @@ public class CommentController {
         try {
             String userEmail = getCurrentUserEmail(authentication);
             if (commentId == null || commentId <= 0) {
-                throw new ValidationException("유효하지 않은 댓글 ID입니다");
+                throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
             validateReportRequest(request);
             commentCommandUseCase.reportComment(userEmail, commentId, request);
@@ -212,47 +213,47 @@ public class CommentController {
 
     private String getCurrentUserEmail(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ValidationException("인증이 필요합니다");
+            throw new ValidationException("인증이 필요합니다", List.of("AUTHENTICATION_REQUIRED"));
         }
         return authentication.getName();
     }
 
     private void validateCreateRequest(CommentCreateRequest request) {
         if (request == null) {
-            throw new ValidationException("댓글 생성 요청이 null입니다");
+            throw new ValidationException("댓글 생성 요청이 null입니다", List.of("REQUEST_NULL"));
         }
-        if (request.getBoardId() == null || request.getBoardId() <= 0) {
-            throw new ValidationException("유효하지 않은 게시판 ID입니다");
+        if (request.getTargetId() == null || request.getTargetId() <= 0) {
+            throw new ValidationException("유효하지 않은 게시판 ID입니다", List.of("INVALID_TARGET_ID"));
         }
         if (request.getContent() == null || request.getContent().trim().isEmpty()) {
-            throw new ValidationException("댓글 내용은 필수입니다");
+            throw new ValidationException("댓글 내용은 필수입니다", List.of("CONTENT_REQUIRED"));
         }
         if (request.getContent().length() > 1000) {
-            throw new ValidationException("댓글 내용은 1000자를 초과할 수 없습니다");
+            throw new ValidationException("댓글 내용은 1000자를 초과할 수 없습니다", List.of("CONTENT_TOO_LONG"));
         }
     }
 
     private void validateUpdateRequest(CommentUpdateRequest request) {
         if (request == null) {
-            throw new ValidationException("댓글 수정 요청이 null입니다");
+            throw new ValidationException("댓글 수정 요청이 null입니다", List.of("REQUEST_NULL"));
         }
         if (request.getContent() == null || request.getContent().trim().isEmpty()) {
-            throw new ValidationException("댓글 내용은 필수입니다");
+            throw new ValidationException("댓글 내용은 필수입니다", List.of("CONTENT_REQUIRED"));
         }
         if (request.getContent().length() > 1000) {
-            throw new ValidationException("댓글 내용은 1000자를 초과할 수 없습니다");
+            throw new ValidationException("댓글 내용은 1000자를 초과할 수 없습니다", List.of("CONTENT_TOO_LONG"));
         }
     }
 
     private void validateReportRequest(CommentReportRequest request) {
         if (request == null) {
-            throw new ValidationException("댓글 신고 요청이 null입니다");
+            throw new ValidationException("댓글 신고 요청이 null입니다", List.of("REQUEST_NULL"));
         }
         if (request.getReason() == null || request.getReason().trim().isEmpty()) {
-            throw new ValidationException("신고 사유는 필수입니다");
+            throw new ValidationException("신고 사유는 필수입니다", List.of("REASON_REQUIRED"));
         }
         if (request.getDescription() != null && request.getDescription().length() > 500) {
-            throw new ValidationException("신고 설명은 500자를 초과할 수 없습니다");
+            throw new ValidationException("신고 설명은 500자를 초과할 수 없습니다", List.of("DESCRIPTION_TOO_LONG"));
         }
     }
 }

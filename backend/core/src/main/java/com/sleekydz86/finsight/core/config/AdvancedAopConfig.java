@@ -19,8 +19,8 @@ public class AdvancedAopConfig {
         return new PerformanceMonitoringAspect();
     }
 
-    @Bean
-    public RetryAspect retryAspect() {
+    @Bean("customRetryAspect")
+    public RetryAspect customRetryAspect() {
         return new RetryAspect();
     }
 

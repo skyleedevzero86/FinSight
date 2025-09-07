@@ -5,12 +5,18 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@Target({ElementType.METHOD, ElementType.TYPE})
+@Target({ ElementType.METHOD, ElementType.TYPE })
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Cacheable {
     String value() default "";
+
     String key() default "";
+
     int expireSeconds() default 3600;
+
     boolean condition() default true;
+
     String unless() default "";
+
+    boolean refresh() default false;
 }

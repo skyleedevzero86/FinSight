@@ -13,7 +13,6 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 
 @Aspect
-@Component
 public class RetryAspect {
 
     private static final Logger logger = LoggerFactory.getLogger(RetryAspect.class);

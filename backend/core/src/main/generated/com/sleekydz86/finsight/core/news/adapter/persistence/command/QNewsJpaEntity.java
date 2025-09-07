@@ -50,6 +50,8 @@ public class QNewsJpaEntity extends EntityPathBase<NewsJpaEntity> {
 
     public final DateTimePath<java.time.LocalDateTime> updatedAt = createDateTime("updatedAt", java.time.LocalDateTime.class);
 
+    public final NumberPath<Integer> viewCount = createNumber("viewCount", Integer.class);
+
     public QNewsJpaEntity(String variable) {
         super(NewsJpaEntity.class, forVariable(variable));
     }

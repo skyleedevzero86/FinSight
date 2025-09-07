@@ -11,12 +11,15 @@ import com.sleekydz86.finsight.core.global.annotation.Retryable;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
+import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/v1/users")
@@ -37,8 +40,11 @@ public class UserController {
     public ResponseEntity<ApiResponse<User>> getUserProfile(Authentication authentication) {
         try {
             String userEmail = getCurrentUserEmail(authentication);
-            User user = userQueryUseCase.getUserByEmail(userEmail);
-            return ResponseEntity.ok(ApiResponse.success(user, "사용자 프로필을 성공적으로 조회했습니다"));
+            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
+            }
+            return ResponseEntity.ok(ApiResponse.success(userOpt.get(), "사용자 프로필을 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
             throw e;
         } catch (Exception e) {
@@ -55,8 +61,13 @@ public class UserController {
             Authentication authentication) {
         try {
             String userEmail = getCurrentUserEmail(authentication);
+            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
+            }
+
             validateUpdateRequest(request);
-            User user = userCommandUseCase.updateUser(userEmail, request);
+            User user = userCommandUseCase.updateUser(userOpt.get().getId(), request);
             return ResponseEntity.ok(ApiResponse.success(user, "사용자 프로필이 성공적으로 수정되었습니다"));
         } catch (ValidationException e) {
             throw e;
@@ -69,10 +80,15 @@ public class UserController {
     @LogExecution("사용자 관심목록 조회")
     @PerformanceMonitor(threshold = 1000, operation = "user_watchlist")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<List<String>>> getUserWatchlist(Authentication authentication) {
+    public ResponseEntity<ApiResponse<List<TargetCategory>>> getUserWatchlist(Authentication authentication) {
         try {
             String userEmail = getCurrentUserEmail(authentication);
-            List<String> watchlist = userQueryUseCase.getUserWatchlist(userEmail);
+            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
+            }
+
+            List<TargetCategory> watchlist = userQueryUseCase.getUserWatchlist(userOpt.get().getId());
             return ResponseEntity.ok(ApiResponse.success(watchlist, "관심목록을 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
             throw e;
@@ -90,8 +106,13 @@ public class UserController {
             Authentication authentication) {
         try {
             String userEmail = getCurrentUserEmail(authentication);
+            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
+            }
+
             validateWatchlistRequest(request);
-            userCommandUseCase.updateWatchlist(userEmail, request);
+            userCommandUseCase.updateWatchlist(userOpt.get().getId(), request);
             return ResponseEntity.ok(ApiResponse.success(null, "관심목록이 성공적으로 수정되었습니다"));
         } catch (ValidationException e) {
             throw e;
@@ -100,131 +121,75 @@ public class UserController {
         }
     }
 
-    @GetMapping("/bookmarks")
-    @LogExecution("사용자 북마크 조회")
-    @PerformanceMonitor(threshold = 2000, operation = "user_bookmarks")
+    @GetMapping("/notification-preferences")
+    @LogExecution("사용자 알림 설정 조회")
+    @PerformanceMonitor(threshold = 1000, operation = "user_notification_preferences")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<List<Object>>> getUserBookmarks(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            Authentication authentication) {
+    public ResponseEntity<ApiResponse<List<NotificationType>>> getUserNotificationPreferences(Authentication authentication) {
         try {
             String userEmail = getCurrentUserEmail(authentication);
-            if (page < 0) {
-                throw new ValidationException("페이지 번호는 0 이상이어야 합니다");
-            }
-            if (size <= 0 || size > 100) {
-                throw new ValidationException("페이지 크기는 1-100 사이여야 합니다");
+            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
             }
 
-            List<Object> bookmarks = userQueryUseCase.getUserBookmarks(userEmail, page, size);
-            return ResponseEntity.ok(ApiResponse.success(bookmarks, "북마크 목록을 성공적으로 조회했습니다"));
+            List<NotificationType> preferences = userQueryUseCase.getUserNotificationPreferences(userOpt.get().getId());
+            return ResponseEntity.ok(ApiResponse.success(preferences, "알림 설정을 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
             throw e;
         } catch (Exception e) {
-            throw new SystemException("북마크 목록 조회 중 오류가 발생했습니다", "USER_BOOKMARKS_ERROR", e);
+            throw new SystemException("알림 설정 조회 중 오류가 발생했습니다", "USER_NOTIFICATION_PREFERENCES_ERROR", e);
         }
     }
 
-    @DeleteMapping("/account")
-    @LogExecution("사용자 계정 삭제")
-    @PerformanceMonitor(threshold = 3000, operation = "user_account_delete")
-    @Retryable(maxAttempts = 1, delay = 5000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<Void>> deleteUserAccount(Authentication authentication) {
-        try {
-            String userEmail = getCurrentUserEmail(authentication);
-            userCommandUseCase.deleteUser(userEmail);
-            return ResponseEntity.ok(ApiResponse.success(null, "계정이 성공적으로 삭제되었습니다"));
-        } catch (ValidationException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new SystemException("계정 삭제 중 오류가 발생했습니다", "USER_ACCOUNT_DELETE_ERROR", e);
-        }
-    }
-
-    @PostMapping("/change-password")
-    @LogExecution("사용자 비밀번호 변경")
-    @PerformanceMonitor(threshold = 2000, operation = "user_password_change")
+    @PutMapping("/notification-preferences")
+    @LogExecution("사용자 알림 설정 수정")
+    @PerformanceMonitor(threshold = 2000, operation = "user_notification_preferences_update")
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<Void>> changePassword(
-            @RequestBody @Valid PasswordChangeRequest request,
+    public ResponseEntity<ApiResponse<Void>> updateUserNotificationPreferences(
+            @RequestBody @Valid List<NotificationType> preferences,
             Authentication authentication) {
         try {
             String userEmail = getCurrentUserEmail(authentication);
-            validatePasswordChangeRequest(request);
-            userCommandUseCase.changePassword(userEmail, request.getCurrentPassword(), request.getNewPassword());
-            return ResponseEntity.ok(ApiResponse.success(null, "비밀번호가 성공적으로 변경되었습니다"));
+            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
+            }
+
+            userCommandUseCase.updateNotificationPreferences(userOpt.get().getId(), preferences);
+            return ResponseEntity.ok(ApiResponse.success(null, "알림 설정이 성공적으로 수정되었습니다"));
         } catch (ValidationException e) {
             throw e;
         } catch (Exception e) {
-            throw new SystemException("비밀번호 변경 중 오류가 발생했습니다", "USER_PASSWORD_CHANGE_ERROR", e);
+            throw new SystemException("알림 설정 수정 중 오류가 발생했습니다", "USER_NOTIFICATION_PREFERENCES_UPDATE_ERROR", e);
         }
     }
 
     private String getCurrentUserEmail(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ValidationException("인증이 필요합니다");
+            throw new ValidationException("인증이 필요합니다", List.of("AUTHENTICATION_REQUIRED"));
         }
         return authentication.getName();
     }
 
     private void validateUpdateRequest(UserUpdateRequest request) {
         if (request == null) {
-            throw new ValidationException("사용자 수정 요청이 null입니다");
+            throw new ValidationException("사용자 수정 요청이 null입니다", List.of("REQUEST_NULL"));
         }
         if (request.getUsername() != null && request.getUsername().trim().isEmpty()) {
-            throw new ValidationException("사용자명은 비어있을 수 없습니다");
+            throw new ValidationException("사용자명은 비어있을 수 없습니다", List.of("USERNAME_EMPTY"));
         }
         if (request.getUsername() != null && request.getUsername().length() > 50) {
-            throw new ValidationException("사용자명은 50자를 초과할 수 없습니다");
+            throw new ValidationException("사용자명은 50자를 초과할 수 없습니다", List.of("USERNAME_TOO_LONG"));
         }
     }
 
     private void validateWatchlistRequest(WatchlistUpdateRequest request) {
         if (request == null) {
-            throw new ValidationException("관심목록 수정 요청이 null입니다");
+            throw new ValidationException("관심목록 수정 요청이 null입니다", List.of("REQUEST_NULL"));
         }
         if (request.getCategories() != null && request.getCategories().size() > 20) {
-            throw new ValidationException("관심 카테고리는 20개를 초과할 수 없습니다");
-        }
-    }
-
-    private void validatePasswordChangeRequest(PasswordChangeRequest request) {
-        if (request == null) {
-            throw new ValidationException("비밀번호 변경 요청이 null입니다");
-        }
-        if (request.getCurrentPassword() == null || request.getCurrentPassword().trim().isEmpty()) {
-            throw new ValidationException("현재 비밀번호는 필수입니다");
-        }
-        if (request.getNewPassword() == null || request.getNewPassword().trim().isEmpty()) {
-            throw new ValidationException("새 비밀번호는 필수입니다");
-        }
-        if (request.getNewPassword().length() < 12) {
-            throw new ValidationException("새 비밀번호는 12자 이상이어야 합니다");
-        }
-        if (request.getCurrentPassword().equals(request.getNewPassword())) {
-            throw new ValidationException("새 비밀번호는 현재 비밀번호와 달라야 합니다");
-        }
-    }
-
-    public static class PasswordChangeRequest {
-        private String currentPassword;
-        private String newPassword;
-
-        public String getCurrentPassword() {
-            return currentPassword;
-        }
-
-        public void setCurrentPassword(String currentPassword) {
-            this.currentPassword = currentPassword;
-        }
-
-        public String getNewPassword() {
-            return newPassword;
-        }
-
-        public void setNewPassword(String newPassword) {
-            this.newPassword = newPassword;
+            throw new ValidationException("관심 카테고리는 20개를 초과할 수 없습니다", List.of("CATEGORIES_TOO_MANY"));
         }
     }
 }

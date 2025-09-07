@@ -10,10 +10,12 @@ import java.util.Map;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ValidationErrorResponse {
     private String requestId;
+    private String errorCode;
     private String message;
     private List<String> validationErrors;
     private Map<String, String> fieldErrors;
     private String path;
+    private int status;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime timestamp;
@@ -31,6 +33,11 @@ public class ValidationErrorResponse {
 
         public ValidationErrorResponseBuilder requestId(String requestId) {
             validationErrorResponse.requestId = requestId;
+            return this;
+        }
+
+        public ValidationErrorResponseBuilder errorCode(String errorCode) {
+            validationErrorResponse.errorCode = errorCode;
             return this;
         }
 
@@ -54,6 +61,11 @@ public class ValidationErrorResponse {
             return this;
         }
 
+        public ValidationErrorResponseBuilder status(int status) {
+            validationErrorResponse.status = status;
+            return this;
+        }
+
         public ValidationErrorResponseBuilder timestamp(LocalDateTime timestamp) {
             validationErrorResponse.timestamp = timestamp;
             return this;
@@ -70,6 +82,14 @@ public class ValidationErrorResponse {
 
     public void setRequestId(String requestId) {
         this.requestId = requestId;
+    }
+
+    public String getErrorCode() {
+        return errorCode;
+    }
+
+    public void setErrorCode(String errorCode) {
+        this.errorCode = errorCode;
     }
 
     public String getMessage() {
@@ -102,6 +122,14 @@ public class ValidationErrorResponse {
 
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
     }
 
     public LocalDateTime getTimestamp() {

@@ -30,7 +30,7 @@ public class AuthController {
 
     @PostMapping("/login")
     @LogExecution("사용자 로그인")
-    @PerformanceMonitor(threshold = 2000, operation = "user_login")
+    @PerformanceMonitor(threshold = 2000, metricName = "user_login")
     public ResponseEntity<ApiResponse<JwtToken>> login(@RequestBody @Valid LoginRequest request) {
         try {
             JwtToken token = authenticationService.login(request);
@@ -42,7 +42,7 @@ public class AuthController {
 
     @PostMapping("/register")
     @LogExecution("사용자 회원가입")
-    @PerformanceMonitor(threshold = 3000, operation = "user_registration")
+    @PerformanceMonitor(threshold = 3000, metricName = "user_registration")
     public ResponseEntity<ApiResponse<User>> register(@RequestBody @Valid UserRegistrationRequest request) {
         try {
             User user = userService.registerUser(request);
@@ -54,7 +54,7 @@ public class AuthController {
 
     @PostMapping("/refresh")
     @LogExecution("토큰 갱신")
-    @PerformanceMonitor(threshold = 1000, operation = "token_refresh")
+    @PerformanceMonitor(threshold = 1000, metricName = "token_refresh")
     public ResponseEntity<ApiResponse<JwtToken>> refresh(@RequestBody @Valid RefreshTokenRequest request) {
         try {
             JwtToken token = authenticationService.refresh(request);
@@ -66,7 +66,7 @@ public class AuthController {
 
     @PostMapping("/logout")
     @LogExecution("사용자 로그아웃")
-    @PerformanceMonitor(threshold = 500, operation = "user_logout")
+    @PerformanceMonitor(threshold = 500, metricName = "user_logout")
     public ResponseEntity<ApiResponse<Void>> logout() {
         try {
             return ResponseEntity.ok(ApiResponse.success(null, "로그아웃에 성공했습니다"));

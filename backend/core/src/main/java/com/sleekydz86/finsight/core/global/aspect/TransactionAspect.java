@@ -13,7 +13,6 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
-
 import java.lang.reflect.Method;
 
 @Aspect
@@ -33,7 +32,7 @@ public class TransactionAspect {
         String methodName = method.getName();
 
         DefaultTransactionDefinition def = new DefaultTransactionDefinition();
-        def.setPropagationBehavior(transactional.propagation().ordinal());
+        def.setPropagationBehavior(transactional.propagation().getValue());
         def.setIsolationLevel(TransactionDefinition.ISOLATION_DEFAULT);
         def.setTimeout(transactional.timeout());
         def.setReadOnly(transactional.readOnly());
@@ -52,27 +51,28 @@ public class TransactionAspect {
                 logger.debug("Transaction rolled back for {}.{} due to: {}", className, methodName, e.getMessage());
             } else {
                 transactionManager.commit(status);
-                logger.debug("Transaction committed for {}.{} despite exception: {}", className, methodName, e.getMessage());
+                logger.debug("Transaction committed for {}.{} despite exception: {}", className, methodName,
+                        e.getMessage());
             }
             throw e;
         }
     }
 
     private boolean shouldRollback(Exception e, Transactional transactional) {
-        Class<? extends Throwable>[] rollbackFor = transactional.rollbackFor();
-        Class<? extends Throwable>[] noRollbackFor = transactional.noRollbackFor();
+        String[] rollbackFor = transactional.rollbackFor();
+        String[] noRollbackFor = transactional.noRollbackFor();
 
         if (noRollbackFor.length > 0) {
-            for (Class<? extends Throwable> noRollbackClass : noRollbackFor) {
-                if (noRollbackClass.isAssignableFrom(e.getClass())) {
+            for (String noRollbackClassName : noRollbackFor) {
+                if (isAssignableFrom(e.getClass(), noRollbackClassName)) {
                     return false;
                 }
             }
         }
 
         if (rollbackFor.length > 0) {
-            for (Class<? extends Throwable> rollbackClass : rollbackFor) {
-                if (rollbackClass.isAssignableFrom(e.getClass())) {
+            for (String rollbackClassName : rollbackFor) {
+                if (isAssignableFrom(e.getClass(), rollbackClassName)) {
                     return true;
                 }
             }
@@ -80,5 +80,15 @@ public class TransactionAspect {
         }
 
         return true;
+    }
+
+    private boolean isAssignableFrom(Class<?> exceptionClass, String className) {
+        try {
+            Class<?> targetClass = Class.forName(className);
+            return targetClass.isAssignableFrom(exceptionClass);
+        } catch (ClassNotFoundException e) {
+            logger.warn("Class not found: {}", className);
+            return false;
+        }
     }
 }

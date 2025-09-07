@@ -12,6 +12,7 @@ public class ErrorResponse {
     private String errorCode;
     private String message;
     private String path;
+    private int status;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime timestamp;
@@ -47,6 +48,11 @@ public class ErrorResponse {
 
         public ErrorResponseBuilder path(String path) {
             errorResponse.path = path;
+            return this;
+        }
+
+        public ErrorResponseBuilder status(int status) {
+            errorResponse.status = status;
             return this;
         }
 
@@ -100,6 +106,14 @@ public class ErrorResponse {
 
     public void setPath(String path) {
         this.path = path;
+    }
+
+    public int getStatus() {
+        return status;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
     }
 
     public LocalDateTime getTimestamp() {
