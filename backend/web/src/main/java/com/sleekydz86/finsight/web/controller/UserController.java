@@ -1,10 +1,11 @@
 package com.sleekydz86.finsight.web.controller;
 
 import com.sleekydz86.finsight.core.user.domain.User;
+import com.sleekydz86.finsight.core.user.domain.UserRole;
+import com.sleekydz86.finsight.core.user.domain.UserStatus;
 import com.sleekydz86.finsight.core.user.domain.port.in.UserCommandUseCase;
 import com.sleekydz86.finsight.core.user.domain.port.in.UserQueryUseCase;
-import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserUpdateRequest;
-import com.sleekydz86.finsight.core.user.domain.port.in.dto.WatchlistUpdateRequest;
+import com.sleekydz86.finsight.core.user.domain.port.in.dto.*;
 import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.annotation.LogExecution;
 import com.sleekydz86.finsight.core.global.annotation.PerformanceMonitor;
@@ -15,19 +16,32 @@ import com.sleekydz86.finsight.core.global.exception.SystemException;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
+import com.sleekydz86.finsight.core.user.domain.port.out.dto.PasswordStatusResponse;
+import com.sleekydz86.finsight.core.user.domain.port.out.dto.UserLoginResponse;
+import com.sleekydz86.finsight.core.user.domain.port.out.dto.UserResponse;
+import com.sleekydz86.finsight.core.user.service.UserApplicationService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+@Tag(name = "User Management", description = "사용자 관리 및 인증 API")
 public class UserController {
 
     private final UserQueryUseCase userQueryUseCase;
     private final UserCommandUseCase userCommandUseCase;
+    private final UserApplicationService userApplicationService;
 
     public UserController(UserQueryUseCase userQueryUseCase, UserCommandUseCase userCommandUseCase) {
         this.userQueryUseCase = userQueryUseCase;
@@ -158,6 +172,228 @@ public class UserController {
         } catch (Exception e) {
             throw new SystemException("알림 설정 수정 중 오류가 발생했습니다", "USER_NOTIFICATION_PREFERENCES_UPDATE_ERROR", e);
         }
+    }
+
+    @PostMapping("/join")
+    @Operation(summary = "사용자 가입", description = "새로운 사용자를 등록합니다.")
+    public ResponseEntity<ApiResponse<UserResponse>> join(@Valid @RequestBody UserJoinRequest request) {
+        try {
+            UserResponse response = userApplicationService.join(request);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("사용자 가입 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/login")
+    @Operation(summary = "사용자 로그인", description = "사용자 인증을 수행합니다.")
+    public ResponseEntity<ApiResponse<UserLoginResponse>> login(
+            @Valid @RequestBody UserLoginRequest request,
+            HttpServletRequest httpRequest) {
+        try {
+            String clientIp = getClientIp(httpRequest);
+            UserLoginResponse response = userApplicationService.login(request, clientIp);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("사용자 로그인 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/profile")
+    @Operation(summary = "현재 사용자 정보 조회", description = "로그인한 사용자의 정보를 조회합니다.")
+    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUserInfo(@CurrentUser AuthenticatedUser user) {
+        try {
+            UserResponse response = userApplicationService.getCurrentUserInfo(user.getId());
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("사용자 정보 조회 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PutMapping("/profile")
+    @Operation(summary = "사용자 프로필 수정", description = "사용자의 프로필 정보를 수정합니다.")
+    public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
+            @Valid @RequestBody UserUpdateRequest request,
+            @CurrentUser AuthenticatedUser user) {
+        try {
+            UserResponse response = userApplicationService.updateProfile(user.getId(), request);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("사용자 프로필 수정 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/password/change")
+    @Operation(summary = "비밀번호 변경", description = "사용자의 비밀번호를 변경합니다.")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody UserPasswordChangeRequest request,
+            @CurrentUser AuthenticatedUser user) {
+        try {
+            userApplicationService.changePassword(user.getId(), request);
+            return ResponseEntity.ok(ApiResponse.success(null));
+        } catch (Exception e) {
+            log.error("비밀번호 변경 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/password/status")
+    @Operation(summary = "비밀번호 상태 조회", description = "사용자의 비밀번호 상태를 조회합니다.")
+    public ResponseEntity<ApiResponse<PasswordStatusResponse>> getPasswordStatus(@CurrentUser AuthenticatedUser user) {
+        try {
+            PasswordStatusResponse response = userApplicationService.getPasswordStatus(user.getId());
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("비밀번호 상태 조회 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/admin")
+    @Operation(summary = "사용자 목록 조회", description = "관리자가 모든 사용자 목록을 조회합니다.")
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(Pageable pageable) {
+        try {
+            Page<UserResponse> response = userApplicationService.getUsers(pageable);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("사용자 목록 조회 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/admin/pending")
+    @Operation(summary = "승인 대기 사용자 목록", description = "승인 대기 중인 사용자 목록을 조회합니다.")
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> getPendingUsers(Pageable pageable) {
+        try {
+            Page<UserResponse> response = userApplicationService.getPendingUsers(pageable);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("승인 대기 사용자 목록 조회 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/admin/{userId}/approve")
+    @Operation(summary = "사용자 승인", description = "승인 대기 중인 사용자를 승인합니다.")
+    public ResponseEntity<ApiResponse<UserResponse>> approveUser(
+            @PathVariable Long userId,
+            @CurrentUser AuthenticatedUser approver) {
+        try {
+            UserResponse response = userApplicationService.approveUser(userId, approver.getId());
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("사용자 승인 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/admin/{userId}/reject")
+    @Operation(summary = "사용자 거부", description = "승인 대기 중인 사용자를 거부합니다.")
+    public ResponseEntity<ApiResponse<UserResponse>> rejectUser(@PathVariable Long userId) {
+        try {
+            UserResponse response = userApplicationService.rejectUser(userId);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("사용자 거부 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/admin/{userId}/suspend")
+    @Operation(summary = "사용자 정지", description = "사용자 계정을 정지합니다.")
+    public ResponseEntity<ApiResponse<UserResponse>> suspendUser(@PathVariable Long userId) {
+        try {
+            UserResponse response = userApplicationService.suspendUser(userId);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("사용자 정지 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/admin/{userId}/unlock")
+    @Operation(summary = "사용자 잠금 해제", description = "정지된 사용자 계정을 잠금 해제합니다.")
+    public ResponseEntity<ApiResponse<UserResponse>> unlockUser(@PathVariable Long userId) {
+        try {
+            UserResponse response = userApplicationService.unlockUser(userId);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("사용자 잠금 해제 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/admin/{userId}/delete")
+    @Operation(summary = "사용자 삭제", description = "사용자 계정을 삭제합니다.")
+    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable Long userId) {
+        try {
+            userApplicationService.deleteUser(userId);
+            return ResponseEntity.ok(ApiResponse.success(null));
+        } catch (Exception e) {
+            log.error("사용자 삭제 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/admin/status/{status}")
+    @Operation(summary = "상태별 사용자 조회", description = "특정 상태의 사용자 목록을 조회합니다.")
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsersByStatus(
+            @PathVariable UserStatus status,
+            Pageable pageable) {
+        try {
+            Page<UserResponse> response = userApplicationService.getUsersByStatusAndRole(status.name(), null, pageable);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("상태별 사용자 조회 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/admin/role/{role}")
+    @Operation(summary = "역할별 사용자 조회", description = "특정 역할의 사용자 목록을 조회합니다.")
+    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsersByRole(
+            @PathVariable UserRole role,
+            Pageable pageable) {
+        try {
+            Page<UserResponse> response = userApplicationService.getUsersByStatusAndRole(null, role.name(), pageable);
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("역할별 사용자 조회 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/admin/{userId}/role")
+    @Operation(summary = "사용자 역할 변경", description = "사용자의 역할을 변경합니다.")
+    public ResponseEntity<ApiResponse<UserResponse>> changeUserRole(
+            @PathVariable Long userId,
+            @RequestParam UserRole role,
+            @CurrentUser AuthenticatedUser approver) {
+        try {
+            UserResponse response = userApplicationService.changeUserRole(userId, role, approver.getId());
+            return ResponseEntity.ok(ApiResponse.success(response));
+        } catch (Exception e) {
+            log.error("사용자 역할 변경 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+
+        return request.getRemoteAddr();
     }
 
     @GetMapping("/dashboard")

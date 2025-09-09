@@ -1,194 +1,326 @@
 package com.sleekydz86.finsight.core.user.domain;
 
+import com.sleekydz86.finsight.core.global.BaseTimeEntity;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import jakarta.persistence.*;
+import lombok.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 
 @Entity
-@Table(name = "users")
-public class User {
+@Table(name = "users", indexes = {
+        @Index(name = "idx_user_username", columnList = "username"),
+        @Index(name = "idx_user_email", columnList = "email"),
+        @Index(name = "idx_user_api_key", columnList = "apiKey")
+})
+@Getter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Slf4j
+public class User extends BaseTimeEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(name = "email", nullable = false, unique = true)
-    private String email;
-
-    @Column(name = "password", nullable = false)
-    private String password;
-
-    @Column(name = "username", nullable = false)
+    @Column(unique = true, length = 50, nullable = false)
     private String username;
 
+    @Column(length = 100, nullable = false)
+    private String password;
+
+    @Column(length = 50, nullable = false)
+    private String nickname;
+
+    @Column(unique = true, length = 100)
+    private String email;
+
+    @Column(unique = true, length = 64)
+    private String apiKey;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "role", nullable = false)
-    private UserRole role;
+    @Column(nullable = false)
+    @Builder.Default
+    private UserStatus status = UserStatus.PENDING;
 
-    @Column(name = "is_active", nullable = false)
-    private boolean isActive = true;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private UserRole role = UserRole.USER;
 
-    @Column(name = "last_login_at")
+    @Column
     private LocalDateTime lastLoginAt;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column
+    @Builder.Default
+    private Integer loginFailCount = 0;
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    @Column
+    private LocalDateTime accountLockedAt;
+
+    @Column
+    private Long approvedBy;
+
+    @Column
+    private LocalDateTime approvedAt;
+
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
+    @Column(name = "password_change_count")
+    @Builder.Default
+    private Integer passwordChangeCount = 0;
+
+    @Column(name = "last_password_change_date")
+    private LocalDate lastPasswordChangeDate;
 
     @ElementCollection(targetClass = TargetCategory.class)
     @CollectionTable(name = "user_watchlist", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false)
+    @Builder.Default
     private List<TargetCategory> watchlist = new ArrayList<>();
 
     @ElementCollection(targetClass = NotificationType.class)
     @CollectionTable(name = "user_notification_preferences", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "notification_type", nullable = false)
+    @Builder.Default
     private List<NotificationType> notificationPreferences = new ArrayList<>();
 
-    public User() {
+    public void changePassword(String newPassword) {
+        log.info("비밀번호 변경 실행 - userId: {}, 이전 passwordChangedAt: {}",
+                getId(), this.passwordChangedAt);
+
+        this.password = newPassword;
+        this.passwordChangedAt = LocalDateTime.now();
+
+        LocalDate today = LocalDate.now();
+        if (this.lastPasswordChangeDate == null || !this.lastPasswordChangeDate.equals(today)) {
+            this.passwordChangeCount = 1;
+            this.lastPasswordChangeDate = today;
+        } else {
+            this.passwordChangeCount = (this.passwordChangeCount == null ? 0 : this.passwordChangeCount) + 1;
+        }
+
+        log.info("비밀번호 변경 완료 - userId: {}, passwordChangedAt: {}, 오늘 변경 횟수: {}",
+                getId(), this.passwordChangedAt, this.passwordChangeCount);
     }
 
-    public User(String email, String password, String username) {
-        this.email = email;
-        this.password = password;
-        this.username = username;
-        this.role = UserRole.USER;
+    public boolean canChangePassword() {
+        LocalDate today = LocalDate.now();
+        if (this.lastPasswordChangeDate == null || !this.lastPasswordChangeDate.equals(today)) {
+            return true;
+        }
+
+        int maxDailyChanges = 3;
+        return this.passwordChangeCount == null || this.passwordChangeCount < maxDailyChanges;
     }
 
-    public User(Long id, String email, String password, String username, UserRole role,
-            boolean isActive, LocalDateTime lastLoginAt, List<TargetCategory> watchlist,
-            List<NotificationType> notificationPreferences) {
-        this.id = id;
+    public int getTodayPasswordChangeCount() {
+        LocalDate today = LocalDate.now();
+        if (this.lastPasswordChangeDate == null || !this.lastPasswordChangeDate.equals(today)) {
+            return 0;
+        }
+        return this.passwordChangeCount == null ? 0 : this.passwordChangeCount;
+    }
+
+    public boolean isPasswordChangeRequired() {
+        if (this.passwordChangedAt == null) {
+            log.debug("비밀번호 변경 필요 - 최초 변경 안함: userId={}", getId());
+            return true;
+        }
+
+        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+        boolean isRequired = this.passwordChangedAt.isBefore(thirtyDaysAgo);
+
+        log.debug("비밀번호 변경 필요 여부: userId={}, passwordChangedAt={}, required={}",
+                getId(), this.passwordChangedAt, isRequired);
+
+        return isRequired;
+    }
+
+    public boolean isPasswordChangeRecommended() {
+        if (this.passwordChangedAt == null) {
+            log.debug("비밀번호 변경 권장 - 최초 변경 안함: userId={}", getId());
+            return true;
+        }
+
+        LocalDateTime fourteenDaysAgo = LocalDateTime.now().minusDays(14);
+        boolean isRecommended = this.passwordChangedAt.isBefore(fourteenDaysAgo);
+
+        log.debug("비밀번호 변경 권장 여부: userId={}, passwordChangedAt={}, recommended={}",
+                getId(), this.passwordChangedAt, isRecommended);
+
+        return isRecommended;
+    }
+
+    public String getName() {
+        return this.username;
+    }
+
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + this.role.name()));
+
+        if (this.role == UserRole.ADMIN) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_MANAGER"));
+            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        } else if (this.role == UserRole.MANAGER) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        }
+
+        return authorities;
+    }
+
+    public boolean isActive() {
+        boolean isStatusActive = this.status == UserStatus.APPROVED;
+        boolean isNotLocked = !isLocked();
+
+        log.debug("회원 활성 상태 확인: userId={}, status={}, isLocked={}, isActive={}",
+                getId(), this.status, isLocked(), isStatusActive && isNotLocked);
+
+        return isStatusActive && isNotLocked;
+    }
+
+    public boolean isLocked() {
+        return this.loginFailCount >= 5 || this.status == UserStatus.SUSPENDED;
+    }
+
+    public boolean matchPassword(String rawPassword) {
+        return true;
+    }
+
+    public void increaseLoginFailCount() {
+        this.loginFailCount = (this.loginFailCount == null ? 0 : this.loginFailCount) + 1;
+
+        if (this.loginFailCount >= 5) {
+            this.status = UserStatus.SUSPENDED;
+            this.accountLockedAt = LocalDateTime.now();
+            log.warn("계정 잠금 처리: userId={}, loginFailCount={}", getId(), this.loginFailCount);
+        }
+
+        log.debug("로그인 실패 카운트 증가: userId={}, loginFailCount={}", getId(), this.loginFailCount);
+    }
+
+    public void resetLoginFailCount() {
+        this.loginFailCount = 0;
+        this.accountLockedAt = null;
+        log.debug("로그인 실패 카운트 초기화: userId={}", getId());
+    }
+
+    public void updateProfile(String nickname, String email) {
+        this.nickname = nickname;
         this.email = email;
-        this.password = password;
-        this.username = username;
-        this.role = role;
-        this.isActive = isActive;
+        log.info("프로필 업데이트: userId={}, nickname={}, email={}", getId(), nickname, email);
+    }
+
+    public void approve(Long approverId) {
+        this.status = UserStatus.APPROVED;
+        this.approvedBy = approverId;
+        this.approvedAt = LocalDateTime.now();
+        this.accountLockedAt = null;
+        this.loginFailCount = 0;
+        log.info("회원 승인: userId={}, approverId={}, approvedAt={}", getId(), approverId, this.approvedAt);
+    }
+
+    public void reject() {
+        this.status = UserStatus.REJECTED;
+        this.approvedBy = null;
+        this.approvedAt = null;
+        log.info("회원 거부: userId={}", getId());
+    }
+
+    public void suspend() {
+        this.status = UserStatus.SUSPENDED;
+        this.accountLockedAt = LocalDateTime.now();
+        log.info("회원 정지: userId={}, accountLockedAt={}", getId(), this.accountLockedAt);
+    }
+
+    public void withdraw() {
+        this.status = UserStatus.WITHDRAWN;
+        log.info("회원 탈퇴: userId={}", getId());
+    }
+
+    public void changeRole(UserRole newRole) {
+        if (newRole == null) {
+            throw new IllegalArgumentException("역할은 null일 수 없습니다.");
+        }
+
+        if (this.role == UserRole.ADMIN && newRole != UserRole.ADMIN) {
+            throw new IllegalArgumentException("ADMIN 역할에서 다른 역할로 변경할 수 없습니다.");
+        }
+
+        this.role = newRole;
+    }
+
+    public void unlock() {
+        if (this.status == UserStatus.SUSPENDED) {
+            this.status = UserStatus.APPROVED;
+        }
+        this.accountLockedAt = null;
+        this.loginFailCount = 0;
+        log.info("회원 잠금 해제: userId={}", getId());
+    }
+
+    public void updateLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
-        this.watchlist = watchlist != null ? new ArrayList<>(watchlist) : new ArrayList<>();
-        this.notificationPreferences = notificationPreferences != null ? new ArrayList<>(notificationPreferences)
-                : new ArrayList<>();
+        log.debug("마지막 로그인 시간 업데이트: userId={}, lastLoginAt={}", getId(), lastLoginAt);
     }
 
-    public void updateLastLogin() {
-        this.lastLoginAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
+    public String getMaskedEmail() {
+        if (this.email == null || !this.email.contains("@")) {
+            return this.email;
+        }
+
+        String[] parts = this.email.split("@");
+        String localPart = parts[0];
+        String domainPart = parts[1];
+
+        String maskedLocal;
+        if (localPart.length() <= 2) {
+            maskedLocal = localPart.charAt(0) + "*";
+        } else {
+            maskedLocal = localPart.charAt(0) + "*".repeat(localPart.length() - 2)
+                    + localPart.charAt(localPart.length() - 1);
+        }
+
+        String maskedDomain;
+        if (domainPart.length() <= 2) {
+            maskedDomain = "*" + domainPart.charAt(domainPart.length() - 1);
+        } else {
+            maskedDomain = domainPart.charAt(0) + "*".repeat(domainPart.length() - 2)
+                    + domainPart.charAt(domainPart.length() - 1);
+        }
+
+        return maskedLocal + "@" + maskedDomain;
+    }
+
+    public void resetToPending() {
+        this.status = UserStatus.PENDING;
+        this.approvedBy = null;
+        this.approvedAt = null;
+        this.accountLockedAt = null;
+        this.loginFailCount = 0;
+        log.info("회원 상태를 승인 대기로 재설정: userId={}, username={}", this.getId(), this.username);
     }
 
     public void addToWatchlist(TargetCategory category) {
         if (!this.watchlist.contains(category)) {
             this.watchlist.add(category);
-            this.updatedAt = LocalDateTime.now();
         }
     }
 
     public void removeFromWatchlist(TargetCategory category) {
         this.watchlist.remove(category);
-        this.updatedAt = LocalDateTime.now();
     }
 
     public void updateNotificationPreferences(List<NotificationType> preferences) {
         this.notificationPreferences = new ArrayList<>(preferences);
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-    public UserRole getRole() {
-        return role;
-    }
-
-    public void setRole(UserRole role) {
-        this.role = role;
-    }
-
-    public boolean isActive() {
-        return isActive;
-    }
-
-    public void setActive(boolean active) {
-        isActive = active;
-    }
-
-    public LocalDateTime getLastLoginAt() {
-        return lastLoginAt;
-    }
-
-    public void setLastLoginAt(LocalDateTime lastLoginAt) {
-        this.lastLoginAt = lastLoginAt;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public List<TargetCategory> getWatchlist() {
-        return new ArrayList<>(watchlist);
-    }
-
-    public void setWatchlist(List<TargetCategory> watchlist) {
-        this.watchlist = new ArrayList<>(watchlist);
-    }
-
-    public List<NotificationType> getNotificationPreferences() {
-        return new ArrayList<>(notificationPreferences);
-    }
-
-    public void setNotificationPreferences(List<NotificationType> notificationPreferences) {
-        this.notificationPreferences = new ArrayList<>(notificationPreferences);
     }
 
     @Override
@@ -198,88 +330,51 @@ public class User {
         if (o == null || getClass() != o.getClass())
             return false;
         User user = (User) o;
-        return Objects.equals(id, user.id) && Objects.equals(email, user.email);
+        return Objects.equals(getId(), user.getId()) && Objects.equals(email, user.email);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, email);
+        return Objects.hash(getId(), email);
     }
 
-    public static UserBuilder builder() {
-        return new UserBuilder();
+    public boolean isPasswordChangeRequired() {
+        if (this.passwordChangedAt == null) {
+            log.debug("비밀번호 변경 필요 - 최초 변경 안함: userId={}", getId());
+            return true;
+        }
+
+        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
+        boolean isRequired = this.passwordChangedAt.isBefore(thirtyDaysAgo);
+
+        log.debug("비밀번호 변경 필요 여부: userId={}, passwordChangedAt={}, required={}",
+                getId(), this.passwordChangedAt, isRequired);
+
+        return isRequired;
     }
 
-    public static class UserBuilder {
-        private Long id;
-        private String email;
-        private String username;
-        private String password;
-        private UserRole role;
-        private List<TargetCategory> watchlist;
-        private List<NotificationType> notificationPreferences;
-        private LocalDateTime lastLoginAt;
-        private LocalDateTime createdAt;
-        private LocalDateTime updatedAt;
-        private boolean active;
-
-        public UserBuilder id(Long id) {
-            this.id = id;
-            return this;
+    public boolean isPasswordChangeRecommended() {
+        if (this.passwordChangedAt == null) {
+            log.debug("비밀번호 변경 권장 - 최초 변경 안함: userId={}", getId());
+            return true;
         }
 
-        public UserBuilder email(String email) {
-            this.email = email;
-            return this;
-        }
+        LocalDateTime fourteenDaysAgo = LocalDateTime.now().minusDays(14);
+        boolean isRecommended = this.passwordChangedAt.isBefore(fourteenDaysAgo);
 
-        public UserBuilder username(String username) {
-            this.username = username;
-            return this;
-        }
+        log.debug("비밀번호 변경 권장 여부: userId={}, passwordChangedAt={}, recommended={}",
+                getId(), this.passwordChangedAt, isRecommended);
 
-        public UserBuilder password(String password) {
-            this.password = password;
-            return this;
-        }
-
-        public UserBuilder role(UserRole role) {
-            this.role = role;
-            return this;
-        }
-
-        public UserBuilder watchlist(List<TargetCategory> watchlist) {
-            this.watchlist = watchlist;
-            return this;
-        }
-
-        public UserBuilder notificationPreferences(List<NotificationType> notificationPreferences) {
-            this.notificationPreferences = notificationPreferences;
-            return this;
-        }
-
-        public UserBuilder lastLoginAt(LocalDateTime lastLoginAt) {
-            this.lastLoginAt = lastLoginAt;
-            return this;
-        }
-
-        public UserBuilder createdAt(LocalDateTime createdAt) {
-            this.createdAt = createdAt;
-            return this;
-        }
-
-        public UserBuilder updatedAt(LocalDateTime updatedAt) {
-            this.updatedAt = updatedAt;
-            return this;
-        }
-
-        public UserBuilder active(boolean active) {
-            this.active = active;
-            return this;
-        }
-
-        public User build() {
-            return new User(id, email, username, password, role, active, lastLoginAt, watchlist, notificationPreferences);
-        }
+        return isRecommended;
     }
+
+    public void unlock() {
+        if (this.status == UserStatus.SUSPENDED) {
+            this.status = UserStatus.APPROVED;
+        }
+        this.accountLockedAt = null;
+        this.loginFailCount = 0;
+        log.info("회원 잠금 해제: userId={}", getId());
+    }
+
 }
