@@ -5,6 +5,7 @@ import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.global.annotation.Cacheable;
 import com.sleekydz86.finsight.core.global.annotation.LogExecution;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
+import com.sleekydz86.finsight.core.global.exception.SystemException;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.Newses;
 import com.sleekydz86.finsight.core.news.domain.NewsStatistics;
@@ -22,6 +23,8 @@ import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.comment.domain.Comments;
+import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaEntity;
+import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -34,6 +37,8 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+
+
 @Service
 @Qualifier("advancedNewsService")
 public class AdvancedNewsService implements NewsCommandUseCase, NewsQueryUseCase {
@@ -44,16 +49,42 @@ public class AdvancedNewsService implements NewsCommandUseCase, NewsQueryUseCase
     private final NewsScrapRequesterPort newsScrapRequesterPort;
     private final NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort;
     private final NewsStatisticsPersistencePort newsStatisticsPersistencePort;
+    private final PersonalizedNewsService personalizedNewsService;
+    private final UserJpaRepository userJpaRepository;
 
     public AdvancedNewsService(NewsPersistencePort newsPersistencePort,
-            NewsScrapRequesterPort newsScrapRequesterPort,
-            NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort,
-            NewsStatisticsPersistencePort newsStatisticsPersistencePort) {
+                               NewsScrapRequesterPort newsScrapRequesterPort,
+                               NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort,
+                               NewsStatisticsPersistencePort newsStatisticsPersistencePort,
+                               PersonalizedNewsService personalizedNewsService,
+                               UserJpaRepository userJpaRepository) {
         this.newsPersistencePort = newsPersistencePort;
         this.newsScrapRequesterPort = newsScrapRequesterPort;
         this.newsAiAnalysisRequesterPort = newsAiAnalysisRequesterPort;
         this.newsStatisticsPersistencePort = newsStatisticsPersistencePort;
+        this.personalizedNewsService = personalizedNewsService;
+        this.userJpaRepository = userJpaRepository;
     }
+
+    @Override
+    public Newses getPersonalizedNews(String userEmail, int limit) {
+        log.debug("개인화 뉴스 조회: userEmail={}, limit={}", userEmail, limit);
+
+        try {
+            Optional<UserJpaEntity> userOpt = userJpaRepository.findByEmail(userEmail);
+            if (userOpt.isEmpty()) {
+                log.warn("사용자를 찾을 수 없습니다: {}", userEmail);
+                return new Newses();
+            }
+
+            Long userId = userOpt.get().getId();
+            return personalizedNewsService.getPersonalizedNews(userId, 0, limit);
+        } catch (Exception e) {
+            log.error("개인화 뉴스 조회 실패: userEmail={}", userEmail, e);
+            throw new SystemException("개인화 뉴스 조회 중 오류가 발생했습니다", "PERSONALIZED_NEWS_ERROR", e);
+        }
+    }
+
 
     @Override
     @Transactional

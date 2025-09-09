@@ -16,4 +16,5 @@ public interface CommentQueryUseCase {
     Comments getReportedComments();
     boolean hasUserLikedComment(String userEmail, Long commentId);
     boolean hasUserDislikedComment(String userEmail, Long commentId);
+    List<CommentResponse> getCommentsByUserEmail(String userEmail, int page, int size);
 }

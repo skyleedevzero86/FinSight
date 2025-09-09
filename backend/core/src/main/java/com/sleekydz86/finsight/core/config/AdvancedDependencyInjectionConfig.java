@@ -10,6 +10,7 @@ import com.sleekydz86.finsight.core.news.service.NewsScrapService;
 import com.sleekydz86.finsight.core.news.service.NewsAiProcessingService;
 import com.sleekydz86.finsight.core.news.service.NewsPersistenceService;
 import com.sleekydz86.finsight.core.news.service.NewsNotificationService;
+import com.sleekydz86.finsight.core.news.service.PersonalizedNewsService;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardReactionPersistencePort;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardScrapPersistencePort;
@@ -51,6 +52,7 @@ public class AdvancedDependencyInjectionConfig {
     private final NewsScrapService newsScrapService;
     private final NewsAiProcessingService newsAiProcessingService;
     private final NewsPersistenceService newsPersistenceService;
+    private final PersonalizedNewsService personalizedNewsService;
     private final BoardPersistencePort boardPersistencePort;
     private final BoardReactionPersistencePort boardReactionPersistencePort;
     private final BoardScrapPersistencePort boardScrapPersistencePort;
@@ -75,6 +77,7 @@ public class AdvancedDependencyInjectionConfig {
             NewsScrapService newsScrapService,
             NewsAiProcessingService newsAiProcessingService,
             NewsPersistenceService newsPersistenceService,
+            PersonalizedNewsService personalizedNewsService,
             BoardPersistencePort boardPersistencePort,
             BoardReactionPersistencePort boardReactionPersistencePort,
             BoardScrapPersistencePort boardScrapPersistencePort,
@@ -97,6 +100,7 @@ public class AdvancedDependencyInjectionConfig {
         this.newsScrapService = newsScrapService;
         this.newsAiProcessingService = newsAiProcessingService;
         this.newsPersistenceService = newsPersistenceService;
+        this.personalizedNewsService = personalizedNewsService;
         this.boardPersistencePort = boardPersistencePort;
         this.boardReactionPersistencePort = boardReactionPersistencePort;
         this.boardScrapPersistencePort = boardScrapPersistencePort;
@@ -116,9 +120,11 @@ public class AdvancedDependencyInjectionConfig {
         this.newsProcessingExecutor = newsProcessingExecutor;
     }
 
+
     @Bean
     public NewsQueryUseCase newsQueryUseCase() {
-        return new NewsQueryService(newsPersistencePort, newsStatisticsPersistencePort);
+        return new NewsQueryService(newsPersistencePort, newsStatisticsPersistencePort,
+                personalizedNewsService, userJpaRepository);
     }
 
     @Bean
@@ -130,7 +136,8 @@ public class AdvancedDependencyInjectionConfig {
     @Bean
     @Qualifier("newsQueryService")
     public NewsQueryService newsQueryService() {
-        return new NewsQueryService(newsPersistencePort, newsStatisticsPersistencePort);
+        return new NewsQueryService(newsPersistencePort, newsStatisticsPersistencePort,
+                personalizedNewsService, userJpaRepository);
     }
 
     @Bean
