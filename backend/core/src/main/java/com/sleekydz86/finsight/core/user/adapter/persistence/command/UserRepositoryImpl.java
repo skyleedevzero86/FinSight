@@ -5,8 +5,6 @@ import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.UserStatus;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaRepository;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Repository
 @Transactional
@@ -65,38 +64,47 @@ public class UserRepositoryImpl implements UserPersistencePort {
     }
 
     @Override
-    public boolean existsByEmail(String email) {
+    public Optional<User> findByUsername(String username) {
         try {
-            return userJpaRepository.existsByEmail(email);
+            return userJpaRepository.findByUsername(username)
+                    .map(userJpaMapper::toDomain);
         } catch (Exception e) {
-            log.error("이메일 존재 확인 실패: email={}, error={}", email, e.getMessage());
-            return false;
+            log.error("사용자명으로 사용자 조회 실패: username={}, error={}", username, e.getMessage());
+            return Optional.empty();
         }
     }
 
-    public List<User> findAllActiveUsers() {
+    @Override
+    public Optional<User> findByApiKey(String apiKey) {
+        try {
+            return userJpaRepository.findByApiKey(apiKey)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("API 키로 사용자 조회 실패: apiKey={}, error={}", apiKey, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public List<User> findAll() {
         try {
             return userJpaRepository.findAll().stream()
                     .map(userJpaMapper::toDomain)
-                    .filter(User::isActive)
                     .toList();
         } catch (Exception e) {
-            log.error("활성 사용자 목록 조회 실패: {}", e.getMessage());
+            log.error("전체 사용자 목록 조회 실패: {}", e.getMessage());
             return List.of();
         }
     }
 
     @Override
-    public List<User> findByWatchlistCategories(List<TargetCategory> categories) {
+    public Page<User> findAll(Pageable pageable) {
         try {
-            return userJpaRepository.findAll().stream()
-                    .map(userJpaMapper::toDomain)
-                    .filter(user -> user.getWatchlist().stream()
-                            .anyMatch(categories::contains))
-                    .toList();
+            return userJpaRepository.findAll(pageable)
+                    .map(userJpaMapper::toDomain);
         } catch (Exception e) {
-            log.error("관심사별 사용자 조회 실패: {}", e.getMessage());
-            return List.of();
+            log.error("페이징 사용자 목록 조회 실패: {}", e.getMessage());
+            return Page.empty();
         }
     }
 
@@ -110,63 +118,33 @@ public class UserRepositoryImpl implements UserPersistencePort {
         }
     }
 
-    public List<User> findAll() {
+    @Override
+    public boolean existsByEmail(String email) {
         try {
-            return userJpaRepository.findAll().stream()
-                    .map(userJpaMapper::toDomain)
-                    .toList();
+            return userJpaRepository.existsByEmail(email);
         } catch (Exception e) {
-            log.error("전체 사용자 목록 조회 실패: {}", e.getMessage());
-            return List.of();
+            log.error("이메일 존재 확인 실패: email={}, error={}", email, e.getMessage());
+            return false;
         }
     }
 
-    public Page<User> findAll(Pageable pageable) {
+    @Override
+    public boolean existsByUsername(String username) {
         try {
-            return userJpaRepository.findAll(pageable)
-                    .map(userJpaMapper::toDomain);
+            return userJpaRepository.existsByUsername(username);
         } catch (Exception e) {
-            log.error("페이징 사용자 목록 조회 실패: {}", e.getMessage());
-            return Page.empty();
+            log.error("사용자명 존재 확인 실패: username={}, error={}", username, e.getMessage());
+            return false;
         }
     }
 
-    public Optional<User> findByUsername(String username) {
+    @Override
+    public boolean existsByApiKey(String apiKey) {
         try {
-            return userJpaRepository.findByUsername(username)
-                    .map(userJpaMapper::toDomain);
+            return userJpaRepository.existsByApiKey(apiKey);
         } catch (Exception e) {
-            log.error("사용자명으로 사용자 조회 실패: username={}, error={}", username, e.getMessage());
-            return Optional.empty();
-        }
-    }
-
-    public Page<User> findByStatus(UserStatus status, Pageable pageable) {
-        try {
-            return userJpaRepository.findByStatus(status, pageable)
-                    .map(userJpaMapper::toDomain);
-        } catch (Exception e) {
-            log.error("상태별 사용자 조회 실패: status={}, error={}", status, e.getMessage());
-            return Page.empty();
-        }
-    }
-
-    public Page<User> findByStatusAndRole(UserStatus status, UserRole role, Pageable pageable) {
-        try {
-            return userJpaRepository.findByStatusAndRole(status, role, pageable)
-                    .map(userJpaMapper::toDomain);
-        } catch (Exception e) {
-            log.error("상태 및 역할별 사용자 조회 실패: status={}, role={}, error={}", status, role, e.getMessage());
-            return Page.empty();
-        }
-    }
-
-    public long countByStatus(UserStatus status) {
-        try {
-            return userJpaRepository.countByStatus(status);
-        } catch (Exception e) {
-            log.error("상태별 사용자 수 조회 실패: status={}, error={}", status, e.getMessage());
-            return 0;
+            log.error("API 키 존재 확인 실패: apiKey={}, error={}", apiKey, e.getMessage());
+            return false;
         }
     }
 
@@ -226,6 +204,63 @@ public class UserRepositoryImpl implements UserPersistencePort {
         } catch (Exception e) {
             log.error("비밀번호 만료 사용자 수 조회 실패: before={}, error={}", before, e.getMessage());
             return 0;
+        }
+    }
+
+    @Override
+    public Page<User> findByStatus(UserStatus status, Pageable pageable) {
+        try {
+            return userJpaRepository.findByStatus(status, pageable)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("상태별 사용자 조회 실패: status={}, error={}", status, e.getMessage());
+            return Page.empty();
+        }
+    }
+
+    @Override
+    public Page<User> findByStatusAndRole(UserStatus status, UserRole role, Pageable pageable) {
+        try {
+            return userJpaRepository.findByStatusAndRole(status, role, pageable)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("상태 및 역할별 사용자 조회 실패: status={}, role={}, error={}", status, role, e.getMessage());
+            return Page.empty();
+        }
+    }
+
+    @Override
+    public long countByStatus(UserStatus status) {
+        try {
+            return userJpaRepository.countByStatus(status);
+        } catch (Exception e) {
+            log.error("상태별 사용자 수 조회 실패: status={}, error={}", status, e.getMessage());
+            return 0;
+        }
+    }
+
+    @Override
+    public List<User> findByWatchlistCategories(List<TargetCategory> categories) {
+        try {
+            List<UserJpaEntity> entities = userJpaRepository.findByWatchlistIn(categories);
+            return entities.stream()
+                    .map(userJpaMapper::toDomain)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("관심사별 사용자 조회 실패: categories={}, error={}", categories, e.getMessage());
+            return List.of();
+        }
+    }
+
+    @Override
+    public List<User> findAllActiveUsers() {
+        try {
+            return userJpaRepository.findAllActiveUsers().stream()
+                    .map(userJpaMapper::toDomain)
+                    .toList();
+        } catch (Exception e) {
+            log.error("활성 사용자 목록 조회 실패: {}", e.getMessage());
+            return List.of();
         }
     }
 

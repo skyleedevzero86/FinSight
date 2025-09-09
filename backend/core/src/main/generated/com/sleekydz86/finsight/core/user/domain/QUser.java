@@ -20,23 +20,52 @@ public class QUser extends EntityPathBase<User> {
 
     public static final QUser user = new QUser("user");
 
-    public final DateTimePath<java.time.LocalDateTime> createdAt = createDateTime("createdAt", java.time.LocalDateTime.class);
+    public final com.sleekydz86.finsight.core.global.QBaseTimeEntity _super = new com.sleekydz86.finsight.core.global.QBaseTimeEntity(this);
+
+    public final DateTimePath<java.time.LocalDateTime> accountLockedAt = createDateTime("accountLockedAt", java.time.LocalDateTime.class);
+
+    public final StringPath apiKey = createString("apiKey");
+
+    public final DateTimePath<java.time.LocalDateTime> approvedAt = createDateTime("approvedAt", java.time.LocalDateTime.class);
+
+    public final NumberPath<Long> approvedBy = createNumber("approvedBy", Long.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createDate = _super.createDate;
 
     public final StringPath email = createString("email");
 
-    public final NumberPath<Long> id = createNumber("id", Long.class);
-
-    public final BooleanPath isActive = createBoolean("isActive");
+    //inherited
+    public final NumberPath<Long> id = _super.id;
 
     public final DateTimePath<java.time.LocalDateTime> lastLoginAt = createDateTime("lastLoginAt", java.time.LocalDateTime.class);
+
+    public final DatePath<java.time.LocalDate> lastPasswordChangeDate = createDate("lastPasswordChangeDate", java.time.LocalDate.class);
+
+    public final NumberPath<Integer> loginFailCount = createNumber("loginFailCount", Integer.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> modifyDate = _super.modifyDate;
+
+    public final StringPath nickname = createString("nickname");
 
     public final ListPath<NotificationType, EnumPath<NotificationType>> notificationPreferences = this.<NotificationType, EnumPath<NotificationType>>createList("notificationPreferences", NotificationType.class, EnumPath.class, PathInits.DIRECT2);
 
     public final StringPath password = createString("password");
 
+    public final NumberPath<Integer> passwordChangeCount = createNumber("passwordChangeCount", Integer.class);
+
+    public final DateTimePath<java.time.LocalDateTime> passwordChangedAt = createDateTime("passwordChangedAt", java.time.LocalDateTime.class);
+
     public final EnumPath<UserRole> role = createEnum("role", UserRole.class);
 
-    public final DateTimePath<java.time.LocalDateTime> updatedAt = createDateTime("updatedAt", java.time.LocalDateTime.class);
+    public final EnumPath<UserStatus> status = createEnum("status", UserStatus.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
 
     public final StringPath username = createString("username");
 

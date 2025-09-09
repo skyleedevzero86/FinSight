@@ -1,11 +1,10 @@
 package com.sleekydz86.finsight.core.auth.service;
 
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaRepository;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaEntity;
+import com.sleekydz86.finsight.core.user.domain.User;
+import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -20,28 +19,28 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     private static final Logger log = LoggerFactory.getLogger(CustomUserDetailsService.class);
 
-    private final UserJpaRepository userJpaRepository;
+    private final UserPersistencePort userPersistencePort;
 
-    public CustomUserDetailsService(UserJpaRepository userJpaRepository) {
-        this.userJpaRepository = userJpaRepository;
+    public CustomUserDetailsService(UserPersistencePort userPersistencePort) {
+        this.userPersistencePort = userPersistencePort;
     }
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         log.debug("사용자 인증 정보 로드: {}", email);
 
-        UserJpaEntity userEntity = userJpaRepository.findByEmail(email)
+        User user = userPersistencePort.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email));
 
-        if (!userEntity.isActive()) {
+        if (!user.isActive()) {
             throw new UsernameNotFoundException("비활성화된 사용자입니다: " + email);
         }
 
-        return User.builder()
-                .username(userEntity.getEmail())
-                .password(userEntity.getPassword())
-                .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + userEntity.getRole().name())))
-                .disabled(!userEntity.isActive())
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(user.getEmail())
+                .password(user.getPassword())
+                .authorities(Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
+                .disabled(!user.isActive())
                 .build();
     }
 }

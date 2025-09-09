@@ -26,6 +26,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
+import com.sleekydz86.finsight.core.global.dto.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -255,25 +257,25 @@ public class UserController {
 
     @GetMapping("/admin")
     @Operation(summary = "사용자 목록 조회", description = "관리자가 모든 사용자 목록을 조회합니다.")
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(Pageable pageable) {
+    public ResponseEntity<ApiResponse<PaginationResponse<UserResponse>>> getUsers(PageRequest pageRequest) {
         try {
-            Page<UserResponse> response = userApplicationService.getUsers(pageable);
+            PaginationResponse<UserResponse> response = userApplicationService.getUsers(pageRequest.toPageable());
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("사용자 목록 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         }
     }
 
     @GetMapping("/admin/pending")
     @Operation(summary = "승인 대기 사용자 목록", description = "승인 대기 중인 사용자 목록을 조회합니다.")
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> getPendingUsers(Pageable pageable) {
+    public ResponseEntity<ApiResponse<PaginationResponse<UserResponse>>> getPendingUsers(PageRequest pageRequest) {
         try {
-            Page<UserResponse> response = userApplicationService.getPendingUsers(pageable);
+            PaginationResponse<UserResponse> response = userApplicationService.getPendingUsers(pageRequest.toPageable());
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("승인 대기 사용자 목록 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         }
     }
 
@@ -341,29 +343,29 @@ public class UserController {
 
     @GetMapping("/admin/status/{status}")
     @Operation(summary = "상태별 사용자 조회", description = "특정 상태의 사용자 목록을 조회합니다.")
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsersByStatus(
+    public ResponseEntity<ApiResponse<PaginationResponse<UserResponse>>> getUsersByStatus(
             @PathVariable UserStatus status,
-            Pageable pageable) {
+            PageRequest pageRequest) {
         try {
-            Page<UserResponse> response = userApplicationService.getUsersByStatusAndRole(status.name(), null, pageable);
+            PaginationResponse<UserResponse> response = userApplicationService.getUsersByStatusAndRole(status.name(), null, pageRequest.toPageable());
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("상태별 사용자 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         }
     }
 
     @GetMapping("/admin/role/{role}")
     @Operation(summary = "역할별 사용자 조회", description = "특정 역할의 사용자 목록을 조회합니다.")
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsersByRole(
+    public ResponseEntity<ApiResponse<PaginationResponse<UserResponse>>> getUsersByRole(
             @PathVariable UserRole role,
-            Pageable pageable) {
+            PageRequest pageRequest) {
         try {
-            Page<UserResponse> response = userApplicationService.getUsersByStatusAndRole(null, role.name(), pageable);
+            PaginationResponse<UserResponse> response = userApplicationService.getUsersByStatusAndRole(null, role.name(), pageRequest.toPageable());
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("역할별 사용자 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         }
     }
 

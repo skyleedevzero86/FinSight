@@ -1,8 +1,6 @@
 package com.sleekydz86.finsight.core.user.domain;
 
-import com.sleekydz86.finsight.core.global.BaseTimeEntity;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
-import jakarta.persistence.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
@@ -14,83 +12,57 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-@Entity
-@Table(name = "users", indexes = {
-        @Index(name = "idx_user_username", columnList = "username"),
-        @Index(name = "idx_user_email", columnList = "email"),
-        @Index(name = "idx_user_api_key", columnList = "apiKey")
-})
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Slf4j
-public class User extends BaseTimeEntity {
+public class User {
 
-    @Column(unique = true, length = 50, nullable = false)
+    private Long id;
+
     private String username;
 
-    @Column(length = 100, nullable = false)
     private String password;
 
-    @Column(length = 50, nullable = false)
     private String nickname;
 
-    @Column(unique = true, length = 100)
     private String email;
 
-    @Column(unique = true, length = 64)
     private String apiKey;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     @Builder.Default
     private UserStatus status = UserStatus.PENDING;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     @Builder.Default
     private UserRole role = UserRole.USER;
 
-    @Column
     private LocalDateTime lastLoginAt;
 
-    @Column
     @Builder.Default
     private Integer loginFailCount = 0;
 
-    @Column
     private LocalDateTime accountLockedAt;
 
-    @Column
     private Long approvedBy;
 
-    @Column
     private LocalDateTime approvedAt;
 
-    @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
 
-    @Column(name = "password_change_count")
     @Builder.Default
     private Integer passwordChangeCount = 0;
 
-    @Column(name = "last_password_change_date")
     private LocalDate lastPasswordChangeDate;
 
-    @ElementCollection(targetClass = TargetCategory.class)
-    @CollectionTable(name = "user_watchlist", joinColumns = @JoinColumn(name = "user_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "category", nullable = false)
     @Builder.Default
     private List<TargetCategory> watchlist = new ArrayList<>();
 
-    @ElementCollection(targetClass = NotificationType.class)
-    @CollectionTable(name = "user_notification_preferences", joinColumns = @JoinColumn(name = "user_id"))
-    @Enumerated(EnumType.STRING)
-    @Column(name = "notification_type", nullable = false)
     @Builder.Default
     private List<NotificationType> notificationPreferences = new ArrayList<>();
+
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public void changePassword(String newPassword) {
         log.info("비밀번호 변경 실행 - userId: {}, 이전 passwordChangedAt: {}",
@@ -323,58 +295,20 @@ public class User extends BaseTimeEntity {
         this.notificationPreferences = new ArrayList<>(preferences);
     }
 
+    public void updateWatchlist(List<TargetCategory> watchlist) {
+        this.watchlist = new ArrayList<>(watchlist);
+    }
+
     @Override
     public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (o == null || getClass() != o.getClass())
-            return false;
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
         User user = (User) o;
-        return Objects.equals(getId(), user.getId()) && Objects.equals(email, user.email);
+        return Objects.equals(id, user.id) && Objects.equals(email, user.email);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(getId(), email);
+        return Objects.hash(id, email);
     }
-
-    public boolean isPasswordChangeRequired() {
-        if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 필요 - 최초 변경 안함: userId={}", getId());
-            return true;
-        }
-
-        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
-        boolean isRequired = this.passwordChangedAt.isBefore(thirtyDaysAgo);
-
-        log.debug("비밀번호 변경 필요 여부: userId={}, passwordChangedAt={}, required={}",
-                getId(), this.passwordChangedAt, isRequired);
-
-        return isRequired;
-    }
-
-    public boolean isPasswordChangeRecommended() {
-        if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 권장 - 최초 변경 안함: userId={}", getId());
-            return true;
-        }
-
-        LocalDateTime fourteenDaysAgo = LocalDateTime.now().minusDays(14);
-        boolean isRecommended = this.passwordChangedAt.isBefore(fourteenDaysAgo);
-
-        log.debug("비밀번호 변경 권장 여부: userId={}, passwordChangedAt={}, recommended={}",
-                getId(), this.passwordChangedAt, isRecommended);
-
-        return isRecommended;
-    }
-
-    public void unlock() {
-        if (this.status == UserStatus.SUSPENDED) {
-            this.status = UserStatus.APPROVED;
-        }
-        this.accountLockedAt = null;
-        this.loginFailCount = 0;
-        log.info("회원 잠금 해제: userId={}", getId());
-    }
-
 }

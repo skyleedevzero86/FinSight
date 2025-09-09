@@ -78,7 +78,6 @@ public class ApiResponse<T> {
         return response;
     }
 
-    // Getters and Setters
     public boolean isSuccess() {
         return success;
     }
@@ -134,4 +133,13 @@ public class ApiResponse<T> {
     public void setStatusCode(int statusCode) {
         this.statusCode = statusCode;
     }
+
+    public static <T> ApiResponse<T> error(String message) {
+        ApiResponse<T> response = new ApiResponse<>();
+        response.setSuccess(false);
+        response.setMessage(message);
+        response.setStatusCode(400);
+        return response;
+    }
+
 }

@@ -6,11 +6,11 @@ import com.sleekydz86.finsight.core.auth.dto.RefreshTokenRequest;
 import com.sleekydz86.finsight.core.auth.dto.UserRegistrationRequest;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
 import com.sleekydz86.finsight.core.global.exception.*;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaEntity;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaRepository;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
+import com.sleekydz86.finsight.core.user.domain.UserStatus;
+import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.user.service.PasswordValidationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,18 +35,18 @@ public class AuthenticationService {
 
     private final AuthenticationManager authenticationManager;
     private final JwtTokenUtil jwtTokenUtil;
-    private final UserJpaRepository userJpaRepository;
+    private final UserPersistencePort userPersistencePort;
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidationService passwordValidationService;
 
     public AuthenticationService(AuthenticationManager authenticationManager,
                                  JwtTokenUtil jwtTokenUtil,
-                                 UserJpaRepository userJpaRepository,
+                                 UserPersistencePort userPersistencePort,
                                  PasswordEncoder passwordEncoder,
                                  PasswordValidationService passwordValidationService) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenUtil = jwtTokenUtil;
-        this.userJpaRepository = userJpaRepository;
+        this.userPersistencePort = userPersistencePort;
         this.passwordEncoder = passwordEncoder;
         this.passwordValidationService = passwordValidationService;
     }
@@ -65,10 +65,10 @@ public class AuthenticationService {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            UserJpaEntity userEntity = userJpaRepository.findByEmail(request.getEmail())
+            User user = userPersistencePort.findByEmail(request.getEmail())
                     .orElseThrow(() -> new UserNotFoundException(request.getEmail()));
 
-            String accessToken = jwtTokenUtil.generateAccessToken(request.getEmail(), userEntity.getRole());
+            String accessToken = jwtTokenUtil.generateAccessToken(request.getEmail(), user.getRole());
             String refreshToken = jwtTokenUtil.generateRefreshToken(request.getEmail());
 
             updateLastLoginTime(request.getEmail());
@@ -99,15 +99,15 @@ public class AuthenticationService {
 
             String email = jwtTokenUtil.getEmailFromRefreshToken(request.getRefreshToken());
 
-            if (!userJpaRepository.existsByEmail(email)) {
+            if (!userPersistencePort.existsByEmail(email)) {
                 log.warn("존재하지 않는 사용자: {}", email);
                 throw new InvalidTokenException("REFRESH");
             }
 
-            UserJpaEntity userEntity = userJpaRepository.findByEmail(email)
+            User user = userPersistencePort.findByEmail(email)
                     .orElseThrow(() -> new UserNotFoundException(email));
 
-            String newAccessToken = jwtTokenUtil.generateAccessToken(email, userEntity.getRole());
+            String newAccessToken = jwtTokenUtil.generateAccessToken(email, user.getRole());
             String newRefreshToken = jwtTokenUtil.generateRefreshToken(email);
 
             log.info("토큰 갱신 성공: {}", email);
@@ -128,7 +128,7 @@ public class AuthenticationService {
     public User register(UserRegistrationRequest request) {
         log.info("사용자 등록 시도: {}", request.getEmail());
 
-        if (userJpaRepository.existsByEmail(request.getEmail())) {
+        if (userPersistencePort.existsByEmail(request.getEmail())) {
             log.warn("이미 존재하는 이메일: {}", request.getEmail());
             throw new UserAlreadyExistsException(request.getEmail());
         }
@@ -141,52 +141,34 @@ public class AuthenticationService {
                     "비밀번호가 요구사항을 충족하지 않습니다: " + String.join(", ", validationResult.getErrors()));
         }
 
-        UserJpaEntity userEntity = new UserJpaEntity();
-        userEntity.setEmail(request.getEmail());
-        userEntity.setPassword(passwordEncoder.encode(request.getPassword()));
-        userEntity.setUsername(request.getUsername());
-        userEntity.setRole(UserRole.USER);
-        userEntity.setActive(true);
-        userEntity.setCreatedAt(LocalDateTime.now());
-        userEntity.setUpdatedAt(LocalDateTime.now());
+        User user = User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .username(request.getUsername())
+                .nickname(request.getUsername())
+                .role(UserRole.USER)
+                .status(UserStatus.PENDING)
+                .passwordChangedAt(LocalDateTime.now())
+                .watchlist(request.getWatchlist() != null && !request.getWatchlist().isEmpty()
+                        ? request.getWatchlist()
+                        : Arrays.asList(
+                        com.sleekydz86.finsight.core.news.domain.vo.TargetCategory.SPY,
+                        com.sleekydz86.finsight.core.news.domain.vo.TargetCategory.QQQ))
+                .notificationPreferences(Arrays.asList(NotificationType.EMAIL))
+                .build();
 
-        if (request.getWatchlist() != null && !request.getWatchlist().isEmpty()) {
-            userEntity.setWatchlist(request.getWatchlist());
-        } else {
-            userEntity.setWatchlist(Arrays.asList(
-                    com.sleekydz86.finsight.core.news.domain.vo.TargetCategory.SPY,
-                    com.sleekydz86.finsight.core.news.domain.vo.TargetCategory.QQQ));
-        }
+        User savedUser = userPersistencePort.save(user);
 
-        userEntity.setNotificationPreferences(Arrays.asList(NotificationType.EMAIL));
+        log.info("사용자 등록 성공: {} (ID: {})", request.getEmail(), savedUser.getId());
 
-        UserJpaEntity savedEntity = userJpaRepository.save(userEntity);
-
-        log.info("사용자 등록 성공: {} (ID: {})", request.getEmail(), savedEntity.getId());
-
-        return convertToDomain(savedEntity);
+        return savedUser;
     }
 
     private void updateLastLoginTime(String email) {
-        userJpaRepository.findByEmail(email).ifPresent(user -> {
-            user.setLastLoginAt(LocalDateTime.now());
-            userJpaRepository.save(user);
+        userPersistencePort.findByEmail(email).ifPresent(user -> {
+            user.updateLastLoginAt(LocalDateTime.now());
+            userPersistencePort.save(user);
         });
-    }
-
-    private User convertToDomain(UserJpaEntity entity) {
-        return User.builder()
-                .id(entity.getId())
-                .email(entity.getEmail())
-                .username(entity.getUsername())
-                .role(entity.getRole())
-                .active(entity.isActive())
-                .lastLoginAt(entity.getLastLoginAt())
-                .createdAt(entity.getCreatedAt())
-                .updatedAt(entity.getUpdatedAt())
-                .watchlist(entity.getWatchlist())
-                .notificationPreferences(entity.getNotificationPreferences())
-                .build();
     }
 
     public JwtToken refreshToken(String refreshToken) {
@@ -196,10 +178,10 @@ public class AuthenticationService {
             }
 
             String email = jwtTokenUtil.getEmailFromRefreshToken(refreshToken);
-            UserJpaEntity userEntity = userJpaRepository.findByEmail(email)
+            User user = userPersistencePort.findByEmail(email)
                     .orElseThrow(() -> new UserNotFoundException(email));
 
-            UserRole role = userEntity.getRole();
+            UserRole role = user.getRole();
             String newAccessToken = jwtTokenUtil.generateAccessToken(email, role);
             String newRefreshToken = jwtTokenUtil.generateRefreshToken(email);
 

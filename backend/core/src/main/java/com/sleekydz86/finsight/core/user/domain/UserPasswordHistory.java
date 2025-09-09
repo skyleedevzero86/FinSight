@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
 import java.time.LocalDateTime;
 
 @Entity
@@ -32,5 +31,9 @@ public class UserPasswordHistory {
         this.user = user;
         this.passwordHash = passwordHash;
         this.createdAt = LocalDateTime.now();
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
     }
 }

@@ -1,5 +1,6 @@
 package com.sleekydz86.finsight.core.config;
 
+import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsStatisticsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsCommandUseCase;
@@ -26,9 +27,7 @@ import com.sleekydz86.finsight.core.comment.service.CommentCommandService;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import com.sleekydz86.finsight.core.user.service.PasswordValidationService;
-import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaRepository;
 import com.sleekydz86.finsight.core.health.domain.port.out.ExternalHealthCheckPort;
 import com.sleekydz86.finsight.core.health.domain.port.out.HealthPersistencePort;
 import com.sleekydz86.finsight.core.health.service.HealthQueryService;
@@ -41,7 +40,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import java.util.concurrent.Executor;
 
 @Configuration
@@ -65,7 +63,6 @@ public class AdvancedDependencyInjectionConfig {
     private final PasswordValidationService passwordValidationService;
     private final AuthenticationManager authenticationManager;
     private final JwtTokenUtil jwtTokenUtil;
-    private final UserJpaRepository userJpaRepository;
     private final ExternalHealthCheckPort externalHealthCheckPort;
     private final HealthPersistencePort healthPersistencePort;
     private final NotificationSenderPort notificationSenderPort;
@@ -90,7 +87,6 @@ public class AdvancedDependencyInjectionConfig {
             PasswordValidationService passwordValidationService,
             AuthenticationManager authenticationManager,
             JwtTokenUtil jwtTokenUtil,
-            UserJpaRepository userJpaRepository,
             ExternalHealthCheckPort externalHealthCheckPort,
             HealthPersistencePort healthPersistencePort,
             NotificationSenderPort notificationSenderPort,
@@ -113,18 +109,16 @@ public class AdvancedDependencyInjectionConfig {
         this.passwordValidationService = passwordValidationService;
         this.authenticationManager = authenticationManager;
         this.jwtTokenUtil = jwtTokenUtil;
-        this.userJpaRepository = userJpaRepository;
         this.externalHealthCheckPort = externalHealthCheckPort;
         this.healthPersistencePort = healthPersistencePort;
         this.notificationSenderPort = notificationSenderPort;
         this.newsProcessingExecutor = newsProcessingExecutor;
     }
 
-
     @Bean
     public NewsQueryUseCase newsQueryUseCase() {
         return new NewsQueryService(newsPersistencePort, newsStatisticsPersistencePort,
-                personalizedNewsService, userJpaRepository);
+                personalizedNewsService, userPersistencePort);
     }
 
     @Bean
@@ -137,7 +131,7 @@ public class AdvancedDependencyInjectionConfig {
     @Qualifier("newsQueryService")
     public NewsQueryService newsQueryService() {
         return new NewsQueryService(newsPersistencePort, newsStatisticsPersistencePort,
-                personalizedNewsService, userJpaRepository);
+                personalizedNewsService, userPersistencePort);
     }
 
     @Bean
@@ -176,7 +170,7 @@ public class AdvancedDependencyInjectionConfig {
 
     @Bean
     public AuthenticationService authenticationService(PasswordEncoder passwordEncoder) {
-        return new AuthenticationService(authenticationManager, jwtTokenUtil, userJpaRepository, passwordEncoder,
+        return new AuthenticationService(authenticationManager, jwtTokenUtil, userPersistencePort, passwordEncoder,
                 passwordValidationService);
     }
 
