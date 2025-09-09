@@ -9,17 +9,18 @@ import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentCreateRequ
 import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentReportRequest;
 import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentResponse;
 import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentUpdateRequest;
+import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.annotation.LogExecution;
 import com.sleekydz86.finsight.core.global.annotation.PerformanceMonitor;
 import com.sleekydz86.finsight.core.global.annotation.Retryable;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
+import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -43,7 +44,8 @@ public class CommentController {
     public ResponseEntity<ApiResponse<Comments>> getCommentsByBoard(
             @PathVariable Long boardId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @CurrentUser(required = false) AuthenticatedUser currentUser) {
         try {
             if (boardId == null || boardId <= 0) {
                 throw new ValidationException("유효하지 않은 게시판 ID입니다", List.of("INVALID_BOARD_ID"));
@@ -68,7 +70,9 @@ public class CommentController {
     @LogExecution("댓글 상세 조회")
     @PerformanceMonitor(threshold = 1000, operation = "comment_detail")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<Comment>> getCommentDetail(@PathVariable Long commentId) {
+    public ResponseEntity<ApiResponse<Comment>> getCommentDetail(
+            @PathVariable Long commentId,
+            @CurrentUser(required = false) AuthenticatedUser currentUser) {
         try {
             if (commentId == null || commentId <= 0) {
                 throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
@@ -88,11 +92,10 @@ public class CommentController {
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = {Exception.class})
     public ResponseEntity<ApiResponse<Comment>> createComment(
             @RequestBody @Valid CommentCreateRequest request,
-            Authentication authentication) {
+            @CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
             validateCreateRequest(request);
-            Comment comment = commentCommandUseCase.createComment(userEmail, request);
+            Comment comment = commentCommandUseCase.createComment(currentUser.getEmail(), request);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(comment, "댓글이 성공적으로 생성되었습니다"));
         } catch (ValidationException e) {
@@ -109,14 +112,13 @@ public class CommentController {
     public ResponseEntity<ApiResponse<Comment>> updateComment(
             @PathVariable Long commentId,
             @RequestBody @Valid CommentUpdateRequest request,
-            Authentication authentication) {
+            @CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
             if (commentId == null || commentId <= 0) {
                 throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
             validateUpdateRequest(request);
-            Comment comment = commentCommandUseCase.updateComment(userEmail, commentId, request);
+            Comment comment = commentCommandUseCase.updateComment(currentUser.getEmail(), commentId, request);
             return ResponseEntity.ok(ApiResponse.success(comment, "댓글이 성공적으로 수정되었습니다"));
         } catch (ValidationException e) {
             throw e;
@@ -131,13 +133,12 @@ public class CommentController {
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = {Exception.class})
     public ResponseEntity<ApiResponse<Void>> deleteComment(
             @PathVariable Long commentId,
-            Authentication authentication) {
+            @CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
             if (commentId == null || commentId <= 0) {
                 throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
-            commentCommandUseCase.deleteComment(userEmail, commentId);
+            commentCommandUseCase.deleteComment(currentUser.getEmail(), commentId);
             return ResponseEntity.ok(ApiResponse.success(null, "댓글이 성공적으로 삭제되었습니다"));
         } catch (ValidationException e) {
             throw e;
@@ -152,13 +153,12 @@ public class CommentController {
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
     public ResponseEntity<ApiResponse<Comment>> likeComment(
             @PathVariable Long commentId,
-            Authentication authentication) {
+            @CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
             if (commentId == null || commentId <= 0) {
                 throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
-            Comment comment = commentCommandUseCase.likeComment(userEmail, commentId);
+            Comment comment = commentCommandUseCase.likeComment(currentUser.getEmail(), commentId);
             return ResponseEntity.ok(ApiResponse.success(comment, "댓글 좋아요가 성공적으로 처리되었습니다"));
         } catch (ValidationException e) {
             throw e;
@@ -173,13 +173,12 @@ public class CommentController {
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
     public ResponseEntity<ApiResponse<Comment>> dislikeComment(
             @PathVariable Long commentId,
-            Authentication authentication) {
+            @CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
             if (commentId == null || commentId <= 0) {
                 throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
-            Comment comment = commentCommandUseCase.dislikeComment(userEmail, commentId);
+            Comment comment = commentCommandUseCase.dislikeComment(currentUser.getEmail(), commentId);
             return ResponseEntity.ok(ApiResponse.success(comment, "댓글 싫어요가 성공적으로 처리되었습니다"));
         } catch (ValidationException e) {
             throw e;
@@ -195,14 +194,13 @@ public class CommentController {
     public ResponseEntity<ApiResponse<Void>> reportComment(
             @PathVariable Long commentId,
             @RequestBody @Valid CommentReportRequest request,
-            Authentication authentication) {
+            @CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
             if (commentId == null || commentId <= 0) {
                 throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
             validateReportRequest(request);
-            commentCommandUseCase.reportComment(userEmail, commentId, request);
+            commentCommandUseCase.reportComment(currentUser.getEmail(), commentId, request);
             return ResponseEntity.ok(ApiResponse.success(null, "댓글이 성공적으로 신고되었습니다"));
         } catch (ValidationException e) {
             throw e;
@@ -211,11 +209,29 @@ public class CommentController {
         }
     }
 
-    private String getCurrentUserEmail(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ValidationException("인증이 필요합니다", List.of("AUTHENTICATION_REQUIRED"));
+    @GetMapping("/my-comments")
+    @LogExecution("내 댓글 목록 조회")
+    @PerformanceMonitor(threshold = 2000, operation = "my_comments")
+    @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
+    public ResponseEntity<ApiResponse<List<CommentResponse>>> getMyComments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @CurrentUser AuthenticatedUser currentUser) {
+        try {
+            if (page < 0) {
+                throw new ValidationException("페이지 번호는 0 이상이어야 합니다", List.of("INVALID_PAGE"));
+            }
+            if (size <= 0 || size > 100) {
+                throw new ValidationException("페이지 크기는 1-100 사이여야 합니다", List.of("INVALID_SIZE"));
+            }
+
+            List<CommentResponse> comments = commentQueryUseCase.getCommentsByUserEmail(currentUser.getEmail(), page, size);
+            return ResponseEntity.ok(ApiResponse.success(comments, "내 댓글 목록을 성공적으로 조회했습니다"));
+        } catch (ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SystemException("내 댓글 목록 조회 중 오류가 발생했습니다", "MY_COMMENTS_ERROR", e);
         }
-        return authentication.getName();
     }
 
     private void validateCreateRequest(CommentCreateRequest request) {

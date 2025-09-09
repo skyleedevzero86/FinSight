@@ -4,14 +4,15 @@ import com.sleekydz86.finsight.core.auth.domain.JwtToken;
 import com.sleekydz86.finsight.core.auth.dto.LoginRequest;
 import com.sleekydz86.finsight.core.auth.dto.RefreshTokenRequest;
 import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
+import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.annotation.LogExecution;
 import com.sleekydz86.finsight.core.global.annotation.PerformanceMonitor;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
+import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserRegistrationRequest;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,7 +23,6 @@ public class AuthController {
     private final AuthenticationService authenticationService;
     private final UserService userService;
 
-    @Autowired
     public AuthController(AuthenticationService authenticationService, UserService userService) {
         this.authenticationService = authenticationService;
         this.userService = userService;
@@ -67,11 +67,18 @@ public class AuthController {
     @PostMapping("/logout")
     @LogExecution("사용자 로그아웃")
     @PerformanceMonitor(threshold = 500, metricName = "user_logout")
-    public ResponseEntity<ApiResponse<Void>> logout() {
+    public ResponseEntity<ApiResponse<Void>> logout(@CurrentUser AuthenticatedUser currentUser) {
         try {
             return ResponseEntity.ok(ApiResponse.success(null, "로그아웃에 성공했습니다"));
         } catch (Exception e) {
             throw new RuntimeException("로그아웃 처리 중 오류가 발생했습니다: " + e.getMessage(), e);
         }
+    }
+
+    @GetMapping("/me")
+    @LogExecution("현재 사용자 정보 조회")
+    @PerformanceMonitor(threshold = 1000, metricName = "current_user_info")
+    public ResponseEntity<ApiResponse<AuthenticatedUser>> getCurrentUser(@CurrentUser AuthenticatedUser currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(currentUser, "현재 사용자 정보를 성공적으로 조회했습니다"));
     }
 }

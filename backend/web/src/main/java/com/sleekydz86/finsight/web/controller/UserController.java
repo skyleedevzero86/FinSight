@@ -5,20 +5,21 @@ import com.sleekydz86.finsight.core.user.domain.port.in.UserCommandUseCase;
 import com.sleekydz86.finsight.core.user.domain.port.in.UserQueryUseCase;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserUpdateRequest;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.WatchlistUpdateRequest;
+import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.annotation.LogExecution;
 import com.sleekydz86.finsight.core.global.annotation.PerformanceMonitor;
 import com.sleekydz86.finsight.core.global.annotation.Retryable;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
+import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -37,10 +38,9 @@ public class UserController {
     @LogExecution("사용자 프로필 조회")
     @PerformanceMonitor(threshold = 1000, operation = "user_profile")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<User>> getUserProfile(Authentication authentication) {
+    public ResponseEntity<ApiResponse<User>> getUserProfile(@CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
-            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());
             if (userOpt.isEmpty()) {
                 throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
             }
@@ -58,10 +58,9 @@ public class UserController {
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = {Exception.class})
     public ResponseEntity<ApiResponse<User>> updateUserProfile(
             @RequestBody @Valid UserUpdateRequest request,
-            Authentication authentication) {
+            @CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
-            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());
             if (userOpt.isEmpty()) {
                 throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
             }
@@ -80,10 +79,9 @@ public class UserController {
     @LogExecution("사용자 관심목록 조회")
     @PerformanceMonitor(threshold = 1000, operation = "user_watchlist")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<List<TargetCategory>>> getUserWatchlist(Authentication authentication) {
+    public ResponseEntity<ApiResponse<List<TargetCategory>>> getUserWatchlist(@CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
-            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());
             if (userOpt.isEmpty()) {
                 throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
             }
@@ -103,10 +101,9 @@ public class UserController {
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = {Exception.class})
     public ResponseEntity<ApiResponse<Void>> updateUserWatchlist(
             @RequestBody @Valid WatchlistUpdateRequest request,
-            Authentication authentication) {
+            @CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
-            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());
             if (userOpt.isEmpty()) {
                 throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
             }
@@ -125,10 +122,9 @@ public class UserController {
     @LogExecution("사용자 알림 설정 조회")
     @PerformanceMonitor(threshold = 1000, operation = "user_notification_preferences")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<List<NotificationType>>> getUserNotificationPreferences(Authentication authentication) {
+    public ResponseEntity<ApiResponse<List<NotificationType>>> getUserNotificationPreferences(@CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
-            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());
             if (userOpt.isEmpty()) {
                 throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
             }
@@ -148,10 +144,9 @@ public class UserController {
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = {Exception.class})
     public ResponseEntity<ApiResponse<Void>> updateUserNotificationPreferences(
             @RequestBody @Valid List<NotificationType> preferences,
-            Authentication authentication) {
+            @CurrentUser AuthenticatedUser currentUser) {
         try {
-            String userEmail = getCurrentUserEmail(authentication);
-            Optional<User> userOpt = userQueryUseCase.findByEmail(userEmail);
+            Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());
             if (userOpt.isEmpty()) {
                 throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
             }
@@ -165,11 +160,32 @@ public class UserController {
         }
     }
 
-    private String getCurrentUserEmail(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ValidationException("인증이 필요합니다", List.of("AUTHENTICATION_REQUIRED"));
+    @GetMapping("/dashboard")
+    @LogExecution("사용자 대시보드 조회")
+    @PerformanceMonitor(threshold = 3000, operation = "user_dashboard")
+    @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
+    public ResponseEntity<ApiResponse<Object>> getUserDashboard(@CurrentUser AuthenticatedUser currentUser) {
+        try {
+            Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());
+            if (userOpt.isEmpty()) {
+                throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
+            }
+
+            User user = userOpt.get();
+            Object dashboard = Map.of(
+                    "user", user,
+                    "watchlist", userQueryUseCase.getUserWatchlist(user.getId()),
+                    "notificationPreferences", userQueryUseCase.getUserNotificationPreferences(user.getId()),
+                    "lastLoginAt", user.getLastLoginAt(),
+                    "createdAt", user.getCreatedAt()
+            );
+
+            return ResponseEntity.ok(ApiResponse.success(dashboard, "사용자 대시보드를 성공적으로 조회했습니다"));
+        } catch (ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SystemException("사용자 대시보드 조회 중 오류가 발생했습니다", "USER_DASHBOARD_ERROR", e);
         }
-        return authentication.getName();
     }
 
     private void validateUpdateRequest(UserUpdateRequest request) {
