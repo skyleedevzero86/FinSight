@@ -63,6 +63,7 @@ public class NewsJpaMapper {
                 news.getAiOverView() != null ? news.getAiOverView().getOverview() : null,
                 news.getAiOverView() != null ? news.getAiOverView().getSentimentType() : null,
                 news.getAiOverView() != null ? news.getAiOverView().getSentimentScore() : null,
+                0,
                 news.getAiOverView() != null ? news.getAiOverView().getTargetCategories() : java.util.Collections.emptyList()
         );
     }

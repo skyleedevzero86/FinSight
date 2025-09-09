@@ -17,20 +17,49 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaRepository;
+import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaEntity;
+import com.sleekydz86.finsight.core.global.exception.SystemException;
+import java.util.Optional;
 
 @Service
 @Transactional(readOnly = true)
 public class NewsQueryService implements NewsQueryUseCase {
 
         private static final Logger log = LoggerFactory.getLogger(NewsQueryService.class);
-
+        private final PersonalizedNewsService personalizedNewsService;
         private final NewsPersistencePort newsPersistencePort;
         private final NewsStatisticsPersistencePort newsStatisticsPersistencePort;
+        private final UserJpaRepository userJpaRepository;
 
         public NewsQueryService(NewsPersistencePort newsPersistencePort,
-                        NewsStatisticsPersistencePort newsStatisticsPersistencePort) {
+                                NewsStatisticsPersistencePort newsStatisticsPersistencePort,
+                                PersonalizedNewsService personalizedNewsService,
+                                UserJpaRepository userJpaRepository) {
                 this.newsPersistencePort = newsPersistencePort;
                 this.newsStatisticsPersistencePort = newsStatisticsPersistencePort;
+                this.personalizedNewsService = personalizedNewsService;
+                this.userJpaRepository = userJpaRepository;
+        }
+
+        @Override
+        public Newses getPersonalizedNews(String userEmail, int limit) {
+                log.debug("개인화 뉴스 조회: userEmail={}, limit={}", userEmail, limit);
+
+                try {
+
+                        Optional<UserJpaEntity> userOpt = userJpaRepository.findByEmail(userEmail);
+                        if (userOpt.isEmpty()) {
+                                log.warn("사용자를 찾을 수 없습니다: {}", userEmail);
+                                return new Newses();
+                        }
+
+                        Long userId = userOpt.get().getId();
+                        return personalizedNewsService.getPersonalizedNews(userId, 0, limit);
+                } catch (Exception e) {
+                        log.error("개인화 뉴스 조회 실패: userEmail={}", userEmail, e);
+                        throw new SystemException("개인화 뉴스 조회 중 오류가 발생했습니다", "PERSONALIZED_NEWS_ERROR", e);
+                }
         }
 
         @Override

@@ -4,45 +4,35 @@ import com.sleekydz86.finsight.core.board.domain.BoardScrap;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Component
 public class BoardScrapJpaMapper {
 
     public BoardScrap toDomain(BoardScrapJpaEntity entity) {
-        if (entity == null) {
-            return null;
-        }
-
         return BoardScrap.builder()
                 .id(entity.getId())
                 .boardId(entity.getBoardId())
                 .userEmail(entity.getUserEmail())
                 .scrapedAt(entity.getScrapedAt())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
                 .build();
     }
 
     public BoardScrapJpaEntity toEntity(BoardScrap scrap) {
-        if (scrap == null) {
-            return null;
-        }
-
-        return new BoardScrapJpaEntity(
-                scrap.getId(),
-                scrap.getBoardId(),
-                scrap.getUserEmail(),
-                scrap.getScrapedAt(),
-                scrap.getScrapedAt()
-        );
+        BoardScrapJpaEntity entity = new BoardScrapJpaEntity();
+        entity.setId(scrap.getId());
+        entity.setBoardId(scrap.getBoardId());
+        entity.setUserEmail(scrap.getUserEmail());
+        entity.setScrapedAt(scrap.getScrapedAt());
+        entity.setCreatedAt(scrap.getCreatedAt());
+        entity.setUpdatedAt(scrap.getUpdatedAt());
+        return entity;
     }
 
     public List<BoardScrap> toDomainList(List<BoardScrapJpaEntity> entities) {
-        if (entities == null) {
-            return List.of();
-        }
-
         return entities.stream()
                 .map(this::toDomain)
-                .collect(Collectors.toList());
+                .toList();
     }
 }

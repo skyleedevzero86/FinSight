@@ -1,0 +1,60 @@
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/finsight_prod}
+    username: ${DB_USERNAME:finsight_user}
+    password: ${DB_PASSWORD:secure_password}
+    hikari:
+      maximum-pool-size: 50
+      minimum-idle: 10
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      leak-detection-threshold: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        show_sql: false
+        format_sql: false
+
+  security:
+    jwt:
+      secret: ${JWT_SECRET:myVerySecureProductionSecretKey123456789012345678901234567890}
+
+logging:
+  level:
+    com.sleekydz86.finsight: WARN
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate: WARN
+    root: INFO
+  file:
+    name: logs/finsight.log
+  logback:
+    rollingpolicy:
+      max-file-size: 100MB
+      max-history: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+server:
+  port: ${SERVER_PORT:8080}
+  tomcat:
+    max-threads: 200
+    min-spare-threads: 10
+    max-connections: 8192
+    accept-count: 100
+    connection-timeout: 20000

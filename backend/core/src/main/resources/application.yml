@@ -2,6 +2,10 @@ spring:
   profiles:
     active: core-local
 
+hibernate:
+  cache:
+    enabled: true
+
 exception:
   handling:
     enabled: true
@@ -17,3 +21,5 @@ logging:
   level:
     com.sleekydz86.finsight.core.global.exception: DEBUG
     org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: DEBUG
+    org.hibernate.cache: DEBUG
+    org.ehcache: DEBUG

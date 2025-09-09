@@ -1,10 +1,6 @@
 spring:
-  data:
-    redis:
-      host: ${REDIS_HOST:127.0.0.1}
-      port: ${REDIS_PORT:9379}
-      password: ${REDIS_PASSWORD:123456}
-
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:finsight}?useSSL=false&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
@@ -20,15 +16,40 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DDL_AUTO:update}
     properties:
       hibernate:
         format_sql: true
-        show_sql: true
         default_batch_fetch_size: 100
         jdbc:
           time_zone: UTC
+        dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: ${SHOW_SQL:false}
     open-in-view: false
+
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      connect-timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+        shutdown-timeout: 100ms
+
+  cache:
+    type: ${CACHE_TYPE:simple}
+    jcache:
+      config: classpath:ehcache.xml
+
+hibernate:
+  cache:
+    enabled: ${CACHE_ENABLED:true}
 
 jasypt:
   encryptor:
@@ -46,47 +67,19 @@ ai:
     api:
       base-url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
       api-key: ${OPENAI_API_KEY}
-      model: ${OPENAI_MODEL:gpt-4}
+      model: ${OPENAI_MODEL:gpt-3.5-turbo}
   djl:
-    enabled: true
     model:
-      name: cardiffnlp/twitter-roberta-base-sentiment-latest
-      type: sentiment
-      max-length: 512
-      batch-size: 32
-      timeout: 30000
-      fallback-enabled: true
-    engine: pytorch
-    device: cpu
-    model-cache-dir: ${user.home}/.djl.ai/cache
+      name: ${DJL_MODEL_NAME:cardiffnlp/twitter-roberta-base-sentiment-latest}
+    engine: ${DJL_ENGINE:pytorch}
+    device: ${DJL_DEVICE:cpu}
+    performance:
+      enable-caching: true
+      cache-size: 500
 
-jwt:
-  secret: jwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwtscretjwts
-  expiration-period: 3600000
-  refresh-expiration-period: 86400000
-
-
-
-security:
-  rate-limit:
-    default-requests-per-minute: ${RATE_LIMIT_DEFAULT:100}
-    admin-requests-per-minute: ${RATE_LIMIT_ADMIN:1000}
-    strict-requests-per-minute: ${RATE_LIMIT_STRICT:10}
-  password:
-    min-length: ${PASSWORD_MIN_LENGTH:12}
-    require-special-chars: ${PASSWORD_REQUIRE_SPECIAL:true}
-    require-numbers: ${PASSWORD_REQUIRE_NUMBERS:true}
-    require-uppercase: ${PASSWORD_REQUIRE_UPPERCASE:true}
-
-logging:
-  level:
-    com.sleekydz86.finsight: ${LOG_LEVEL:INFO}
-    org.springframework.security: ${SECURITY_LOG_LEVEL:WARN}
-    org.hibernate.SQL: ${SQL_LOG_LEVEL:WARN}
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: logs/application.log
-    max-size: 100MB
-    max-history: 30
+redis:
+  enabled: ${REDIS_ENABLED:true}
+  connection-timeout: 2000
+  command-timeout: 2000
+  retry-attempts: 3
+  retry-delay: 1000

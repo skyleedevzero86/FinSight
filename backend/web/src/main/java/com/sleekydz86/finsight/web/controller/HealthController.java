@@ -5,96 +5,111 @@ import com.sleekydz86.finsight.core.health.domain.port.in.HealthCommandUseCase;
 import com.sleekydz86.finsight.core.health.domain.port.in.HealthQueryUseCase;
 import com.sleekydz86.finsight.core.health.domain.vo.HealthStatus;
 import com.sleekydz86.finsight.core.health.domain.vo.SystemMetrics;
+import com.sleekydz86.finsight.core.global.annotation.LogExecution;
+import com.sleekydz86.finsight.core.global.annotation.PerformanceMonitor;
+import com.sleekydz86.finsight.core.global.annotation.Retryable;
+import com.sleekydz86.finsight.core.global.dto.ApiResponse;
+import com.sleekydz86.finsight.core.global.exception.SystemException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/health")
+@RequestMapping("/api/v1/health")
 public class HealthController {
 
     private final HealthQueryUseCase healthQueryUseCase;
     private final HealthCommandUseCase healthCommandUseCase;
 
-    public HealthController(HealthQueryUseCase healthQueryUseCase,
-                            HealthCommandUseCase healthCommandUseCase) {
+    public HealthController(HealthQueryUseCase healthQueryUseCase, HealthCommandUseCase healthCommandUseCase) {
         this.healthQueryUseCase = healthQueryUseCase;
         this.healthCommandUseCase = healthCommandUseCase;
     }
 
     @GetMapping
-    public ResponseEntity<HealthStatus> health() {
-        HealthStatus status = healthQueryUseCase.getOverallHealth();
-        return ResponseEntity.ok(status);
-    }
-
-    @GetMapping("/detailed")
-    public ResponseEntity<Map<String, Object>> detailedHealth() {
-        Map<String, Object> detailedStatus = healthQueryUseCase.getDetailedHealth();
-        return ResponseEntity.ok(detailedStatus);
+    @LogExecution("시스템 상태 조회")
+    @PerformanceMonitor(threshold = 1000, operation = "health_check")
+    @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
+    public ResponseEntity<ApiResponse<Health>> getSystemHealth() {
+        try {
+            Health health = healthQueryUseCase.getCompleteHealth();
+            return ResponseEntity.ok(ApiResponse.success(health, "시스템 상태를 성공적으로 조회했습니다"));
+        } catch (Exception e) {
+            throw new SystemException("시스템 상태 조회 중 오류가 발생했습니다", "HEALTH_CHECK_ERROR", e);
+        }
     }
 
     @GetMapping("/metrics")
-    public ResponseEntity<SystemMetrics> metrics() {
-        SystemMetrics metrics = healthQueryUseCase.getSystemMetrics();
-        return ResponseEntity.ok(metrics);
+    @LogExecution("시스템 메트릭 조회")
+    @PerformanceMonitor(threshold = 2000, operation = "health_metrics")
+    @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getSystemMetrics() {
+        try {
+            SystemMetrics systemMetrics = healthQueryUseCase.getSystemMetrics();
+            Map<String, Object> metrics = new HashMap<>();
+            metrics.put("jvm", systemMetrics.getJvmMetrics());
+            metrics.put("system", systemMetrics.getSystemMetrics());
+            metrics.put("timestamp", System.currentTimeMillis());
+            return ResponseEntity.ok(ApiResponse.success(metrics, "시스템 메트릭을 성공적으로 조회했습니다"));
+        } catch (Exception e) {
+            throw new SystemException("시스템 메트릭 조회 중 오류가 발생했습니다", "HEALTH_METRICS_ERROR", e);
+        }
     }
 
     @GetMapping("/database")
-    public ResponseEntity<HealthStatus> databaseHealth() {
-        HealthStatus status = healthQueryUseCase.getDatabaseHealth();
-        return ResponseEntity.ok(status);
+    @LogExecution("데이터베이스 상태 조회")
+    @PerformanceMonitor(threshold = 2000, operation = "health_database")
+    @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getDatabaseHealth() {
+        try {
+            HealthStatus databaseHealth = healthQueryUseCase.getDatabaseHealth();
+            Map<String, Object> result = new HashMap<>();
+            result.put("status", databaseHealth.getStatus());
+            result.put("message", databaseHealth.getMessage());
+            result.put("details", databaseHealth.getDetails());
+            result.put("timestamp", System.currentTimeMillis());
+            return ResponseEntity.ok(ApiResponse.success(result, "데이터베이스 상태를 성공적으로 조회했습니다"));
+        } catch (Exception e) {
+            throw new SystemException("데이터베이스 상태 조회 중 오류가 발생했습니다", "HEALTH_DATABASE_ERROR", e);
+        }
     }
 
-    @GetMapping("/redis")
-    public ResponseEntity<HealthStatus> redisHealth() {
-        HealthStatus status = healthQueryUseCase.getRedisHealth();
-        return ResponseEntity.ok(status);
+    @GetMapping("/external-services")
+    @LogExecution("외부 서비스 상태 조회")
+    @PerformanceMonitor(threshold = 5000, operation = "health_external")
+    @Retryable(maxAttempts = 2, delay = 2000, retryFor = {Exception.class})
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getExternalServicesHealth() {
+        try {
+            Map<String, HealthStatus> externalHealth = healthQueryUseCase.getExternalApisHealth();
+            Map<String, Object> result = new HashMap<>();
+            externalHealth.forEach((service, status) -> {
+                Map<String, Object> serviceInfo = new HashMap<>();
+                serviceInfo.put("status", status.getStatus());
+                serviceInfo.put("message", status.getMessage());
+                serviceInfo.put("details", status.getDetails());
+                result.put(service, serviceInfo);
+            });
+            result.put("timestamp", System.currentTimeMillis());
+            return ResponseEntity.ok(ApiResponse.success(result, "외부 서비스 상태를 성공적으로 조회했습니다"));
+        } catch (Exception e) {
+            throw new SystemException("외부 서비스 상태 조회 중 오류가 발생했습니다", "HEALTH_EXTERNAL_ERROR", e);
+        }
     }
 
-    @GetMapping("/external-apis")
-    public ResponseEntity<Map<String, HealthStatus>> externalApisHealth() {
-        Map<String, HealthStatus> statuses = healthQueryUseCase.getExternalApisHealth();
-        return ResponseEntity.ok(statuses);
-    }
-
-    @GetMapping("/complete")
-    public ResponseEntity<Health> completeHealth() {
-        Health completeHealth = healthQueryUseCase.getCompleteHealth();
-        return ResponseEntity.ok(completeHealth);
-    }
-
-    @PostMapping("/save")
-    public ResponseEntity<Health> saveHealthCheck(@RequestBody Health health) {
-        Health savedHealth = healthCommandUseCase.saveHealthCheck(health);
-        return ResponseEntity.ok(savedHealth);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteHealthCheck(@PathVariable String id) {
-        healthCommandUseCase.deleteHealthCheck(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/history/status/{status}")
-    public ResponseEntity<List<Health>> getHealthHistoryByStatus(@PathVariable String status) {
-        List<Health> history = healthCommandUseCase.getHealthHistoryByStatus(status);
-        return ResponseEntity.ok(history);
-    }
-
-    @GetMapping("/history/date-range")
-    public ResponseEntity<List<Health>> getHealthHistoryByDateRange(
-            @RequestParam LocalDateTime start,
-            @RequestParam LocalDateTime end) {
-        List<Health> history = healthCommandUseCase.getHealthHistoryByDateRange(start, end);
-        return ResponseEntity.ok(history);
-    }
-
-    @GetMapping("/exception")
-    public String exception() {
-        throw new IllegalArgumentException("예외 발생!");
+    @PostMapping("/refresh")
+    @LogExecution("상태 정보 새로고침")
+    @PerformanceMonitor(threshold = 3000, operation = "health_refresh")
+    @Retryable(maxAttempts = 2, delay = 2000, retryFor = {Exception.class})
+    public ResponseEntity<ApiResponse<Void>> refreshHealthStatus() {
+        try {
+            Health health = healthQueryUseCase.getCompleteHealth();
+            healthCommandUseCase.saveHealthCheck(health);
+            return ResponseEntity.ok(ApiResponse.success(null, "상태 정보가 성공적으로 새로고침되었습니다"));
+        } catch (Exception e) {
+            throw new SystemException("상태 정보 새로고침 중 오류가 발생했습니다", "HEALTH_REFRESH_ERROR", e);
+        }
     }
 }

@@ -1,47 +1,39 @@
 package com.sleekydz86.finsight.core.config;
 
-import io.micrometer.core.aop.TimedAspect;
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
-import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 @Configuration
-@Profile("core-prod")
 public class AdvancedMonitoringConfig {
 
     @Bean
-    public TimedAspect timedAspect(MeterRegistry registry) {
-        return new TimedAspect(registry);
+    public Counter monitoringRequestCounter(MeterRegistry meterRegistry) {
+        return Counter.builder("monitoring.http.requests.total")
+                .description("Total number of HTTP requests for monitoring")
+                .register(meterRegistry);
     }
 
     @Bean
-    public ClassLoaderMetrics classLoaderMetrics() {
-        return new ClassLoaderMetrics();
+    public Counter monitoringErrorCounter(MeterRegistry meterRegistry) {
+        return Counter.builder("monitoring.http.errors.total")
+                .description("Total number of HTTP errors for monitoring")
+                .register(meterRegistry);
     }
 
     @Bean
-    public JvmMemoryMetrics jvmMemoryMetrics() {
-        return new JvmMemoryMetrics();
+    public Timer monitoringRequestTimer(MeterRegistry meterRegistry) {
+        return Timer.builder("monitoring.http.request.duration")
+                .description("HTTP request duration for monitoring")
+                .register(meterRegistry);
     }
 
     @Bean
-    public JvmGcMetrics jvmGcMetrics() {
-        return new JvmGcMetrics();
-    }
-
-    @Bean
-    public JvmThreadMetrics jvmThreadMetrics() {
-        return new JvmThreadMetrics();
-    }
-
-    @Bean
-    public ProcessorMetrics processorMetrics() {
-        return new ProcessorMetrics();
+    public Counter businessLogicCounter(MeterRegistry meterRegistry) {
+        return Counter.builder("business.logic.executions")
+                .description("Total number of business logic executions")
+                .register(meterRegistry);
     }
 }

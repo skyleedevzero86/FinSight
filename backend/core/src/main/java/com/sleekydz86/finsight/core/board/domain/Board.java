@@ -106,13 +106,6 @@ public class Board {
                 this.createdAt, this.updatedAt, this.replies);
     }
 
-    public Board incrementReport() {
-        return new Board(this.id, this.title, this.content, this.authorEmail, this.boardType,
-                this.status, this.viewCount, this.likeCount, this.dislikeCount,
-                this.commentCount, this.reportCount + 1, this.hashtags, this.files,
-                this.createdAt, this.updatedAt, this.replies);
-    }
-
     public Board decrementLike() {
         return new Board(this.id, this.title, this.content, this.authorEmail, this.boardType,
                 this.status, this.viewCount, Math.max(0, this.likeCount - 1), this.dislikeCount,
@@ -124,6 +117,13 @@ public class Board {
         return new Board(this.id, this.title, this.content, this.authorEmail, this.boardType,
                 this.status, this.viewCount, this.likeCount, Math.max(0, this.dislikeCount - 1),
                 this.commentCount, this.reportCount, this.hashtags, this.files,
+                this.createdAt, this.updatedAt, this.replies);
+    }
+
+    public Board incrementReport() {
+        return new Board(this.id, this.title, this.content, this.authorEmail, this.boardType,
+                this.status, this.viewCount, this.likeCount, this.dislikeCount,
+                this.commentCount, this.reportCount + 1, this.hashtags, this.files,
                 this.createdAt, this.updatedAt, this.replies);
     }
 

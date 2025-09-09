@@ -1,11 +1,9 @@
 package com.sleekydz86.finsight.core.news.domain.vo;
 
 import com.sleekydz86.finsight.core.global.NewsProvider;
-
 import java.time.LocalDateTime;
 
 public class NewsMeta {
-
     private NewsProvider newsProvider;
     private LocalDateTime newsPublishedTime;
     private String sourceUrl;
@@ -36,6 +34,10 @@ public class NewsMeta {
     }
 
     public LocalDateTime getNewsPublishedTime() {
+        return newsPublishedTime;
+    }
+
+    public LocalDateTime getPublishedTime() {
         return newsPublishedTime;
     }
 

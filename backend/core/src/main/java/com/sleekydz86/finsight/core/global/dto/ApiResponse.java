@@ -2,6 +2,8 @@ package com.sleekydz86.finsight.core.global.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.sleekydz86.finsight.core.global.exception.dto.ErrorResponse;
+import com.sleekydz86.finsight.core.global.exception.dto.ValidationErrorResponse;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -55,6 +57,24 @@ public class ApiResponse<T> {
         response.setMessage(message);
         response.setErrors(errors);
         response.setStatusCode(statusCode);
+        return response;
+    }
+
+    public static <T> ApiResponse<T> error(ErrorResponse errorResponse) {
+        ApiResponse<T> response = new ApiResponse<>();
+        response.setSuccess(false);
+        response.setData((T) errorResponse);
+        response.setMessage(errorResponse.getMessage());
+        response.setStatusCode(errorResponse.getStatus());
+        return response;
+    }
+
+    public static <T> ApiResponse<T> error(ValidationErrorResponse errorResponse) {
+        ApiResponse<T> response = new ApiResponse<>();
+        response.setSuccess(false);
+        response.setData((T) errorResponse);
+        response.setMessage(errorResponse.getMessage());
+        response.setStatusCode(errorResponse.getStatus());
         return response;
     }
 

@@ -1,12 +1,13 @@
 package com.sleekydz86.finsight.core.auth.util;
 
+import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
+import com.sleekydz86.finsight.core.user.domain.UserRole;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import com.sleekydz86.finsight.core.user.domain.UserRole;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
@@ -53,40 +54,47 @@ public class JwtTokenUtil {
                 .setClaims(claims)
                 .setSubject(email)
                 .setIssuer(issuer)
-                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(getSigningKey())
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
     }
 
     public boolean validateToken(String token) {
         try {
             Jwts.parser()
-                    .verifyWith(getSigningKey())
+                    .setSigningKey(getSigningKey())
                     .build()
-                    .parseSignedClaims(token);
+                    .parseClaimsJws(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            log.warn("Token validation failed: {}", e.getMessage());
+            log.warn("JWT token validation failed: {}", e.getMessage());
             return false;
         }
     }
 
     public boolean isTokenExpired(String token) {
         try {
-            Claims claims = getClaimsFromToken(token);
+            Claims claims = Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
             return claims.getExpiration().before(new Date());
-        } catch (Exception e) {
-            log.warn("Token expiration check failed: {}", e.getMessage());
+        } catch (JwtException | IllegalArgumentException e) {
             return true;
         }
     }
 
     public String getEmailFromToken(String token) {
         try {
-            Claims claims = getClaimsFromToken(token);
+            Claims claims = Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
             return claims.getSubject();
-        } catch (Exception e) {
+        } catch (JwtException | IllegalArgumentException e) {
             log.warn("Failed to extract email from token: {}", e.getMessage());
             return null;
         }
@@ -94,21 +102,25 @@ public class JwtTokenUtil {
 
     public UserRole getRoleFromToken(String token) {
         try {
-            Claims claims = getClaimsFromToken(token);
+            Claims claims = Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
             String roleStr = claims.get("role", String.class);
-            return roleStr != null ? UserRole.valueOf(roleStr) : null;
-        } catch (Exception e) {
+            return roleStr != null ? UserRole.valueOf(roleStr) : UserRole.USER;
+        } catch (JwtException | IllegalArgumentException e) {
             log.warn("Failed to extract role from token: {}", e.getMessage());
-            return null;
+            return UserRole.USER;
         }
     }
 
     private Claims getClaimsFromToken(String token) {
         return Jwts.parser()
-                .verifyWith(getSigningKey())
+                .setSigningKey(getSigningKey())
                 .build()
-                .parseSignedClaims(token)
-                .getPayload();
+                .parseClaimsJws(token)
+                .getBody();
     }
 
     public long getExpirationPeriod() {
@@ -118,25 +130,45 @@ public class JwtTokenUtil {
     public boolean validateRefreshToken(String token) {
         try {
             Claims claims = getClaimsFromToken(token);
-            String tokenType = claims.get("tokenType", String.class);
-            return "REFRESH".equals(tokenType) && !isTokenExpired(token);
-        } catch (Exception e) {
-            log.warn("리프레시 토큰 검증 실패: {}", e.getMessage());
+            return "REFRESH".equals(claims.get("tokenType"));
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
 
     public String getEmailFromRefreshToken(String token) {
-        try {
-            Claims claims = getClaimsFromToken(token);
-            return claims.getSubject();
-        } catch (Exception e) {
-            log.warn("리프레시 토큰에서 이메일 추출 실패: {}", e.getMessage());
-            return null;
-        }
+        return getEmailFromToken(token);
     }
 
     public long getAccessTokenExpiration() {
         return accessTokenExpiration;
+    }
+
+    public String getTokenType(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            return claims.get("tokenType", String.class);
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    public AuthenticatedUser createAuthenticatedUser(String token) {
+        try {
+            String email = getEmailFromToken(token);
+            UserRole role = getRoleFromToken(token);
+
+            if (email == null) {
+                return null;
+            }
+
+            return AuthenticatedUser.builder()
+                    .email(email)
+                    .role(role.name())
+                    .build();
+        } catch (Exception e) {
+            log.warn("Failed to create AuthenticatedUser from token: {}", e.getMessage());
+            return null;
+        }
     }
 }

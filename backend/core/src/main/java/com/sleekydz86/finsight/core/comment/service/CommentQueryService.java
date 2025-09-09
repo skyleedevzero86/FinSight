@@ -10,6 +10,10 @@ import com.sleekydz86.finsight.core.comment.domain.port.out.CommentPersistencePo
 import com.sleekydz86.finsight.core.comment.domain.port.out.CommentReactionPersistencePort;
 import com.sleekydz86.finsight.core.comment.domain.port.out.CommentReportPersistencePort;
 import com.sleekydz86.finsight.core.global.exception.NewsNotFoundException;
+import com.sleekydz86.finsight.core.global.exception.SystemException;
+import com.sleekydz86.finsight.core.news.domain.Newses;
+import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsQueryRequest;
+import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -120,4 +124,23 @@ public class CommentQueryService implements CommentQueryUseCase {
                 .findByCommentIdAndUserEmail(commentId, userEmail);
         return reaction.isPresent() && reaction.get().isDislike();
     }
+
+    @Override
+    public List<CommentResponse> getCommentsByUserEmail(String userEmail, int page, int size) {
+        log.debug("사용자 댓글 조회: userEmail={}, page={}, size={}", userEmail, page, size);
+
+        try {
+            Comments comments = commentPersistencePort.findByUserEmail(userEmail);
+
+            return comments.getComments().stream()
+                    .map(CommentResponse::from)
+                    .skip((long) page * size)
+                    .limit(size)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("사용자 댓글 조회 실패: userEmail={}", userEmail, e);
+            throw new SystemException("사용자 댓글 조회 중 오류가 발생했습니다", "USER_COMMENTS_ERROR", e);
+        }
+    }
+
 }

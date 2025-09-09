@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.news.domain.vo;
 
 public enum TargetCategory {
+    GENERAL,
     SPY,
     QQQ,
     BTC,

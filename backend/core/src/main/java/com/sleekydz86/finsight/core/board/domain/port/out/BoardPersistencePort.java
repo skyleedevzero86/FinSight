@@ -10,15 +10,28 @@ import java.util.Optional;
 
 public interface BoardPersistencePort {
     Board save(Board board);
+
     Optional<Board> findById(Long boardId);
+
     Boards findBySearchRequest(BoardSearchRequest request);
+
     Boards findByBoardType(BoardType boardType, int page, int size);
+
     Boards findByAuthorEmail(String authorEmail, int page, int size);
+
     Boards findReportedBoards();
+
     Boards findPopularBoards(int limit);
+
     Boards findLatestBoards(int limit);
+
     void deleteById(Long boardId);
+
     long countByBoardType(BoardType boardType);
+
     long countByAuthorEmail(String authorEmail);
+
     List<Board> findPreviousAndNext(Long boardId, BoardType boardType);
+
+    void incrementViewCount(Long boardId);
 }

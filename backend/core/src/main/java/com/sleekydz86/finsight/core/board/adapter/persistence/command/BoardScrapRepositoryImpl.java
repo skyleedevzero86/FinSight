@@ -2,7 +2,6 @@ package com.sleekydz86.finsight.core.board.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.board.domain.BoardScrap;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardScrapPersistencePort;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
@@ -17,7 +16,7 @@ public class BoardScrapRepositoryImpl implements BoardScrapPersistencePort {
     private final BoardScrapJpaMapper boardScrapJpaMapper;
 
     public BoardScrapRepositoryImpl(BoardScrapJpaRepository boardScrapJpaRepository,
-                                    BoardScrapJpaMapper boardScrapJpaMapper) {
+            BoardScrapJpaMapper boardScrapJpaMapper) {
         this.boardScrapJpaRepository = boardScrapJpaRepository;
         this.boardScrapJpaMapper = boardScrapJpaMapper;
     }
@@ -43,8 +42,10 @@ public class BoardScrapRepositoryImpl implements BoardScrapPersistencePort {
     @Override
     public List<BoardScrap> findByUserEmail(String userEmail, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<BoardScrapJpaEntity> pageResult = boardScrapJpaRepository.findByUserEmailOrderByScrapedAtDesc(userEmail, pageable);
-        return boardScrapJpaMapper.toDomainList(pageResult.getContent());
+        return boardScrapJpaRepository.findByUserEmailOrderByScrapedAtDesc(userEmail, pageable)
+                .stream()
+                .map(boardScrapJpaMapper::toDomain)
+                .toList();
     }
 
     @Override

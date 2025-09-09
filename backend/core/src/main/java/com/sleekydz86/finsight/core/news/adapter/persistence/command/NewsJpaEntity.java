@@ -54,6 +54,9 @@ public class NewsJpaEntity {
     @Column(name = "ai_sentiment_score")
     private Double sentimentScore;
 
+    @Column(name = "view_count", nullable = false)
+    private int viewCount = 0;
+
     @ElementCollection(targetClass = TargetCategory.class)
     @CollectionTable(name = "news_target_categories", joinColumns = @JoinColumn(name = "news_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT)))
     @Enumerated(EnumType.STRING)
@@ -72,7 +75,7 @@ public class NewsJpaEntity {
     public NewsJpaEntity(Long id, NewsProvider newsProvider, LocalDateTime newsPublishedTime, String sourceUrl,
                          LocalDateTime scrapedTime, String originalTitle, String originalContent,
                          String translatedTitle, String translatedContent, String overview,
-                         SentimentType sentimentType, Double sentimentScore, List<TargetCategory> targetCategories) {
+                         SentimentType sentimentType, Double sentimentScore, int viewCount, List<TargetCategory> targetCategories) {
         this.id = id;
         this.newsProvider = newsProvider;
         this.newsPublishedTime = newsPublishedTime;
@@ -85,6 +88,7 @@ public class NewsJpaEntity {
         this.overview = overview;
         this.sentimentType = sentimentType;
         this.sentimentScore = sentimentScore;
+        this.viewCount = viewCount;
         this.targetCategories = targetCategories != null ? targetCategories : new ArrayList<>();
     }
 
@@ -182,6 +186,14 @@ public class NewsJpaEntity {
 
     public void setSentimentScore(Double sentimentScore) {
         this.sentimentScore = sentimentScore;
+    }
+
+    public int getViewCount() {
+        return viewCount;
+    }
+
+    public void setViewCount(int viewCount) {
+        this.viewCount = viewCount;
     }
 
     public List<TargetCategory> getTargetCategories() {

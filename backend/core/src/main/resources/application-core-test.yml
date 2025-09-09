@@ -18,6 +18,13 @@ spring:
         default_batch_fetch_size: 100
         jdbc:
           time-zone: UTC
+        dialect: org.hibernate.dialect.H2Dialect
+  cache:
+    type: simple
+
+hibernate:
+  cache:
+    enabled: false
 
 jasypt:
   encryptor:
