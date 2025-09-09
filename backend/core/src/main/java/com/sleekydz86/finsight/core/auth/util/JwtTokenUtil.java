@@ -2,14 +2,13 @@ package com.sleekydz86.finsight.core.auth.util;
 
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
@@ -45,11 +44,8 @@ public class JwtTokenUtil {
     }
 
     private String generateToken(String email, String tokenType, UserRole role, long expiration) {
-        Date now = new Date();
-        Date validity = new Date(now.getTime() + expiration);
-
         Map<String, Object> claims = new HashMap<>();
-        claims.put("type", tokenType);
+        claims.put("tokenType", tokenType);
         if (role != null) {
             claims.put("role", role.name());
         }
@@ -58,54 +54,69 @@ public class JwtTokenUtil {
                 .setClaims(claims)
                 .setSubject(email)
                 .setIssuer(issuer)
-                .setIssuedAt(now)
-                .setExpiration(validity)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
     }
 
     public boolean validateToken(String token) {
         try {
-            Claims claims = getClaimsFromToken(token);
-            return !isTokenExpired(token) && claims.getIssuer().equals(issuer);
-        } catch (Exception e) {
-            log.debug("Token validation failed: {}", e.getMessage());
+            Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("JWT token validation failed: {}", e.getMessage());
             return false;
         }
     }
 
     public boolean isTokenExpired(String token) {
         try {
-            Claims claims = getClaimsFromToken(token);
+            Claims claims = Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
             return claims.getExpiration().before(new Date());
-        } catch (Exception e) {
+        } catch (JwtException | IllegalArgumentException e) {
             return true;
         }
     }
 
     public String getEmailFromToken(String token) {
         try {
-            Claims claims = getClaimsFromToken(token);
+            Claims claims = Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
             return claims.getSubject();
-        } catch (Exception e) {
-            log.error("Failed to extract email from token: {}", e.getMessage());
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("Failed to extract email from token: {}", e.getMessage());
             return null;
         }
     }
 
     public UserRole getRoleFromToken(String token) {
         try {
-            Claims claims = getClaimsFromToken(token);
+            Claims claims = Jwts.parser()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
             String roleStr = claims.get("role", String.class);
             return roleStr != null ? UserRole.valueOf(roleStr) : UserRole.USER;
-        } catch (Exception e) {
-            log.error("Failed to extract role from token: {}", e.getMessage());
+        } catch (JwtException | IllegalArgumentException e) {
+            log.warn("Failed to extract role from token: {}", e.getMessage());
             return UserRole.USER;
         }
     }
 
     private Claims getClaimsFromToken(String token) {
-        return Jwts.parserBuilder()
+        return Jwts.parser()
                 .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
@@ -119,8 +130,8 @@ public class JwtTokenUtil {
     public boolean validateRefreshToken(String token) {
         try {
             Claims claims = getClaimsFromToken(token);
-            return "REFRESH".equals(claims.get("type", String.class)) && !isTokenExpired(token);
-        } catch (Exception e) {
+            return "REFRESH".equals(claims.get("tokenType"));
+        } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
     }
@@ -136,21 +147,27 @@ public class JwtTokenUtil {
     public String getTokenType(String token) {
         try {
             Claims claims = getClaimsFromToken(token);
-            return claims.get("type", String.class);
-        } catch (Exception e) {
+            return claims.get("tokenType", String.class);
+        } catch (JwtException | IllegalArgumentException e) {
             return null;
         }
     }
 
     public AuthenticatedUser createAuthenticatedUser(String token) {
         try {
-            Claims claims = getClaimsFromToken(token);
-            String email = claims.getSubject();
-            UserRole role = UserRole.valueOf(claims.get("role", String.class));
+            String email = getEmailFromToken(token);
+            UserRole role = getRoleFromToken(token);
 
-            return AuthenticatedUser.of(null, email, email, role);
+            if (email == null) {
+                return null;
+            }
+
+            return AuthenticatedUser.builder()
+                    .email(email)
+                    .role(role.name())
+                    .build();
         } catch (Exception e) {
-            log.error("Failed to create AuthenticatedUser from token: {}", e.getMessage());
+            log.warn("Failed to create AuthenticatedUser from token: {}", e.getMessage());
             return null;
         }
     }

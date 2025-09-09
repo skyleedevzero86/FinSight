@@ -1,26 +1,54 @@
 package com.sleekydz86.finsight.core.global.dto;
 
 import com.sleekydz86.finsight.core.user.domain.UserRole;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@Getter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AuthenticatedUser {
-    private final Long id;
-    private final String email;
-    private final String username;
-    private final UserRole role;
+    private Long id;
+    private String email;
+    private String nickname;
+    private String role;
 
-    public AuthenticatedUser(Long id, String email, String username, UserRole role) {
-        this.id = id;
-        this.email = email;
-        this.username = username;
-        this.role = role;
+    public static AuthenticatedUserBuilder builder() {
+        return new AuthenticatedUserBuilder();
     }
 
-    public static AuthenticatedUser of(Long id, String email, String username, UserRole role) {
-        return new AuthenticatedUser(id, email, username, role);
-    }
+    public static class AuthenticatedUserBuilder {
+        private Long id;
+        private String email;
+        private String nickname;
+        private String role;
 
-    public static AuthenticatedUser system() {
-        return new AuthenticatedUser(0L, "system@finsight.com", "system", UserRole.ADMIN);
+        public AuthenticatedUserBuilder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public AuthenticatedUserBuilder email(String email) {
+            this.email = email;
+            return this;
+        }
+
+        public AuthenticatedUserBuilder nickname(String nickname) {
+            this.nickname = nickname;
+            return this;
+        }
+
+        public AuthenticatedUserBuilder role(String role) {
+            this.role = role;
+            return this;
+        }
+
+        public AuthenticatedUser build() {
+            return new AuthenticatedUser(id, email, nickname, role);
+        }
     }
 
     public Long getId() {
@@ -31,37 +59,12 @@ public class AuthenticatedUser {
         return email;
     }
 
-    public String getUsername() {
-        return username;
+    public String getNickname() {
+        return nickname;
     }
 
-    public UserRole getRole() {
+    public String getRole() {
         return role;
-    }
-
-    public boolean isSystem() {
-        return id == 0L;
-    }
-
-    public boolean isAdmin() {
-        return role == UserRole.ADMIN;
-    }
-
-    public boolean isUser() {
-        return role == UserRole.USER;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        AuthenticatedUser that = (AuthenticatedUser) o;
-        return id != null ? id.equals(that.id) : that.id == null;
-    }
-
-    @Override
-    public int hashCode() {
-        return id != null ? id.hashCode() : 0;
     }
 
     @Override
@@ -69,8 +72,22 @@ public class AuthenticatedUser {
         return "AuthenticatedUser{" +
                 "id=" + id +
                 ", email='" + email + '\'' +
-                ", username='" + username + '\'' +
-                ", role=" + role +
+                ", nickname='" + nickname + '\'' +
+                ", role='" + role + '\'' +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        AuthenticatedUser that = (AuthenticatedUser) o;
+        return java.util.Objects.equals(id, that.id) &&
+                java.util.Objects.equals(email, that.email);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hash(id, email);
     }
 }
