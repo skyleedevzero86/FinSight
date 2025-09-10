@@ -90,4 +90,15 @@ public class UserJpaEntity extends BaseTimeEntity {
     @Column(name = "notification_type", nullable = false)
     @Builder.Default
     private List<NotificationType> notificationPreferences = new ArrayList<>();
+
+    @Column(name = "otp_secret", length = 100)
+    private String otpSecret;
+
+    @Column(name = "otp_enabled", nullable = false)
+    @Builder.Default
+    private Boolean otpEnabled = false;
+
+    @Column(name = "otp_verified", nullable = false)
+    @Builder.Default
+    private Boolean otpVerified = false;
 }

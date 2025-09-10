@@ -54,6 +54,12 @@ public class QUserJpaEntity extends EntityPathBase<UserJpaEntity> {
 
     public final ListPath<com.sleekydz86.finsight.core.user.domain.NotificationType, EnumPath<com.sleekydz86.finsight.core.user.domain.NotificationType>> notificationPreferences = this.<com.sleekydz86.finsight.core.user.domain.NotificationType, EnumPath<com.sleekydz86.finsight.core.user.domain.NotificationType>>createList("notificationPreferences", com.sleekydz86.finsight.core.user.domain.NotificationType.class, EnumPath.class, PathInits.DIRECT2);
 
+    public final BooleanPath otpEnabled = createBoolean("otpEnabled");
+
+    public final StringPath otpSecret = createString("otpSecret");
+
+    public final BooleanPath otpVerified = createBoolean("otpVerified");
+
     public final StringPath password = createString("password");
 
     public final NumberPath<Integer> passwordChangeCount = createNumber("passwordChangeCount", Integer.class);

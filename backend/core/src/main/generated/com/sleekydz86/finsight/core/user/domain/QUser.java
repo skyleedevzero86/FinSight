@@ -54,6 +54,12 @@ public class QUser extends EntityPathBase<User> {
 
     public final ListPath<NotificationType, EnumPath<NotificationType>> notificationPreferences = this.<NotificationType, EnumPath<NotificationType>>createList("notificationPreferences", NotificationType.class, EnumPath.class, PathInits.DIRECT2);
 
+    public final BooleanPath otpEnabled = createBoolean("otpEnabled");
+
+    public final StringPath otpSecret = createString("otpSecret");
+
+    public final BooleanPath otpVerified = createBoolean("otpVerified");
+
     public final StringPath password = createString("password");
 
     public final NumberPath<Integer> passwordChangeCount = createNumber("passwordChangeCount", Integer.class);

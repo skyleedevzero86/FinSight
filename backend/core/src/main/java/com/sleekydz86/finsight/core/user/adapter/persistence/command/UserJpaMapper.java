@@ -36,8 +36,14 @@ public class UserJpaMapper {
                 .passwordChangeCount(user.getPasswordChangeCount())
                 .lastPasswordChangeDate(user.getLastPasswordChangeDate())
                 .watchlist(user.getWatchlist() != null ? new ArrayList<>(user.getWatchlist()) : new ArrayList<>())
-                .notificationPreferences(user.getNotificationPreferences() != null ?
-                        new ArrayList<>(user.getNotificationPreferences()) : new ArrayList<>())
+                .notificationPreferences(
+                        user.getNotificationPreferences() != null ? new ArrayList<>(user.getNotificationPreferences())
+                                : new ArrayList<>())
+
+                .otpSecret(user.getOtpSecret())
+                .otpEnabled(user.getOtpEnabled())
+                .otpVerified(user.getOtpVerified())
+
                 .build();
 
         if (user.getId() != null) {
@@ -75,8 +81,13 @@ public class UserJpaMapper {
                 .passwordChangeCount(entity.getPasswordChangeCount() != null ? entity.getPasswordChangeCount() : 0)
                 .lastPasswordChangeDate(entity.getLastPasswordChangeDate())
                 .watchlist(entity.getWatchlist() != null ? new ArrayList<>(entity.getWatchlist()) : new ArrayList<>())
-                .notificationPreferences(entity.getNotificationPreferences() != null ?
-                        new ArrayList<>(entity.getNotificationPreferences()) : new ArrayList<>())
+                .notificationPreferences(entity.getNotificationPreferences() != null
+                        ? new ArrayList<>(entity.getNotificationPreferences())
+                        : new ArrayList<>())
+
+                .otpSecret(entity.getOtpSecret())
+                .otpEnabled(entity.getOtpEnabled() != null ? entity.getOtpEnabled() : false)
+                .otpVerified(entity.getOtpVerified() != null ? entity.getOtpVerified() : false)
                 .build();
 
         if (entity.getId() != null) {

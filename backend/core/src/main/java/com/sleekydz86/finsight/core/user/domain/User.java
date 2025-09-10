@@ -1,6 +1,8 @@
 package com.sleekydz86.finsight.core.user.domain;
 
+import com.sleekydz86.finsight.core.global.BaseTimeEntity;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import jakarta.persistence.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
@@ -12,61 +14,95 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+@Entity
+@Table(name = "users")
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Slf4j
-public class User {
+public class User extends BaseTimeEntity {
 
-    private Long id;
-
+    @Column(unique = true, nullable = false)
     private String username;
 
+    @Column(nullable = false)
     private String password;
 
+    @Column
     private String nickname;
 
+    @Column(unique = true, nullable = false)
     private String email;
 
+    @Column(unique = true)
     private String apiKey;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     @Builder.Default
     private UserStatus status = UserStatus.PENDING;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     @Builder.Default
     private UserRole role = UserRole.USER;
 
+    @Column
     private LocalDateTime lastLoginAt;
 
+    @Column(nullable = false)
     @Builder.Default
     private Integer loginFailCount = 0;
 
+    @Column
     private LocalDateTime accountLockedAt;
 
+    @Column
     private Long approvedBy;
 
+    @Column
     private LocalDateTime approvedAt;
 
+    @Column
     private LocalDateTime passwordChangedAt;
 
+    @Column(nullable = false)
     @Builder.Default
     private Integer passwordChangeCount = 0;
 
+    @Column
     private LocalDate lastPasswordChangeDate;
 
+    @ElementCollection(targetClass = TargetCategory.class)
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "user_watchlist", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "category")
     @Builder.Default
     private List<TargetCategory> watchlist = new ArrayList<>();
 
+    @ElementCollection(targetClass = NotificationType.class)
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "user_notification_preferences", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "notification_type")
     @Builder.Default
     private List<NotificationType> notificationPreferences = new ArrayList<>();
 
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    @Column
+    private String otpSecret;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean otpEnabled = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean otpVerified = false;
 
     public void changePassword(String newPassword) {
         log.info("비밀번호 변경 실행 - userId: {}, 이전 passwordChangedAt: {}",
-                getId(), this.passwordChangedAt);
+                this.getId(), this.passwordChangedAt);
 
         this.password = newPassword;
         this.passwordChangedAt = LocalDateTime.now();
@@ -80,7 +116,7 @@ public class User {
         }
 
         log.info("비밀번호 변경 완료 - userId: {}, passwordChangedAt: {}, 오늘 변경 횟수: {}",
-                getId(), this.passwordChangedAt, this.passwordChangeCount);
+                this.getId(), this.passwordChangedAt, this.passwordChangeCount);
     }
 
     public boolean canChangePassword() {
@@ -103,7 +139,7 @@ public class User {
 
     public boolean isPasswordChangeRequired() {
         if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 필요 - 최초 변경 안함: userId={}", getId());
+            log.debug("비밀번호 변경 필요 - 최초 변경 안함: userId={}", this.getId());
             return true;
         }
 
@@ -111,14 +147,14 @@ public class User {
         boolean isRequired = this.passwordChangedAt.isBefore(thirtyDaysAgo);
 
         log.debug("비밀번호 변경 필요 여부: userId={}, passwordChangedAt={}, required={}",
-                getId(), this.passwordChangedAt, isRequired);
+                this.getId(), this.passwordChangedAt, isRequired);
 
         return isRequired;
     }
 
     public boolean isPasswordChangeRecommended() {
         if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 권장 - 최초 변경 안함: userId={}", getId());
+            log.debug("비밀번호 변경 권장 - 최초 변경 안함: userId={}", this.getId());
             return true;
         }
 
@@ -126,7 +162,7 @@ public class User {
         boolean isRecommended = this.passwordChangedAt.isBefore(fourteenDaysAgo);
 
         log.debug("비밀번호 변경 권장 여부: userId={}, passwordChangedAt={}, recommended={}",
-                getId(), this.passwordChangedAt, isRecommended);
+                this.getId(), this.passwordChangedAt, isRecommended);
 
         return isRecommended;
     }
@@ -154,7 +190,7 @@ public class User {
         boolean isNotLocked = !isLocked();
 
         log.debug("회원 활성 상태 확인: userId={}, status={}, isLocked={}, isActive={}",
-                getId(), this.status, isLocked(), isStatusActive && isNotLocked);
+                this.getId(), this.status, isLocked(), isStatusActive && isNotLocked);
 
         return isStatusActive && isNotLocked;
     }
@@ -173,22 +209,22 @@ public class User {
         if (this.loginFailCount >= 5) {
             this.status = UserStatus.SUSPENDED;
             this.accountLockedAt = LocalDateTime.now();
-            log.warn("계정 잠금 처리: userId={}, loginFailCount={}", getId(), this.loginFailCount);
+            log.warn("계정 잠금 처리: userId={}, loginFailCount={}", this.getId(), this.loginFailCount);
         }
 
-        log.debug("로그인 실패 카운트 증가: userId={}, loginFailCount={}", getId(), this.loginFailCount);
+        log.debug("로그인 실패 카운트 증가: userId={}, loginFailCount={}", this.getId(), this.loginFailCount);
     }
 
     public void resetLoginFailCount() {
         this.loginFailCount = 0;
         this.accountLockedAt = null;
-        log.debug("로그인 실패 카운트 초기화: userId={}", getId());
+        log.debug("로그인 실패 카운트 초기화: userId={}", this.getId());
     }
 
     public void updateProfile(String nickname, String email) {
         this.nickname = nickname;
         this.email = email;
-        log.info("프로필 업데이트: userId={}, nickname={}, email={}", getId(), nickname, email);
+        log.info("프로필 업데이트: userId={}, nickname={}, email={}", this.getId(), nickname, email);
     }
 
     public void approve(Long approverId) {
@@ -197,25 +233,25 @@ public class User {
         this.approvedAt = LocalDateTime.now();
         this.accountLockedAt = null;
         this.loginFailCount = 0;
-        log.info("회원 승인: userId={}, approverId={}, approvedAt={}", getId(), approverId, this.approvedAt);
+        log.info("회원 승인: userId={}, approverId={}, approvedAt={}", this.getId(), approverId, this.approvedAt);
     }
 
     public void reject() {
         this.status = UserStatus.REJECTED;
         this.approvedBy = null;
         this.approvedAt = null;
-        log.info("회원 거부: userId={}", getId());
+        log.info("회원 거부: userId={}", this.getId());
     }
 
     public void suspend() {
         this.status = UserStatus.SUSPENDED;
         this.accountLockedAt = LocalDateTime.now();
-        log.info("회원 정지: userId={}, accountLockedAt={}", getId(), this.accountLockedAt);
+        log.info("회원 정지: userId={}, accountLockedAt={}", this.getId(), this.accountLockedAt);
     }
 
     public void withdraw() {
         this.status = UserStatus.WITHDRAWN;
-        log.info("회원 탈퇴: userId={}", getId());
+        log.info("회원 탈퇴: userId={}", this.getId());
     }
 
     public void changeRole(UserRole newRole) {
@@ -236,12 +272,12 @@ public class User {
         }
         this.accountLockedAt = null;
         this.loginFailCount = 0;
-        log.info("회원 잠금 해제: userId={}", getId());
+        log.info("회원 잠금 해제: userId={}", this.getId());
     }
 
     public void updateLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
-        log.debug("마지막 로그인 시간 업데이트: userId={}, lastLoginAt={}", getId(), lastLoginAt);
+        log.debug("마지막 로그인 시간 업데이트: userId={}, lastLoginAt={}", this.getId(), lastLoginAt);
     }
 
     public String getMaskedEmail() {
@@ -301,14 +337,42 @@ public class User {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         User user = (User) o;
-        return Objects.equals(id, user.id) && Objects.equals(email, user.email);
+        return Objects.equals(getId(), user.getId()) && Objects.equals(email, user.email);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, email);
+        return Objects.hash(getId(), email);
+    }
+
+    public void enableOtp(String secret) {
+        this.otpSecret = secret;
+        this.otpEnabled = true;
+        this.otpVerified = false;
+        log.info("OTP 활성화: userId={}", this.getId());
+    }
+
+    public void verifyOtp() {
+        if (!this.otpEnabled) {
+            throw new IllegalStateException("OTP가 활성화되지 않았습니다.");
+        }
+        this.otpVerified = true;
+        log.info("OTP 검증 완료: userId={}", this.getId());
+    }
+
+    public void disableOtp() {
+        this.otpSecret = null;
+        this.otpEnabled = false;
+        this.otpVerified = false;
+        log.info("OTP 비활성화: userId={}", this.getId());
+    }
+
+    public boolean isOtpRequired() {
+        return this.otpEnabled && this.otpVerified;
     }
 }
