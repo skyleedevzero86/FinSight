@@ -183,6 +183,13 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     private Boolean lineNotificationEnabled = false;
 
+    @Column(length = 1000)
+    private String webhookUrl;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean webhookNotificationEnabled = false;
+
     public void changePassword(String newPassword) {
         log.info("비밀번호 변경 실행 - userId: {}, 이전 passwordChangedAt: {}",
                 this.getId(), this.passwordChangedAt);
@@ -489,6 +496,13 @@ public class User extends BaseTimeEntity {
                 this.isActive();
     }
 
+    public boolean canReceiveWebhookNotification() {
+        return this.webhookNotificationEnabled &&
+                this.webhookUrl != null &&
+                !this.webhookUrl.trim().isEmpty() &&
+                this.isActive();
+    }
+
     public void updateNotificationSettings(Boolean pushEnabled, Boolean emailEnabled, Boolean smsEnabled) {
         if (pushEnabled != null) {
             this.pushNotificationEnabled = pushEnabled;
@@ -504,7 +518,8 @@ public class User extends BaseTimeEntity {
     }
 
     public void updateExternalNotificationSettings(Boolean kakaoEnabled, Boolean telegramEnabled,
-                                                   Boolean slackEnabled, Boolean discordEnabled, Boolean lineEnabled) {
+                                                   Boolean slackEnabled, Boolean discordEnabled,
+                                                   Boolean lineEnabled, Boolean webhookEnabled) {
         if (kakaoEnabled != null) {
             this.kakaoNotificationEnabled = kakaoEnabled;
         }
@@ -520,9 +535,13 @@ public class User extends BaseTimeEntity {
         if (lineEnabled != null) {
             this.lineNotificationEnabled = lineEnabled;
         }
-        log.info("외부 알림 설정 업데이트: userId={}, kakao={}, telegram={}, slack={}, discord={}, line={}",
+        if (webhookEnabled != null) {
+            this.webhookNotificationEnabled = webhookEnabled;
+        }
+        log.info("외부 알림 설정 업데이트: userId={}, kakao={}, telegram={}, slack={}, discord={}, line={}, webhook={}",
                 this.getId(), this.kakaoNotificationEnabled, this.telegramNotificationEnabled,
-                this.slackNotificationEnabled, this.discordNotificationEnabled, this.lineNotificationEnabled);
+                this.slackNotificationEnabled, this.discordNotificationEnabled, this.lineNotificationEnabled,
+                this.webhookNotificationEnabled);
     }
 
     public void updateKakaoInfo(String kakaoUserId, String accessToken, LocalDateTime expiresAt, String refreshToken) {
@@ -553,6 +572,11 @@ public class User extends BaseTimeEntity {
     public void updateLineInfo(String lineUserId) {
         this.lineUserId = lineUserId;
         log.info("라인 정보 업데이트: userId={}, lineUserId={}", this.getId(), lineUserId);
+    }
+
+    public void updateWebhookInfo(String webhookUrl) {
+        this.webhookUrl = webhookUrl;
+        log.info("웹훅 정보 업데이트: userId={}, webhookUrl={}", this.getId(), webhookUrl);
     }
 
     public boolean isKakaoTokenValid() {
@@ -594,6 +618,12 @@ public class User extends BaseTimeEntity {
         this.lineUserId = null;
         this.lineNotificationEnabled = false;
         log.info("라인 정보 제거: userId={}", this.getId());
+    }
+
+    public void removeWebhookInfo() {
+        this.webhookUrl = null;
+        this.webhookNotificationEnabled = false;
+        log.info("웹훅 정보 제거: userId={}", this.getId());
     }
 
     public void updateProfileSettings(String nickname, String phoneNumber, String profileImageUrl, String timezone, String language) {
@@ -655,5 +685,23 @@ public class User extends BaseTimeEntity {
 
     public boolean isOtpRequired() {
         return this.otpEnabled && this.otpVerified;
+    }
+
+    public com.sleekydz86.finsight.core.notification.domain.NotificationChannel getPreferredNotificationChannel() {
+        if (canReceiveEmailNotification()) {
+            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.EMAIL;
+        } else if (canReceivePushNotification()) {
+            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.PUSH;
+        } else if (canReceiveSmsNotification()) {
+            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.SMS;
+        } else if (canReceiveKakaoNotification()) {
+            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.KAKAO;
+        } else if (canReceiveSlackNotification()) {
+            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.SLACK;
+        } else if (canReceiveWebhookNotification()) {
+            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.WEBHOOK;
+        } else {
+            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.EMAIL;
+        }
     }
 }

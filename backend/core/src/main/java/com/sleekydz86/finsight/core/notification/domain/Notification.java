@@ -9,6 +9,7 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -16,6 +17,7 @@ import java.util.Map;
 @Entity
 @Table(name = "notifications")
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Notification extends BaseTimeEntity {
 
@@ -49,6 +51,10 @@ public class Notification extends BaseTimeEntity {
     @Column(nullable = false)
     private NotificationChannel channel;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NotificationPriority priority = NotificationPriority.NORMAL;
+
     @Column(name = "external_id")
     private String externalId;
 
@@ -69,8 +75,8 @@ public class Notification extends BaseTimeEntity {
 
     @Builder
     public Notification(Long id, User user, News news, NotificationType type, String title, String content,
-            NotificationStatus status, NotificationChannel channel, String externalId,
-            LocalDateTime scheduledAt, LocalDateTime sentAt, String failureReason, Map<String, String> metadata) {
+                        NotificationStatus status, NotificationChannel channel, NotificationPriority priority, String externalId,
+                        LocalDateTime scheduledAt, LocalDateTime sentAt, String failureReason, Map<String, String> metadata) {
         this.id = id;
         this.user = user;
         this.news = news;
@@ -79,6 +85,7 @@ public class Notification extends BaseTimeEntity {
         this.content = content;
         this.status = status;
         this.channel = channel;
+        this.priority = priority != null ? priority : NotificationPriority.NORMAL;
         this.externalId = externalId;
         this.scheduledAt = scheduledAt;
         this.sentAt = sentAt;
@@ -87,8 +94,8 @@ public class Notification extends BaseTimeEntity {
     }
 
     public static Notification create(User user, News news, NotificationType type, String title, String content,
-            NotificationStatus status, NotificationChannel channel, String externalId,
-            LocalDateTime scheduledAt, Map<String, String> metadata) {
+                                      NotificationStatus status, NotificationChannel channel, NotificationPriority priority, String externalId,
+                                      LocalDateTime scheduledAt, Map<String, String> metadata) {
         return Notification.builder()
                 .user(user)
                 .news(news)
@@ -97,6 +104,7 @@ public class Notification extends BaseTimeEntity {
                 .content(content)
                 .status(status)
                 .channel(channel)
+                .priority(priority)
                 .externalId(externalId)
                 .scheduledAt(scheduledAt)
                 .metadata(metadata)
@@ -124,5 +132,17 @@ public class Notification extends BaseTimeEntity {
     public boolean canBeSent() {
         return status == NotificationStatus.PENDING &&
                 (scheduledAt == null || scheduledAt.isBefore(LocalDateTime.now()));
+    }
+
+    public void updatePriority(NotificationPriority priority) {
+        this.priority = priority != null ? priority : NotificationPriority.NORMAL;
+    }
+
+    public boolean isHighPriority() {
+        return this.priority == NotificationPriority.HIGH || this.priority == NotificationPriority.URGENT;
+    }
+
+    public boolean isUrgent() {
+        return this.priority == NotificationPriority.URGENT;
     }
 }

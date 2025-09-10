@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.user.domain.User;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Getter
@@ -15,7 +16,7 @@ public class NotificationTemplate {
     private final String content;
     private final NotificationType type;
     private final NotificationChannel channel;
-    private final Map<String, Object> variables;
+    private final Map<String, String> variables;
 
     public static NotificationTemplate createNewsAlertTemplate(News news, User user, NotificationChannel channel) {
         String title = String.format("[FinSight] %s 관련 중요 뉴스",
@@ -35,20 +36,33 @@ public class NotificationTemplate {
                 getNewsUrl(news)
         );
 
+        Map<String, String> variables = new HashMap<>();
+        variables.put("newsId", news.getId().toString());
+        variables.put("category", news.getAiOverView().getTargetCategories().stream()
+                .findFirst()
+                .map(category -> category.name())
+                .orElse("GENERAL"));
+
         return NotificationTemplate.builder()
                 .title(title)
                 .content(content)
                 .type(NotificationType.NEWS_ALERT)
                 .channel(channel)
+                .variables(variables)
                 .build();
     }
 
     public static NotificationTemplate createSystemAlertTemplate(String title, String content, NotificationChannel channel) {
+        Map<String, String> variables = new HashMap<>();
+        variables.put("alertType", "SYSTEM");
+        variables.put("timestamp", String.valueOf(System.currentTimeMillis()));
+
         return NotificationTemplate.builder()
                 .title("[FinSight] " + title)
                 .content(content)
                 .type(NotificationType.SYSTEM_ALERT)
                 .channel(channel)
+                .variables(variables)
                 .build();
     }
 
@@ -59,34 +73,49 @@ public class NotificationTemplate {
                 symbol, price, changePercent
         );
 
+        Map<String, String> variables = new HashMap<>();
+        variables.put("symbol", symbol);
+        variables.put("price", String.valueOf(price));
+        variables.put("changePercent", String.valueOf(changePercent));
+
         return NotificationTemplate.builder()
                 .title(title)
                 .content(content)
                 .type(NotificationType.PRICE_ALERT)
                 .channel(channel)
+                .variables(variables)
                 .build();
     }
 
     public static NotificationTemplate createMarketSummaryTemplate(String summary, NotificationChannel channel) {
+        Map<String, String> variables = new HashMap<>();
+        variables.put("summaryType", "MARKET");
+        variables.put("date", String.valueOf(System.currentTimeMillis()));
+
         return NotificationTemplate.builder()
                 .title("[FinSight] 오늘의 시장 요약")
                 .content(summary)
                 .type(NotificationType.MARKET_SUMMARY)
                 .channel(channel)
+                .variables(variables)
                 .build();
     }
 
     public static NotificationTemplate createAccountAlertTemplate(String title, String content, NotificationChannel channel) {
+        Map<String, String> variables = new HashMap<>();
+        variables.put("alertType", "ACCOUNT");
+        variables.put("timestamp", String.valueOf(System.currentTimeMillis()));
+
         return NotificationTemplate.builder()
                 .title("[FinSight] " + title)
                 .content(content)
                 .type(NotificationType.ACCOUNT_ALERT)
                 .channel(channel)
+                .variables(variables)
                 .build();
     }
 
     private static String getNewsUrl(News news) {
-
         if (news.getOriginalContent().getUrl() != null && !news.getOriginalContent().getUrl().isEmpty()) {
             return news.getOriginalContent().getUrl();
         }

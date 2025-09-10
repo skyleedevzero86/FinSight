@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
+import java.util.Optional;
 
 @Slf4j
 @RestController
@@ -27,7 +28,12 @@ public class SmsNotificationController {
             @RequestParam String message) {
 
         try {
-            User user = userService.findByEmail(userEmail);
+            Optional<User> userOptional = userService.findByEmail(userEmail);
+            if (userOptional.isEmpty()) {
+                return ResponseEntity.badRequest().body("사용자를 찾을 수 없습니다: " + userEmail);
+            }
+
+            User user = userOptional.get();
             smsNotificationService.sendNotification(user,
                     com.sleekydz86.finsight.core.notification.domain.Notification.builder()
                             .title("FinSight 알림")
