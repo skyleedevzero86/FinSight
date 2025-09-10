@@ -133,6 +133,56 @@ public class User extends BaseTimeEntity {
     @Column
     private String language;
 
+    @Column
+    private String kakaoUserId;
+
+    @Column
+    private String kakaoAccessToken;
+
+    @Column
+    private LocalDateTime kakaoTokenExpiresAt;
+
+    @Column
+    private String kakaoRefreshToken;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean kakaoNotificationEnabled = false;
+
+    @Column
+    private String telegramUserId;
+
+    @Column
+    private String telegramChatId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean telegramNotificationEnabled = false;
+
+    @Column
+    private String slackUserId;
+
+    @Column
+    private String slackChannelId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean slackNotificationEnabled = false;
+
+    @Column
+    private String discordUserId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean discordNotificationEnabled = false;
+
+    @Column
+    private String lineUserId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean lineNotificationEnabled = false;
+
     public void changePassword(String newPassword) {
         log.info("비밀번호 변경 실행 - userId: {}, 이전 passwordChangedAt: {}",
                 this.getId(), this.passwordChangedAt);
@@ -403,6 +453,42 @@ public class User extends BaseTimeEntity {
                 this.isActive();
     }
 
+    public boolean canReceiveKakaoNotification() {
+        return this.kakaoNotificationEnabled &&
+                this.kakaoUserId != null &&
+                !this.kakaoUserId.trim().isEmpty() &&
+                this.isActive() &&
+                isKakaoTokenValid();
+    }
+
+    public boolean canReceiveTelegramNotification() {
+        return this.telegramNotificationEnabled &&
+                this.telegramUserId != null &&
+                !this.telegramUserId.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveSlackNotification() {
+        return this.slackNotificationEnabled &&
+                this.slackUserId != null &&
+                !this.slackUserId.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveDiscordNotification() {
+        return this.discordNotificationEnabled &&
+                this.discordUserId != null &&
+                !this.discordUserId.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveLineNotification() {
+        return this.lineNotificationEnabled &&
+                this.lineUserId != null &&
+                !this.lineUserId.trim().isEmpty() &&
+                this.isActive();
+    }
+
     public void updateNotificationSettings(Boolean pushEnabled, Boolean emailEnabled, Boolean smsEnabled) {
         if (pushEnabled != null) {
             this.pushNotificationEnabled = pushEnabled;
@@ -415,6 +501,99 @@ public class User extends BaseTimeEntity {
         }
         log.info("알림 설정 업데이트: userId={}, push={}, email={}, sms={}",
                 this.getId(), this.pushNotificationEnabled, this.emailNotificationEnabled, this.smsNotificationEnabled);
+    }
+
+    public void updateExternalNotificationSettings(Boolean kakaoEnabled, Boolean telegramEnabled,
+                                                   Boolean slackEnabled, Boolean discordEnabled, Boolean lineEnabled) {
+        if (kakaoEnabled != null) {
+            this.kakaoNotificationEnabled = kakaoEnabled;
+        }
+        if (telegramEnabled != null) {
+            this.telegramNotificationEnabled = telegramEnabled;
+        }
+        if (slackEnabled != null) {
+            this.slackNotificationEnabled = slackEnabled;
+        }
+        if (discordEnabled != null) {
+            this.discordNotificationEnabled = discordEnabled;
+        }
+        if (lineEnabled != null) {
+            this.lineNotificationEnabled = lineEnabled;
+        }
+        log.info("외부 알림 설정 업데이트: userId={}, kakao={}, telegram={}, slack={}, discord={}, line={}",
+                this.getId(), this.kakaoNotificationEnabled, this.telegramNotificationEnabled,
+                this.slackNotificationEnabled, this.discordNotificationEnabled, this.lineNotificationEnabled);
+    }
+
+    public void updateKakaoInfo(String kakaoUserId, String accessToken, LocalDateTime expiresAt, String refreshToken) {
+        this.kakaoUserId = kakaoUserId;
+        this.kakaoAccessToken = accessToken;
+        this.kakaoTokenExpiresAt = expiresAt;
+        this.kakaoRefreshToken = refreshToken;
+        log.info("카카오 정보 업데이트: userId={}, kakaoUserId={}", this.getId(), kakaoUserId);
+    }
+
+    public void updateTelegramInfo(String telegramUserId, String chatId) {
+        this.telegramUserId = telegramUserId;
+        this.telegramChatId = chatId;
+        log.info("텔레그램 정보 업데이트: userId={}, telegramUserId={}", this.getId(), telegramUserId);
+    }
+
+    public void updateSlackInfo(String slackUserId, String channelId) {
+        this.slackUserId = slackUserId;
+        this.slackChannelId = channelId;
+        log.info("슬랙 정보 업데이트: userId={}, slackUserId={}", this.getId(), slackUserId);
+    }
+
+    public void updateDiscordInfo(String discordUserId) {
+        this.discordUserId = discordUserId;
+        log.info("디스코드 정보 업데이트: userId={}, discordUserId={}", this.getId(), discordUserId);
+    }
+
+    public void updateLineInfo(String lineUserId) {
+        this.lineUserId = lineUserId;
+        log.info("라인 정보 업데이트: userId={}, lineUserId={}", this.getId(), lineUserId);
+    }
+
+    public boolean isKakaoTokenValid() {
+        return this.kakaoAccessToken != null &&
+                this.kakaoTokenExpiresAt != null &&
+                LocalDateTime.now().isBefore(this.kakaoTokenExpiresAt);
+    }
+
+    public void removeKakaoInfo() {
+        this.kakaoUserId = null;
+        this.kakaoAccessToken = null;
+        this.kakaoTokenExpiresAt = null;
+        this.kakaoRefreshToken = null;
+        this.kakaoNotificationEnabled = false;
+        log.info("카카오 정보 제거: userId={}", this.getId());
+    }
+
+    public void removeTelegramInfo() {
+        this.telegramUserId = null;
+        this.telegramChatId = null;
+        this.telegramNotificationEnabled = false;
+        log.info("텔레그램 정보 제거: userId={}", this.getId());
+    }
+
+    public void removeSlackInfo() {
+        this.slackUserId = null;
+        this.slackChannelId = null;
+        this.slackNotificationEnabled = false;
+        log.info("슬랙 정보 제거: userId={}", this.getId());
+    }
+
+    public void removeDiscordInfo() {
+        this.discordUserId = null;
+        this.discordNotificationEnabled = false;
+        log.info("디스코드 정보 제거: userId={}", this.getId());
+    }
+
+    public void removeLineInfo() {
+        this.lineUserId = null;
+        this.lineNotificationEnabled = false;
+        log.info("라인 정보 제거: userId={}", this.getId());
     }
 
     public void updateProfileSettings(String nickname, String phoneNumber, String profileImageUrl, String timezone, String language) {

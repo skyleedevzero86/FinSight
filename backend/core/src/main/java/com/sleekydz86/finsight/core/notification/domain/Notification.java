@@ -68,9 +68,10 @@ public class Notification extends BaseTimeEntity {
     private Map<String, String> metadata;
 
     @Builder
-    public Notification(User user, News news, NotificationType type, String title, String content,
-                        NotificationStatus status, NotificationChannel channel, String externalId,
-                        LocalDateTime scheduledAt, Map<String, String> metadata) {
+    public Notification(Long id, User user, News news, NotificationType type, String title, String content,
+            NotificationStatus status, NotificationChannel channel, String externalId,
+            LocalDateTime scheduledAt, LocalDateTime sentAt, String failureReason, Map<String, String> metadata) {
+        this.id = id;
         this.user = user;
         this.news = news;
         this.type = type;
@@ -80,7 +81,26 @@ public class Notification extends BaseTimeEntity {
         this.channel = channel;
         this.externalId = externalId;
         this.scheduledAt = scheduledAt;
+        this.sentAt = sentAt;
+        this.failureReason = failureReason;
         this.metadata = metadata;
+    }
+
+    public static Notification create(User user, News news, NotificationType type, String title, String content,
+            NotificationStatus status, NotificationChannel channel, String externalId,
+            LocalDateTime scheduledAt, Map<String, String> metadata) {
+        return Notification.builder()
+                .user(user)
+                .news(news)
+                .type(type)
+                .title(title)
+                .content(content)
+                .status(status)
+                .channel(channel)
+                .externalId(externalId)
+                .scheduledAt(scheduledAt)
+                .metadata(metadata)
+                .build();
     }
 
     public void markAsSent() {

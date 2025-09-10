@@ -8,7 +8,11 @@ public enum NotificationType {
     NEWS_ALERT("뉴스 알림"),
     PRICE_ALERT("가격 알림"),
     MARKET_SUMMARY("시장 요약"),
-    PORTFOLIO_UPDATE("포트폴리오 업데이트");
+    PORTFOLIO_UPDATE("포트폴리오 업데이트"),
+    SYSTEM_ALERT("시스템 알림"),
+    ACCOUNT_ALERT("계정 알림"),
+    SECURITY_ALERT("보안 알림"),
+    MAINTENANCE_ALERT("시스템 점검 알림");
 
     private final String description;
 

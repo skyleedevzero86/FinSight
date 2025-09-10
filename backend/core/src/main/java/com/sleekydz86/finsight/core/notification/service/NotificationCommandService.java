@@ -65,7 +65,7 @@ public class NotificationCommandService implements NotificationCommandUseCase {
                 case PUSH:
                     notificationSenderPort.sendPushNotification(notification.getUser(), notification);
                     break;
-                case KAKAO_TALK:
+                case KAKAO:
                     notificationSenderPort.sendKakaoTalkNotification(notification.getUser(), notification);
                     break;
                 case SLACK:

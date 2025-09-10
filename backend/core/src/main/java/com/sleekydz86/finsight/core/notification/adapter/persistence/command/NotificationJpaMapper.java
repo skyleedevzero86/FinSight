@@ -1,9 +1,8 @@
 package com.sleekydz86.finsight.core.notification.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.notification.domain.Notification;
-import com.sleekydz86.finsight.core.notification.domain.NotificationChannel;
-import com.sleekydz86.finsight.core.notification.domain.NotificationStatus;
-import com.sleekydz86.finsight.core.user.domain.NotificationType;
+import com.sleekydz86.finsight.core.user.domain.User;
+import com.sleekydz86.finsight.core.news.domain.News;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -29,6 +28,8 @@ public class NotificationJpaMapper {
     public Notification toDomain(NotificationJpaEntity entity) {
         return Notification.builder()
                 .id(entity.getId())
+                .user(null)
+                .news(null)
                 .type(entity.getType())
                 .title(entity.getTitle())
                 .content(entity.getContent())
@@ -36,6 +37,26 @@ public class NotificationJpaMapper {
                 .channel(entity.getChannel())
                 .externalId(entity.getExternalId())
                 .scheduledAt(entity.getScheduledAt())
+                .sentAt(entity.getSentAt())
+                .failureReason(entity.getFailureReason())
+                .metadata(entity.getMetadata())
+                .build();
+    }
+
+    public Notification toDomainWithReferences(NotificationJpaEntity entity, User user, News news) {
+        return Notification.builder()
+                .id(entity.getId())
+                .user(user)
+                .news(news)
+                .type(entity.getType())
+                .title(entity.getTitle())
+                .content(entity.getContent())
+                .status(entity.getStatus())
+                .channel(entity.getChannel())
+                .externalId(entity.getExternalId())
+                .scheduledAt(entity.getScheduledAt())
+                .sentAt(entity.getSentAt())
+                .failureReason(entity.getFailureReason())
                 .metadata(entity.getMetadata())
                 .build();
     }
