@@ -2,7 +2,7 @@ package com.sleekydz86.finsight.core.notification.domain;
 
 import com.sleekydz86.finsight.core.global.BaseTimeEntity;
 import com.sleekydz86.finsight.core.user.domain.User;
-import com.sleekydz86.finsight.core.news.domain.News;
+import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -31,7 +31,7 @@ public class Notification extends BaseTimeEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "news_id")
-    private News news;
+    private NewsJpaEntity news;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -74,9 +74,9 @@ public class Notification extends BaseTimeEntity {
     private Map<String, String> metadata;
 
     @Builder
-    public Notification(Long id, User user, News news, NotificationType type, String title, String content,
-                        NotificationStatus status, NotificationChannel channel, NotificationPriority priority, String externalId,
-                        LocalDateTime scheduledAt, LocalDateTime sentAt, String failureReason, Map<String, String> metadata) {
+    public Notification(Long id, User user, NewsJpaEntity news, NotificationType type, String title, String content,
+            NotificationStatus status, NotificationChannel channel, NotificationPriority priority, String externalId,
+            LocalDateTime scheduledAt, LocalDateTime sentAt, String failureReason, Map<String, String> metadata) {
         this.id = id;
         this.user = user;
         this.news = news;
@@ -93,9 +93,10 @@ public class Notification extends BaseTimeEntity {
         this.metadata = metadata;
     }
 
-    public static Notification create(User user, News news, NotificationType type, String title, String content,
-                                      NotificationStatus status, NotificationChannel channel, NotificationPriority priority, String externalId,
-                                      LocalDateTime scheduledAt, Map<String, String> metadata) {
+    public static Notification create(User user, NewsJpaEntity news, NotificationType type, String title,
+            String content,
+            NotificationStatus status, NotificationChannel channel, NotificationPriority priority, String externalId,
+            LocalDateTime scheduledAt, Map<String, String> metadata) {
         return Notification.builder()
                 .user(user)
                 .news(news)

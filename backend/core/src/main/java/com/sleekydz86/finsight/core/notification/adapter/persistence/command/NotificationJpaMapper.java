@@ -2,7 +2,7 @@ package com.sleekydz86.finsight.core.notification.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.notification.domain.Notification;
 import com.sleekydz86.finsight.core.user.domain.User;
-import com.sleekydz86.finsight.core.news.domain.News;
+import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -43,7 +43,7 @@ public class NotificationJpaMapper {
                 .build();
     }
 
-    public Notification toDomainWithReferences(NotificationJpaEntity entity, User user, News news) {
+    public Notification toDomainWithReferences(NotificationJpaEntity entity, User user, NewsJpaEntity news) {
         return Notification.builder()
                 .id(entity.getId())
                 .user(user)
