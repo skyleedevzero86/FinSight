@@ -26,6 +26,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
+import com.sleekydz86.finsight.core.global.dto.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -43,25 +45,17 @@ public class UserController {
     private final UserCommandUseCase userCommandUseCase;
     private final UserApplicationService userApplicationService;
 
-    public UserController(UserQueryUseCase userQueryUseCase, UserCommandUseCase userCommandUseCase) {
-        this.userQueryUseCase = userQueryUseCase;
-        this.userCommandUseCase = userCommandUseCase;
-    }
-
     @GetMapping("/profile")
     @LogExecution("사용자 프로필 조회")
     @PerformanceMonitor(threshold = 1000, operation = "user_profile")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<User>> getUserProfile(@CurrentUser AuthenticatedUser currentUser) {
+    @Operation(summary = "현재 사용자 정보 조회", description = "로그인한 사용자의 정보를 조회합니다.")
+    public ResponseEntity<ApiResponse<UserResponse>> getUserProfile(@CurrentUser AuthenticatedUser currentUser) {
         try {
-            Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());
-            if (userOpt.isEmpty()) {
-                throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
-            }
-            return ResponseEntity.ok(ApiResponse.success(userOpt.get(), "사용자 프로필을 성공적으로 조회했습니다"));
-        } catch (ValidationException e) {
-            throw e;
+            UserResponse response = userApplicationService.getCurrentUserInfo(currentUser.getId());
+            return ResponseEntity.ok(ApiResponse.success(response, "사용자 프로필을 성공적으로 조회했습니다"));
         } catch (Exception e) {
+            log.error("사용자 정보 조회 실패: {}", e.getMessage());
             throw new SystemException("사용자 프로필 조회 중 오류가 발생했습니다", "USER_PROFILE_ERROR", e);
         }
     }
@@ -70,21 +64,18 @@ public class UserController {
     @LogExecution("사용자 프로필 수정")
     @PerformanceMonitor(threshold = 2000, operation = "user_profile_update")
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<User>> updateUserProfile(
+    @Operation(summary = "사용자 프로필 수정", description = "사용자의 프로필 정보를 수정합니다.")
+    public ResponseEntity<ApiResponse<UserResponse>> updateUserProfile(
             @RequestBody @Valid UserUpdateRequest request,
             @CurrentUser AuthenticatedUser currentUser) {
         try {
-            Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());
-            if (userOpt.isEmpty()) {
-                throw new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"));
-            }
-
             validateUpdateRequest(request);
-            User user = userCommandUseCase.updateUser(userOpt.get().getId(), request);
-            return ResponseEntity.ok(ApiResponse.success(user, "사용자 프로필이 성공적으로 수정되었습니다"));
+            UserResponse response = userApplicationService.updateProfile(currentUser.getId(), request);
+            return ResponseEntity.ok(ApiResponse.success(response, "사용자 프로필이 성공적으로 수정되었습니다"));
         } catch (ValidationException e) {
             throw e;
         } catch (Exception e) {
+            log.error("사용자 프로필 수정 실패: {}", e.getMessage());
             throw new SystemException("사용자 프로필 수정 중 오류가 발생했습니다", "USER_PROFILE_UPDATE_ERROR", e);
         }
     }
@@ -201,32 +192,6 @@ public class UserController {
         }
     }
 
-    @GetMapping("/profile")
-    @Operation(summary = "현재 사용자 정보 조회", description = "로그인한 사용자의 정보를 조회합니다.")
-    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUserInfo(@CurrentUser AuthenticatedUser user) {
-        try {
-            UserResponse response = userApplicationService.getCurrentUserInfo(user.getId());
-            return ResponseEntity.ok(ApiResponse.success(response));
-        } catch (Exception e) {
-            log.error("사용자 정보 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
-    @PutMapping("/profile")
-    @Operation(summary = "사용자 프로필 수정", description = "사용자의 프로필 정보를 수정합니다.")
-    public ResponseEntity<ApiResponse<UserResponse>> updateProfile(
-            @Valid @RequestBody UserUpdateRequest request,
-            @CurrentUser AuthenticatedUser user) {
-        try {
-            UserResponse response = userApplicationService.updateProfile(user.getId(), request);
-            return ResponseEntity.ok(ApiResponse.success(response));
-        } catch (Exception e) {
-            log.error("사용자 프로필 수정 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
     @PostMapping("/password/change")
     @Operation(summary = "비밀번호 변경", description = "사용자의 비밀번호를 변경합니다.")
     public ResponseEntity<ApiResponse<Void>> changePassword(
@@ -255,25 +220,25 @@ public class UserController {
 
     @GetMapping("/admin")
     @Operation(summary = "사용자 목록 조회", description = "관리자가 모든 사용자 목록을 조회합니다.")
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsers(Pageable pageable) {
+    public ResponseEntity<ApiResponse<PaginationResponse<UserResponse>>> getUsers(PageRequest pageRequest) {
         try {
-            Page<UserResponse> response = userApplicationService.getUsers(pageable);
+            PaginationResponse<UserResponse> response = PaginationResponse.from(userApplicationService.getUsers(pageRequest.toPageable()));
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("사용자 목록 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         }
     }
 
     @GetMapping("/admin/pending")
     @Operation(summary = "승인 대기 사용자 목록", description = "승인 대기 중인 사용자 목록을 조회합니다.")
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> getPendingUsers(Pageable pageable) {
+    public ResponseEntity<ApiResponse<PaginationResponse<UserResponse>>> getPendingUsers(PageRequest pageRequest) {
         try {
-            Page<UserResponse> response = userApplicationService.getPendingUsers(pageable);
+            PaginationResponse<UserResponse> response = PaginationResponse.from(userApplicationService.getPendingUsers(pageRequest.toPageable()));
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("승인 대기 사용자 목록 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         }
     }
 
@@ -341,29 +306,29 @@ public class UserController {
 
     @GetMapping("/admin/status/{status}")
     @Operation(summary = "상태별 사용자 조회", description = "특정 상태의 사용자 목록을 조회합니다.")
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsersByStatus(
+    public ResponseEntity<ApiResponse<PaginationResponse<UserResponse>>> getUsersByStatus(
             @PathVariable UserStatus status,
-            Pageable pageable) {
+            PageRequest pageRequest) {
         try {
-            Page<UserResponse> response = userApplicationService.getUsersByStatusAndRole(status.name(), null, pageable);
+            PaginationResponse<UserResponse> response = PaginationResponse.from(userApplicationService.getUsersByStatusAndRole(status.name(), null, pageRequest.toPageable()));
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("상태별 사용자 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         }
     }
 
     @GetMapping("/admin/role/{role}")
     @Operation(summary = "역할별 사용자 조회", description = "특정 역할의 사용자 목록을 조회합니다.")
-    public ResponseEntity<ApiResponse<Page<UserResponse>>> getUsersByRole(
+    public ResponseEntity<ApiResponse<PaginationResponse<UserResponse>>> getUsersByRole(
             @PathVariable UserRole role,
-            Pageable pageable) {
+            PageRequest pageRequest) {
         try {
-            Page<UserResponse> response = userApplicationService.getUsersByStatusAndRole(null, role.name(), pageable);
+            PaginationResponse<UserResponse> response = PaginationResponse.from(userApplicationService.getUsersByStatusAndRole(null, role.name(), pageRequest.toPageable()));
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("역할별 사용자 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         }
     }
 
@@ -380,20 +345,6 @@ public class UserController {
             log.error("사용자 역할 변경 실패: {}", e.getMessage());
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         }
-    }
-
-    private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-
-        return request.getRemoteAddr();
     }
 
     @GetMapping("/dashboard")
@@ -422,6 +373,20 @@ public class UserController {
         } catch (Exception e) {
             throw new SystemException("사용자 대시보드 조회 중 오류가 발생했습니다", "USER_DASHBOARD_ERROR", e);
         }
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+
+        return request.getRemoteAddr();
     }
 
     private void validateUpdateRequest(UserUpdateRequest request) {

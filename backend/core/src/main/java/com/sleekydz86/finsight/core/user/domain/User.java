@@ -15,31 +15,28 @@ import java.util.List;
 import java.util.Objects;
 
 @Entity
-@Table(name = "users", indexes = {
-        @Index(name = "idx_user_username", columnList = "username"),
-        @Index(name = "idx_user_email", columnList = "email"),
-        @Index(name = "idx_user_api_key", columnList = "apiKey")
-})
+@Table(name = "users")
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Slf4j
 public class User extends BaseTimeEntity {
 
-    @Column(unique = true, length = 50, nullable = false)
+    @Column(unique = true, nullable = false)
     private String username;
 
-    @Column(length = 100, nullable = false)
+    @Column(nullable = false)
     private String password;
 
-    @Column(length = 50, nullable = false)
+    @Column
     private String nickname;
 
-    @Column(unique = true, length = 100)
+    @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(unique = true, length = 64)
+    @Column(unique = true)
     private String apiKey;
 
     @Enumerated(EnumType.STRING)
@@ -55,7 +52,7 @@ public class User extends BaseTimeEntity {
     @Column
     private LocalDateTime lastLoginAt;
 
-    @Column
+    @Column(nullable = false)
     @Builder.Default
     private Integer loginFailCount = 0;
 
@@ -68,33 +65,127 @@ public class User extends BaseTimeEntity {
     @Column
     private LocalDateTime approvedAt;
 
-    @Column(name = "password_changed_at")
+    @Column
     private LocalDateTime passwordChangedAt;
 
-    @Column(name = "password_change_count")
+    @Column(nullable = false)
     @Builder.Default
     private Integer passwordChangeCount = 0;
 
-    @Column(name = "last_password_change_date")
+    @Column
     private LocalDate lastPasswordChangeDate;
 
     @ElementCollection(targetClass = TargetCategory.class)
-    @CollectionTable(name = "user_watchlist", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
-    @Column(name = "category", nullable = false)
+    @CollectionTable(name = "user_watchlist", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "category")
     @Builder.Default
     private List<TargetCategory> watchlist = new ArrayList<>();
 
     @ElementCollection(targetClass = NotificationType.class)
-    @CollectionTable(name = "user_notification_preferences", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
-    @Column(name = "notification_type", nullable = false)
+    @CollectionTable(name = "user_notification_preferences", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "notification_type")
     @Builder.Default
     private List<NotificationType> notificationPreferences = new ArrayList<>();
 
+    @Column
+    private String otpSecret;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean otpEnabled = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean otpVerified = false;
+
+    @Column(length = 1000)
+    private String deviceToken;
+
+    @Column
+    private String deviceType;
+
+    @Column
+    private LocalDateTime deviceTokenUpdatedAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean pushNotificationEnabled = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean emailNotificationEnabled = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean smsNotificationEnabled = false;
+
+    @Column
+    private String phoneNumber;
+
+    @Column
+    private String profileImageUrl;
+
+    @Column
+    private String timezone;
+
+    @Column
+    private String language;
+
+    @Column
+    private String kakaoUserId;
+
+    @Column
+    private String kakaoAccessToken;
+
+    @Column
+    private LocalDateTime kakaoTokenExpiresAt;
+
+    @Column
+    private String kakaoRefreshToken;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean kakaoNotificationEnabled = false;
+
+    @Column
+    private String telegramUserId;
+
+    @Column
+    private String telegramChatId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean telegramNotificationEnabled = false;
+
+    @Column
+    private String slackUserId;
+
+    @Column
+    private String slackChannelId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean slackNotificationEnabled = false;
+
+    @Column
+    private String discordUserId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean discordNotificationEnabled = false;
+
+    @Column
+    private String lineUserId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean lineNotificationEnabled = false;
+
     public void changePassword(String newPassword) {
         log.info("비밀번호 변경 실행 - userId: {}, 이전 passwordChangedAt: {}",
-                getId(), this.passwordChangedAt);
+                this.getId(), this.passwordChangedAt);
 
         this.password = newPassword;
         this.passwordChangedAt = LocalDateTime.now();
@@ -108,7 +199,7 @@ public class User extends BaseTimeEntity {
         }
 
         log.info("비밀번호 변경 완료 - userId: {}, passwordChangedAt: {}, 오늘 변경 횟수: {}",
-                getId(), this.passwordChangedAt, this.passwordChangeCount);
+                this.getId(), this.passwordChangedAt, this.passwordChangeCount);
     }
 
     public boolean canChangePassword() {
@@ -131,7 +222,7 @@ public class User extends BaseTimeEntity {
 
     public boolean isPasswordChangeRequired() {
         if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 필요 - 최초 변경 안함: userId={}", getId());
+            log.debug("비밀번호 변경 필요 - 최초 변경 안함: userId={}", this.getId());
             return true;
         }
 
@@ -139,14 +230,14 @@ public class User extends BaseTimeEntity {
         boolean isRequired = this.passwordChangedAt.isBefore(thirtyDaysAgo);
 
         log.debug("비밀번호 변경 필요 여부: userId={}, passwordChangedAt={}, required={}",
-                getId(), this.passwordChangedAt, isRequired);
+                this.getId(), this.passwordChangedAt, isRequired);
 
         return isRequired;
     }
 
     public boolean isPasswordChangeRecommended() {
         if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 권장 - 최초 변경 안함: userId={}", getId());
+            log.debug("비밀번호 변경 권장 - 최초 변경 안함: userId={}", this.getId());
             return true;
         }
 
@@ -154,7 +245,7 @@ public class User extends BaseTimeEntity {
         boolean isRecommended = this.passwordChangedAt.isBefore(fourteenDaysAgo);
 
         log.debug("비밀번호 변경 권장 여부: userId={}, passwordChangedAt={}, recommended={}",
-                getId(), this.passwordChangedAt, isRecommended);
+                this.getId(), this.passwordChangedAt, isRecommended);
 
         return isRecommended;
     }
@@ -182,7 +273,7 @@ public class User extends BaseTimeEntity {
         boolean isNotLocked = !isLocked();
 
         log.debug("회원 활성 상태 확인: userId={}, status={}, isLocked={}, isActive={}",
-                getId(), this.status, isLocked(), isStatusActive && isNotLocked);
+                this.getId(), this.status, isLocked(), isStatusActive && isNotLocked);
 
         return isStatusActive && isNotLocked;
     }
@@ -201,22 +292,22 @@ public class User extends BaseTimeEntity {
         if (this.loginFailCount >= 5) {
             this.status = UserStatus.SUSPENDED;
             this.accountLockedAt = LocalDateTime.now();
-            log.warn("계정 잠금 처리: userId={}, loginFailCount={}", getId(), this.loginFailCount);
+            log.warn("계정 잠금 처리: userId={}, loginFailCount={}", this.getId(), this.loginFailCount);
         }
 
-        log.debug("로그인 실패 카운트 증가: userId={}, loginFailCount={}", getId(), this.loginFailCount);
+        log.debug("로그인 실패 카운트 증가: userId={}, loginFailCount={}", this.getId(), this.loginFailCount);
     }
 
     public void resetLoginFailCount() {
         this.loginFailCount = 0;
         this.accountLockedAt = null;
-        log.debug("로그인 실패 카운트 초기화: userId={}", getId());
+        log.debug("로그인 실패 카운트 초기화: userId={}", this.getId());
     }
 
     public void updateProfile(String nickname, String email) {
         this.nickname = nickname;
         this.email = email;
-        log.info("프로필 업데이트: userId={}, nickname={}, email={}", getId(), nickname, email);
+        log.info("프로필 업데이트: userId={}, nickname={}, email={}", this.getId(), nickname, email);
     }
 
     public void approve(Long approverId) {
@@ -225,25 +316,25 @@ public class User extends BaseTimeEntity {
         this.approvedAt = LocalDateTime.now();
         this.accountLockedAt = null;
         this.loginFailCount = 0;
-        log.info("회원 승인: userId={}, approverId={}, approvedAt={}", getId(), approverId, this.approvedAt);
+        log.info("회원 승인: userId={}, approverId={}, approvedAt={}", this.getId(), approverId, this.approvedAt);
     }
 
     public void reject() {
         this.status = UserStatus.REJECTED;
         this.approvedBy = null;
         this.approvedAt = null;
-        log.info("회원 거부: userId={}", getId());
+        log.info("회원 거부: userId={}", this.getId());
     }
 
     public void suspend() {
         this.status = UserStatus.SUSPENDED;
         this.accountLockedAt = LocalDateTime.now();
-        log.info("회원 정지: userId={}, accountLockedAt={}", getId(), this.accountLockedAt);
+        log.info("회원 정지: userId={}, accountLockedAt={}", this.getId(), this.accountLockedAt);
     }
 
     public void withdraw() {
         this.status = UserStatus.WITHDRAWN;
-        log.info("회원 탈퇴: userId={}", getId());
+        log.info("회원 탈퇴: userId={}", this.getId());
     }
 
     public void changeRole(UserRole newRole) {
@@ -264,12 +355,12 @@ public class User extends BaseTimeEntity {
         }
         this.accountLockedAt = null;
         this.loginFailCount = 0;
-        log.info("회원 잠금 해제: userId={}", getId());
+        log.info("회원 잠금 해제: userId={}", this.getId());
     }
 
     public void updateLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
-        log.debug("마지막 로그인 시간 업데이트: userId={}, lastLoginAt={}", getId(), lastLoginAt);
+        log.debug("마지막 로그인 시간 업데이트: userId={}, lastLoginAt={}", this.getId(), lastLoginAt);
     }
 
     public String getMaskedEmail() {
@@ -323,6 +414,208 @@ public class User extends BaseTimeEntity {
         this.notificationPreferences = new ArrayList<>(preferences);
     }
 
+    public void updateWatchlist(List<TargetCategory> watchlist) {
+        this.watchlist = new ArrayList<>(watchlist);
+    }
+
+    public void updateDeviceToken(String deviceToken, String deviceType) {
+        this.deviceToken = deviceToken;
+        this.deviceType = deviceType;
+        this.deviceTokenUpdatedAt = LocalDateTime.now();
+        log.info("디바이스 토큰 업데이트: userId={}, deviceType={}", this.getId(), deviceType);
+    }
+
+    public void removeDeviceToken() {
+        this.deviceToken = null;
+        this.deviceType = null;
+        this.deviceTokenUpdatedAt = null;
+        log.info("디바이스 토큰 제거: userId={}", this.getId());
+    }
+
+    public boolean canReceivePushNotification() {
+        return this.pushNotificationEnabled &&
+                this.deviceToken != null &&
+                !this.deviceToken.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveEmailNotification() {
+        return this.emailNotificationEnabled &&
+                this.email != null &&
+                !this.email.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveSmsNotification() {
+        return this.smsNotificationEnabled &&
+                this.phoneNumber != null &&
+                !this.phoneNumber.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveKakaoNotification() {
+        return this.kakaoNotificationEnabled &&
+                this.kakaoUserId != null &&
+                !this.kakaoUserId.trim().isEmpty() &&
+                this.isActive() &&
+                isKakaoTokenValid();
+    }
+
+    public boolean canReceiveTelegramNotification() {
+        return this.telegramNotificationEnabled &&
+                this.telegramUserId != null &&
+                !this.telegramUserId.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveSlackNotification() {
+        return this.slackNotificationEnabled &&
+                this.slackUserId != null &&
+                !this.slackUserId.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveDiscordNotification() {
+        return this.discordNotificationEnabled &&
+                this.discordUserId != null &&
+                !this.discordUserId.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveLineNotification() {
+        return this.lineNotificationEnabled &&
+                this.lineUserId != null &&
+                !this.lineUserId.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public void updateNotificationSettings(Boolean pushEnabled, Boolean emailEnabled, Boolean smsEnabled) {
+        if (pushEnabled != null) {
+            this.pushNotificationEnabled = pushEnabled;
+        }
+        if (emailEnabled != null) {
+            this.emailNotificationEnabled = emailEnabled;
+        }
+        if (smsEnabled != null) {
+            this.smsNotificationEnabled = smsEnabled;
+        }
+        log.info("알림 설정 업데이트: userId={}, push={}, email={}, sms={}",
+                this.getId(), this.pushNotificationEnabled, this.emailNotificationEnabled, this.smsNotificationEnabled);
+    }
+
+    public void updateExternalNotificationSettings(Boolean kakaoEnabled, Boolean telegramEnabled,
+                                                   Boolean slackEnabled, Boolean discordEnabled, Boolean lineEnabled) {
+        if (kakaoEnabled != null) {
+            this.kakaoNotificationEnabled = kakaoEnabled;
+        }
+        if (telegramEnabled != null) {
+            this.telegramNotificationEnabled = telegramEnabled;
+        }
+        if (slackEnabled != null) {
+            this.slackNotificationEnabled = slackEnabled;
+        }
+        if (discordEnabled != null) {
+            this.discordNotificationEnabled = discordEnabled;
+        }
+        if (lineEnabled != null) {
+            this.lineNotificationEnabled = lineEnabled;
+        }
+        log.info("외부 알림 설정 업데이트: userId={}, kakao={}, telegram={}, slack={}, discord={}, line={}",
+                this.getId(), this.kakaoNotificationEnabled, this.telegramNotificationEnabled,
+                this.slackNotificationEnabled, this.discordNotificationEnabled, this.lineNotificationEnabled);
+    }
+
+    public void updateKakaoInfo(String kakaoUserId, String accessToken, LocalDateTime expiresAt, String refreshToken) {
+        this.kakaoUserId = kakaoUserId;
+        this.kakaoAccessToken = accessToken;
+        this.kakaoTokenExpiresAt = expiresAt;
+        this.kakaoRefreshToken = refreshToken;
+        log.info("카카오 정보 업데이트: userId={}, kakaoUserId={}", this.getId(), kakaoUserId);
+    }
+
+    public void updateTelegramInfo(String telegramUserId, String chatId) {
+        this.telegramUserId = telegramUserId;
+        this.telegramChatId = chatId;
+        log.info("텔레그램 정보 업데이트: userId={}, telegramUserId={}", this.getId(), telegramUserId);
+    }
+
+    public void updateSlackInfo(String slackUserId, String channelId) {
+        this.slackUserId = slackUserId;
+        this.slackChannelId = channelId;
+        log.info("슬랙 정보 업데이트: userId={}, slackUserId={}", this.getId(), slackUserId);
+    }
+
+    public void updateDiscordInfo(String discordUserId) {
+        this.discordUserId = discordUserId;
+        log.info("디스코드 정보 업데이트: userId={}, discordUserId={}", this.getId(), discordUserId);
+    }
+
+    public void updateLineInfo(String lineUserId) {
+        this.lineUserId = lineUserId;
+        log.info("라인 정보 업데이트: userId={}, lineUserId={}", this.getId(), lineUserId);
+    }
+
+    public boolean isKakaoTokenValid() {
+        return this.kakaoAccessToken != null &&
+                this.kakaoTokenExpiresAt != null &&
+                LocalDateTime.now().isBefore(this.kakaoTokenExpiresAt);
+    }
+
+    public void removeKakaoInfo() {
+        this.kakaoUserId = null;
+        this.kakaoAccessToken = null;
+        this.kakaoTokenExpiresAt = null;
+        this.kakaoRefreshToken = null;
+        this.kakaoNotificationEnabled = false;
+        log.info("카카오 정보 제거: userId={}", this.getId());
+    }
+
+    public void removeTelegramInfo() {
+        this.telegramUserId = null;
+        this.telegramChatId = null;
+        this.telegramNotificationEnabled = false;
+        log.info("텔레그램 정보 제거: userId={}", this.getId());
+    }
+
+    public void removeSlackInfo() {
+        this.slackUserId = null;
+        this.slackChannelId = null;
+        this.slackNotificationEnabled = false;
+        log.info("슬랙 정보 제거: userId={}", this.getId());
+    }
+
+    public void removeDiscordInfo() {
+        this.discordUserId = null;
+        this.discordNotificationEnabled = false;
+        log.info("디스코드 정보 제거: userId={}", this.getId());
+    }
+
+    public void removeLineInfo() {
+        this.lineUserId = null;
+        this.lineNotificationEnabled = false;
+        log.info("라인 정보 제거: userId={}", this.getId());
+    }
+
+    public void updateProfileSettings(String nickname, String phoneNumber, String profileImageUrl, String timezone, String language) {
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+        if (phoneNumber != null) {
+            this.phoneNumber = phoneNumber;
+        }
+        if (profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl;
+        }
+        if (timezone != null) {
+            this.timezone = timezone;
+        }
+        if (language != null) {
+            this.language = language;
+        }
+        log.info("프로필 설정 업데이트: userId={}, nickname={}, timezone={}, language={}",
+                this.getId(), this.nickname, this.timezone, this.language);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o)
@@ -338,43 +631,29 @@ public class User extends BaseTimeEntity {
         return Objects.hash(getId(), email);
     }
 
-    public boolean isPasswordChangeRequired() {
-        if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 필요 - 최초 변경 안함: userId={}", getId());
-            return true;
-        }
-
-        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
-        boolean isRequired = this.passwordChangedAt.isBefore(thirtyDaysAgo);
-
-        log.debug("비밀번호 변경 필요 여부: userId={}, passwordChangedAt={}, required={}",
-                getId(), this.passwordChangedAt, isRequired);
-
-        return isRequired;
+    public void enableOtp(String secret) {
+        this.otpSecret = secret;
+        this.otpEnabled = true;
+        this.otpVerified = false;
+        log.info("OTP 활성화: userId={}", this.getId());
     }
 
-    public boolean isPasswordChangeRecommended() {
-        if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 권장 - 최초 변경 안함: userId={}", getId());
-            return true;
+    public void verifyOtp() {
+        if (!this.otpEnabled) {
+            throw new IllegalStateException("OTP가 활성화되지 않았습니다.");
         }
-
-        LocalDateTime fourteenDaysAgo = LocalDateTime.now().minusDays(14);
-        boolean isRecommended = this.passwordChangedAt.isBefore(fourteenDaysAgo);
-
-        log.debug("비밀번호 변경 권장 여부: userId={}, passwordChangedAt={}, recommended={}",
-                getId(), this.passwordChangedAt, isRecommended);
-
-        return isRecommended;
+        this.otpVerified = true;
+        log.info("OTP 검증 완료: userId={}", this.getId());
     }
 
-    public void unlock() {
-        if (this.status == UserStatus.SUSPENDED) {
-            this.status = UserStatus.APPROVED;
-        }
-        this.accountLockedAt = null;
-        this.loginFailCount = 0;
-        log.info("회원 잠금 해제: userId={}", getId());
+    public void disableOtp() {
+        this.otpSecret = null;
+        this.otpEnabled = false;
+        this.otpVerified = false;
+        log.info("OTP 비활성화: userId={}", this.getId());
     }
 
+    public boolean isOtpRequired() {
+        return this.otpEnabled && this.otpVerified;
+    }
 }

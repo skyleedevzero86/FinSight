@@ -2,10 +2,8 @@ package com.sleekydz86.finsight.core.global.resolver;
 
 import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaEntity;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaMapper;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaRepository;
 import com.sleekydz86.finsight.core.user.domain.User;
+import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.MethodParameter;
@@ -24,12 +22,10 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
     private static final Logger log = LoggerFactory.getLogger(CurrentUserArgumentResolver.class);
 
-    private final UserJpaRepository userJpaRepository;
-    private final UserJpaMapper userJpaMapper;
+    private final UserPersistencePort userPersistencePort;
 
-    public CurrentUserArgumentResolver(UserJpaRepository userJpaRepository, UserJpaMapper userJpaMapper) {
-        this.userJpaRepository = userJpaRepository;
-        this.userJpaMapper = userJpaMapper;
+    public CurrentUserArgumentResolver(UserPersistencePort userPersistencePort) {
+        this.userPersistencePort = userPersistencePort;
     }
 
     @Override
@@ -40,7 +36,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
     @Override
     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
-                                  NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
+            NativeWebRequest webRequest, WebDataBinderFactory binderFactory) throws Exception {
 
         CurrentUser currentUserAnnotation = parameter.getParameterAnnotation(CurrentUser.class);
         if (currentUserAnnotation == null) {
@@ -64,16 +60,15 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
         }
 
         try {
-            Optional<UserJpaEntity> userEntityOpt = userJpaRepository.findByEmail(email);
-            if (userEntityOpt.isEmpty()) {
+            Optional<User> userOpt = userPersistencePort.findByEmail(email);
+            if (userOpt.isEmpty()) {
                 if (currentUserAnnotation.required()) {
                     throw new IllegalStateException("User not found: " + email);
                 }
                 return null;
             }
 
-            UserJpaEntity userEntity = userEntityOpt.get();
-            User user = userJpaMapper.toDomain(userEntity);
+            User user = userOpt.get();
 
             return AuthenticatedUser.builder()
                     .id(user.getId())

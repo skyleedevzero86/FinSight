@@ -37,11 +37,11 @@ public class UserApplicationServiceImpl implements UserApplicationService {
 
     @Autowired
     public UserApplicationServiceImpl(UserPersistencePort userPersistencePort,
-                                      JwtTokenUtil jwtTokenUtil,
-                                      RateLimitServiceInterface rateLimitService,
-                                      PasswordEncoder passwordEncoder,
-                                      PasswordValidationService passwordValidationService,
-                                      @Qualifier("applicationTaskExecutor") Executor asyncExecutor) {
+            JwtTokenUtil jwtTokenUtil,
+            RateLimitServiceInterface rateLimitService,
+            PasswordEncoder passwordEncoder,
+            PasswordValidationService passwordValidationService,
+            @Qualifier("applicationTaskExecutor") Executor asyncExecutor) {
         this.userPersistencePort = userPersistencePort;
         this.jwtTokenUtil = jwtTokenUtil;
         this.rateLimitService = rateLimitService;
@@ -84,7 +84,7 @@ public class UserApplicationServiceImpl implements UserApplicationService {
 
     @Transactional(readOnly = true)
     public Long getUserIdByUsername(String username) {
-        return userPersistencePort.findById(username)
+        return userPersistencePort.findByUsername(username)
                 .map(User::getId)
                 .orElse(null);
     }

@@ -1,0 +1,63 @@
+
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinSight 뉴스 알림</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f8f9fa; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 30px; }
+        .news-item { border-left: 4px solid #667eea; padding-left: 20px; margin: 20px 0; }
+        .news-title { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 10px; }
+        .news-summary { color: #666; line-height: 1.6; margin-bottom: 15px; }
+        .news-meta { font-size: 12px; color: #999; }
+        .impact-level { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .impact-high { background-color: #ffebee; color: #c62828; }
+        .impact-medium { background-color: #fff3e0; color: #ef6c00; }
+        .impact-low { background-color: #e8f5e8; color: #2e7d32; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #6c757d; border-radius: 0 0 8px 8px; }
+        .btn { display: inline-block; padding: 12px 24px; background-color: #667eea; color: white; text-decoration: none; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>   FinSight 뉴스 알림</h1>
+        <p>관심 종목에 영향을 미치는 중요 뉴스를 확인하세요</p>
+    </div>
+
+    <div class="content">
+        <div class="news-item">
+            <div class="news-title" th:text="${news.originalContent.title}">뉴스 제목</div>
+            <div class="news-summary" th:text="${news.aiOverView.summary}">뉴스 요약</div>
+            <div class="news-meta">
+                    <span class="impact-level"
+                          th:classappend="${news.aiOverView.impactLevel == 'HIGH'} ? 'impact-high' :
+                                        (${news.aiOverView.impactLevel == 'MEDIUM'} ? 'impact-medium' : 'impact-low')"
+                          th:text="${news.aiOverView.impactLevel}">영향도</span>
+                <span th:text="${currentTime}">발송 시간</span>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="#" th:href="${news.originalContent.url}" class="btn">자세히 보기</a>
+        </div>
+
+        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 4px; margin: 20px 0;">
+            <h3>📊 분석 결과</h3>
+            <p><strong>영향받는 자산:</strong> <span th:text="${#strings.listJoin(news.aiOverView.targetCategories, ', ')}">관심종목</span></p>
+            <p><strong>시장 영향도:</strong> <span th:text="${news.aiOverView.impactLevel}">영향도</span></p>
+            <p><strong>추천 액션:</strong> <span th:text="${news.aiOverView.recommendedAction}">추천 액션</span></p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>이 메시지는 FinSight에서 자동으로 발송되었습니다.</p>
+        <p>알림 설정을 변경하려면 <a href="https://finsight.com/settings/notifications">여기</a>를 클릭하세요.</p>
+    </div>
+</div>
+</body>
+</html>

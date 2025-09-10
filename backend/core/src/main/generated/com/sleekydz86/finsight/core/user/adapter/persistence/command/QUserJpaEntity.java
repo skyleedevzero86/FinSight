@@ -20,23 +20,58 @@ public class QUserJpaEntity extends EntityPathBase<UserJpaEntity> {
 
     public static final QUserJpaEntity userJpaEntity = new QUserJpaEntity("userJpaEntity");
 
-    public final DateTimePath<java.time.LocalDateTime> createdAt = createDateTime("createdAt", java.time.LocalDateTime.class);
+    public final com.sleekydz86.finsight.core.global.QBaseTimeEntity _super = new com.sleekydz86.finsight.core.global.QBaseTimeEntity(this);
+
+    public final DateTimePath<java.time.LocalDateTime> accountLockedAt = createDateTime("accountLockedAt", java.time.LocalDateTime.class);
+
+    public final StringPath apiKey = createString("apiKey");
+
+    public final DateTimePath<java.time.LocalDateTime> approvedAt = createDateTime("approvedAt", java.time.LocalDateTime.class);
+
+    public final NumberPath<Long> approvedBy = createNumber("approvedBy", Long.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createdAt = _super.createdAt;
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> createDate = _super.createDate;
 
     public final StringPath email = createString("email");
 
-    public final NumberPath<Long> id = createNumber("id", Long.class);
-
-    public final BooleanPath isActive = createBoolean("isActive");
+    //inherited
+    public final NumberPath<Long> id = _super.id;
 
     public final DateTimePath<java.time.LocalDateTime> lastLoginAt = createDateTime("lastLoginAt", java.time.LocalDateTime.class);
 
+    public final DatePath<java.time.LocalDate> lastPasswordChangeDate = createDate("lastPasswordChangeDate", java.time.LocalDate.class);
+
+    public final NumberPath<Integer> loginFailCount = createNumber("loginFailCount", Integer.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> modifyDate = _super.modifyDate;
+
+    public final StringPath nickname = createString("nickname");
+
     public final ListPath<com.sleekydz86.finsight.core.user.domain.NotificationType, EnumPath<com.sleekydz86.finsight.core.user.domain.NotificationType>> notificationPreferences = this.<com.sleekydz86.finsight.core.user.domain.NotificationType, EnumPath<com.sleekydz86.finsight.core.user.domain.NotificationType>>createList("notificationPreferences", com.sleekydz86.finsight.core.user.domain.NotificationType.class, EnumPath.class, PathInits.DIRECT2);
+
+    public final BooleanPath otpEnabled = createBoolean("otpEnabled");
+
+    public final StringPath otpSecret = createString("otpSecret");
+
+    public final BooleanPath otpVerified = createBoolean("otpVerified");
 
     public final StringPath password = createString("password");
 
+    public final NumberPath<Integer> passwordChangeCount = createNumber("passwordChangeCount", Integer.class);
+
+    public final DateTimePath<java.time.LocalDateTime> passwordChangedAt = createDateTime("passwordChangedAt", java.time.LocalDateTime.class);
+
     public final EnumPath<com.sleekydz86.finsight.core.user.domain.UserRole> role = createEnum("role", com.sleekydz86.finsight.core.user.domain.UserRole.class);
 
-    public final DateTimePath<java.time.LocalDateTime> updatedAt = createDateTime("updatedAt", java.time.LocalDateTime.class);
+    public final EnumPath<com.sleekydz86.finsight.core.user.domain.UserStatus> status = createEnum("status", com.sleekydz86.finsight.core.user.domain.UserStatus.class);
+
+    //inherited
+    public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;
 
     public final StringPath username = createString("username");
 

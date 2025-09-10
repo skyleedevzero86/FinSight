@@ -11,14 +11,14 @@ import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsStatisticsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.global.exception.NewsNotFoundException;
+import com.sleekydz86.finsight.core.user.domain.User;
+import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaRepository;
-import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaEntity;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import java.util.Optional;
 
@@ -30,16 +30,16 @@ public class NewsQueryService implements NewsQueryUseCase {
         private final PersonalizedNewsService personalizedNewsService;
         private final NewsPersistencePort newsPersistencePort;
         private final NewsStatisticsPersistencePort newsStatisticsPersistencePort;
-        private final UserJpaRepository userJpaRepository;
+        private final UserPersistencePort userPersistencePort;
 
         public NewsQueryService(NewsPersistencePort newsPersistencePort,
                                 NewsStatisticsPersistencePort newsStatisticsPersistencePort,
                                 PersonalizedNewsService personalizedNewsService,
-                                UserJpaRepository userJpaRepository) {
+                                UserPersistencePort userPersistencePort) {
                 this.newsPersistencePort = newsPersistencePort;
                 this.newsStatisticsPersistencePort = newsStatisticsPersistencePort;
                 this.personalizedNewsService = personalizedNewsService;
-                this.userJpaRepository = userJpaRepository;
+                this.userPersistencePort = userPersistencePort;
         }
 
         @Override
@@ -47,8 +47,8 @@ public class NewsQueryService implements NewsQueryUseCase {
                 log.debug("개인화 뉴스 조회: userEmail={}, limit={}", userEmail, limit);
 
                 try {
-
-                        Optional<UserJpaEntity> userOpt = userJpaRepository.findByEmail(userEmail);
+                        // 이제 User 도메인 객체를 직접 반환받음
+                        Optional<User> userOpt = userPersistencePort.findByEmail(userEmail);
                         if (userOpt.isEmpty()) {
                                 log.warn("사용자를 찾을 수 없습니다: {}", userEmail);
                                 return new Newses();
@@ -73,16 +73,16 @@ public class NewsQueryService implements NewsQueryUseCase {
                 log.info("Searching news with request: {}", request);
 
                 Pageable pageable = Pageable.ofSize(request.getSize())
-                                .withPage(request.getPage());
+                        .withPage(request.getPage());
 
                 Newses newses = performSearch(request, pageable);
                 long totalElements = getTotalCount(request);
 
                 return new PaginationResponse<>(
-                                List.of(newses),
-                                request.getPage(),
-                                request.getSize(),
-                                totalElements);
+                        List.of(newses),
+                        request.getPage(),
+                        request.getSize(),
+                        totalElements);
         }
 
         @Override
@@ -90,39 +90,39 @@ public class NewsQueryService implements NewsQueryUseCase {
                 log.info("Getting news detail for ID: {}", newsId);
 
                 News news = newsPersistencePort.findById(newsId)
-                                .orElseThrow(() -> new NewsNotFoundException(newsId));
+                        .orElseThrow(() -> new NewsNotFoundException(newsId));
 
                 newsStatisticsPersistencePort.incrementViewCount(newsId);
 
                 return NewsDetailResponse.builder()
-                                .id(news.getId())
-                                .newsProvider(news.getNewsProvider())
-                                .originalTitle(news.getOriginalContent() != null ? news.getOriginalContent().getTitle()
-                                                : null)
-                                .originalContent(news.getOriginalContent() != null
-                                                ? news.getOriginalContent().getContent()
-                                                : null)
-                                .translatedTitle(news.getTranslatedContent() != null
-                                                ? news.getTranslatedContent().getTitle()
-                                                : null)
-                                .translatedContent(news.getTranslatedContent() != null
-                                                ? news.getTranslatedContent().getContent()
-                                                : null)
-                                .overview(news.getAiOverView() != null ? news.getAiOverView().getOverview() : null)
-                                .sentimentType(news.getAiOverView() != null ? news.getAiOverView().getSentimentType()
-                                                : null)
-                                .sentimentScore(news.getAiOverView() != null ? news.getAiOverView().getSentimentScore()
-                                                : null)
-                                .categories(news.getAiOverView() != null ? news.getAiOverView().getTargetCategories()
-                                                : null)
-                                .publishedTime(news.getNewsMeta() != null ? news.getNewsMeta().getNewsPublishedTime()
-                                                : null)
-                                .scrapedTime(news.getScrapedTime())
-                                .sourceUrl(news.getNewsMeta() != null ? news.getNewsMeta().getSourceUrl() : null)
-                                .statistics(null)
-                                .comments(null)
-                                .relatedNews(null)
-                                .build();
+                        .id(news.getId())
+                        .newsProvider(news.getNewsProvider())
+                        .originalTitle(news.getOriginalContent() != null ? news.getOriginalContent().getTitle()
+                                : null)
+                        .originalContent(news.getOriginalContent() != null
+                                ? news.getOriginalContent().getContent()
+                                : null)
+                        .translatedTitle(news.getTranslatedContent() != null
+                                ? news.getTranslatedContent().getTitle()
+                                : null)
+                        .translatedContent(news.getTranslatedContent() != null
+                                ? news.getTranslatedContent().getContent()
+                                : null)
+                        .overview(news.getAiOverView() != null ? news.getAiOverView().getOverview() : null)
+                        .sentimentType(news.getAiOverView() != null ? news.getAiOverView().getSentimentType()
+                                : null)
+                        .sentimentScore(news.getAiOverView() != null ? news.getAiOverView().getSentimentScore()
+                                : null)
+                        .categories(news.getAiOverView() != null ? news.getAiOverView().getTargetCategories()
+                                : null)
+                        .publishedTime(news.getNewsMeta() != null ? news.getNewsMeta().getNewsPublishedTime()
+                                : null)
+                        .scrapedTime(news.getScrapedTime())
+                        .sourceUrl(news.getNewsMeta() != null ? news.getNewsMeta().getSourceUrl() : null)
+                        .statistics(null)
+                        .comments(null)
+                        .relatedNews(null)
+                        .build();
         }
 
         @Override
@@ -130,7 +130,7 @@ public class NewsQueryService implements NewsQueryUseCase {
                 log.info("Getting related news for ID: {}, limit: {}", newsId, limit);
 
                 News news = newsPersistencePort.findById(newsId)
-                                .orElseThrow(() -> new NewsNotFoundException(newsId));
+                        .orElseThrow(() -> new NewsNotFoundException(newsId));
 
                 if (news.getAiOverView() == null || news.getAiOverView().getTargetCategories().isEmpty()) {
                         return new Newses();
@@ -138,13 +138,13 @@ public class NewsQueryService implements NewsQueryUseCase {
 
                 List<TargetCategory> categories = news.getAiOverView().getTargetCategories();
                 NewsQueryRequest request = new NewsQueryRequest(
-                                null, null, null, null, categories, null);
+                        null, null, null, null, categories, null);
 
                 Newses allNews = newsPersistencePort.findAllByFilters(request);
                 List<News> relatedNews = allNews.getNewses().stream()
-                                .filter(n -> !n.getId().equals(newsId))
-                                .limit(limit)
-                                .toList();
+                        .filter(n -> !n.getId().equals(newsId))
+                        .limit(limit)
+                        .toList();
 
                 return new Newses(relatedNews);
         }
@@ -154,20 +154,20 @@ public class NewsQueryService implements NewsQueryUseCase {
                 log.info("Getting popular news, limit: {}", limit);
 
                 NewsQueryRequest request = new NewsQueryRequest(
-                                null, null, null, null, null, null);
+                        null, null, null, null, null, null);
 
                 Newses allNews = newsPersistencePort.findAllByFilters(request);
                 List<News> popularNews = allNews.getNewses().stream()
-                                .sorted((n1, n2) -> {
-                                        if (n1.getNewsMeta() == null || n1.getNewsMeta().getNewsPublishedTime() == null)
-                                                return 1;
-                                        if (n2.getNewsMeta() == null || n2.getNewsMeta().getNewsPublishedTime() == null)
-                                                return -1;
-                                        return n2.getNewsMeta().getNewsPublishedTime()
-                                                        .compareTo(n1.getNewsMeta().getNewsPublishedTime());
-                                })
-                                .limit(limit)
-                                .toList();
+                        .sorted((n1, n2) -> {
+                                if (n1.getNewsMeta() == null || n1.getNewsMeta().getNewsPublishedTime() == null)
+                                        return 1;
+                                if (n2.getNewsMeta() == null || n2.getNewsMeta().getNewsPublishedTime() == null)
+                                        return -1;
+                                return n2.getNewsMeta().getNewsPublishedTime()
+                                        .compareTo(n1.getNewsMeta().getNewsPublishedTime());
+                        })
+                        .limit(limit)
+                        .toList();
 
                 return new Newses(popularNews);
         }
@@ -177,20 +177,20 @@ public class NewsQueryService implements NewsQueryUseCase {
                 log.info("Getting latest news, limit: {}", limit);
 
                 NewsQueryRequest request = new NewsQueryRequest(
-                                null, null, null, null, null, null);
+                        null, null, null, null, null, null);
 
                 Newses allNews = newsPersistencePort.findAllByFilters(request);
                 List<News> latestNews = allNews.getNewses().stream()
-                                .sorted((n1, n2) -> {
-                                        if (n1.getNewsMeta() == null || n1.getNewsMeta().getNewsPublishedTime() == null)
-                                                return 1;
-                                        if (n2.getNewsMeta() == null || n2.getNewsMeta().getNewsPublishedTime() == null)
-                                                return -1;
-                                        return n2.getNewsMeta().getNewsPublishedTime()
-                                                        .compareTo(n1.getNewsMeta().getNewsPublishedTime());
-                                })
-                                .limit(limit)
-                                .toList();
+                        .sorted((n1, n2) -> {
+                                if (n1.getNewsMeta() == null || n1.getNewsMeta().getNewsPublishedTime() == null)
+                                        return 1;
+                                if (n2.getNewsMeta() == null || n2.getNewsMeta().getNewsPublishedTime() == null)
+                                        return -1;
+                                return n2.getNewsMeta().getNewsPublishedTime()
+                                        .compareTo(n1.getNewsMeta().getNewsPublishedTime());
+                        })
+                        .limit(limit)
+                        .toList();
 
                 return new Newses(latestNews);
         }
@@ -202,7 +202,7 @@ public class NewsQueryService implements NewsQueryUseCase {
                 try {
                         TargetCategory targetCategory = TargetCategory.valueOf(category.toUpperCase());
                         NewsQueryRequest request = new NewsQueryRequest(
-                                        null, null, null, null, List.of(targetCategory), null);
+                                null, null, null, null, List.of(targetCategory), null);
                         return newsPersistencePort.findAllByFilters(request);
                 } catch (IllegalArgumentException e) {
                         log.warn("Invalid category: {}", category);
@@ -212,24 +212,24 @@ public class NewsQueryService implements NewsQueryUseCase {
 
         private Newses performSearch(NewsSearchRequest request, Pageable pageable) {
                 NewsQueryRequest queryRequest = new NewsQueryRequest(
-                                request.getStartDate(),
-                                request.getEndDate(),
-                                request.getSentimentType(),
-                                request.getKeyword(),
-                                request.getCategories(),
-                                request.getProviders());
+                        request.getStartDate(),
+                        request.getEndDate(),
+                        request.getSentimentType(),
+                        request.getKeyword(),
+                        request.getCategories(),
+                        request.getProviders());
 
                 return newsPersistencePort.findAllByFilters(queryRequest);
         }
 
         private long getTotalCount(NewsSearchRequest request) {
                 NewsQueryRequest queryRequest = new NewsQueryRequest(
-                                request.getStartDate(),
-                                request.getEndDate(),
-                                request.getSentimentType(),
-                                request.getKeyword(),
-                                request.getCategories(),
-                                request.getProviders());
+                        request.getStartDate(),
+                        request.getEndDate(),
+                        request.getSentimentType(),
+                        request.getKeyword(),
+                        request.getCategories(),
+                        request.getProviders());
 
                 return newsPersistencePort.findAllByFilters(queryRequest).getNewses().size();
         }

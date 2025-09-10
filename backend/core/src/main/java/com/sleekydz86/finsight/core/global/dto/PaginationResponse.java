@@ -1,5 +1,6 @@
 package com.sleekydz86.finsight.core.global.dto;
 
+import org.springframework.data.domain.Page;
 import java.util.List;
 
 public class PaginationResponse<T> {
@@ -35,6 +36,14 @@ public class PaginationResponse<T> {
         this.last = page >= totalPages - 1;
         this.hasNext = page < totalPages - 1;
         this.hasPrevious = page > 0;
+    }
+
+    public static <T> PaginationResponse<T> from(Page<T> page) {
+        return new PaginationResponse<>(
+                page.getContent(),
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements());
     }
 
     public static <T> Builder<T> builder() {

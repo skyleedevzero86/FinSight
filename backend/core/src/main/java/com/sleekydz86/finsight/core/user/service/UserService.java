@@ -4,6 +4,7 @@ import com.sleekydz86.finsight.core.global.exception.InvalidPasswordException;
 import com.sleekydz86.finsight.core.global.exception.UserNotFoundException;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
+import com.sleekydz86.finsight.core.user.domain.UserStatus;
 import com.sleekydz86.finsight.core.user.domain.port.in.UserCommandUseCase;
 import com.sleekydz86.finsight.core.user.domain.port.in.UserQueryUseCase;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserRegistrationRequest;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -62,9 +64,16 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
 
         String encodedPassword = passwordEncoder.encode(request.getPassword());
 
-        User newUser = new User(request.getEmail(), encodedPassword, request.getUsername());
-        newUser.setRole(UserRole.USER);
-        newUser.setActive(true);
+        User newUser = User.builder()
+                .email(request.getEmail())
+                .password(encodedPassword)
+                .username(request.getUsername())
+                .nickname(request.getUsername())
+                .role(UserRole.USER)
+                .status(UserStatus.APPROVED)
+                .passwordChangedAt(LocalDateTime.now())
+                .notificationPreferences(Arrays.asList(NotificationType.EMAIL))
+                .build();
 
         User savedUser = userPersistencePort.save(newUser);
         log.info("User registered successfully: {}", savedUser.getId());
@@ -94,6 +103,7 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
+        // 비밀번호 변경이 요청된 경우
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             PasswordValidationService.PasswordValidationResult validationResult =
                     passwordValidationService.validatePassword(request.getPassword());
@@ -103,14 +113,15 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
                 throw new InvalidPasswordException(validationResult.getErrors());
             }
 
-            user.setPassword(passwordEncoder.encode(request.getPassword()));
+            user.changePassword(passwordEncoder.encode(request.getPassword()));
         }
 
         if (request.getUsername() != null) {
-            user.setUsername(request.getUsername());
+            String nickname = request.getNickname() != null ? request.getNickname() : request.getUsername();
+            String email = request.getEmail() != null ? request.getEmail() : user.getEmail();
+            user.updateProfile(nickname, email);
         }
 
-        user.setUpdatedAt(LocalDateTime.now());
         User updatedUser = userPersistencePort.save(user);
         log.info("User updated successfully: {}", userId);
 
@@ -126,8 +137,7 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
         if (request.getCategories() != null) {
-            user.setWatchlist(request.getCategories());
-            user.setUpdatedAt(LocalDateTime.now());
+            user.updateWatchlist(request.getCategories());
             userPersistencePort.save(user);
             log.info("Watchlist updated for user: {}", userId);
         }
@@ -142,8 +152,7 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
         if (preferences != null) {
-            user.setNotificationPreferences(preferences);
-            user.setUpdatedAt(LocalDateTime.now());
+            user.updateNotificationPreferences(preferences);
             userPersistencePort.save(user);
             log.info("Notification preferences updated for user: {}", userId);
         }
@@ -165,5 +174,41 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
         return userPersistencePort.findById(userId)
                 .map(User::getNotificationPreferences)
                 .orElse(List.of());
+    }
+
+    @CacheEvict(value = "userCache", key = "#userId")
+    public void approveUser(Long userId, Long approverId) {
+        log.info("Approving user: {} by approver: {}", userId, approverId);
+
+        User user = userPersistencePort.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+        user.approve(approverId);
+        userPersistencePort.save(user);
+        log.info("User approved successfully: {}", userId);
+    }
+
+    @CacheEvict(value = "userCache", key = "#userId")
+    public void suspendUser(Long userId) {
+        log.info("Suspending user: {}", userId);
+
+        User user = userPersistencePort.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+        user.suspend();
+        userPersistencePort.save(user);
+        log.info("User suspended successfully: {}", userId);
+    }
+
+    @CacheEvict(value = "userCache", key = "#userId")
+    public void unlockUser(Long userId) {
+        log.info("Unlocking user: {}", userId);
+
+        User user = userPersistencePort.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
+
+        user.unlock();
+        userPersistencePort.save(user);
+        log.info("User unlocked successfully: {}", userId);
     }
 }

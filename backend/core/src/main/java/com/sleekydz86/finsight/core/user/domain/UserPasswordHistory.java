@@ -1,36 +1,30 @@
 package com.sleekydz86.finsight.core.user.domain;
 
-import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
+import lombok.Setter;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "user_password_history")
 @Getter
+@Setter
 @NoArgsConstructor
 public class UserPasswordHistory {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
-    @Column(nullable = false)
+    private Long userId;
     private String passwordHash;
-
-    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @Builder
-    public UserPasswordHistory(User user, String passwordHash) {
-        this.user = user;
+    public UserPasswordHistory(Long id, Long userId, String passwordHash, LocalDateTime createdAt) {
+        this.id = id;
+        this.userId = userId;
         this.passwordHash = passwordHash;
-        this.createdAt = LocalDateTime.now();
+        this.createdAt = createdAt != null ? createdAt : LocalDateTime.now();
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
     }
 }

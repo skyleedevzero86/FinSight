@@ -1,13 +1,15 @@
 package com.sleekydz86.finsight.core.user.service;
 
+import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
 @Service
+@RequiredArgsConstructor
 public class PasswordValidationService {
 
     @Value("${security.password.min-length:12}")
@@ -24,6 +26,8 @@ public class PasswordValidationService {
 
     @Value("${security.password.require-lowercase:true}")
     private boolean requireLowercase;
+
+    private final UserPersistencePort userPersistencePort;
 
     private static final Pattern SPECIAL_CHARS_PATTERN = Pattern.compile("[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]");
     private static final Pattern NUMBERS_PATTERN = Pattern.compile("\\d");
@@ -71,6 +75,24 @@ public class PasswordValidationService {
         }
 
         return new PasswordValidationResult(errors.isEmpty(), errors);
+    }
+
+    public boolean isPasswordChangeRequired(Long userId) {
+        return userPersistencePort.findById(userId)
+                .map(user -> user.isPasswordChangeRequired())
+                .orElse(false);
+    }
+
+    public boolean isPasswordChangeRecommended(Long userId) {
+        return userPersistencePort.findById(userId)
+                .map(user -> user.isPasswordChangeRecommended())
+                .orElse(false);
+    }
+
+    public long getTodayPasswordChangeCount(Long userId) {
+        return userPersistencePort.findById(userId)
+                .map(user -> (long) user.getTodayPasswordChangeCount())
+                .orElse(0L);
     }
 
     private boolean hasConsecutiveCharacters(String password) {
