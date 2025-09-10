@@ -37,6 +37,9 @@ public class AiOverview {
     }
 
     public String getOverview() { return overview; }
+
+    public String getSummary() { return overview; }
+
     public SentimentType getSentimentType() { return sentimentType; }
     public double getSentimentScore() { return sentimentScore; }
     public List<TargetCategory> getTargetCategories() { return targetCategories; }

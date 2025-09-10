@@ -1,4 +1,18 @@
 spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          ssl:
+            trust: smtp.gmail.com
+
   datasource:
     url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?useSSL=true&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&allowPublicKeyRetrieval=false&verifyServerCertificate=true
     username: ${DB_USERNAME}
@@ -157,3 +171,43 @@ news:
       batch-size: 100
       max-concurrent-batches: 5
       timeout-seconds: 300
+app:
+  notification:
+    enabled: true
+    email:
+      templates:
+        news-alert: "news-alert"
+        system-alert: "system-alert"
+      daily-limit: 1000
+      rate-limit: 100
+    sms:
+      max-length: 80
+      daily-limit: 100
+      rate-limit: 10
+    push:
+      fcm:
+        server-key: "${FCM_SERVER_KEY:}"
+        url: "https://fcm.googleapis.com/fcm/send"
+    kakao:
+      api-key: "${KAKAO_API_KEY:}"
+      template-id: "${KAKAO_TEMPLATE_ID:}"
+    slack:
+      webhook-url: "${SLACK_WEBHOOK_URL:}"
+    retry:
+      max-attempts: 3
+      delay-seconds: 60
+    cleanup:
+      retention-days: 30
+
+solapi:
+  api-key: "${SOLAPI_API_KEY:}"
+  api-secret: "${SOLAPI_API_SECRET:}"
+  base-url: "https://api.solapi.com"
+  default-from-number: "${SOLAPI_FROM_NUMBER:}"
+
+kakao:
+  client-id: "${KAKAO_CLIENT_ID:}"
+  redirect-uri: "${KAKAO_REDIRECT_URI:}"
+  auth-url: "https://kauth.kakao.com/oauth/authorize"
+  token-url: "https://kauth.kakao.com/oauth/token"
+  api-url: "https://kapi.kakao.com"

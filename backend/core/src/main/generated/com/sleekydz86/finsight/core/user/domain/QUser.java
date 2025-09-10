@@ -36,10 +36,20 @@ public class QUser extends EntityPathBase<User> {
     //inherited
     public final DateTimePath<java.time.LocalDateTime> createDate = _super.createDate;
 
+    public final StringPath deviceToken = createString("deviceToken");
+
+    public final DateTimePath<java.time.LocalDateTime> deviceTokenUpdatedAt = createDateTime("deviceTokenUpdatedAt", java.time.LocalDateTime.class);
+
+    public final StringPath deviceType = createString("deviceType");
+
     public final StringPath email = createString("email");
+
+    public final BooleanPath emailNotificationEnabled = createBoolean("emailNotificationEnabled");
 
     //inherited
     public final NumberPath<Long> id = _super.id;
+
+    public final StringPath language = createString("language");
 
     public final DateTimePath<java.time.LocalDateTime> lastLoginAt = createDateTime("lastLoginAt", java.time.LocalDateTime.class);
 
@@ -66,9 +76,19 @@ public class QUser extends EntityPathBase<User> {
 
     public final DateTimePath<java.time.LocalDateTime> passwordChangedAt = createDateTime("passwordChangedAt", java.time.LocalDateTime.class);
 
+    public final StringPath phoneNumber = createString("phoneNumber");
+
+    public final StringPath profileImageUrl = createString("profileImageUrl");
+
+    public final BooleanPath pushNotificationEnabled = createBoolean("pushNotificationEnabled");
+
     public final EnumPath<UserRole> role = createEnum("role", UserRole.class);
 
+    public final BooleanPath smsNotificationEnabled = createBoolean("smsNotificationEnabled");
+
     public final EnumPath<UserStatus> status = createEnum("status", UserStatus.class);
+
+    public final StringPath timezone = createString("timezone");
 
     //inherited
     public final DateTimePath<java.time.LocalDateTime> updatedAt = _super.updatedAt;

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinSight 시스템 알림</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f8f9fa; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background: #6c757d; color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 30px; }
+        .alert-content { background-color: #f8f9fa; padding: 20px; border-radius: 4px; margin: 20px 0; }
+        .footer { background: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; color: #6c757d; border-radius: 0 0 8px 8px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>   FinSight 시스템 알림</h1>
+    </div>
+
+    <div class="content">
+        <div class="alert-content">
+            <h2 th:text="${notification.title}">알림 제목</h2>
+            <p th:text="${notification.content}">알림 내용</p>
+            <p><small th:text="${currentTime}">발송 시간</small></p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>이 메시지는 FinSight에서 자동으로 발송되었습니다.</p>
+    </div>
+</div>
+</body>
+</html>

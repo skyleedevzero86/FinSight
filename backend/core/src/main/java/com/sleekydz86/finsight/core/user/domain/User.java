@@ -100,6 +100,39 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     private Boolean otpVerified = false;
 
+    @Column(length = 1000)
+    private String deviceToken;
+
+    @Column
+    private String deviceType;
+
+    @Column
+    private LocalDateTime deviceTokenUpdatedAt;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean pushNotificationEnabled = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean emailNotificationEnabled = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean smsNotificationEnabled = false;
+
+    @Column
+    private String phoneNumber;
+
+    @Column
+    private String profileImageUrl;
+
+    @Column
+    private String timezone;
+
+    @Column
+    private String language;
+
     public void changePassword(String newPassword) {
         log.info("비밀번호 변경 실행 - userId: {}, 이전 passwordChangedAt: {}",
                 this.getId(), this.passwordChangedAt);
@@ -333,6 +366,75 @@ public class User extends BaseTimeEntity {
 
     public void updateWatchlist(List<TargetCategory> watchlist) {
         this.watchlist = new ArrayList<>(watchlist);
+    }
+
+    public void updateDeviceToken(String deviceToken, String deviceType) {
+        this.deviceToken = deviceToken;
+        this.deviceType = deviceType;
+        this.deviceTokenUpdatedAt = LocalDateTime.now();
+        log.info("디바이스 토큰 업데이트: userId={}, deviceType={}", this.getId(), deviceType);
+    }
+
+    public void removeDeviceToken() {
+        this.deviceToken = null;
+        this.deviceType = null;
+        this.deviceTokenUpdatedAt = null;
+        log.info("디바이스 토큰 제거: userId={}", this.getId());
+    }
+
+    public boolean canReceivePushNotification() {
+        return this.pushNotificationEnabled &&
+                this.deviceToken != null &&
+                !this.deviceToken.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveEmailNotification() {
+        return this.emailNotificationEnabled &&
+                this.email != null &&
+                !this.email.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public boolean canReceiveSmsNotification() {
+        return this.smsNotificationEnabled &&
+                this.phoneNumber != null &&
+                !this.phoneNumber.trim().isEmpty() &&
+                this.isActive();
+    }
+
+    public void updateNotificationSettings(Boolean pushEnabled, Boolean emailEnabled, Boolean smsEnabled) {
+        if (pushEnabled != null) {
+            this.pushNotificationEnabled = pushEnabled;
+        }
+        if (emailEnabled != null) {
+            this.emailNotificationEnabled = emailEnabled;
+        }
+        if (smsEnabled != null) {
+            this.smsNotificationEnabled = smsEnabled;
+        }
+        log.info("알림 설정 업데이트: userId={}, push={}, email={}, sms={}",
+                this.getId(), this.pushNotificationEnabled, this.emailNotificationEnabled, this.smsNotificationEnabled);
+    }
+
+    public void updateProfileSettings(String nickname, String phoneNumber, String profileImageUrl, String timezone, String language) {
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+        if (phoneNumber != null) {
+            this.phoneNumber = phoneNumber;
+        }
+        if (profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl;
+        }
+        if (timezone != null) {
+            this.timezone = timezone;
+        }
+        if (language != null) {
+            this.language = language;
+        }
+        log.info("프로필 설정 업데이트: userId={}, nickname={}, timezone={}, language={}",
+                this.getId(), this.nickname, this.timezone, this.language);
     }
 
     @Override
