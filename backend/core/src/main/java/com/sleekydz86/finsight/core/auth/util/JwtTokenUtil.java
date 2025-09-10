@@ -171,4 +171,42 @@ public class JwtTokenUtil {
             return null;
         }
     }
+
+    public String generateRecoveryToken(String email, String username) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("email", email);
+        claims.put("username", username);
+        claims.put("type", "recovery");
+
+        return createToken(email + ":" + username, claims, Duration.ofSeconds(recoveryTokenExpiration));
+    }
+
+    public String getUserInfoFromRecoveryToken(String token) {
+        try {
+            Claims claims = getAllClaimsFromToken(token);
+            String type = claims.get("type", String.class);
+
+            if (!"recovery".equals(type)) {
+                throw new IllegalArgumentException("유효하지 않은 복구 토큰입니다.");
+            }
+
+            String email = claims.get("email", String.class);
+            String username = claims.get("username", String.class);
+
+            return email + ":" + username;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("유효하지 않은 복구 토큰입니다.", e);
+        }
+    }
+
+    public boolean validateRecoveryToken(String token) {
+        try {
+            Claims claims = getAllClaimsFromToken(token);
+            String type = claims.get("type", String.class);
+            return "recovery".equals(type) && !isTokenExpired(claims);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
 }

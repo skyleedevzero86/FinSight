@@ -69,6 +69,11 @@ ai:
       cache-size: 500
 
 app:
+  recovery:
+    token:
+      expiration: 1800 # 30분
+    otp:
+      expiration: 300 # 5분
   notification:
     enabled: true
     email:
@@ -76,12 +81,18 @@ app:
       templates:
         news-alert: "news-alert"
         system-alert: "system-alert"
+        recovery-otp: "recovery-otp"
+        password-reset-confirmation: "password-reset-confirmation"
       daily-limit: 1000
       rate-limit: 100
     sms:
       max-length: 80
       daily-limit: 100
       rate-limit: 10
+      recovery:
+        enabled: true
+        daily-limit: 10
+        rate-limit: 5
     push:
       fcm:
         server-key: "${FCM_SERVER_KEY:}"

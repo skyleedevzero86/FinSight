@@ -518,8 +518,8 @@ public class User extends BaseTimeEntity {
     }
 
     public void updateExternalNotificationSettings(Boolean kakaoEnabled, Boolean telegramEnabled,
-                                                   Boolean slackEnabled, Boolean discordEnabled,
-                                                   Boolean lineEnabled, Boolean webhookEnabled) {
+            Boolean slackEnabled, Boolean discordEnabled,
+            Boolean lineEnabled, Boolean webhookEnabled) {
         if (kakaoEnabled != null) {
             this.kakaoNotificationEnabled = kakaoEnabled;
         }
@@ -626,7 +626,8 @@ public class User extends BaseTimeEntity {
         log.info("웹훅 정보 제거: userId={}", this.getId());
     }
 
-    public void updateProfileSettings(String nickname, String phoneNumber, String profileImageUrl, String timezone, String language) {
+    public void updateProfileSettings(String nickname, String phoneNumber, String profileImageUrl, String timezone,
+            String language) {
         if (nickname != null) {
             this.nickname = nickname;
         }
@@ -703,5 +704,11 @@ public class User extends BaseTimeEntity {
         } else {
             return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.EMAIL;
         }
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
+        this.passwordChangedAt = LocalDateTime.now();
+        this.passwordChangeCount++;
     }
 }

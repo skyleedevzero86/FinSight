@@ -37,8 +37,8 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
     private final PasswordValidationService passwordValidationService;
 
     public UserService(UserPersistencePort userPersistencePort,
-                       PasswordEncoder passwordEncoder,
-                       PasswordValidationService passwordValidationService) {
+            PasswordEncoder passwordEncoder,
+            PasswordValidationService passwordValidationService) {
         this.userPersistencePort = userPersistencePort;
         this.passwordEncoder = passwordEncoder;
         this.passwordValidationService = passwordValidationService;
@@ -54,8 +54,8 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
             throw new IllegalArgumentException("Email already exists: " + request.getEmail());
         }
 
-        PasswordValidationService.PasswordValidationResult validationResult =
-                passwordValidationService.validatePassword(request.getPassword());
+        PasswordValidationService.PasswordValidationResult validationResult = passwordValidationService
+                .validatePassword(request.getPassword());
 
         if (!validationResult.isValid()) {
             log.warn("User registration failed: invalid password for email - {}", request.getEmail());
@@ -103,10 +103,9 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with ID: " + userId));
 
-        // 비밀번호 변경이 요청된 경우
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
-            PasswordValidationService.PasswordValidationResult validationResult =
-                    passwordValidationService.validatePassword(request.getPassword());
+            PasswordValidationService.PasswordValidationResult validationResult = passwordValidationService
+                    .validatePassword(request.getPassword());
 
             if (!validationResult.isValid()) {
                 log.warn("User update failed: invalid password for user - {}", userId);
@@ -211,4 +210,22 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
         userPersistencePort.save(user);
         log.info("User unlocked successfully: {}", userId);
     }
+
+    public Optional<User> findByEmailAndUsername(String email, String username) {
+        return userPersistencePort.findByEmailAndUsername(email, username);
+    }
+
+    @Transactional
+    public void updatePassword(Long userId, String newPassword) {
+        User user = findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다."));
+
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        user.updatePassword(encodedPassword);
+
+        userPersistencePort.save(user);
+
+        log.info("비밀번호 업데이트 완료 - 사용자: {}", user.getUsername());
+    }
+
 }

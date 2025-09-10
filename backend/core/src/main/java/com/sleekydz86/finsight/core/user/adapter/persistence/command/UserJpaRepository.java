@@ -32,7 +32,8 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
         List<UserJpaEntity> findLockedUsersBeforeUnlockTime(@Param("unlockTime") LocalDateTime unlockTime);
 
         @Query("SELECT u FROM UserJpaEntity u WHERE u.status = :status AND u.createdAt > :after")
-        List<UserJpaEntity> findPendingUsersAfter(@Param("status") UserStatus status, @Param("after") LocalDateTime after);
+        List<UserJpaEntity> findPendingUsersAfter(@Param("status") UserStatus status,
+                        @Param("after") LocalDateTime after);
 
         @Query("SELECT u FROM UserJpaEntity u WHERE u.passwordChangedAt < :before OR u.passwordChangedAt IS NULL")
         List<UserJpaEntity> findUsersWithPasswordChangedBefore(@Param("before") LocalDateTime before);
@@ -54,4 +55,6 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
 
         @Query("SELECT u FROM UserJpaEntity u WHERE u.status = 'APPROVED' AND (u.loginFailCount < 5 OR u.loginFailCount IS NULL)")
         List<UserJpaEntity> findAllActiveUsers();
+
+        Optional<UserJpaEntity> findByEmailAndUsername(String email, String username);
 }
