@@ -340,4 +340,60 @@ public class EmailNotificationService {
                         """,
                 appName, user.getUsername(), appName, frontendUrl, appName);
     }
+
+    @Async("notificationExecutor")
+    @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
+    public CompletableFuture<Void> sendRecoveryOtpEmail(User user, String subject, String content) {
+        if (!emailEnabled) {
+            log.debug("이메일 알림이 비활성화되어 있습니다.");
+            return CompletableFuture.completedFuture(null);
+        }
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(user.getEmail());
+            helper.setSubject(subject);
+            helper.setText(content, true);
+
+            mailSender.send(message);
+            log.info("복구 OTP 이메일 발송 성공 - 사용자: {}", user.getEmail());
+
+            return CompletableFuture.completedFuture(null);
+
+        } catch (MessagingException e) {
+            log.error("복구 OTP 이메일 발송 실패 - 사용자: {}, 오류: {}", user.getEmail(), e.getMessage(), e);
+            throw new RuntimeException("이메일 발송 실패", e);
+        }
+    }
+
+    @Async("notificationExecutor")
+    @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
+    public CompletableFuture<Void> sendPasswordResetConfirmationEmail(User user, String subject, String content) {
+        if (!emailEnabled) {
+            log.debug("이메일 알림이 비활성화되어 있습니다.");
+            return CompletableFuture.completedFuture(null);
+        }
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail);
+            helper.setTo(user.getEmail());
+            helper.setSubject(subject);
+            helper.setText(content, true);
+
+            mailSender.send(message);
+            log.info("비밀번호 재설정 확인 이메일 발송 성공 - 사용자: {}", user.getEmail());
+
+            return CompletableFuture.completedFuture(null);
+
+        } catch (MessagingException e) {
+            log.error("비밀번호 재설정 확인 이메일 발송 실패 - 사용자: {}, 오류: {}", user.getEmail(), e.getMessage(), e);
+            throw new RuntimeException("이메일 발송 실패", e);
+        }
+    }
 }

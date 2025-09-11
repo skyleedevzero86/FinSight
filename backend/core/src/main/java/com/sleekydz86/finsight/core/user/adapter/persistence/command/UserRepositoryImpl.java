@@ -264,4 +264,10 @@ public class UserRepositoryImpl implements UserPersistencePort {
         }
     }
 
+    @Override
+    public Optional<User> findByEmailAndUsername(String email, String username) {
+        return userJpaRepository.findByEmailAndUsername(email, username)
+                .map(userJpaMapper::toDomain);
+    }
+
 }

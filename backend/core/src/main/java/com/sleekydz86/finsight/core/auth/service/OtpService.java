@@ -20,6 +20,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Random;
 
 @Slf4j
 @Service
@@ -52,6 +53,31 @@ public class OtpService {
         String secret = base32.encodeToString(bytes);
         String result = secret.replace("=", "");
         log.debug("OTP 시크릿 키 생성 완료: {}자", result.length());
+        return result;
+    }
+
+    public String generateOtp() {
+        Random random = new SecureRandom();
+        int otp = 100000 + random.nextInt(900000);
+        String result = String.valueOf(otp);
+        log.debug("간단한 OTP 생성 완료: {}", result);
+        return result;
+    }
+
+    public String generateOtp(int length) {
+        if (length < 4 || length > 10) {
+            throw new IllegalArgumentException("OTP 길이는 4에서 10 사이여야 합니다.");
+        }
+
+        Random random = new SecureRandom();
+        StringBuilder otp = new StringBuilder();
+
+        for (int i = 0; i < length; i++) {
+            otp.append(random.nextInt(10));
+        }
+
+        String result = otp.toString();
+        log.debug("{}자리 OTP 생성 완료", length);
         return result;
     }
 

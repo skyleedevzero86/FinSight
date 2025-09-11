@@ -52,4 +52,6 @@ public interface UserPersistencePort {
     List<User> findByWatchlistCategories(List<TargetCategory> categories);
 
     List<User> findAllActiveUsers();
+
+    Optional<User> findByEmailAndUsername(String email, String username);
 }
