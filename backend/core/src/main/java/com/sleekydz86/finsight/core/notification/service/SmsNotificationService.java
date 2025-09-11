@@ -8,9 +8,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -23,8 +25,16 @@ public class SmsNotificationService {
     @Value("${app.notification.sms.max-length:80}")
     private int maxSmsLength;
 
+    @Value("${app.notification.sms.enabled:true}")
+    private boolean smsEnabled;
+
     public void sendNewsAlert(User user, News news) {
         try {
+            if (!smsEnabled) {
+                log.debug("SMS 알림이 비활성화되어 있습니다.");
+                return;
+            }
+
             String message = createNewsAlertMessage(news);
             String phoneNumber = user.getPhoneNumber();
 
@@ -52,6 +62,11 @@ public class SmsNotificationService {
 
     public void sendNotification(User user, Notification notification) {
         try {
+            if (!smsEnabled) {
+                log.debug("SMS 알림이 비활성화되어 있습니다.");
+                return;
+            }
+
             String message = createNotificationMessage(notification);
             String phoneNumber = user.getPhoneNumber();
 
@@ -79,6 +94,11 @@ public class SmsNotificationService {
 
     public void sendLongMessage(User user, String title, String content) {
         try {
+            if (!smsEnabled) {
+                log.debug("SMS 알림이 비활성화되어 있습니다.");
+                return;
+            }
+
             String phoneNumber = user.getPhoneNumber();
 
             if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
@@ -105,6 +125,11 @@ public class SmsNotificationService {
 
     public void sendKakaoAlimtalk(User user, String message, String templateId) {
         try {
+            if (!smsEnabled) {
+                log.debug("SMS 알림이 비활성화되어 있습니다.");
+                return;
+            }
+
             String phoneNumber = user.getPhoneNumber();
 
             if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
@@ -129,8 +154,13 @@ public class SmsNotificationService {
         }
     }
 
-    public void sendScheduledMessage(User user, String message, java.time.LocalDateTime scheduledDate) {
+    public void sendScheduledMessage(User user, String message, LocalDateTime scheduledDate) {
         try {
+            if (!smsEnabled) {
+                log.debug("SMS 알림이 비활성화되어 있습니다.");
+                return;
+            }
+
             String phoneNumber = user.getPhoneNumber();
 
             if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
@@ -180,6 +210,11 @@ public class SmsNotificationService {
     }
 
     public void sendAdaptiveMessage(User user, String title, String content) {
+        if (!smsEnabled) {
+            log.debug("SMS 알림이 비활성화되어 있습니다.");
+            return;
+        }
+
         String phoneNumber = user.getPhoneNumber();
 
         if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
@@ -223,13 +258,22 @@ public class SmsNotificationService {
 
         try {
             String message = String.format("[FinSight] 계정 복구 OTP: %s (5분간 유효)", otpCode);
-            sendSms(phoneNumber, message);
+            MessageSendResult result = solapiMessageService.sendSms(phoneNumber, message);
 
-            log.info("복구 OTP SMS 발송 성공 - 전화번호: {}", phoneNumber);
+            if (result.isSuccess()) {
+                log.info("복구 OTP SMS 발송 성공 - 전화번호: {}, 메시지ID: {}",
+                        maskPhoneNumber(phoneNumber), result.getMessageId());
+            } else {
+                log.error("복구 OTP SMS 발송 실패 - 전화번호: {}, 오류: {}",
+                        maskPhoneNumber(phoneNumber), result.getErrorMessage());
+                throw new RuntimeException("SMS 발송 실패: " + result.getErrorMessage());
+            }
+
             return CompletableFuture.completedFuture(null);
 
         } catch (Exception e) {
-            log.error("복구 OTP SMS 발송 실패 - 전화번호: {}, 오류: {}", phoneNumber, e.getMessage(), e);
+            log.error("복구 OTP SMS 발송 실패 - 전화번호: {}, 오류: {}",
+                    maskPhoneNumber(phoneNumber), e.getMessage(), e);
             throw new RuntimeException("SMS 발송 실패", e);
         }
     }
@@ -244,15 +288,56 @@ public class SmsNotificationService {
 
         try {
             String message = "[FinSight] 비밀번호가 성공적으로 재설정되었습니다. 보안을 위해 로그인 후 비밀번호를 변경해주세요.";
-            sendSms(phoneNumber, message);
+            MessageSendResult result = solapiMessageService.sendSms(phoneNumber, message);
 
-            log.info("비밀번호 재설정 확인 SMS 발송 성공 - 전화번호: {}", phoneNumber);
+            if (result.isSuccess()) {
+                log.info("비밀번호 재설정 확인 SMS 발송 성공 - 전화번호: {}, 메시지ID: {}",
+                        maskPhoneNumber(phoneNumber), result.getMessageId());
+            } else {
+                log.error("비밀번호 재설정 확인 SMS 발송 실패 - 전화번호: {}, 오류: {}",
+                        maskPhoneNumber(phoneNumber), result.getErrorMessage());
+                throw new RuntimeException("SMS 발송 실패: " + result.getErrorMessage());
+            }
+
             return CompletableFuture.completedFuture(null);
 
         } catch (Exception e) {
-            log.error("비밀번호 재설정 확인 SMS 발송 실패 - 전화번호: {}, 오류: {}", phoneNumber, e.getMessage(), e);
+            log.error("비밀번호 재설정 확인 SMS 발송 실패 - 전화번호: {}, 오류: {}",
+                    maskPhoneNumber(phoneNumber), e.getMessage(), e);
             throw new RuntimeException("SMS 발송 실패", e);
         }
     }
 
+    private String maskPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.length() < 8) {
+            return phoneNumber;
+        }
+        int length = phoneNumber.length();
+        return phoneNumber.substring(0, length - 8) + "****" + phoneNumber.substring(length - 4);
+    }
+
+    public void sendSms(String phoneNumber, String message) {
+        if (!smsEnabled) {
+            log.debug("SMS 알림이 비활성화되어 있습니다.");
+            return;
+        }
+
+        try {
+            MessageSendResult result = solapiMessageService.sendSms(phoneNumber, message);
+
+            if (result.isSuccess()) {
+                log.info("SMS 발송 성공 - 전화번호: {}, 메시지ID: {}",
+                        maskPhoneNumber(phoneNumber), result.getMessageId());
+            } else {
+                log.error("SMS 발송 실패 - 전화번호: {}, 오류: {}",
+                        maskPhoneNumber(phoneNumber), result.getErrorMessage());
+                throw new RuntimeException("SMS 발송 실패: " + result.getErrorMessage());
+            }
+
+        } catch (Exception e) {
+            log.error("SMS 발송 중 예외 발생 - 전화번호: {}, 오류: {}",
+                    maskPhoneNumber(phoneNumber), e.getMessage(), e);
+            throw new RuntimeException("SMS 발송 실패", e);
+        }
+    }
 }
