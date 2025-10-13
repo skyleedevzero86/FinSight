@@ -1,6 +1,6 @@
 # Compiled class file
 *.class
-backend
+backend/*.yml
 # Log file
 *.log
 
