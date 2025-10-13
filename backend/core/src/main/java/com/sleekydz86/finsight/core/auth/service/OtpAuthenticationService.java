@@ -2,7 +2,7 @@ package com.sleekydz86.finsight.core.auth.service;
 
 import com.sleekydz86.finsight.core.auth.domain.JwtToken;
 import com.sleekydz86.finsight.core.auth.dto.*;
-import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
+import com.sleekydz86.finsight.core.global.util.JwtTokenUtil;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.exception.OtpNotEnabledException;
 import com.sleekydz86.finsight.core.global.exception.OtpVerificationFailedException;

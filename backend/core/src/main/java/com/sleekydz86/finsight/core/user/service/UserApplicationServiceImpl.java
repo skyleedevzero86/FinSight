@@ -7,7 +7,7 @@ import com.sleekydz86.finsight.core.user.domain.port.in.dto.*;
 import com.sleekydz86.finsight.core.user.domain.port.out.dto.*;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.auth.service.RateLimitServiceInterface;
-import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
+import com.sleekydz86.finsight.core.global.util.JwtTokenUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;

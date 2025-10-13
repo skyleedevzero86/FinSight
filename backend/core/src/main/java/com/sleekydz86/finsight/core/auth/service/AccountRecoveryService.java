@@ -4,7 +4,7 @@ import com.sleekydz86.finsight.core.auth.dto.AccountRecoveryRequest;
 import com.sleekydz86.finsight.core.auth.dto.AccountRecoveryResponse;
 import com.sleekydz86.finsight.core.auth.dto.AccountRecoveryVerifyRequest;
 import com.sleekydz86.finsight.core.auth.dto.PasswordResetRequest;
-import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
+import com.sleekydz86.finsight.core.global.util.JwtTokenUtil;
 import com.sleekydz86.finsight.core.global.exception.UserNotFoundException;
 import com.sleekydz86.finsight.core.notification.service.EmailNotificationService;
 import com.sleekydz86.finsight.core.notification.service.SmsNotificationService;
@@ -18,8 +18,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j

@@ -4,7 +4,7 @@ import com.sleekydz86.finsight.core.auth.domain.JwtToken;
 import com.sleekydz86.finsight.core.auth.dto.LoginRequest;
 import com.sleekydz86.finsight.core.auth.dto.RefreshTokenRequest;
 import com.sleekydz86.finsight.core.auth.dto.UserRegistrationRequest;
-import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
+import com.sleekydz86.finsight.core.global.util.JwtTokenUtil;
 import com.sleekydz86.finsight.core.global.exception.*;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.user.domain.User;
@@ -25,7 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.AuthenticationException;
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.List;
 
 @Service
 @Transactional

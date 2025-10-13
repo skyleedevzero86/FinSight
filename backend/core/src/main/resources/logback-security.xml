@@ -34,12 +34,12 @@
         <appender-ref ref="CONSOLE"/>
     </logger>
 
-    <logger name="com.sleekydz86.finsight.core.auth.util.JwtTokenUtil" level="INFO" additivity="false">
+    <logger name="com.sleekydz86.finsight.core.global.util.JwtTokenUtil" level="INFO" additivity="false">
         <appender-ref ref="SECURITY_AUDIT_FILE"/>
         <appender-ref ref="CONSOLE"/>
     </logger>
 
-    <logger name="com.sleekydz86.finsight.core.auth.filter.RateLimitFilter" level="INFO" additivity="false">
+    <logger name="com.sleekydz86.finsight.core.global.filter.RateLimitFilter" level="INFO" additivity="false">
         <appender-ref ref="SECURITY_AUDIT_FILE"/>
         <appender-ref ref="CONSOLE"/>
     </logger>
