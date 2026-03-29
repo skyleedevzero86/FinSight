@@ -1,7 +1,9 @@
-backend/**/*.yml
+backend/
+.idea/
 *.md
 *.yml
 **/*.yml
+docs/
 
 # Compiled class file
 *.class
@@ -27,3 +29,5 @@ backend/**/*.yml
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+.cursor
+.claude
