@@ -8,11 +8,11 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 @Configuration
 public class SchedulerConfig {
 
-    @Bean
-    public TaskScheduler taskScheduler() {
+    @Bean(name = "batchTaskScheduler")
+    public TaskScheduler batchTaskScheduler() {
         ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(5);
-        scheduler.setThreadNamePrefix("Scheduler-");
+        scheduler.setThreadNamePrefix("BatchScheduler-");
         scheduler.setWaitForTasksToCompleteOnShutdown(true);
         scheduler.setAwaitTerminationSeconds(30);
         scheduler.initialize();

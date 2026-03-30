@@ -1,5 +1,6 @@
-**/Q*.java
-**/Q*.class
+**/src/main/generated/
+application-*.yml
+application.yml
 application-core-local.yml_2
 HELP.md
 jobstudy/**
