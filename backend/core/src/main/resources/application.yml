@@ -1,6 +1,6 @@
 spring:
   profiles:
-    active: core-local
+    active: ${SPRING_PROFILES_ACTIVE:core-local}
 
 hibernate:
   cache:
