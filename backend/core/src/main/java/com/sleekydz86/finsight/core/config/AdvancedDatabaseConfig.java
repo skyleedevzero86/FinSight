@@ -20,16 +20,16 @@ import java.util.Properties;
 @EnableTransactionManagement
 public class AdvancedDatabaseConfig {
 
-    @Value("${spring.datasource.url}")
+    @Value("${spring.datasource.url:jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:finsight}?useSSL=false&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&allowPublicKeyRetrieval=true}")
     private String jdbcUrl;
 
-    @Value("${spring.datasource.username}")
+    @Value("${spring.datasource.username:${DB_USERNAME:finsight}}")
     private String username;
 
-    @Value("${spring.datasource.password}")
+    @Value("${spring.datasource.password:${DB_PASSWORD:root123}}")
     private String password;
 
-    @Value("${spring.datasource.driver-class-name}")
+    @Value("${spring.datasource.driver-class-name:com.mysql.cj.jdbc.Driver}")
     private String driverClassName;
 
     @Value("${spring.jpa.hibernate.ddl-auto:update}")
@@ -59,6 +59,7 @@ public class AdvancedDatabaseConfig {
         config.setMaxLifetime(1800000);
         config.setLeakDetectionThreshold(60000);
         config.setPoolName("FinSightHikariCP");
+        config.setAutoCommit(false);
 
         if (isH2Database()) {
             config.addDataSourceProperty("cachePrepStmts", "true");

@@ -27,10 +27,14 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-batch'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.springframework.boot:spring-boot-starter-mail'
 
-    implementation 'ai.djl:api:0.24.0'
-    implementation 'ai.djl.pytorch:pytorch-engine:0.24.0'
-    implementation 'ai.djl.huggingface:tokenizers:0.24.0'
+    implementation 'ai.djl:api:0.33.0'
+    implementation 'ai.djl.pytorch:pytorch-engine:0.33.0'
+    implementation 'ai.djl.huggingface:tokenizers:0.33.0'
+    implementation 'ai.djl.sentencepiece:sentencepiece:0.33.0'
+    runtimeOnly 'ai.djl.pytorch:pytorch-native-cpu:2.5.1'
+    runtimeOnly 'ai.djl.pytorch:pytorch-jni:2.5.1-0.34.0'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
