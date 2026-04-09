@@ -19,10 +19,10 @@ public class MarketAuxProperties {
 
     private void validate() {
         if (baseUrl == null || baseUrl.trim().isEmpty()) {
-            throw new IllegalArgumentException("marketaux base-url must not be blank");
+            throw new IllegalArgumentException("MarketAux base-url은 비어 있을 수 없습니다");
         }
         if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new IllegalArgumentException("marketaux api-key must not be blank");
+            throw new IllegalArgumentException("MarketAux api-key는 비어 있을 수 없습니다");
         }
     }
 

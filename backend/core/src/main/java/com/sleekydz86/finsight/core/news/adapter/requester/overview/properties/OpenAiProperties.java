@@ -16,21 +16,21 @@ public class OpenAiProperties {
 
     public void setBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
-            throw new IllegalArgumentException("open-ai base-url must not be blank");
+            throw new IllegalArgumentException("OpenAI base-url은 비어 있을 수 없습니다");
         }
         this.baseUrl = baseUrl;
     }
 
     public void setApiKey(String apiKey) {
         if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalArgumentException("open-ai api-key must not be blank");
+            throw new IllegalArgumentException("OpenAI api-key는 비어 있을 수 없습니다");
         }
         this.apiKey = apiKey;
     }
 
     public void setModel(String model) {
         if (model == null || model.isBlank()) {
-            throw new IllegalArgumentException("open-ai model must not be blank");
+            throw new IllegalArgumentException("OpenAI model은 비어 있을 수 없습니다");
         }
         this.model = model;
     }
