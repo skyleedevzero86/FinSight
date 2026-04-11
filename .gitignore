@@ -1,4 +1,4 @@
-backend/
+../pnpm-lock.yaml
 .idea/
 *.md
 *.yml
@@ -29,8 +29,6 @@ docs/
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
-
-
 backend/batch/src/main/resources/application.yml
 backend/batch/src/test/resources/application.yml
 backend/core/src/main/resources/application-core-dev.yml
