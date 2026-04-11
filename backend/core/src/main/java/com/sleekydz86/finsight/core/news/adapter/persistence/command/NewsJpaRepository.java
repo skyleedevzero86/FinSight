@@ -1,6 +1,8 @@
 package com.sleekydz86.finsight.core.news.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +16,9 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.overview IS NULL")
     List<NewsJpaEntity> findByOverviewIsNull();
+
+    @Query("SELECT n FROM NewsJpaEntity n WHERE n.overview IS NULL")
+    Page<NewsJpaEntity> findByOverviewIsNull(Pageable pageable);
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.newsPublishedTime >= :startDate AND n.newsPublishedTime <= :endDate")
     List<NewsJpaEntity> findByPublishedTimeBetween(@Param("startDate") LocalDateTime startDate,

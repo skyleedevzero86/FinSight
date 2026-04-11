@@ -6,7 +6,7 @@ public class AiAnalysisFailedException extends BaseException {
     public AiAnalysisFailedException(String modelName, String message) {
         super("AI 분석에 실패했습니다: " + message,
                 "AI_ANALYSIS_FAILED",
-                "AI Analysis Error",
+                "AI 분석 오류",
                 500);
         this.modelName = modelName;
     }
@@ -14,7 +14,7 @@ public class AiAnalysisFailedException extends BaseException {
     public AiAnalysisFailedException(String modelName, String message, Throwable cause) {
         super("AI 분석에 실패했습니다: " + message,
                 "AI_ANALYSIS_FAILED",
-                "AI Analysis Error",
+                "AI 분석 오류",
                 500,
                 cause);
         this.modelName = modelName;

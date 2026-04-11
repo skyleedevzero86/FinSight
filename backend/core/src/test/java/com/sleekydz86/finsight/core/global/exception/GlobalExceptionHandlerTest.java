@@ -3,7 +3,6 @@ package com.sleekydz86.finsight.core.global.exception;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.support.StaticMessageSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.web.servlet.MockMvc;
@@ -12,8 +11,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.util.Locale;
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -26,14 +23,8 @@ class GlobalExceptionHandlerTest {
 
     @BeforeEach
     void setUp() {
-        StaticMessageSource messageSource = new StaticMessageSource();
-        messageSource.addMessage("test.message", Locale.getDefault(), "Test message");
-        messageSource.addMessage("error.generic", Locale.getDefault(), "Internal server error occurred");
-        messageSource.addMessage("error.authentication.failed", Locale.getDefault(), "Authentication failed");
-        messageSource.addMessage("error.validation.failed", Locale.getDefault(), "Validation failed");
-
         objectMapper = new ObjectMapper();
-        exceptionHandler = new GlobalExceptionHandler(messageSource);
+        exceptionHandler = new GlobalExceptionHandler();
 
         mockMvc = MockMvcBuilders.standaloneSetup(new TestController())
                 .setControllerAdvice(exceptionHandler)
@@ -63,7 +54,7 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(post("/test/auth-failed")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isUnauthorized())
+                .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 

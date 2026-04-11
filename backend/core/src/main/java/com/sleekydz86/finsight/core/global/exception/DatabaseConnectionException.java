@@ -5,7 +5,7 @@ public class DatabaseConnectionException extends BaseException {
 
     public DatabaseConnectionException(String databaseType, String reason) {
         super("데이터베이스 연결에 실패했습니다. 타입: " + databaseType + ", 사유: " + reason,
-                "SYS_002", "Database Connection Error", 503);
+                "SYS_002", "데이터베이스 연결 오류", 503);
         this.databaseType = databaseType;
     }
 

@@ -12,8 +12,6 @@ spring:
             enable: true
           ssl:
             trust: smtp.gmail.com
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:finsight}?useSSL=false&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
@@ -43,8 +41,8 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST:127.0.0.1}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      port: ${REDIS_PORT:9379}
+      password: ${REDIS_PASSWORD:123456}
       timeout: 2000ms
       connect-timeout: 2000ms
       lettuce:

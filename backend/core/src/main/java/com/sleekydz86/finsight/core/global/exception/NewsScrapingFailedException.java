@@ -6,7 +6,7 @@ public class NewsScrapingFailedException extends BaseException {
 
     public NewsScrapingFailedException(String provider, String reason) {
         super("뉴스 수집에 실패했습니다. 제공자: " + provider + ", 사유: " + reason,
-                "NEWS_002", "News Scraping Failed", 500);
+                "NEWS_002", "뉴스 수집 실패", 500);
         this.provider = provider;
         this.reason = reason;
     }

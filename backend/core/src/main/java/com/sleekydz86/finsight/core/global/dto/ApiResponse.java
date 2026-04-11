@@ -29,7 +29,7 @@ public class ApiResponse<T> {
         ApiResponse<T> response = new ApiResponse<>();
         response.setSuccess(true);
         response.setData(data);
-        response.setMessage("Success");
+        response.setMessage("성공");
         response.setStatusCode(200);
         return response;
     }

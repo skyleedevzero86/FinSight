@@ -6,7 +6,7 @@ public class InsufficientPermissionException extends BaseException {
     public InsufficientPermissionException(String requiredPermission) {
         super("권한이 부족합니다. 필요한 권한: " + requiredPermission,
                 "INSUFFICIENT_PERMISSION",
-                "Permission Error",
+                "권한 오류",
                 403);
         this.requiredPermission = requiredPermission;
     }
@@ -14,7 +14,7 @@ public class InsufficientPermissionException extends BaseException {
     public InsufficientPermissionException(String requiredPermission, String message) {
         super("권한이 부족합니다: " + message + " (필요한 권한: " + requiredPermission + ")",
                 "INSUFFICIENT_PERMISSION",
-                "Permission Error",
+                "권한 오류",
                 403);
         this.requiredPermission = requiredPermission;
     }
@@ -22,7 +22,7 @@ public class InsufficientPermissionException extends BaseException {
     public InsufficientPermissionException(String requiredPermission, String message, Throwable cause) {
         super("권한이 부족합니다: " + message + " (필요한 권한: " + requiredPermission + ")",
                 "INSUFFICIENT_PERMISSION",
-                "Permission Error",
+                "권한 오류",
                 403,
                 cause);
         this.requiredPermission = requiredPermission;

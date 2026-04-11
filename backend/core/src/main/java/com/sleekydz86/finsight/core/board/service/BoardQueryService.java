@@ -191,13 +191,15 @@ public class BoardQueryService implements BoardQueryUseCase {
                 long totalBoards = boardPersistencePort.countByBoardType(BoardType.FREE) +
                                 boardPersistencePort.countByBoardType(BoardType.NOTICE) +
                                 boardPersistencePort.countByBoardType(BoardType.QNA) +
-                                boardPersistencePort.countByBoardType(BoardType.COMMUNITY);
+                                boardPersistencePort.countByBoardType(BoardType.COMMUNITY) +
+                                boardPersistencePort.countByBoardType(BoardType.MEDIA);
 
                 Map<String, Long> boardsByType = Map.of(
                                 "FREE", boardPersistencePort.countByBoardType(BoardType.FREE),
                                 "NOTICE", boardPersistencePort.countByBoardType(BoardType.NOTICE),
                                 "QNA", boardPersistencePort.countByBoardType(BoardType.QNA),
-                                "COMMUNITY", boardPersistencePort.countByBoardType(BoardType.COMMUNITY));
+                                "COMMUNITY", boardPersistencePort.countByBoardType(BoardType.COMMUNITY),
+                                "MEDIA", boardPersistencePort.countByBoardType(BoardType.MEDIA));
 
                 Map<String, Long> boardsByStatus = Map.of(
                                 "ACTIVE", totalBoards,
