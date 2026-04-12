@@ -12,6 +12,7 @@ FinSight는 미국 경제 뉴스를 주기적으로 크롤링하고, LLM 챗봇 
 ## 기술 스택
 
 ### Backend
+
 - **Java 21** · **Spring Boot 3.5**
 - **모듈 구성**: `web` (REST API) · `core` (비즈니스 로직) · `batch` (배치 작업)
 - Web: Spring Web, Security, JPA, Validation, Actuator, SpringDoc(OpenAPI)
@@ -19,6 +20,7 @@ FinSight는 미국 경제 뉴스를 주기적으로 크롤링하고, LLM 챗봇 
 - Batch: Spring Batch, DJL
 
 ### Frontend
+
 - **React 19** · **TypeScript** · **Vite** (Rolldown)
 - 패키지 매니저: **pnpm**
 
@@ -37,6 +39,7 @@ FinSight/
 ## 실행 방법
 
 ### Backend
+
 ```bash
 cd backend
 ./gradlew :web:bootRun
@@ -46,6 +49,7 @@ cd backend
 ```
 
 ### Frontend
+
 ```bash
 cd frontend
 pnpm install
@@ -53,8 +57,3 @@ pnpm dev
 ```
 
 빌드: `pnpm run build`
-
-## 계획
-
-- **1차**: 뉴스 스크래핑, AI 요약, 사용자 관심 종목 등록
-- **2차**: 알림 기능, 속보·주요 뉴스 사용자 알림 전달
