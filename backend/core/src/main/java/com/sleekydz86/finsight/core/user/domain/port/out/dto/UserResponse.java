@@ -18,9 +18,10 @@ import java.time.LocalDateTime;
           "username": "testuser",
           "nickname": "테스트사용자",
           "email": "test@example.com",
-          "apiKey": "generated-api-key-12345",
           "status": "APPROVED",
           "role": "USER",
+          "otpEnabled": false,
+          "otpVerified": false,
           "createDate": "2024-01-15T10:30:00",
           "modifyDate": "2024-01-15T10:30:00",
           "lastLoginAt": "2024-01-15T10:30:00",
@@ -47,14 +48,17 @@ public class UserResponse {
     @Schema(description = "이메일 주소", example = "test@example.com", maxLength = 100, format = "email")
     private String email;
 
-    @Schema(description = "API 키 (외부 API 호출용)", example = "generated-api-key-12345", maxLength = 64, accessMode = Schema.AccessMode.READ_ONLY)
-    private String apiKey;
-
     @Schema(description = "사용자 상태", example = "APPROVED", implementation = UserStatus.class)
     private UserStatus status;
 
     @Schema(description = "사용자 역할", example = "USER", implementation = UserRole.class)
     private UserRole role;
+
+    @Schema(description = "OTP 사용 여부", example = "false", accessMode = Schema.AccessMode.READ_ONLY)
+    private Boolean otpEnabled;
+
+    @Schema(description = "OTP 검증 완료 여부", example = "false", accessMode = Schema.AccessMode.READ_ONLY)
+    private Boolean otpVerified;
 
     @Schema(description = "계정 생성일시", example = "2024-01-15T10:30:00", type = "string", format = "date-time", accessMode = Schema.AccessMode.READ_ONLY)
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
@@ -99,9 +103,10 @@ public class UserResponse {
                 .username(user.getUsername())
                 .nickname(user.getNickname())
                 .email(user.getEmail())
-                .apiKey(user.getApiKey())
                 .status(user.getStatus())
                 .role(user.getRole())
+                .otpEnabled(Boolean.TRUE.equals(user.getOtpEnabled()))
+                .otpVerified(Boolean.TRUE.equals(user.getOtpVerified()))
                 .createDate(user.getCreatedAt())
                 .modifyDate(user.getUpdatedAt())
                 .lastLoginAt(user.getLastLoginAt())

@@ -143,7 +143,6 @@ public class UserApplicationServiceImpl implements UserApplicationService {
                     .user(UserResponse.from(user))
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
-                    .apiKey(user.getApiKey())
                     .build();
 
         } catch (Exception e) {
@@ -231,7 +230,27 @@ public class UserApplicationServiceImpl implements UserApplicationService {
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        user.updateProfile(request.getUsername(), request.getEmail());
+        String nickname = request.getNickname() != null ? request.getNickname() : user.getNickname();
+        String email = request.getEmail() != null ? request.getEmail() : user.getEmail();
+        user.updateProfile(nickname, email);
+
+        if (request.getUsername() != null && !request.getUsername().isBlank()) {
+            if (!request.getUsername().equals(user.getUsername())
+                    && userPersistencePort.existsByUsername(request.getUsername())) {
+                throw new RuntimeException("이미 사용 중인 사용자명입니다.");
+            }
+            user.setUsername(request.getUsername());
+        }
+
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            PasswordValidationService.PasswordValidationResult validation =
+                    passwordValidationService.validatePassword(request.getPassword());
+            if (!validation.isValid()) {
+                throw new RuntimeException(String.join(", ", validation.getErrors()));
+            }
+            user.changePassword(passwordEncoder.encode(request.getPassword()));
+        }
+
         User savedUser = userPersistencePort.save(user);
         return UserResponse.from(savedUser);
     }
