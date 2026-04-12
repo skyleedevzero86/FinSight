@@ -8,11 +8,10 @@ import { useId, useState } from "react"
 import AuthCard from "@/components/auth/AuthCard"
 import SocialLoginRow from "@/components/auth/SocialLoginRow"
 import { postLogin } from "@/lib/authClient"
+import { FINSIGHT_ACCESS_TOKEN_KEY } from "@/lib/finsightToken"
 
 const inputClass =
   "w-full rounded border border-gray-300 bg-white px-3 py-2.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-finsight-secondary focus:ring-1 focus:ring-finsight-secondary/40"
-
-const TOKEN_KEY = "finsight_access_token"
 
 function extractToken(data: unknown): string | null {
   if (!data || typeof data !== "object") return null
@@ -65,11 +64,11 @@ export default function LoginForm() {
     try {
       if (token) {
         if (remember) {
-          localStorage.setItem(TOKEN_KEY, token)
-          sessionStorage.removeItem(TOKEN_KEY)
+          localStorage.setItem(FINSIGHT_ACCESS_TOKEN_KEY, token)
+          sessionStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
         } else {
-          sessionStorage.setItem(TOKEN_KEY, token)
-          localStorage.removeItem(TOKEN_KEY)
+          sessionStorage.setItem(FINSIGHT_ACCESS_TOKEN_KEY, token)
+          localStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
         }
       }
     } catch {

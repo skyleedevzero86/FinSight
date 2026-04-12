@@ -115,3 +115,83 @@ export async function proxyJsonToFinSight(
     )
   }
 }
+
+export async function mirrorRequestToFinSight(
+  req: Request,
+  backendPathAndQuery: string,
+  init?: { body?: BodyInit | null },
+): Promise<Response> {
+  try {
+    const base = getFinSightBaseUrl()
+    if (!base) return finSightUnavailableResponse()
+
+    const method = req.method
+    const headers: Record<string, string> = {
+      Accept: req.headers.get("accept") ?? "application/json",
+    }
+    const auth = req.headers.get("authorization")
+    if (auth) headers.Authorization = auth
+    const contentType = req.headers.get("content-type")
+    if (
+      contentType &&
+      method !== "GET" &&
+      method !== "HEAD" &&
+      method !== "DELETE"
+    ) {
+      headers["Content-Type"] = contentType
+    }
+
+    const target = `${base}${backendPathAndQuery.startsWith("/") ? "" : "/"}${backendPathAndQuery}`
+    const controller = new AbortController()
+    const timeoutMs = getProxyTimeoutMs()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    let upstream: Response
+    try {
+      const body =
+        init?.body !== undefined
+          ? init.body
+          : method !== "GET" && method !== "HEAD"
+            ? await req.text()
+            : undefined
+      upstream = await fetch(target, {
+        method,
+        headers,
+        body: body === "" ? undefined : body,
+        signal: controller.signal,
+      })
+    } catch (err) {
+      const aborted = isAbortError(err)
+      return upstreamFailureResponse(err, aborted)
+    } finally {
+      clearTimeout(timeoutId)
+    }
+
+    let text: string
+    try {
+      text = await upstream.text()
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[finsightApiProxy] failed to read upstream body:", err)
+      }
+      return jsonResponse(
+        503,
+        "백엔드 응답을 받는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      )
+    }
+
+    const ct = upstream.headers.get("content-type") ?? "application/json"
+    return new Response(text, {
+      status: upstream.status,
+      headers: { "Content-Type": ct },
+    })
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[finsightApiProxy] unexpected error:", err)
+    }
+    return jsonResponse(
+      500,
+      "요청을 처리하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+    )
+  }
+}

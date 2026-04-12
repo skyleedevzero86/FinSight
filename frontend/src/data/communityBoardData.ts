@@ -8,6 +8,7 @@ export const COMMUNITY_NAV = [
 ]
 
 export type BoardRow = {
+  id?: number
   num: number | "pin"
   title: string
   href: string
