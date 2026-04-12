@@ -1,0 +1,382 @@
+@charset "UTF-8";
+
+html,
+body{font-size:16px;line-height:1}
+#container{letter-spacing:-0.075em}
+.wrapper{position:relative;width:1200px;margin:0 auto}
+button.btn_view{width:220px;height:43px;margin:19px 0 32px;background-color:#fbfbfb;text-align:center;font-size:18px;letter-spacing:-0.05em;border:1px solid #7d7d7d}
+button.btn_view i.icon{width:12px;height:12px;margin:-6px 0 0 21px;background:url('//image.imnews.imbc.com/page/include/images/list/arrow_more_plus.png') no-repeat 50% 50%;background-size:100%;vertical-align:middle}
+
+.section_title{position:relative;width:1200px;margin:0 auto 23px;padding-bottom:17px;border-bottom:1px solid #e9e9e9}
+.section_title h2{font-family:'notokr-bold';font-size:26px}
+.section_title .ico_finsight_pick{display:block;width:52px;height:26px;position:absolute;top:0;right:0;background:url('//image.imnews.imbc.com/page/include/images/ico_dable.png') no-repeat 0 50%}
+.dable_w{position:relative;width:1200px;margin:0 auto}
+.dable_w ul.thumb_type li.item{margin-bottom:56px}
+.dable_w ul.thumb_type li.item span.img{margin-bottom:14px}
+.dable_w ul.thumb_type li.item span.img:before{background:none}
+.dable_w ul.thumb_type li.item span.tit{font-size:18px;line-height:30px}
+
+.list_text{margin-bottom:12px}
+.list_text .item{padding:1rem 0;border-bottom:1px solid #f1f1f1}
+.list_text .item a{display:block;font-size:1.333rem}
+.list_text .item strong{margin-right:7px;color:#4f6be5}
+.list_text .item .img{position:relative;overflow:hidden}
+.list_text .item .img:after{content:'';display:block;position:absolute;top:0;left:0;z-index:10;width:100%;height:100%;border:1px solid #000;box-sizing:border-box;opacity:0.16}
+.list_text .item .img img{position:absolute;top:0;left:0;right:0;bottom:0;margin:0 auto}
+
+.list_head,
+.list_table .item{display:table;width:100%}
+.table_type .thead,
+.table_type .tdata{display:table-cell;text-align:center;vertical-align:middle}
+.list_head{background-color:#edf6ff}
+.list_head .thead{color:#4f6be5;background:url('//image.imnews.imbc.com/page/include/images/list/line_table_vertical.png') no-repeat 0 50%;background-size:1px}
+.list_head .thead:first-child{background:none}
+.list_head .tdata{color:#1e1e1e}
+.list_table .item{border-bottom:1px solid #e1e1e2}
+
+.thumb_type{overflow:hidden;text-align:left}
+.thumb_type .item span{display:block}
+.thumb_type .item .img{position:relative;width:100%;padding-top:55.769230%;margin-bottom:6px;overflow:hidden; border-radius:5px; }
+.thumb_type .item .img:before{content:'';display:block;position:absolute;bottom:7%;right:4%;z-index:10;width:22px;height:26px;min-width:11px;min-height:13px;background:url('//image.imnews.imbc.com/page/include/images/list/icon_player.png') no-repeat 0 0;background-size:100%}
+.thumb_type .item .img:after{content:'';display:block;position:absolute;top:0;left:0;z-index:10;width:100%;height:100%;  box-sizing:border-box;opacity:0.16}
+.thumb_type .item img{position:absolute;top:0;right:0;z-index:0;margin:auto}
+.thumb_type .item .tit{display:block;overflow:hidden;font-size:1.333rem;line-height:1.833rem}
+
+.list_thumb_c .item{width:calc(50% - 0.3333rem);margin-right:0.3333rem;margin-bottom:1.417rem;float:left}
+.list_thumb_c .item span.tit{height:3.667rem}
+.mobile .list_thumb_c .item:nth-child(2n){margin-left:0.3333rem;margin-right:0}
+.list_thumb_r{margin-bottom:8px}
+.list_thumb_r .item{width:100%;margin:0;padding:8px 0;border-bottom:1px solid #f1f1f1}
+.list_thumb_r .item:nth-child(2n){margin:0}
+.list_thumb_r .item a{display:table;overflow:hidden;width:100%;font-size:0}
+.list_thumb_r .item span{display:table-cell;vertical-align:middle}
+.list_thumb_r .item .img{padding-top:17.9%;width:32.19%}
+.list_thumb_r .item .txt_w{padding-right:14px;width:calc(67.81% - 14px)}
+.list_thumb_r .item .tit{max-height:3.667rem}
+
+.wrap_list{padding:40px 0}
+.wrap_list .thumb_type .item{width:220px;margin:0 24px 35px 0;height:240px}
+.wrap_list .thumb_type .item:nth-child(5n){margin-right:0}
+.content_spot{margin-bottom:30px;background-color:#f0f7ff}
+.content_spot .wrapper{position:relative;max-height:352px}
+.content_spot .img{position:relative}
+.content_spot .img_m{display:none;background-color:#fff}
+.content_spot .img_logo{position:absolute;top:30%;left:50%;z-index:10;width:17.78%;height:64px;margin:0 0 0 -8.87%}
+.content_spot .img_logo img{text-align:center}
+.content_spot .img_bg{position:relative;height:100%}
+.content_spot .img_bg:after{content:'';display:block;position:absolute;top:0;left:0;right:0;bottom:0;z-index:1;margin:auto;width:100%;height:100%;background:url('//image.imnews.imbc.com/page/include/images/list/layer_title_m_v2.png') no-repeat 50% 100%;background-size:100%}
+.content_spot .img_logo img{position:absolute;top:-50%;left:-50%;right:-50%;bottom:-50%;margin:auto}
+.content_spot .txt{position:absolute;top:0;left:0;z-index:10;width:100%;height:100%;padding-left:52px;font-size:0}
+.content_spot .txt:before{content:'';display:inline-block;width:0;height:100%;vertical-align:middle}
+.content_spot .txt_w{display:inline-block;min-width:450px;vertical-align:middle}
+.content_spot .txt h2.tit,
+.content_spot .txt span{color:#fff}
+.content_spot .txt h2.tit{font-size:40px;font-family:'notokr-medium'}
+.content_spot .broad_info{padding-top:19px;margin-top:17px;background:url('//image.imnews.imbc.com/page/include/images/list/line_title.png') repeat-x 0 0}
+.content_spot .txt span{display:inline-block;font-size:16px}
+.content_spot .broad_info .sub{min-width:60px;margin-right:9px}
+.content_spot .broad_info .sub_txt span{line-height:30px}
+.content_spot .broad_info .sub_txt span:nth-child(2){margin-left:16px}
+.content_area .list_player{position:relative;width:720px;height:400px;text-align:center;margin:0 auto 44px;overflow:hidden}
+.content_area .list_player > div{position:absolute;top:0;width:100%}
+.content_area .list_date{position:relative;margin-bottom:28px;text-align:center}
+
+.mobile .content_spot.mbig .img_logo { display:none; }
+.mobile .content_spot.mbig .txt_w h2.tit { display:none; }
+.mobile .content_spot.mbig .broad_info { display:none; }
+.mobile .content_spot.mbig .img_bg:after { background:none; }
+
+.list_date a,
+.list_date .date_w{vertical-align:middle}
+.list_date a.btn_date{position:absolute;top:0;left:37.5%;width:32px;height:32px;background:url('//image.imnews.imbc.com/page/include/images/list/arrow_calendar.png') no-repeat 0 50%}
+.list_date a.date_next{left:auto;right:37.5%;background-position:100% 50%}
+.list_date .date_w{position:relative;display:inline-block;line-height:32px;padding:0 23px;font-size:0}
+.list_date .date_w button.ui-datepicker-trigger,
+.list_date .date_w button.btn_year,
+.list_date input.datepicker,
+.list_date input.date_year{letter-spacing:-0.03rem;vertical-align:middle;cursor:pointer}
+.list_date input.datepicker,
+.list_date input.date_year{display:inline-block;width:152px;font-family:"notokr-medium";font-size:30px;height:32px;line-height:32px;text-align:center}
+.list_date input.datepickerYear{width:80px}
+.list_date .date_w button.ui-datepicker-trigger,
+.list_date .date_w button.btn_year{width:25px;height:28px;margin-left:17px;background:url('//image.imnews.imbc.com/page/include/images/list/icon_calendar.png') no-repeat 50% 0;text-indent:-9999px}
+.list_date select.select_year{display:none;position:absolute;left:0;top:0;width:100%;height:32px;background-color:#fff;font-size:18px}
+.list_date select.select_year.active{display:block;z-index:10}
+#ui-datepicker-div{display:none}
+.list_date .layer_calendar{position:absolute;top:-13px;left:50%;z-index:20;width:320px;height:auto;margin-left:-160px}
+.list_date .ui-datepicker{padding-bottom:10px;background-color:#fff;font-size:14px;color:#1e1e1e;border:1px solid #4f6be6;box-sizing:border-box}
+.list_date .layer_calendar .ui-datepicker-header{position:relative;z-index:10;display:block;width:100%;height:55px;margin-bottom:8px;border-bottom:1px solid #f0f0f0}
+.list_date .layer_calendar .ui-datepicker-title{font-size:0;line-height:55px;vertical-align:middle}
+.list_date .layer_calendar select.ui-datepicker-year,
+.list_date .layer_calendar .date_title{vertical-align:middle}
+.list_date .layer_calendar .date_title{display:inline-block;margin-left:7.5px;font-size:20px;line-height:32px;font-family:'notokr-bold';letter-spacing:-0.02em}
+.list_date .layer_calendar select.ui-datepicker-year::-ms-expand{display:none}
+.list_date .layer_calendar select.ui-datepicker-year{display:inline-block;width:90px;height:32px;background:url('//image.imnews.imbc.com/page/include/images/list/arrow_calendar_select.png') no-repeat 95% 50%;background-size:32px;font-size:20px;font-family:'notokr-bold';border:none;-webkit-appearance:none;-moz-appearance:none;appearance:none}
+.list_date .layer_calendar select.ui-datepicker-year option:checked,
+.list_date .layer_calendar select.ui-datepicker-year option:hover{background:#4f6be6;color:#fff}
+.list_date .layer_calendar div.ui-datepicker-year,
+.list_date .layer_calendar div.ui-datepicker-month{display:none}
+.list_date .layer_calendar a.ui-corner-all{position:absolute;top:50%;display:inline-block;width:18px;height:20px;margin-top:-9px;background:url('//image.imnews.imbc.com/page/include/images/list/arrow_calendar_in.png') no-repeat 0 50%;background-size:36px}
+.list_date .layer_calendar a.ui-datepicker-prev{left:36px}
+.list_date .layer_calendar a.ui-datepicker-next{right:36px;background-position:100% 50%}
+.list_date .layer_calendar a.ui-corner-all span{font-size:0}
+.list_date .layer_calendar table{width:100%;padding-bottom:6px}
+.list_date .layer_calendar table th,
+.list_date .layer_calendar table td{padding-bottom:6px}
+.list_date .layer_calendar table th span,
+.list_date .layer_calendar table td a,
+.list_date .layer_calendar table td span{display:block;width:24px;height:24px;margin:0 auto;font-size:13px;text-align:center;line-height:24px;letter-spacing:-0.03rem;border-radius:50%}
+.list_date .layer_calendar table td span.ui-state-default{color:#e1e1e2}
+.list_date .layer_calendar table th:first-child,
+.list_date .layer_calendar table td:first-child a{color:#f00}
+.list_date .layer_calendar table th:last-child,
+.list_date .layer_calendar table td:last-child a{color:#4f6be6}
+.list_date .layer_calendar table td.ui-datepicker-current-day a{background-color:#f0f0f0}
+.list_date .layer_calendar table td.ui-datepicker-today a{background-color:#4f6be6;color:#fff}
+.list_date .date_year{display:inline-block;position:static;width:auto;margin:0 40px;vertical-align:middle}
+.list_date .date_year .ui-datepicker{padding-bottom:0;background:none;border:none}
+.list_date .date_year .ui-datepicker-calendar{display:none}
+.list_date .date_year #ui-datepicker-div{padding-bottom:0}
+.list_date .date_year .ui-datepicker-header{height:32px;margin-bottom:0;border-bottom:none}
+.list_date .date_year .ui-datepicker-title{line-height:32px}
+.list_date .date_year a.ui-corner-all{display:none}
+.list_date .date_year select.ui-datepicker-year{width:130px;height:32px;padding-left:22px;font-size:26px;line-height:26px}
+.list_date ul.vod_box{position:absolute;top:0;right:0;padding:5px 12px;font-size:0;box-sizing:border-box;border:1px solid #e7e7e7; border-radius:5px;}
+.list_date ul.vod_box li{display:inline-block;vertical-align:middle}
+.list_date ul.vod_box button{font-size:14px;height:20px;line-height:20px;letter-spacing:-0.065rem}
+.list_date ul.vod_box li.vod_all button{padding-left:12px;color:#333;background:url('//image.imnews.imbc.com/page/include/images/list/arrow_play.png') no-repeat 0 50%}
+.list_date ul.vod_box li.part1{margin-left:10px}
+.list_date ul.vod_box li.vod_part button{color:#757575}
+.list_date ul.vod_box li.part2{margin-left:10px;padding-left:10px;background:url('//image.imnews.imbc.com/page/include/images/list/line_vertical.png') no-repeat 0 50%;background-size:1px}
+.layer_popup{z-index:110}
+.bg_dim{z-index:100}
+.content_area .thumb_type .img{margin-bottom:16px}
+.content_area .thumb_type .img:before{display:none}
+.content_area .thumb_type .img img{width:100%}
+.content_area .thumb_type .tit{height:58px;margin-bottom:17px;font-family:'notokr-medium';font-size:20px;line-height:29px}
+.content_area .thumb_type .sub{display:none;margin-bottom:13px;font-family:'notokr-medium';color:#7d7d7d;font-size:18px;line-height:30px;text-overflow:ellipsis;overflow:hidden;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-wrap:break-word}
+.content_area .thumb_type a:hover .sub{text-decoration:underline;text-decoration-color:#7d7d7d}
+.content_area .thumb_type .sub2{font-family:'notokr-medium';color:#7d7d7d;font-size:16px}
+.content_area .thumb_type .sub2 span{display:inline-block}
+.content_area .thumb_type .sub2 span:nth-child(2){margin-left:5px}
+.content_area .thumb_type .img_default .img{display:none}
+.content_area .thumb_type .img_default .tit{margin-bottom:10px}
+.content_area .thumb_type .img_default .sub{display:block;display:-webkit-box;height:7.5rem;margin-bottom:24px;font-family:'notokr-regular';font-size:16px;-webkit-line-clamp:4}
+.content_area .thumb_type .ico_vod.img:before{display:block}
+.content_area .thumb_type .first{width:712px;height:auto}
+.content_area .thumb_type .first .img{margin-bottom:25px}
+.content_area .thumb_type .first .tit{height:auto;margin-bottom:13px;font-size:32px;line-height:1}
+.content_area .thumb_type .first .sub{display:block;overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.content_area .thumb_type .first.img_default .img{display:block}
+.content_area .thumb_type .first.img_default .sub{height:auto;margin-bottom:13px;font-size:18px;font-family:'notokr-medium';}
+.content_area .list_top{margin-bottom:30px;border-bottom:1px solid #b8b8b8}
+.content_area .list_top .thumb_type li:nth-child(3),
+.content_area .list_top .thumb_type li:nth-child(5){margin-right:0}
+.content_area .list_bottom{margin-bottom:55px;text-align:center;border-bottom:2px solid #000}
+.content_area .list_bottom .thumb_type li{margin-bottom:55px}
+
+.content_tab { padding:0 20px; margin-bottom:30px; }
+.content_tab ul:after { content:''; display:block; clear:both; }
+.content_tab ul li { float:left; width:auto; margin-right:20px; }
+.content_tab ul li a { display:block; text-align:center; padding:10px 20px; box-sizing:border-box; background:#193471; border-radius:5px; color:#f3f3f3; }
+.content_tab ul li a:last-child { margin-right:0; }
+
+.list_radio .list_date{margin-bottom:47px}
+.list_radio .list_area{overflow:hidden;margin-bottom:55px;padding-bottom:100px;letter-spacing:-0.06em;border-bottom:2px solid #000}
+.list_radio .list_left,
+.list_radio .list_right{float:left;width:50%;box-sizing:border-box}
+.list_audio .list_center { float:none!important; margin:0 auto; }
+.list_radio .list_left{padding-right:13px}
+.list_radio .list_right{padding-left:13px}
+.list_radio .time{width:30%}
+.list_radio .r_name{width:45%}
+.list_radio .r_vod{width:25%}
+.list_radio .r_vod a{display:inline-block;width:57px;height:57px}
+.list_radio .r_vod a img{width:100%;vertical-align:middle}
+.list_radio .list_head{margin-bottom:8px}
+.list_radio .thead{padding:18px 20px;font-size:22px;line-height:26px;box-sizing:border-box}
+.list_radio .tdata{height:57px;padding:12px 0;font-size:24px;line-height:28px}
+.list_radio .list_table .time{font-family:'notokr-light';color:#757575}
+.list_radio .list_table .r_name{padding:12px 44px;text-align:left;}
+.list_radio .list_table .r_name.missmatch:after { content: '!'; color:crimson; margin-left:5px; }
+.list_audio .list_table .r_chname { text-align:center; }
+.list_audio .list_table .r_name { text-align:left; }
+
+.list_frame .content_area .thumb_type .img,
+.list_frame .content_area .thumb_type .first .img{margin-bottom:0}
+.list_frame .content_area .thumb_type .txt_w{ padding:10px 0 15px; border-top:none;box-sizing:border-box}
+.list_frame .content_area .thumb_type .tit{height:58px;margin-bottom:21px;font-size:18px;line-height:30px}
+.list_frame .content_area .list_bottom .thumb_type li{margin-bottom:40px}
+.list_frame .list_top{overflow:hidden;padding-bottom:30px;margin-bottom:40px}
+.list_frame .list_top .thumb_type{float:left}
+.list_frame .list_top .thumb_type li.item{height:auto;margin:0 0 20px}
+.list_frame .list_top ul.list_left{width:712px;margin-right:14px}
+.list_frame .list_top ul.list_left li:nth-child(3){margin:0 25px}
+.list_frame .list_top ul.list_left .tit{font-size:18px;line-height:30px}
+.list_frame .list_top ul.list_left .txt_w{ padding:10px 0 15px; }
+.list_frame .list_top ul.list_left li:first-child{width:100%}
+.list_frame .list_top ul.list_left li:first-child .txt_w{ padding:21px 0; }
+.list_frame .list_top ul.list_left li:first-child .tit{height:88px;margin-bottom:15px;font-size:30px;line-height:44px}
+.list_frame .list_top ul.list_right{width:460px;margin-left:14px}
+.list_frame .list_top ul.list_right li.item{width:100%;height:auto;margin-bottom:20px}
+.list_frame .list_top ul.list_right .txt_w{ padding:21px 0; }
+.list_frame .list_top ul.list_right .tit{height:68px;margin-bottom:18px;font-size:22px;line-height:34px}
+
+.extra .content_area .list_top .thumb_type li:first-child{display:none}
+.extra .content_area .list_top .thumb_type li{margin-right:24px}
+.extra .content_area .list_top .thumb_type li:nth-child(4),
+.extra .content_area .list_top .thumb_type li:nth-child(6){margin-right:0}
+
+@media screen and (max-width: 320px){
+    .list_radio .time{width:28%}
+    .list_radio .r_name{width:42%}
+    .list_radio .r_vod{width:30%}
+}
+@media screen and (max-width: 360px){}
+@media screen and (max-width: 375px){
+    .content_spot .img_logo{top:23%}
+}
+@media screen and (max-width: 414px){}
+@media screen and (max-width: 480px){}
+@media screen and (max-width: 768px){
+}
+@media screen and (max-width: 1024px){
+    .wrap_list{padding:0}
+    .wrap_list .thumb_type .item{width:100%;margin:0;height:auto;}
+    button.btn_view{margin:0 0 24px;background-color:#fff}
+    button.btn_view strong{color:#4f6be5}
+    button.btn_view i.icon{margin:-3px 0 0 6px}
+    .section_title{overflow:hidden;position:relative;width:100%;overflow:hidden;padding:24px 20px 12px;margin-bottom:8px;border-bottom:1px solid #e5e5e5;box-sizing:border-box}
+    .section_title h2{float:left;width:75%;font-family:inherit;font-weight:700;font-size:1.5rem}
+    .section_title .ico_finsight_pick{float:right;display:block;position:static;width:52px;height:18px;background:url('//image.imnews.imbc.com/page/include/images/ico_dable.png') no-repeat 0 50%}
+    .dable_w{width:100%;padding:10px;box-sizing:border-box}
+    .dable_w ul.thumb_type li.item{margin:0}
+    .dable_w ul.thumb_type li.item span.img{margin-bottom:0}
+    .dable_w ul.thumb_type li.item span.tit{font-size:16px;line-height:23px}
+    .mobile .content_spot{margin-bottom:12px;border-bottom:none}
+    .content_spot .wrapper{padding:0}
+    .content_spot .img_m{display:block}
+    .content_spot .img_pc{display:none}
+    .content_spot .txt{top:auto;bottom:0;padding-left:0}
+    .content_spot .txt:before{vertical-align:bottom}
+    .content_spot .txt_w{min-width:0;width:100%;padding-bottom:14px;text-align:center}
+    .content_spot .broad_info{padding:0;margin:0;background:none}
+    .content_spot .txt h2.tit{margin-bottom:5px; line-height:1.2; font-size:18px;font-family:inherit}
+    .content_spot .txt span{font-size:14px}
+    .content_spot .broad_info .info_list:nth-child(2){display:none}
+    .content_spot .broad_info .sub{display:none}
+    .content_spot .broad_info .sub_txt span{line-height:20px}
+    .content_spot .broad_info .sub_txt span:nth-child(2){padding-left:8px;margin-left:8px;background:url('//image.imnews.imbc.com/page/include/images/list/line_title_vertical.png') no-repeat 0 50%;background-size:1px}
+    .content_area .list_date{padding:0;margin-bottom:0;text-align:right;overflow:visible}
+    .content_area .list_player{width:100%;height:auto;margin-bottom:15px;padding-top:56.26%;border-bottom:1px solid #f0f0f0}
+    .list_date .list_date_bar{padding:0 20px 12px;margin-bottom:7px;text-align:center;border-bottom:1px solid #f0f0f0}
+    .list_date a.btn_date{left:20px;background-image:url('//image.imnews.imbc.com/page/include/images/list/arrow_calendar_m.png');background-size:64px}
+    .list_date a.date_next{left:auto;right:20px}
+    .list_date .date_w span.today,
+    .list_date input.datepicker,
+    .list_date input.date_year{font-size:18px;font-family:inherit;letter-spacing:-0.02em;height:19px;line-height:20px}
+    .list_date input.datepicker{width:auto;max-width:110px}
+    .list_date input#datepickerYear{width:45px}
+    .list_date .date_w button.ui-datepicker-trigger,
+    .list_date .date_w button.btn_year{width:17px;height:18.5px;margin:1px 0 0 8px;background-image:url('//image.imnews.imbc.com/page/include/images/list/icon_calendar_m.png');background-size:17px}
+    .list_date .layer_calendar{top:0;left:0;right:0;width:calc(100% - 40px);max-width:440px;margin:auto}
+    .list_date .layer_calendar .date_title span.day{font-family:inherit;font-weight:700}
+    .list_date .layer_calendar a.ui-corner-all{margin-top:-10px}
+    .list_date .layer_calendar select.ui-datepicker-year{width:77px;background-size:20px}
+    .list_date .date_year{width:auto}
+    .list_date .date_year select.ui-datepicker-year{width:120px;padding-left:32px;line-height:34px;font-size:20px}
+    .list_date .list_vod{padding-bottom:8px;margin:0 20px;border-bottom:1px solid #f1f1f1}
+    .list_date ul.vod_box{position:static;display:inline-block;margin:0}
+    .list_date ul.vod_box li.vod_all button{background-image:url('//image.imnews.imbc.com/page/include/images/list/arrow_play_m.png');background-size:9px}
+    .content_area{border-bottom:8px solid #f1f1f1}
+    .content_area ul.thumb_type .item{width:100%;height:auto;float:none;margin-bottom:0}
+    .content_area ul.thumb_type .item .img{margin-bottom:0}
+	.content_area ul.thumb_type .item .tit{width:100%;height:auto;margin-bottom:0;  font-size:16px;line-height:21px;font-family:inherit}
+    .content_area ul.thumb_type .item .sub{display:none}
+    .content_area ul.thumb_type .item .sub2{font-size:12px;font-family:inherit;font-weight:400;letter-spacing:-0.02em}
+    .content_area ul.thumb_type .item .sub2 span{display:inline-block;margin-top:7px}
+    .content_area ul.thumb_type .item span:empty {display:none;}
+    .content_area ul.thumb_type .item .ico_vod.img:before{width:11px;height:13px}
+    .content_area ul.thumb_type .first{width:100%;height:auto}
+    .content_area ul.thumb_type .first .img{margin-bottom:0}
+    .content_area ul.thumb_type .first .tit{height:auto;margin-bottom:0;max-height:42px;font-size:16px;line-height:21px;font-family:inherit}
+    .content_area ul.thumb_type .first .sub{display:none}
+    .content_area ul.thumb_type .first.img_default .img{display:none}
+    .content_area ul.thumb_type .first.img_default .sub{display:none}
+    .content_area .list_top{margin-bottom:0;padding-bottom:0;border-bottom:none}
+    .content_area .list_top .thumb_type{margin-bottom:0}
+    .content_area .list_bottom{margin-bottom:0;border:none}
+    .content_area .list_bottom .thumb_type li{margin-bottom:0}
+    .content_tab { margin-bottom:4px; padding:0 5px; }
+	.content_tab .wrapper { padding:0; }
+    .content_tab ul li { width:22%; margin-right:4%; }
+	.content_tab ul li:last-child { margin-right:0; }
+	.content_tab ul li a { padding:1px 3px; line-height:34px; font-size:11px; }
+
+    .list_program ul.thumb_type{margin-bottom:8px}
+    .list_program ul.thumb_type .item{width:100%;margin:0;padding:8px 0;border-bottom:1px solid #f1f1f1}
+    .list_program ul.thumb_type .item:nth-child(2n){margin:0}
+    .list_program ul.thumb_type .item a{display:block;overflow:hidden;width:100%;font-size:0}
+    .list_program ul.thumb_type .item span{display:inline-block;vertical-align:middle}
+    .list_program ul.thumb_type .item .img{padding-top:17.9%;width:32.19%;background-color:#000}
+    .list_program ul.thumb_type .item .txt_w{padding-left:14px;width:calc(67.81% - 14px)}
+    .list_program ul.thumb_type .item .tit{max-height:3.667rem}
+
+    .content_area .list_radio{border:none;padding-bottom:0}
+    .list_radio .list_area{border:none;padding-bottom:0}
+    .list_radio .table_type{width:100%}
+    .list_radio .list_head{margin-bottom:5px}
+    .list_radio .list_right .list_head{display:none}
+    .list_radio .content_spot{margin-bottom:0}
+    .list_radio .content_spot .img_m{height:52px;min-height:0;background-color:#4f6be5}
+    .list_radio .content_spot .img_m:after{display:none}
+    .list_radio .content_spot .txt_w{overflow:hidden;padding:0 20px;text-align:left;box-sizing:border-box}
+    .list_radio .content_spot .txt{top:0;bottom:auto;padding-bottom:0}
+    .list_radio .content_spot .txt h2.tit,
+    .list_radio .content_spot .broad_info{display:inline-block}
+    .list_radio .content_spot .txt h2.tit{width:50%;margin-bottom:13px}
+    .list_radio .content_spot .broad_info{position:absolute;right:20px;bottom:11px;width:50%;text-align:right}
+    .list_radio .content_area .list_date{margin-bottom:18px}
+    .list_radio .list_left{padding-right:0}
+    .list_radio .list_right{padding-left:0}
+    .list_radio .thead{padding:13px 12px;font-size:14px;line-height:18px}
+    .list_radio .tdata{height:36px;padding:8.5px 0;font-size:16px;line-height:20px}
+    .list_radio .r_vod a{display:inline-block;width:36px;height:36px}
+    .list_radio .list_table .r_name{padding:8.5px 15px;text-align:left}
+    .list_radio .list_table .time{letter-spacing:-0.02em}
+
+    .plus .content_spot .img_bg:after{background-image:url('//image.imnews.imbc.com/page/include/images/list/layer_title_group_m_v2.png')}
+    .plus .content_spot .txt:before{vertical-align:middle}
+    .plus .content_spot .txt_w{padding:0 16px;box-sizing:border-box}
+    .plus .content_spot .txt h2.tit{margin-bottom:0;font-size:20px}
+    .plus .content_spot .sub_txt{margin-top:18px}
+    .plus .content_spot .sub_txt span{line-height:20px}
+
+    .list_frame .list_date .list_date_bar{margin-bottom:20px}
+    .list_frame .content_area ul.thumb_type{float:none;width:100%;margin:0}
+    .list_frame .content_area ul.thumb_type .item{width:100%;margin:0 0 20px}
+    .list_frame .content_area ul.thumb_type .item .tit{height:46px;font-size:16px;line-height:23px;margin-bottom:12px;font-weight:500}
+	.list_frame .content_area ul.thumb_type .item .txt_w{ padding:15px 0 18px; }
+	.list_frame .list_top ul.list_left li:first-child .txt_w{ padding:15px 0 18px; }
+    .list_frame .list_top ul.list_left li:first-child .tit{height:3.833rem;margin-bottom:12px;font-size:16px;line-height:23px}
+    .list_frame .list_top ul.list_left li:nth-child(3){margin:0 0 20px}
+
+    .category .content_spot .img_bg:after{background-image:url('//image.imnews.imbc.com/page/include/images/list/layer_title_group_m_v2.png')}
+    .category .content_spot .txt h2.tit{margin-bottom:0}
+    .category .content_spot .txt_w{padding-bottom:0}
+    .category .content_spot .txt:before{vertical-align:middle}
+    .category .list_top ul.thumb_type li:first-child{border-top:none}
+
+    .broad .content_spot .info_list:nth-child(1){display:none}
+    .broad .content_spot .info_list:nth-child(2){display:inline-block}
+
+    .extra .content_area .list_top ul.thumb_type li:first-child{display:block}
+
+    .content_area ul.thumb_type .img_default a:before{content:'';display:inline-block;width:0;padding-top:17.9%;background-color:#ddd;vertical-align:middle}
+    .content_area ul.thumb_type .img_default .img{display:none}
+    .content_area ul.thumb_type .img_default .txt_w{width:100%;height:100%;padding-left:0}
+    .content_area ul.thumb_type .img_default .tit{max-height:4.25rem;height:auto;margin-bottom:0}
+    .content_area ul.thumb_type .img_default .sub{display:none}
+    .content_area ul.thumb_type .img_default .sub2 span{margin-top:7px}
+}
+@media screen and (max-width: 1200px){}
