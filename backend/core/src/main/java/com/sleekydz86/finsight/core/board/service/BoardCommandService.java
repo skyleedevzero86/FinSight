@@ -50,12 +50,13 @@ public class BoardCommandService implements BoardCommandUseCase {
     public Board createBoard(String userEmail, BoardCreateRequest request) {
         log.info("Creating board for user: {}", userEmail);
 
+        BoardStatus initialStatus = request.getStatus() != null ? request.getStatus() : BoardStatus.ACTIVE;
         Board board = Board.builder()
                 .title(request.getTitle())
                 .content(request.getContent())
                 .authorEmail(userEmail)
                 .boardType(request.getBoardType())
-                .status(BoardStatus.ACTIVE)
+                .status(initialStatus)
                 .hashtags(request.getHashtags())
                 .build();
 
@@ -80,6 +81,9 @@ public class BoardCommandService implements BoardCommandUseCase {
                 request.getTitle(),
                 request.getContent(),
                 request.getHashtags());
+        if (request.getStatus() != null) {
+            updatedBoard = updatedBoard.updateStatus(request.getStatus());
+        }
 
         Board savedBoard = boardPersistencePort.save(updatedBoard);
         log.info("Board {} updated successfully", boardId);
@@ -129,7 +133,6 @@ public class BoardCommandService implements BoardCommandUseCase {
                 return boardPersistencePort.save(updatedBoard);
             }
         } else {
-            // User hasn't reacted, add like
             Board updatedBoard = board.incrementLike();
             boardReactionPersistencePort.save(BoardReaction.builder()
                     .boardId(boardId)

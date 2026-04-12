@@ -1,5 +1,6 @@
 package com.sleekydz86.finsight.core.board.domain.port.in.dto;
 
+import com.sleekydz86.finsight.core.board.domain.BoardStatus;
 import com.sleekydz86.finsight.core.board.domain.BoardType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,24 +22,34 @@ public class BoardCreateRequest {
 
     private final List<String> hashtags;
 
+    private final BoardStatus status;
+
     public BoardCreateRequest() {
         this.title = "";
         this.content = "";
         this.boardType = BoardType.COMMUNITY;
         this.hashtags = List.of();
+        this.status = null;
     }
 
     public BoardCreateRequest(String title, String content, BoardType boardType, List<String> hashtags) {
+        this(title, content, boardType, hashtags, null);
+    }
+
+    public BoardCreateRequest(String title, String content, BoardType boardType, List<String> hashtags,
+            BoardStatus status) {
         this.title = title;
         this.content = content;
         this.boardType = boardType;
         this.hashtags = hashtags != null ? hashtags : List.of();
+        this.status = status;
     }
 
     public String getTitle() { return title; }
     public String getContent() { return content; }
     public BoardType getBoardType() { return boardType; }
     public List<String> getHashtags() { return hashtags; }
+    public BoardStatus getStatus() { return status; }
 
     @Override
     public String toString() {
@@ -47,6 +58,7 @@ public class BoardCreateRequest {
                 ", content='" + content + '\'' +
                 ", boardType=" + boardType +
                 ", hashtags=" + hashtags +
+                ", status=" + status +
                 '}';
     }
 }

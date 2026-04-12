@@ -103,4 +103,20 @@ public interface BoardJpaRepository extends JpaRepository<BoardJpaEntity, Long> 
     @Modifying
     @Query("UPDATE BoardJpaEntity b SET b.reportCount = b.reportCount + 1 WHERE b.id = :boardId")
     void incrementReportCount(@Param("boardId") Long boardId);
+
+    List<BoardJpaEntity> findByStatusAndReportCountGreaterThanEqualOrderByReportCountDesc(
+            BoardStatus status, int minReportCount);
+
+    @Query("""
+            SELECT b FROM BoardJpaEntity b
+            WHERE b.boardType = :boardType AND b.status = :status
+            AND (:kw = '' OR LOWER(b.title) LIKE LOWER(CONCAT('%', :kw, '%'))
+                 OR LOWER(b.content) LIKE LOWER(CONCAT('%', :kw, '%')))
+            ORDER BY b.createdAt DESC
+            """)
+    Page<BoardJpaEntity> findEditorDocuments(
+            @Param("boardType") BoardType boardType,
+            @Param("status") BoardStatus status,
+            @Param("kw") String kw,
+            Pageable pageable);
 }

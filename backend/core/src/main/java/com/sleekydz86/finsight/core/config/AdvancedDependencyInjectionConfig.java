@@ -12,13 +12,6 @@ import com.sleekydz86.finsight.core.news.service.NewsAiProcessingService;
 import com.sleekydz86.finsight.core.news.service.NewsPersistenceService;
 import com.sleekydz86.finsight.core.news.service.NewsNotificationService;
 import com.sleekydz86.finsight.core.news.service.PersonalizedNewsService;
-import com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort;
-import com.sleekydz86.finsight.core.board.domain.port.out.BoardReactionPersistencePort;
-import com.sleekydz86.finsight.core.board.domain.port.out.BoardScrapPersistencePort;
-import com.sleekydz86.finsight.core.board.domain.port.out.BoardReportPersistencePort;
-import com.sleekydz86.finsight.core.board.domain.port.out.BoardFilePersistencePort;
-import com.sleekydz86.finsight.core.board.service.BoardQueryService;
-import com.sleekydz86.finsight.core.board.service.BoardCommandService;
 import com.sleekydz86.finsight.core.comment.domain.port.out.CommentPersistencePort;
 import com.sleekydz86.finsight.core.comment.domain.port.out.CommentReactionPersistencePort;
 import com.sleekydz86.finsight.core.comment.domain.port.out.CommentReportPersistencePort;
@@ -51,11 +44,6 @@ public class AdvancedDependencyInjectionConfig {
     private final NewsAiProcessingService newsAiProcessingService;
     private final NewsPersistenceService newsPersistenceService;
     private final PersonalizedNewsService personalizedNewsService;
-    private final BoardPersistencePort boardPersistencePort;
-    private final BoardReactionPersistencePort boardReactionPersistencePort;
-    private final BoardScrapPersistencePort boardScrapPersistencePort;
-    private final BoardReportPersistencePort boardReportPersistencePort;
-    private final BoardFilePersistencePort boardFilePersistencePort;
     private final CommentPersistencePort commentPersistencePort;
     private final CommentReactionPersistencePort commentReactionPersistencePort;
     private final CommentReportPersistencePort commentReportPersistencePort;
@@ -75,11 +63,6 @@ public class AdvancedDependencyInjectionConfig {
             NewsAiProcessingService newsAiProcessingService,
             NewsPersistenceService newsPersistenceService,
             PersonalizedNewsService personalizedNewsService,
-            BoardPersistencePort boardPersistencePort,
-            BoardReactionPersistencePort boardReactionPersistencePort,
-            BoardScrapPersistencePort boardScrapPersistencePort,
-            BoardReportPersistencePort boardReportPersistencePort,
-            BoardFilePersistencePort boardFilePersistencePort,
             CommentPersistencePort commentPersistencePort,
             CommentReactionPersistencePort commentReactionPersistencePort,
             CommentReportPersistencePort commentReportPersistencePort,
@@ -97,11 +80,6 @@ public class AdvancedDependencyInjectionConfig {
         this.newsAiProcessingService = newsAiProcessingService;
         this.newsPersistenceService = newsPersistenceService;
         this.personalizedNewsService = personalizedNewsService;
-        this.boardPersistencePort = boardPersistencePort;
-        this.boardReactionPersistencePort = boardReactionPersistencePort;
-        this.boardScrapPersistencePort = boardScrapPersistencePort;
-        this.boardReportPersistencePort = boardReportPersistencePort;
-        this.boardFilePersistencePort = boardFilePersistencePort;
         this.commentPersistencePort = commentPersistencePort;
         this.commentReactionPersistencePort = commentReactionPersistencePort;
         this.commentReportPersistencePort = commentReportPersistencePort;
@@ -138,17 +116,6 @@ public class AdvancedDependencyInjectionConfig {
     public NewsCommandService newsCommandService(@Lazy NewsNotificationService newsNotificationService) {
         return new NewsCommandService(newsScrapService, newsAiProcessingService, newsPersistenceService,
                 newsNotificationService, newsProcessingExecutor);
-    }
-
-    @Bean
-    public BoardQueryService boardQueryService() {
-        return new BoardQueryService(boardPersistencePort, boardReactionPersistencePort, boardScrapPersistencePort);
-    }
-
-    @Bean
-    public BoardCommandService boardCommandService() {
-        return new BoardCommandService(boardPersistencePort, boardReactionPersistencePort, boardReportPersistencePort,
-                boardScrapPersistencePort, boardFilePersistencePort);
     }
 
     @Bean

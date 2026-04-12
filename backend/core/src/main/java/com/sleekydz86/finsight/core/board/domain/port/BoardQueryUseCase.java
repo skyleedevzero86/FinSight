@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.board.domain.port;
 
 import com.sleekydz86.finsight.core.board.domain.Board;
+import com.sleekydz86.finsight.core.board.domain.BoardStatus;
 import com.sleekydz86.finsight.core.board.domain.BoardType;
 import com.sleekydz86.finsight.core.board.domain.port.in.dto.*;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
@@ -9,6 +10,9 @@ import java.util.List;
 
 public interface BoardQueryUseCase {
     PaginationResponse<BoardListResponse> getBoards(BoardSearchRequest request);
+
+    PaginationResponse<BoardListResponse> getEditorDocuments(
+            BoardType boardType, BoardStatus status, String keyword, int page, int size);
 
     BoardDetailResponse getBoardDetail(Long boardId);
 
