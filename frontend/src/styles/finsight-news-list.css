@@ -241,13 +241,8 @@ button.btn_view i.icon{width:12px;height:12px;margin:-6px 0 0 21px;background:ur
     .list_radio .r_name{width:42%}
     .list_radio .r_vod{width:30%}
 }
-@media screen and (max-width: 360px){}
 @media screen and (max-width: 375px){
     .content_spot .img_logo{top:23%}
-}
-@media screen and (max-width: 414px){}
-@media screen and (max-width: 480px){}
-@media screen and (max-width: 768px){
 }
 @media screen and (max-width: 1024px){
     .wrap_list{padding:0}
@@ -388,4 +383,3 @@ button.btn_view i.icon{width:12px;height:12px;margin:-6px 0 0 21px;background:ur
     .content_area ul.thumb_type .img_default .sub{display:none}
     .content_area ul.thumb_type .img_default .sub2 span{margin-top:7px}
 }
-@media screen and (max-width: 1200px){}
