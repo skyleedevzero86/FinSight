@@ -26,16 +26,8 @@ function lineToParagraph(line: string): string {
   return `<p>${out}</p>`
 }
 
-function applyFinsightBranding(body: string): string {
-  return body
-    .replace(/제이티비씨\(주\)/g, "핀사이트 주식회사")
-    .replace(/제이티비씨㈜/g, "핀사이트 주식회사")
-    .replace(/\bJTBC\b/g, "finsight")
-}
-
 function markdownBodyToPolicyHtml(body: string): string {
-  const normalized = applyFinsightBranding(body)
-  const lines = normalized.split(/\r?\n/)
+  const lines = body.split(/\r?\n/)
   const blocks: string[] = []
   for (const line of lines) {
     const t = line.trim()

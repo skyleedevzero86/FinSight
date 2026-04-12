@@ -289,7 +289,13 @@
   border: 1px solid var(--fcb-border);
   border-radius: 0.313rem;
   font-size: 14px;
-  outline: 0;
+}
+
+.fcb-page .bbs_search .sch_select:focus-visible,
+.fcb-page .bbs_search .sch_input:focus-visible,
+.fcb-page .bbs_search .sch_button:focus-visible {
+  outline: 2px solid #0b57d0;
+  outline-offset: 2px;
 }
 
 .fcb-page .bbs_search .sch_select {
