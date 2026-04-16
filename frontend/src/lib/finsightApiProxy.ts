@@ -12,6 +12,32 @@ function jsonResponse(status: number, message: string) {
   })
 }
 
+function copyUpstreamHeaders(upstream: Response): Headers {
+  const headers = new Headers()
+  const contentType = upstream.headers.get("content-type") ?? "application/json"
+  headers.set("Content-Type", contentType)
+
+  const cacheControl = upstream.headers.get("cache-control")
+  if (cacheControl) headers.set("Cache-Control", cacheControl)
+
+  const location = upstream.headers.get("location")
+  if (location) headers.set("Location", location)
+
+  // Preserve multiple Set-Cookie headers when backend sends auth/session cookies.
+  const setCookieAccessor = (
+    upstream.headers as Headers & { getSetCookie?: () => string[] }
+  ).getSetCookie
+  if (typeof setCookieAccessor === "function") {
+    const setCookies = setCookieAccessor.call(upstream.headers)
+    for (const cookie of setCookies) headers.append("Set-Cookie", cookie)
+  } else {
+    const setCookie = upstream.headers.get("set-cookie")
+    if (setCookie) headers.append("Set-Cookie", setCookie)
+  }
+
+  return headers
+}
+
 export function finSightUnavailableResponse() {
   return jsonResponse(
     503,
@@ -76,6 +102,12 @@ export async function proxyJsonToFinSight(
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          ...(req.headers.get("authorization")
+            ? { Authorization: req.headers.get("authorization") as string }
+            : {}),
+          ...(req.headers.get("cookie")
+            ? { Cookie: req.headers.get("cookie") as string }
+            : {}),
         },
         body,
         signal: controller.signal,
@@ -100,10 +132,9 @@ export async function proxyJsonToFinSight(
       )
     }
 
-    const ct = upstream.headers.get("content-type") ?? "application/json"
     return new Response(text, {
       status: upstream.status,
-      headers: { "Content-Type": ct },
+      headers: copyUpstreamHeaders(upstream),
     })
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
@@ -131,6 +162,8 @@ export async function mirrorRequestToFinSight(
     }
     const auth = req.headers.get("authorization")
     if (auth) headers.Authorization = auth
+    const cookie = req.headers.get("cookie")
+    if (cookie) headers.Cookie = cookie
     const contentType = req.headers.get("content-type")
     if (
       contentType &&
@@ -180,10 +213,9 @@ export async function mirrorRequestToFinSight(
       )
     }
 
-    const ct = upstream.headers.get("content-type") ?? "application/json"
     return new Response(text, {
       status: upstream.status,
-      headers: { "Content-Type": ct },
+      headers: copyUpstreamHeaders(upstream),
     })
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
