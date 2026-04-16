@@ -81,6 +81,7 @@ export default async function CommunityNoticePage({ searchParams }: PageProps) {
         rows={rows}
         initialSearchType={searchType}
         initialSearchValue={searchValue}
+        showWriteButton={false}
       />
     </CommunityBoardLayout>
   )

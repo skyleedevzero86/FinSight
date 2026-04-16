@@ -1,7 +1,6 @@
-export type CommunityNavKey = "home" | "notice" | "free" | "qna"
+export type CommunityNavKey = "notice" | "free" | "qna"
 
 export const COMMUNITY_NAV = [
-  { key: "home" as const, label: "커뮤니티", href: "/community" },
   { key: "notice" as const, label: "공지사항", href: "/community/notice" },
   { key: "free" as const, label: "포트폴리오 공유", href: "/community/free" },
   { key: "qna" as const, label: "Q&A", href: "/community/qna" },

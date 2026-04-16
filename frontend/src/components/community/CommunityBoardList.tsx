@@ -16,6 +16,7 @@ type CommunityBoardListProps = {
   rows: BoardRow[]
   initialSearchType?: string
   initialSearchValue?: string
+  showWriteButton?: boolean
 }
 
 export default function CommunityBoardList({
@@ -30,6 +31,7 @@ export default function CommunityBoardList({
   rows,
   initialSearchType = "",
   initialSearchValue = "",
+  showWriteButton = true,
 }: CommunityBoardListProps) {
   const safeTotalPages = Math.max(1, totalPages)
   const pages = pageWindow(currentPage, safeTotalPages, 7)
@@ -230,12 +232,14 @@ export default function CommunityBoardList({
         <div className="bbs_listbtn">
           <div className="left" />
           <div className="right">
-            <Link
-              href={writeHref}
-              className="inline-flex items-center justify-center rounded border border-finsight-primary bg-finsight-primary px-4 py-2 text-sm font-medium text-white hover:opacity-95"
-            >
-              글쓰기
-            </Link>
+            {showWriteButton ? (
+              <Link
+                href={writeHref}
+                className="inline-flex items-center justify-center rounded border border-finsight-primary bg-finsight-primary px-4 py-2 text-sm font-medium text-white hover:opacity-95"
+              >
+                글쓰기
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>
