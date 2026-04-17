@@ -109,7 +109,7 @@ public class BatchGlobalExceptionHandler {
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INVALID_PASSWORD");
         response.put("message", getLocalizedMessage("error.invalid.password", locale));
-        response.put("errors", ex.getValidationErrors()); // getErrors() -> getValidationErrors()로 변경
+        response.put("errors", ex.getValidationErrors()); 
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
 

@@ -66,13 +66,13 @@ class CommentCommandServiceTest {
 
     @Test
     void 댓글_생성_성공() {
-        // given
+        
         when(commentPersistencePort.save(any(Comment.class))).thenReturn(comment);
 
-        // when
+        
         Comment result = commentCommandService.createComment("test@example.com", commentCreateRequest);
 
-        // then
+        
         assertThat(result).isNotNull();
         assertThat(result.getContent()).isEqualTo("테스트 댓글 내용");
         assertThat(result.getAuthorEmail()).isEqualTo("test@example.com");
@@ -82,10 +82,10 @@ class CommentCommandServiceTest {
 
     @Test
     void 존재하지_않는_댓글_수정시_예외_발생() {
-        // given
+        
         when(commentPersistencePort.findById(1L)).thenReturn(Optional.empty());
 
-        // when & then
+        
         assertThatThrownBy(() -> commentCommandService.updateComment("test@example.com", 1L,
                 new com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentUpdateRequest("수정된 내용")))
                 .isInstanceOf(com.sleekydz86.finsight.core.global.exception.NewsNotFoundException.class);
@@ -93,10 +93,10 @@ class CommentCommandServiceTest {
 
     @Test
     void 권한이_없는_사용자가_댓글_수정시_예외_발생() {
-        // given
+        
         when(commentPersistencePort.findById(1L)).thenReturn(Optional.of(comment));
 
-        // when & then
+        
         assertThatThrownBy(() -> commentCommandService.updateComment("other@example.com", 1L,
                 new com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentUpdateRequest("수정된 내용")))
                 .isInstanceOf(com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException.class);

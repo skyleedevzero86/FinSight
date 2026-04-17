@@ -356,7 +356,7 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     }
 
     public void evictAllUserCache() {
-        // 캐시 구현체에서 제공하는 메서드 호출
+        
         log.info("모든 사용자 캐시 삭제 완료");
     }
 

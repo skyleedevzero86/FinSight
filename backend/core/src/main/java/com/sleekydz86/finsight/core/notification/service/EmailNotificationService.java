@@ -226,7 +226,7 @@ public class EmailNotificationService {
                 .orElse("일반");
     }
 
-    // 템플릿 로드 실패 시 fallback HTML
+    
     private String createFallbackNewsAlert(User user, News news) {
         return String.format(
                 """

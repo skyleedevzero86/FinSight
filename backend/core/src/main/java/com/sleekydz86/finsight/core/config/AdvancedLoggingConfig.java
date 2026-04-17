@@ -21,7 +21,7 @@ public class AdvancedLoggingConfig {
     public LoggerContext loggerContext() {
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 
-        // Console Appender
+        
         ConsoleAppender<ILoggingEvent> consoleAppender = new ConsoleAppender<>();
         consoleAppender.setContext(context);
         consoleAppender.setName("CONSOLE");
@@ -34,7 +34,7 @@ public class AdvancedLoggingConfig {
         consoleAppender.setEncoder(consoleEncoder);
         consoleAppender.start();
 
-        // File Appender
+        
         RollingFileAppender<ILoggingEvent> fileAppender = new RollingFileAppender<>();
         fileAppender.setContext(context);
         fileAppender.setName("FILE");
@@ -59,7 +59,7 @@ public class AdvancedLoggingConfig {
         fileAppender.setRollingPolicy(rollingPolicy);
         fileAppender.start();
 
-        // Root Logger 설정
+        
         Logger rootLogger = context.getLogger(Logger.ROOT_LOGGER_NAME);
         rootLogger.setLevel(Level.INFO);
         rootLogger.addAppender(consoleAppender);

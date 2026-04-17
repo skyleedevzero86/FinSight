@@ -168,7 +168,7 @@ public class CommentCommandService implements CommentCommandUseCase {
                         .build();
                 commentReactionPersistencePort.save(newReaction);
 
-                Comment updatedComment = comment.incrementDislike().incrementLike(); // +1 싫어요, -1 좋아요
+                Comment updatedComment = comment.incrementDislike().incrementLike(); 
                 return commentPersistencePort.save(updatedComment);
             }
         } else {

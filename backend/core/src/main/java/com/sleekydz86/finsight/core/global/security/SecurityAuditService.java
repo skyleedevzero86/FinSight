@@ -26,7 +26,7 @@ public class SecurityAuditService {
         }
 
         if (logUser) {
-            // 사용자 정보를 가져올예정
+            
             logMessage.append(", User: [Current User]");
         }
 

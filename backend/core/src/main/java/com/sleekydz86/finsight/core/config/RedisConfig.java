@@ -63,7 +63,7 @@ public class RedisConfig {
                 config.setPassword(redisPassword);
             }
 
-            // Lettuce 클라이언트 옵션 설정
+            
             ClientOptions options = ClientOptions.builder()
                     .protocolVersion(ProtocolVersion.RESP2)
                     .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
@@ -96,7 +96,7 @@ public class RedisConfig {
             RedisTemplate<String, Object> template = new RedisTemplate<>();
             template.setConnectionFactory(connectionFactory);
 
-            // 직렬화 설정
+            
             template.setKeySerializer(new StringRedisSerializer());
             template.setHashKeySerializer(new StringRedisSerializer());
             template.setValueSerializer(new GenericJackson2JsonRedisSerializer());

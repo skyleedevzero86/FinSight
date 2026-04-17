@@ -161,7 +161,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
 
         } catch (Exception e) {
             log.error("Basic analysis generation failed", e);
-            // 최후의 수단: 원본 내용만 반환
+            
             var news = News.createWithoutAI(
                     new NewsMeta(NewsProvider.ALL, LocalDateTime.now(), "fallback"),
                     content

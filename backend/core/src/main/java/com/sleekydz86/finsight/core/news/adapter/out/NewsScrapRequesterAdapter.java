@@ -29,7 +29,7 @@ public class NewsScrapRequesterAdapter implements NewsScrapRequesterPort {
                 .map(requester -> {
                     try {
                         return requester.scrap(LocalDateTime.now().minusHours(1), 10)
-                                .get(); // CompletableFuture를 동기적으로 처리
+                                .get(); 
                     } catch (Exception e) {
                         throw new RuntimeException("뉴스 스크래핑 중 오류 발생", e);
                     }

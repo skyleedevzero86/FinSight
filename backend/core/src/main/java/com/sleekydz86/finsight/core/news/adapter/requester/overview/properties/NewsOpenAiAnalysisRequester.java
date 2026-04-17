@@ -46,12 +46,12 @@ public class NewsOpenAiAnalysisRequester implements NewsAiRequester {
         }
     }
 
-    /**
-     * 비동기 요청 처리를 위한 메서드
-     */
-    /**
-     * 비동기 요청 처리를 위한 메서드
-     */
+    
+
+
+    
+
+
     public Mono<AiChatResponse> requestAsync(AiChatRequest aiChatRequest) {
         try {
             String prompt = getPrompt(aiChatRequest);

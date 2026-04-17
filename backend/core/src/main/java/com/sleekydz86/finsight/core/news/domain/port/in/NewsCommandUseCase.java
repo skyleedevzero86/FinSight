@@ -6,6 +6,6 @@ import java.util.concurrent.CompletableFuture;
 
 public interface NewsCommandUseCase {
 
-    //Newses scrapNewses();
+    
     CompletableFuture<Newses> scrapNewses();
 }
