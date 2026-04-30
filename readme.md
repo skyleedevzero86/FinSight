@@ -3,85 +3,68 @@
 <img width="1136" height="505" alt="image" src="https://github.com/user-attachments/assets/a106a5d4-f7ba-4be0-be3b-daca917b7a2a" />
 <img width="1917" height="324" alt="image" src="https://github.com/user-attachments/assets/45ebb257-5bb3-49f0-9f4d-1764d4f7d44a" />
 
-## 프로젝트 소개
+미국 경제/시장 뉴스를 수집하고, 분석/가공한 뒤 사용자 맞춤 피드와 커뮤니티 기능으로 제공하는 서비스입니다.
 
-FinSight 프로젝트에서는 외부 데이터 수집부터 분석 결과 가공, 사용자별 API 제공까지 전 과정을 백엔드 중심으로 설계했습니다.
-<br/>
+## 프로젝트 구성
 
-특히 정기 수집, 외부 연동 장애 대응, 결과 캐싱, 운영 관리 기능 같은 운영형 서비스 요소를 직접 다뤘다는 점이 플랫폼 개발·개선 업무와 맞닿아 있습니다.
-<br/>
+### Backend (Spring Boot 멀티모듈)
 
-FinSight는 미국 경제 뉴스를 주기적으로 수집하고, LLM·분석 파이프라인을 통해 ETF·비트코인·대형 기술주 등 관심 자산에 미치는 영향을 정리하는 서비스입니다.
-<br/>
+- `backend/web`: 외부에 노출되는 REST API 서버, 인증/인가, 게시판/뉴스/알림 API
+- `backend/core`: 공통 도메인, 데이터 접근, 보안/토큰, 외부 API/AI 연동 로직
+- `backend/batch`: 스케줄러 기반 뉴스 수집/가공, 알림/계정 관리 배치 작업
 
-등록한 자산에 유리한 흐름을 가진 뉴스를 빠르게 찾고, 영어 기사를 한국어로 번역·요약해 읽기 쉽게 만드는 것을 목표로 합니다.
-<br/>
+### Frontend (Next.js)
 
-## 핵심에 가까운 기능 축
+- `frontend`: 사용자 웹 UI
+- App Router 기반 Next.js 프로젝트 (`next dev`, `next build`, `next start`)
 
-- **외부 데이터 연동**: 뉴스·시장 보조 데이터 등 외부 출처와의 연동, 요청 제한·재시도·회복력 같은 운영 관점을 코드에 녹입니다.
-
-<br/>
-
-- **주기 수집·배치 안정성**: Spring Batch 기반 작업으로 정해진 주기에 크롤링·정규화·후처리를 수행하고, 실패 구간을 다시 돌릴 수 있는 구조를 전제로 합니다.
-
-<br/>
-
-- **분석 결과 가공 API**: 수집 원문에 더해 번역·요약·감성·개요 필드를 채워 두고, 프론트와 운영 도구가 동일한 REST 계약으로 소비합니다.
-
-<br/>
-
-- **사용자 맞춤 피드 제공**: 관심 카테고리·알림 선호·계정 상태를 사용자 단위로 묶어, 승인된 계정에 맞는 콘텐츠·설정 API를 제공합니다.
-
-<br/>
-
-- **번역·요약**: 영문 제목·본문을 한국어로 옮기고 짧은 개요를 생성해 스크롤 부담을 줄입니다.
-
-<br/>
-
-- **LLM 활용**: OpenAI 호환 클라이언트 등으로 뉴스 품질을 높이는 보조 분석·요약에 LLM을 끼워 넣습니다.
-
-<br/>
 ## 기술 스택
 
-### Backend
+- Backend: Java 21, Spring Boot 3.5.4, Spring Security, JPA, Redis, Flyway, Batch, WebSocket, QueryDSL
+- AI/NLP: OpenAI API 연동, DJL(PyTorch), OpenNLP, Stanford CoreNLP
+- Infra/기타: MySQL, H2(로컬/테스트), Micrometer/Actuator, Jasypt, Spring Mail, Solapi
+- Frontend: Next.js 15, React 18, TypeScript, ESLint, TailwindCSS 4
 
-- **Java 21** · **Spring Boot 3.5**
-- **모듈 구성**: `web` REST API · `core` 비즈니스 로직 · `batch` 배치
-- Web: Spring Web, Security, JPA, Validation, Actuator, SpringDoc OpenAPI
-- Core: JPA, Redis, JWT, QueryDSL, Bucket4j, Resilience4j, DJL PyTorch, OpenNLP, Stanford CoreNLP, Spring Mail, Nurigo SMS 등
-- Batch: Spring Batch, DJL
+## 디렉터리 구조
 
-### Frontend
-
-- **Next.js** · **TypeScript** · **Vite** Rolldown
-- 패키지 매니저: **pnpm**
-
-## 저장소 구조
-
-```
+```text
 FinSight/
-├── backend/          Spring Boot 멀티 모듈
-│   ├── web/          REST API, Security, OpenAPI, Flyway 마이그레이션
-│   ├── core/         도메인·어댑터·ML NLP·캐시
-│   └── batch/        뉴스 수집·처리 배치, Spring Batch 스키마 예시
-├── frontend/         Next.js + Vite SPA
-├── 사용자정보.md    사용자 도메인 필드 참고용 메모
-└── readme.md
+├─ backend/
+│  ├─ web/
+│  ├─ core/
+│  └─ batch/
+├─ frontend/
+└─ readme.md
 ```
 
-## 실행 방법
+## 사전 요구사항
 
-### Backend
+- JDK 21
+- Node.js 20+
+- pnpm
+- (선택) MySQL / Redis / SMTP / 외부 API 키
+
+## 로컬 실행
+
+### 1) Backend
 
 ```bash
 cd backend
-./gradlew :web:bootRun
 ./gradlew :core:bootRun
+./gradlew :web:bootRun
 ./gradlew :batch:bootRun
 ```
 
-### Frontend
+- 기본 프로필
+  - `core`: `core-local`
+  - `web`: `local`
+  - `batch`: `batch-local`
+- 기본 포트
+  - `core`: `8081` (`SERVER_PORT` 미지정 시)
+  - `web`: `8080`
+  - `batch`: 웹 비활성(`spring.main.web-application-type=none`)
+
+### 2) Frontend
 
 ```bash
 cd frontend
@@ -89,123 +72,46 @@ pnpm install
 pnpm dev
 ```
 
-빌드: `pnpm run build`
+- 개발 서버: `http://localhost:3000`
+- 프로덕션 빌드: `pnpm build`
+- 프로덕션 실행: `pnpm start`
 
-## 데이터베이스 명세 요약
+## 환경변수 (주요)
 
-주요 도메인 테이블 개념은 다음과 같습니다.
+실행 환경에 따라 아래 값을 설정해서 사용합니다.
 
-| 테이블                          | 역할                                    |
-| ------------------------------- | --------------------------------------- |
-| `users`                         | 로그인·역할·승인·OTP·비밀번호 이력 연동 |
-| `user_watchlist`                | 사용자별 관심 자산 카테고리             |
-| `user_notification_preferences` | 알림 채널·종류 선호                     |
-| `news`                          | 원문·번역·요약·감성·개요 필드           |
-| `news_target_categories`        | 기사별 영향 자산 태그                   |
+### Backend 공통
 
-<br/>
-아래 ERD는 `core` 모듈 JPA 엔티티와 Flyway 마이그레이션을 기준으로 한 **개념 모델**입니다. 운영 DB의 실제 FK 제약·누락 테이블은 환경마다 다를 수 있습니다. `comments`는 게시판·뉴스 등에 `target_id`로 다형 연결되므로 게시판과의 실선 FK는 생략했습니다.
+- DB: `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`, `DB_PASSWORD`
+- Redis: `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`
+- JWT: `JWT_SECRET`, `JWT_REFRESH_SECRET`, `JWT_EXPIRATION_PERIOD`, `JWT_REFRESH_EXPIRATION_PERIOD`
+- 암호화: `ENCRYPT_KEY`
 
-## ERD
+### 외부 연동
 
-```mermaid
-erDiagram
-    users {
-        bigint id
-        varchar email
-        varchar username
-    }
-    user_watchlist {
-        bigint user_id
-        varchar category
-    }
-    user_notification_preferences {
-        bigint user_id
-        varchar notification_type
-    }
-    user_password_history {
-        bigint id
-        bigint user_id
-        varchar password_hash
-    }
-    notifications {
-        bigint id
-        bigint user_id
-        bigint news_id
-    }
-    news {
-        bigint id
-        varchar news_provider
-        varchar source_url
-    }
-    news_target_categories {
-        bigint news_id
-        varchar category
-    }
-    news_statistics {
-        bigint id
-        bigint news_id
-    }
-    boards {
-        bigint id
-        varchar title
-        varchar author_email
-    }
-    board_files {
-        bigint id
-        bigint board_id
-    }
-    board_reactions {
-        bigint id
-        bigint board_id
-    }
-    board_scraps {
-        bigint id
-        bigint board_id
-    }
-    board_reports {
-        bigint id
-        bigint board_id
-    }
-    youtube_video_meta {
-        bigint id
-        bigint board_id
-        varchar video_id
-    }
-    comments {
-        bigint id
-        bigint target_id
-        varchar author_email
-    }
-    comment_reactions {
-        bigint id
-        bigint comment_id
-    }
-    comment_reports {
-        bigint id
-        bigint comment_id
-    }
+- 뉴스/AI: `MARKETAUX_API_KEY`, `OPENAI_API_KEY`, `OPENAI_API_URL`, `OPENAI_MODEL`
+- YouTube: `YOUTUBE_API_KEY`, `YOUTUBE_API_URL`, `YOUTUBE_MAX_RESULTS_PER_SOURCE`
+- 메일: `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`
+- 알림: `SOLAPI_API_KEY`, `SOLAPI_API_SECRET`, `SOLAPI_FROM_NUMBER`
+- 소셜: `KAKAO_CLIENT_ID`, `KAKAO_REDIRECT_URI`
 
-    users ||--o{ user_watchlist : "ElementCollection"
-    users ||--o{ user_notification_preferences : "ElementCollection"
-    users ||--o{ user_password_history : "ManyToOne"
-    users ||--o{ notifications : "user_id"
-    news ||--o{ news_target_categories : "ElementCollection"
-    news ||--o| news_statistics : "news_id unique"
-    news ||--o{ notifications : "news_id optional"
-    boards ||--o{ board_files : "board_id"
-    boards ||--o{ board_reactions : "board_id"
-    boards ||--o{ board_scraps : "board_id"
-    boards ||--o{ board_reports : "board_id"
-    boards ||--o| youtube_video_meta : "board_id unique"
-    boards ||..o{ comments : "polymorphic target_id"
-    comments ||--o{ comment_reactions : "comment_id"
-    comments ||--o{ comment_reports : "comment_id"
-```
+### Frontend
+
+- `FINSIGHT_API_BASE_URL` (예: `http://localhost:8080`)
+- `FINSIGHT_API_PROXY_TIMEOUT_MS`
+
+## 배치 작업 개요
+
+`backend/batch`는 스케줄러를 통해 주기 작업을 수행합니다.
+
+- 뉴스 수집/가공 스케줄
+- YouTube import 및 AI enrichment 스케줄
+- 사용자 상태/비밀번호 만료 점검
+- 알림 발송/정리 작업
 
 ## API 문서
 
-애플리케이션 기동 후 SpringDoc OpenAPI UI 경로는 배포 설정에 따릅니다.
-<br/>
-기본적으로 `AdvancedSecurityConfig`에서 Swagger 관련 경로는 인증 없이 열어 두는 구성입니다.
-<br/>
+SpringDoc(OpenAPI) UI는 `web` 모듈 실행 후 확인할 수 있습니다.
+
+- 일반적인 경로: `/swagger-ui/index.html`
+- 환경/보안 설정에 따라 경로/접근 정책은 달라질 수 있습니다.
