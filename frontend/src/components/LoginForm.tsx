@@ -79,7 +79,9 @@ export default function LoginForm() {
   }
 
   return (
-    <AuthCard
+    <section className="w-full px-4 py-16 md:px-6 md:py-20 lg:py-24">
+      <div className="mx-auto flex w-full max-w-6xl justify-center">
+        <AuthCard
       title="로그인"
       topBanner={
         registered ? (
@@ -185,6 +187,8 @@ export default function LoginForm() {
       <p className="mt-4 text-center text-[11px] leading-relaxed text-gray-400">
         • 로그인 유지 설정 시, 개인정보 유출 위험에 유의해 주세요.
       </p>
-    </AuthCard>
+        </AuthCard>
+      </div>
+    </section>
   )
 }
