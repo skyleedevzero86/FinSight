@@ -42,7 +42,7 @@ public class CommentQueryService implements CommentQueryUseCase {
 
     @Override
     public Comments getCommentsByTargetId(Long targetId, CommentType commentType) {
-        log.info("Getting comments for targetId: {}, type: {}", targetId, commentType);
+        log.info("대상 댓글 조회 - 대상 ID: {}, 댓글 타입: {}", targetId, commentType);
 
         Comments comments = commentPersistencePort.findByTargetIdAndType(targetId, commentType);
 
@@ -61,7 +61,7 @@ public class CommentQueryService implements CommentQueryUseCase {
 
     @Override
     public Comments getCommentsByTargetIdWithPagination(Long targetId, CommentType commentType, int page, int size) {
-        log.info("Getting comments with pagination for targetId: {}, type: {}, page: {}, size: {}",
+        log.info("대상 댓글 페이징 조회 - 대상 ID: {}, 댓글 타입: {}, 페이지: {}, 크기: {}",
                 targetId, commentType, page, size);
 
         Comments comments = commentPersistencePort.findByTargetIdAndTypeWithPagination(targetId, commentType, page, size);
@@ -81,7 +81,7 @@ public class CommentQueryService implements CommentQueryUseCase {
 
     @Override
     public Comment getCommentById(Long commentId) {
-        log.info("Getting comment by ID: {}", commentId);
+        log.info("댓글 단건 조회 - 댓글 ID: {}", commentId);
 
         return commentPersistencePort.findById(commentId)
                 .orElseThrow(() -> new NewsNotFoundException(commentId));
@@ -89,7 +89,7 @@ public class CommentQueryService implements CommentQueryUseCase {
 
     @Override
     public List<CommentResponse> getCommentReplies(Long parentId) {
-        log.info("Getting replies for parent comment: {}", parentId);
+        log.info("대댓글 조회 - 부모 댓글 ID: {}", parentId);
 
         List<Comment> replies = commentPersistencePort.findRepliesByParentId(parentId);
         return replies.stream()
@@ -99,14 +99,14 @@ public class CommentQueryService implements CommentQueryUseCase {
 
     @Override
     public Comments getCommentsByUser(String userEmail) {
-        log.info("Getting comments by user: {}", userEmail);
+        log.info("사용자 댓글 조회 - 사용자 이메일: {}", userEmail);
 
         return commentPersistencePort.findByUserEmail(userEmail);
     }
 
     @Override
     public Comments getReportedComments() {
-        log.info("Getting reported comments");
+        log.info("신고된 댓글 조회");
 
         return commentPersistencePort.findReportedComments();
     }

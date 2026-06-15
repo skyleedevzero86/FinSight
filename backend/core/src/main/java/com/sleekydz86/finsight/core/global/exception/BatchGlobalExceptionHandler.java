@@ -30,7 +30,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("Generic exception occurred", ex);
+        log.error("일반 예외가 발생했습니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INTERNAL_SERVER_ERROR");
@@ -44,7 +44,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(AiAnalysisFailedException.class)
     public ResponseEntity<Map<String, Object>> handleAiAnalysisFailedException(AiAnalysisFailedException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("AI analysis failed", ex);
+        log.error("AI 분석에 실패했습니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "AI_ANALYSIS_FAILED");
@@ -59,7 +59,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(NewsScrapingFailedException.class)
     public ResponseEntity<Map<String, Object>> handleNewsScrapingFailedException(NewsScrapingFailedException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("News scraping failed", ex);
+        log.error("뉴스 수집에 실패했습니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "NEWS_SCRAPING_FAILED");
@@ -74,7 +74,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(DatabaseConnectionException.class)
     public ResponseEntity<Map<String, Object>> handleDatabaseConnectionException(DatabaseConnectionException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("Database connection failed", ex);
+        log.error("데이터베이스 연결에 실패했습니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "DATABASE_CONNECTION_FAILED");
@@ -89,7 +89,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(ExternalServiceException.class)
     public ResponseEntity<Map<String, Object>> handleExternalServiceException(ExternalServiceException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("External service call failed", ex);
+        log.error("외부 서비스 호출에 실패했습니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "EXTERNAL_SERVICE_FAILED");
@@ -104,7 +104,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(InvalidPasswordException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidPasswordException(InvalidPasswordException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("Invalid password", ex);
+        log.error("유효하지 않은 비밀번호입니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INVALID_PASSWORD");
@@ -119,7 +119,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleUserNotFoundException(UserNotFoundException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("User not found", ex);
+        log.error("사용자를 찾을 수 없습니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "USER_NOT_FOUND");
@@ -133,7 +133,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<Map<String, Object>> handleUserAlreadyExistsException(UserAlreadyExistsException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("User already exists", ex);
+        log.error("이미 존재하는 사용자입니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "USER_ALREADY_EXISTS");
@@ -147,7 +147,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(AuthenticationFailedException.class)
     public ResponseEntity<Map<String, Object>> handleAuthenticationFailedException(AuthenticationFailedException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("Authentication failed", ex);
+        log.error("인증에 실패했습니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "AUTHENTICATION_FAILED");
@@ -161,7 +161,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(TokenExpiredException.class)
     public ResponseEntity<Map<String, Object>> handleTokenExpiredException(TokenExpiredException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("Token expired", ex);
+        log.error("토큰이 만료되었습니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "TOKEN_EXPIRED");
@@ -176,7 +176,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(InvalidTokenException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidTokenException(InvalidTokenException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("Invalid token", ex);
+        log.error("유효하지 않은 토큰입니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INVALID_TOKEN");
@@ -190,7 +190,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(InsufficientPermissionException.class)
     public ResponseEntity<Map<String, Object>> handleInsufficientPermissionException(InsufficientPermissionException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("Insufficient permission", ex);
+        log.error("권한이 부족합니다", ex);
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INSUFFICIENT_PERMISSION");
@@ -212,7 +212,7 @@ public class BatchGlobalExceptionHandler {
 
             return request.getLocale();
         } catch (Exception e) {
-            log.warn("Failed to resolve locale, using default", e);
+            log.warn("로케일 확인에 실패하여 기본 로케일을 사용합니다", e);
             return Locale.getDefault();
         }
     }
@@ -221,7 +221,7 @@ public class BatchGlobalExceptionHandler {
         try {
             return messageSource.getMessage(code, args, code, locale);
         } catch (Exception e) {
-            log.warn("Failed to get localized message for code: {}", code, e);
+            log.warn("코드에 대한 다국어 메시지 조회에 실패했습니다: {}", code, e);
             return code;
         }
     }

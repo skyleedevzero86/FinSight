@@ -42,7 +42,7 @@ public class CommentCommandService implements CommentCommandUseCase {
 
     @Override
     public Comment createComment(String userEmail, CommentCreateRequest request) {
-        log.info("Creating comment for user: {}, targetId: {}", userEmail, request.getTargetId());
+        log.info("댓글 생성 요청 - 사용자: {}, 대상 ID: {}", userEmail, request.getTargetId());
 
         Comment comment = Comment.builder()
                 .content(request.getContent())
@@ -59,14 +59,14 @@ public class CommentCommandService implements CommentCommandUseCase {
                 .build();
 
         Comment savedComment = commentPersistencePort.save(comment);
-        log.info("Comment created successfully with ID: {}", savedComment.getId());
+        log.info("댓글 생성 완료 - 댓글 ID: {}", savedComment.getId());
 
         return savedComment;
     }
 
     @Override
     public Comment updateComment(String userEmail, Long commentId, CommentUpdateRequest request) {
-        log.info("Updating comment: {} by user: {}", commentId, userEmail);
+        log.info("댓글 수정 요청 - 댓글 ID: {}, 사용자: {}", commentId, userEmail);
 
         Comment comment = commentPersistencePort.findById(commentId)
                 .orElseThrow(() -> new NewsNotFoundException(commentId));
@@ -78,13 +78,13 @@ public class CommentCommandService implements CommentCommandUseCase {
         Comment updatedComment = comment.updateContent(request.getContent());
         Comment savedComment = commentPersistencePort.save(updatedComment);
 
-        log.info("Comment updated successfully: {}", commentId);
+        log.info("댓글 수정 완료 - 댓글 ID: {}", commentId);
         return savedComment;
     }
 
     @Override
     public void deleteComment(String userEmail, Long commentId) {
-        log.info("Deleting comment: {} by user: {}", commentId, userEmail);
+        log.info("댓글 삭제 요청 - 댓글 ID: {}, 사용자: {}", commentId, userEmail);
 
         Comment comment = commentPersistencePort.findById(commentId)
                 .orElseThrow(() -> new NewsNotFoundException(commentId));
@@ -96,12 +96,12 @@ public class CommentCommandService implements CommentCommandUseCase {
         Comment deletedComment = comment.updateStatus(CommentStatus.DELETED);
         commentPersistencePort.save(deletedComment);
 
-        log.info("Comment deleted successfully: {}", commentId);
+        log.info("댓글 삭제 완료 - 댓글 ID: {}", commentId);
     }
 
     @Override
     public Comment likeComment(String userEmail, Long commentId) {
-        log.info("Liking comment: {} by user: {}", commentId, userEmail);
+        log.info("댓글 좋아요 요청 - 댓글 ID: {}, 사용자: {}", commentId, userEmail);
 
         Comment comment = commentPersistencePort.findById(commentId)
                 .orElseThrow(() -> new NewsNotFoundException(commentId));
@@ -144,7 +144,7 @@ public class CommentCommandService implements CommentCommandUseCase {
 
     @Override
     public Comment dislikeComment(String userEmail, Long commentId) {
-        log.info("Disliking comment: {} by user: {}", commentId, userEmail);
+        log.info("댓글 싫어요 요청 - 댓글 ID: {}, 사용자: {}", commentId, userEmail);
 
         Comment comment = commentPersistencePort.findById(commentId)
                 .orElseThrow(() -> new NewsNotFoundException(commentId));
@@ -187,7 +187,7 @@ public class CommentCommandService implements CommentCommandUseCase {
 
     @Override
     public void reportComment(String userEmail, Long commentId, CommentReportRequest request) {
-        log.info("Reporting comment: {} by user: {}", commentId, userEmail);
+        log.info("댓글 신고 요청 - 댓글 ID: {}, 사용자: {}", commentId, userEmail);
 
         Comment comment = commentPersistencePort.findById(commentId)
                 .orElseThrow(() -> new NewsNotFoundException(commentId));
@@ -213,12 +213,12 @@ public class CommentCommandService implements CommentCommandUseCase {
         Comment updatedComment = comment.incrementReport();
         commentPersistencePort.save(updatedComment);
 
-        log.info("Comment reported successfully: {}", commentId);
+        log.info("댓글 신고 완료 - 댓글 ID: {}", commentId);
     }
 
     @Override
     public void blockComment(Long commentId) {
-        log.info("Blocking comment: {}", commentId);
+        log.info("댓글 차단 요청 - 댓글 ID: {}", commentId);
 
         Comment comment = commentPersistencePort.findById(commentId)
                 .orElseThrow(() -> new NewsNotFoundException(commentId));
@@ -226,6 +226,6 @@ public class CommentCommandService implements CommentCommandUseCase {
         Comment blockedComment = comment.updateStatus(CommentStatus.BLOCKED);
         commentPersistencePort.save(blockedComment);
 
-        log.info("Comment blocked successfully: {}", commentId);
+        log.info("댓글 차단 완료 - 댓글 ID: {}", commentId);
     }
 }

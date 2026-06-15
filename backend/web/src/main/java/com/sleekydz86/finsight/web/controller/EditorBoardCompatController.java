@@ -124,7 +124,7 @@ public class EditorBoardCompatController {
         if (!currentUser.getEmail().equalsIgnoreCase(request.author().trim())) {
             throw new ValidationException(
                     "작성자 정보가 로그인 사용자와 일치하지 않습니다",
-                    List.of("author must match authenticated user"));
+                    List.of("작성자 정보는 인증 사용자와 일치해야 합니다"));
         }
         BoardStatus targetStatus = mapSaveStatus(request.status());
         List<String> tagList = Objects.requireNonNullElse(request.tags(), List.of());
@@ -253,7 +253,7 @@ public class EditorBoardCompatController {
         try {
             return Long.parseLong(documentId.trim());
         } catch (NumberFormatException e) {
-            throw new ValidationException("documentId 형식이 올바르지 않습니다", List.of("documentId must be numeric"));
+            throw new ValidationException("documentId 형식이 올바르지 않습니다", List.of("documentId는 숫자여야 합니다"));
         }
     }
 

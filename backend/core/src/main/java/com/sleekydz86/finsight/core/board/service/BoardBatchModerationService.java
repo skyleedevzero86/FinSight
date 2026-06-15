@@ -26,7 +26,7 @@ public class BoardBatchModerationService implements BoardBatchModerationUseCase 
     @Transactional
     public int hideOverReportedActiveBoards(int reportThreshold) {
         if (reportThreshold < 1) {
-            log.warn("hideOverReportedActiveBoards: invalid threshold {}, using 1", reportThreshold);
+            log.warn("hideOverReportedActiveBoards: 임계값 {}이(가) 유효하지 않아 1로 보정합니다", reportThreshold);
             reportThreshold = 1;
         }
 
@@ -44,7 +44,7 @@ public class BoardBatchModerationService implements BoardBatchModerationUseCase 
         }
 
         if (hidden > 0) {
-            log.info("hideOverReportedActiveBoards: threshold={}, hidden={}", reportThreshold, hidden);
+            log.info("hideOverReportedActiveBoards 실행 결과 - 임계값: {}, 숨김 처리 건수: {}", reportThreshold, hidden);
         }
         return hidden;
     }

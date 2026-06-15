@@ -33,7 +33,7 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException, ServletException {
 
-        log.warn("Access denied: {}", accessDeniedException.getMessage());
+        log.warn("접근이 거부되었습니다: {}", accessDeniedException.getMessage());
 
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

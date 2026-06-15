@@ -46,7 +46,7 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                 .retrieve()
                 .bodyToMono(MarketAuxResponse.class)
                 .map(this::convertToNews)
-                .doOnError(error -> log.error("Failed to fetch news from MarketAux: {}", error.getMessage()))
+                .doOnError(error -> log.error("MarketAux에서 뉴스 조회 실패: {}", error.getMessage()))
                 .onErrorReturn(List.of())
                 .toFuture();
     }
@@ -73,15 +73,15 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
 
             return News.createWithoutAI(newsMeta, originalContent);
         } catch (Exception e) {
-            log.error("Failed to convert MarketAux news item: {}", e.getMessage());
+            log.error("MarketAux 뉴스 항목 변환 실패: {}", e.getMessage());
 
             NewsMeta fallbackMeta = NewsMeta.of(
                     NewsProvider.MARKETAUX,
                     LocalDateTime.now(),
                     item.url != null ? item.url : "https://api.marketaux.com");
             Content fallbackContent = new Content(
-                    item.title != null ? item.title : "Unknown Title",
-                    item.description != null ? item.description : "No description available");
+                    item.title != null ? item.title : "제목 없음",
+                    item.description != null ? item.description : "설명 없음");
 
             return News.createWithoutAI(fallbackMeta, fallbackContent);
         }

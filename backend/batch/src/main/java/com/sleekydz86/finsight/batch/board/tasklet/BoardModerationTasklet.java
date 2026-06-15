@@ -31,7 +31,7 @@ public class BoardModerationTasklet implements Tasklet {
 
         int hidden = boardBatchModerationUseCase.hideOverReportedActiveBoards(threshold);
         contribution.incrementWriteCount(hidden);
-        log.info("boardModeration: reportThreshold={}, hidden={}", threshold, hidden);
+        log.info("게시판 자동 숨김 처리 - 신고 임계값: {}, 숨김 건수: {}", threshold, hidden);
         return RepeatStatus.FINISHED;
     }
 }

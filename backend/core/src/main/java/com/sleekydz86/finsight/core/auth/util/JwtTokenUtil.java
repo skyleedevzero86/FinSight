@@ -79,7 +79,7 @@ public class JwtTokenUtil {
                     .parseSignedClaims(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
-            log.warn("JWT token validation failed: {}", e.getMessage());
+            log.warn("JWT 토큰 검증 실패: {}", e.getMessage());
             return false;
         }
     }
@@ -110,7 +110,7 @@ public class JwtTokenUtil {
                     .getPayload();
             return claims.getSubject();
         } catch (JwtException | IllegalArgumentException e) {
-            log.warn("Failed to extract email from token: {}", e.getMessage());
+            log.warn("토큰에서 이메일 추출 실패: {}", e.getMessage());
             return null;
         }
     }
@@ -125,7 +125,7 @@ public class JwtTokenUtil {
             String roleStr = claims.get("role", String.class);
             return roleStr != null ? UserRole.valueOf(roleStr) : UserRole.USER;
         } catch (JwtException | IllegalArgumentException e) {
-            log.warn("Failed to extract role from token: {}", e.getMessage());
+            log.warn("토큰에서 권한 정보 추출 실패: {}", e.getMessage());
             return UserRole.USER;
         }
     }
@@ -186,7 +186,7 @@ public class JwtTokenUtil {
                     .role(role.name())
                     .build();
         } catch (Exception e) {
-            log.warn("Failed to create AuthenticatedUser from token: {}", e.getMessage());
+            log.warn("토큰으로 인증 사용자 생성 실패: {}", e.getMessage());
             return null;
         }
     }
@@ -220,7 +220,7 @@ public class JwtTokenUtil {
             String type = claims.get("type", String.class);
 
             if (!"recovery".equals(type)) {
-                throw new IllegalArgumentException("유효하지 않은 복구 토큰입니다.");
+                throw new IllegalArgumentException("유효하지 않은 계정 복구 토큰입니다.");
             }
 
             String email = claims.get("email", String.class);
@@ -228,7 +228,7 @@ public class JwtTokenUtil {
 
             return email + ":" + username;
         } catch (Exception e) {
-            throw new IllegalArgumentException("유효하지 않은 복구 토큰입니다.", e);
+            throw new IllegalArgumentException("유효하지 않은 계정 복구 토큰입니다.", e);
         }
     }
 

@@ -29,7 +29,7 @@ public class YoutubeAiEnrichmentScheduler {
         }
 
         YoutubeAiEnrichmentSummaryResponse summary = youtubeMediaImportUseCase.enrichPendingDraftVideos();
-        log.info("YouTube AI enrichment finished: requested={}, enriched={}, skipped={}, failed={}",
+        log.info("YouTube AI 보강 완료 - 요청: {}, 보강: {}, 건너뜀: {}, 실패: {}",
                 summary.getRequestedCount(),
                 summary.getEnrichedCount(),
                 summary.getSkippedCount(),
