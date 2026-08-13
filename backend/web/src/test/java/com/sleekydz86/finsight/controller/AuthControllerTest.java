@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.web.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sleekydz86.finsight.WebApplication;
 import com.sleekydz86.finsight.core.auth.dto.LoginRequest;
 import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
 import com.sleekydz86.finsight.core.user.service.UserService;
@@ -10,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -17,6 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
+@ContextConfiguration(classes = WebApplication.class)
 class AuthControllerTest {
 
     @Autowired

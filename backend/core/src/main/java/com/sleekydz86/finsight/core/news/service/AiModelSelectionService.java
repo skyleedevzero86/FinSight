@@ -43,7 +43,7 @@ public class AiModelSelectionService {
     public NewsAiRequester selectModel(AiModel model) {
         NewsAiRequester requester = aiRequesters.get(model);
         if (requester == null) {
-            log.warn("Requested AI model {} is not available, falling back to {}", model, fallbackModelName);
+            log.warn("요청한 AI 모델 {}을(를) 사용할 수 없어 {}(으)로 대체합니다", model, fallbackModelName);
             return selectFallbackModel();
         }
         return requester;
@@ -150,6 +150,6 @@ public class AiModelSelectionService {
     public void resetModelStats() {
         modelUsageCount.values().forEach(atomicLong -> atomicLong.set(0));
         modelErrorCount.values().forEach(atomicLong -> atomicLong.set(0));
-        log.info("AI model statistics reset");
+        log.info("AI 모델 통계를 초기화했습니다");
     }
 }

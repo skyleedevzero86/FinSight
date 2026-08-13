@@ -46,21 +46,21 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
         totalRequests.incrementAndGet();
 
         try {
-            log.debug("Starting AI analysis with model: {} for content: {}", model, content.getTitle());
+            log.debug("AI 분석 시작 - 모델: {}, 제목: {}", model, content.getTitle());
 
             NewsAiRequester requester = selectRequester(model);
             if (requester == null) {
-                log.error("No available AI requester for model: {}", model);
+                log.error("모델 {}에 사용 가능한 AI 요청기가 없습니다", model);
                 failedRequests.incrementAndGet();
-                return executeFallbackStrategy(content, "No requester available");
+                return executeFallbackStrategy(content, "사용 가능한 요청기 없음");
             }
 
             var aiChatRequest = createAiChatRequest(content);
             var aiChatResponse = requester.request(aiChatRequest);
 
             if (aiChatResponse == null || aiChatResponse.getAnalyses() == null || aiChatResponse.getAnalyses().isEmpty()) {
-                log.warn("AI analysis returned empty response for model: {}", model);
-                return executeFallbackStrategy(content, "Empty AI response");
+                log.warn("모델 {} AI 분석 응답이 비어 있습니다", model);
+                return executeFallbackStrategy(content, "빈 AI 응답");
             }
 
             List<News> analyzedNews = convertToNews(aiChatResponse, content);
@@ -68,33 +68,33 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
             successfulRequests.incrementAndGet();
             aiModelSelectionService.recordModelUsage(model);
 
-            log.debug("AI analysis completed successfully with model: {}", model);
+            log.debug("AI 분석 완료 - 모델: {}", model);
             return analyzedNews;
 
         } catch (Exception e) {
-            log.error("AI analysis failed with model: {} for content: {}", model, content.getTitle(), e);
+            log.error("AI 분석 실패 - 모델: {}, 제목: {}", model, content.getTitle(), e);
             failedRequests.incrementAndGet();
             aiModelSelectionService.recordModelError(model);
 
-            return executeFallbackStrategy(content, "Exception occurred: " + e.getMessage());
+            return executeFallbackStrategy(content, "예외 발생: " + e.getMessage());
         }
     }
 
     private List<News> executeFallbackStrategy(Content content, String fallbackReason) {
-        log.info("Executing fallback strategy for content: {}. Reason: {}", content.getTitle(), fallbackReason);
+        log.info("폴백 전략 실행 - 제목: {}, 사유: {}", content.getTitle(), fallbackReason);
 
         try {
             List<News> fallbackResult = tryAlternativeModels(content);
             if (!fallbackResult.isEmpty()) {
-                log.info("Fallback to alternative models successful");
+                log.info("대체 모델 폴백 성공");
                 return fallbackResult;
             }
 
-            log.info("Generating basic analysis as final fallback");
+            log.info("최종 폴백으로 기본 분석 생성");
             return generateBasicAnalysis(content);
 
         } catch (Exception e) {
-            log.error("Fallback strategy also failed", e);
+            log.error("폴백 전략도 실패했습니다", e);
             return generateBasicAnalysis(content);
         }
     }

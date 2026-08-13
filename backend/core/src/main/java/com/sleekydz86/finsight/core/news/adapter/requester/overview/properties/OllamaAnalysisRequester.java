@@ -45,7 +45,7 @@ public class OllamaAnalysisRequester implements NewsAiRequester {
     @Override
     public AiChatResponse request(AiChatRequest aiChatRequest) {
         if (!ollamaProperties.isEnabled()) {
-            throw new IllegalStateException("Ollama is disabled (ai.ollama.enabled=false)");
+            throw new IllegalStateException("Ollama가 비활성화되어 있습니다 (ai.ollama.enabled=false)");
         }
         try {
             return requestAsync(aiChatRequest)
@@ -78,7 +78,7 @@ public class OllamaAnalysisRequester implements NewsAiRequester {
                     .retrieve()
                     .bodyToMono(new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {})
                     .flatMap(this::parseResponse)
-                    .doOnError(e -> log.warn("Ollama API error: {}", e.getMessage()));
+                    .doOnError(e -> log.warn("Ollama API 오류: {}", e.getMessage()));
         } catch (JsonProcessingException e) {
             return Mono.error(new RuntimeException("Ollama 프롬프트 생성 오류: " + e.getMessage(), e));
         }
@@ -101,11 +101,11 @@ public class OllamaAnalysisRequester implements NewsAiRequester {
         try {
             Map<String, Object> message = (Map<String, Object>) responseBody.get("message");
             if (message == null) {
-                return Mono.error(new RuntimeException("Ollama response missing message"));
+                return Mono.error(new RuntimeException("Ollama 응답에 message 필드가 없습니다"));
             }
             String content = (String) message.get("content");
             if (content == null || content.isBlank()) {
-                return Mono.error(new RuntimeException("Ollama empty content"));
+                return Mono.error(new RuntimeException("Ollama 응답 content가 비어 있습니다"));
             }
             String json = extractJsonArray(content);
             List<AiChatResponse.NewsAnalysis> analyses = mapper.readValue(
@@ -124,7 +124,7 @@ public class OllamaAnalysisRequester implements NewsAiRequester {
         if (start >= 0 && end > start) {
             return content.substring(start, end + 1);
         }
-        throw new IllegalArgumentException("JSON array not found in Ollama response");
+        throw new IllegalArgumentException("Ollama 응답에서 JSON 배열을 찾을 수 없습니다");
     }
 
     private String normalizeBaseUrl(String baseUrl) {
