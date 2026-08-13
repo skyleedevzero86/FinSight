@@ -1,8 +1,11 @@
 const DEFAULT_PROXY_TIMEOUT_MS = 15_000
+const DEFAULT_API_BASE_URL = "http://localhost:8080"
 
 export function getFinSightBaseUrl(): string | null {
   const base = process.env.FINSIGHT_API_BASE_URL?.replace(/\/$/, "")
-  return base || null
+  if (base) return base
+  if (process.env.NODE_ENV === "development") return DEFAULT_API_BASE_URL
+  return null
 }
 
 function jsonResponse(status: number, message: string) {
@@ -23,7 +26,6 @@ function copyUpstreamHeaders(upstream: Response): Headers {
   const location = upstream.headers.get("location")
   if (location) headers.set("Location", location)
 
-  // Preserve multiple Set-Cookie headers when backend sends auth/session cookies.
   const setCookieAccessor = (
     upstream.headers as Headers & { getSetCookie?: () => string[] }
   ).getSetCookie
@@ -66,7 +68,7 @@ function upstreamFailureResponse(err: unknown, aborted: boolean) {
     )
   }
   if (process.env.NODE_ENV === "development") {
-    console.error("[finsightApiProxy] upstream fetch failed:", err)
+    console.error("백엔드 서버 연결에 실패했습니다.", err)
   }
   return jsonResponse(
     503,
@@ -124,7 +126,7 @@ export async function proxyJsonToFinSight(
       text = await upstream.text()
     } catch (err) {
       if (process.env.NODE_ENV === "development") {
-        console.error("[finsightApiProxy] failed to read upstream body:", err)
+        console.error("백엔드 응답 본문을 읽는 중 오류가 발생했습니다.", err)
       }
       return jsonResponse(
         503,
@@ -138,7 +140,7 @@ export async function proxyJsonToFinSight(
     })
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
-      console.error("[finsightApiProxy] unexpected error:", err)
+      console.error("백엔드 요청 처리 중 오류가 발생했습니다.", err)
     }
     return jsonResponse(
       500,
@@ -205,7 +207,7 @@ export async function mirrorRequestToFinSight(
       text = await upstream.text()
     } catch (err) {
       if (process.env.NODE_ENV === "development") {
-        console.error("[finsightApiProxy] failed to read upstream body:", err)
+        console.error("백엔드 응답 본문을 읽는 중 오류가 발생했습니다.", err)
       }
       return jsonResponse(
         503,
@@ -219,7 +221,7 @@ export async function mirrorRequestToFinSight(
     })
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
-      console.error("[finsightApiProxy] unexpected error:", err)
+      console.error("백엔드 요청 처리 중 오류가 발생했습니다.", err)
     }
     return jsonResponse(
       500,

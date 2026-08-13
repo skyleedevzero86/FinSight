@@ -7,9 +7,13 @@ import type {
 import { unwrapApiData } from "@/lib/boardApi"
 import type { BoardRow } from "@/data/communityBoardData"
 
+const DEFAULT_API_BASE_URL = "http://localhost:8080"
+
 function getServerBase(): string | null {
   const base = process.env.FINSIGHT_API_BASE_URL?.replace(/\/$/, "")
-  return base || null
+  if (base) return base
+  if (process.env.NODE_ENV === "development") return DEFAULT_API_BASE_URL
+  return null
 }
 
 export type BoardListFetchInput = {
@@ -30,18 +34,28 @@ export async function fetchBoardListServer(
   params.set("size", String(Math.min(100, Math.max(1, input.size))))
   const kw = input.keyword?.trim()
   if (kw) params.set("keyword", kw)
-  const res = await fetch(`${base}/api/v1/boards?${params.toString()}`, {
-    headers: { Accept: "application/json" },
-    next: { revalidate: 0 },
-  })
-  if (!res.ok) return null
-  let json: unknown
   try {
-    json = await res.json()
-  } catch {
+    const res = await fetch(`${base}/api/v1/boards?${params.toString()}`, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 0 },
+    })
+    if (!res.ok) {
+      console.error(
+        `게시글 목록을 불러오지 못했습니다. 상태=${res.status} ${res.statusText} (${base})`,
+      )
+      return null
+    }
+    let json: unknown
+    try {
+      json = await res.json()
+    } catch {
+      return null
+    }
+    return unwrapApiData<BoardPagination>(json)
+  } catch (err) {
+    console.error("게시글 목록 요청 중 오류가 발생했습니다.", err)
     return null
   }
-  return unwrapApiData<BoardPagination>(json)
 }
 
 export async function fetchBoardDetailServer(
@@ -49,18 +63,28 @@ export async function fetchBoardDetailServer(
 ): Promise<BoardDetail | null> {
   const base = getServerBase()
   if (!base) return null
-  const res = await fetch(`${base}/api/v1/boards/${boardId}`, {
-    headers: { Accept: "application/json" },
-    next: { revalidate: 0 },
-  })
-  if (!res.ok) return null
-  let json: unknown
   try {
-    json = await res.json()
-  } catch {
+    const res = await fetch(`${base}/api/v1/boards/${boardId}`, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 0 },
+    })
+    if (!res.ok) {
+      console.error(
+        `게시글 상세를 불러오지 못했습니다. 상태=${res.status} ${res.statusText} (${base})`,
+      )
+      return null
+    }
+    let json: unknown
+    try {
+      json = await res.json()
+    } catch {
+      return null
+    }
+    return unwrapApiData<BoardDetail>(json)
+  } catch (err) {
+    console.error("게시글 상세 요청 중 오류가 발생했습니다.", err)
     return null
   }
-  return unwrapApiData<BoardDetail>(json)
 }
 
 export function mapListToBoardRows(

@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.auth.service.CustomUserDetailsService;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -61,6 +62,12 @@ public class AdvancedSecurityConfig {
                         .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/favicon.ico").permitAll()
                         .requestMatchers("/ws-editor/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/boards/my-boards",
+                                "/api/v1/boards/my-scraps",
+                                "/api/v1/boards/*/reaction-status")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/boards", "/api/v1/boards/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
