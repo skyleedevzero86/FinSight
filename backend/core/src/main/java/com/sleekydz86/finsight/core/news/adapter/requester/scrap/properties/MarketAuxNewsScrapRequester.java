@@ -36,6 +36,10 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
 
     @Override
     public CompletableFuture<List<News>> scrap(LocalDateTime publishTimeAfter, int limit) {
+        if (!marketAuxProperties.isConfigured()) {
+            log.warn("MarketAux API 키가 없어 뉴스 수집을 건너뜁니다. MARKETAUX_API_KEY를 설정하세요.");
+            return CompletableFuture.completedFuture(List.of());
+        }
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path(marketAuxProperties.getBaseUrl())

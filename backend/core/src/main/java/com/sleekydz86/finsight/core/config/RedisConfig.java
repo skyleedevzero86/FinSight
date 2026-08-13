@@ -53,14 +53,16 @@ public class RedisConfig {
     @Primary
     public LettuceConnectionFactory lettuceConnectionFactory() {
         try {
-            logger.info("Redis 연결 설정 시작 - Host: {}, Port: {}", redisHost, redisPort);
+            boolean hasPassword = redisPassword != null && !redisPassword.trim().isEmpty();
+            logger.info("Redis 연결 설정 시작 - Host: {}, Port: {}, Password: {}",
+                    redisHost, redisPort, hasPassword ? "설정됨" : "없음");
 
             RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
             config.setHostName(redisHost);
             config.setPort(redisPort);
 
-            if (redisPassword != null && !redisPassword.trim().isEmpty()) {
-                config.setPassword(redisPassword);
+            if (hasPassword) {
+                config.setPassword(redisPassword.trim());
             }
 
             

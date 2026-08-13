@@ -32,7 +32,7 @@ public class EmailNotificationService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:}")
     private String fromEmail;
 
     @Value("${app.name:FinSight}")
@@ -226,7 +226,6 @@ public class EmailNotificationService {
                 .orElse("일반");
     }
 
-    
     private String createFallbackNewsAlert(User user, News news) {
         return String.format(
                 """

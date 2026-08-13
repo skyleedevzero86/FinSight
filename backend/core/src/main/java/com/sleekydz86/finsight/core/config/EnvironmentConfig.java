@@ -45,8 +45,7 @@ public class EnvironmentConfig {
         String[] requiredProps = {
                 "spring.datasource.url",
                 "spring.datasource.username",
-                "jwt.secret",
-                "jwt.expiration-period"
+                "jwt.secret"
         };
 
         for (String prop : requiredProps) {
@@ -90,7 +89,9 @@ public class EnvironmentConfig {
 
         for (String apiKey : apiKeys) {
             String value = environment.getProperty(apiKey);
-            if (value != null && value.startsWith("sk-") && value.length() < 50) {
+            if (value == null || value.isBlank()) {
+                logger.warn("선택 API 키가 비어 있습니다. 해당 기능은 비활성 상태로 기동합니다: {}", apiKey);
+            } else if (value.startsWith("sk-") && value.length() < 50) {
                 logger.warn("API 키 길이가 예상보다 짧아 보입니다: {}", apiKey);
             }
         }
@@ -101,7 +102,7 @@ public class EnvironmentConfig {
         logger.info("활성 프로필: {}", Arrays.toString(environment.getActiveProfiles()));
         logger.info("데이터베이스 URL: {}", maskSensitiveValue(environment.getProperty("spring.datasource.url")));
         logger.info("Redis 호스트: {}", environment.getProperty("spring.data.redis.host"));
-        logger.info("JWT 만료 시간: {}ms", environment.getProperty("jwt.expiration-period"));
+        logger.info("JWT 만료 시간: {}ms", environment.getProperty("jwt.access-token.expiration", "3600000"));
         logger.info("요청 제한: 분당 {}회", environment.getProperty("security.rate-limit.requests-per-minute"));
     }
 

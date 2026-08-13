@@ -21,9 +21,10 @@ public class MarketAuxProperties {
         if (baseUrl == null || baseUrl.trim().isEmpty()) {
             throw new IllegalArgumentException("MarketAux base-url은 비어 있을 수 없습니다");
         }
-        if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new IllegalArgumentException("MarketAux api-key는 비어 있을 수 없습니다");
-        }
+    }
+
+    public boolean isConfigured() {
+        return apiKey != null && !apiKey.isBlank();
     }
 
     public String getBaseUrl() {

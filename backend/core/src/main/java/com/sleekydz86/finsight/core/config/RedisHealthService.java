@@ -35,7 +35,11 @@ public class RedisHealthService {
             return isAvailable;
 
         } catch (Exception e) {
-            logger.error("Redis 연결 확인 실패: {}", e.getMessage());
+            Throwable cause = e;
+            while (cause.getCause() != null && cause.getCause() != cause) {
+                cause = cause.getCause();
+            }
+            logger.error("Redis 연결 확인 실패: {} ({})", e.getMessage(), cause.getMessage());
             return false;
         }
     }

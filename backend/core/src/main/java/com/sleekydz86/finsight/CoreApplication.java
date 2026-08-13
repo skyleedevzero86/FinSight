@@ -8,7 +8,9 @@ import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration;
 public class CoreApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(CoreApplication.class, args);
+        SpringApplication app = new SpringApplication(CoreApplication.class);
+        app.setAdditionalProfiles("local", "core-local");
+        app.run(args);
     }
 
 }
