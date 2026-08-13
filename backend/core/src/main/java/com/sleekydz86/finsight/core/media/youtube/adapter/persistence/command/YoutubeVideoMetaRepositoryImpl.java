@@ -56,9 +56,7 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
-                Sort.by(
-                        Sort.Order.desc("publishedAt").nullsLast(),
-                        Sort.Order.desc("createdAt").nullsLast()));
+                newestFirstSort());
 
         Page<YoutubeVideoMetaJpaEntity> page;
         if (importStatus != null && category != null && !category.isBlank()) {
@@ -87,9 +85,7 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
         Pageable sortedPageable = PageRequest.of(
                 pageable.getPageNumber(),
                 pageable.getPageSize(),
-                Sort.by(
-                        Sort.Order.desc("publishedAt").nullsLast(),
-                        Sort.Order.desc("createdAt").nullsLast()));
+                newestFirstSort());
 
         Page<YoutubeVideoMetaJpaEntity> page;
         if (importStatus != null) {
@@ -115,12 +111,7 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
     @Override
     public List<YoutubeVideoMeta> findPendingAiEnrichment(int limit) {
         int resolvedLimit = limit <= 0 ? 10 : limit;
-        Pageable pageable = PageRequest.of(
-                0,
-                resolvedLimit,
-                Sort.by(
-                        Sort.Order.asc("createdAt").nullsLast(),
-                        Sort.Order.asc("id")));
+        Pageable pageable = PageRequest.of(0, resolvedLimit, oldestFirstSort());
 
         return youtubeVideoMetaJpaRepository.findByImportStatusAndAiGeneratedAtIsNull(
                         YoutubeImportStatus.DRAFT,
@@ -152,6 +143,14 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
                 sourceType,
                 sourceValue,
                 YoutubeImportStatus.DRAFT);
+    }
+
+    private static Sort newestFirstSort() {
+        return Sort.by(Sort.Order.desc("publishedAt"), Sort.Order.desc("createdAt"));
+    }
+
+    private static Sort oldestFirstSort() {
+        return Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
     }
 
     private YoutubeVideoMeta toDomain(YoutubeVideoMetaJpaEntity entity) {
