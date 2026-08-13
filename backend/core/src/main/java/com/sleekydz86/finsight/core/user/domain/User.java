@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.user.domain;
 
 import com.sleekydz86.finsight.core.global.BaseTimeEntity;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.notification.domain.NotificationChannel;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +31,7 @@ public class User extends BaseTimeEntity {
     @Column(nullable = false)
     private String password;
 
-    @Column
+    @Column(length = 50, nullable = false)
     private String nickname;
 
     @Column(unique = true, nullable = false)
@@ -312,9 +313,13 @@ public class User extends BaseTimeEntity {
     }
 
     public void updateProfile(String nickname, String email) {
-        this.nickname = nickname;
-        this.email = email;
-        log.info("프로필 업데이트: userId={}, nickname={}, email={}", this.getId(), nickname, email);
+        if (nickname != null && !nickname.isBlank()) {
+            this.nickname = nickname;
+        }
+        if (email != null) {
+            this.email = email;
+        }
+        log.info("프로필 업데이트: userId={}, nickname={}, email={}", this.getId(), this.nickname, this.email);
     }
 
     public void approve(Long approverId) {
@@ -628,7 +633,7 @@ public class User extends BaseTimeEntity {
 
     public void updateProfileSettings(String nickname, String phoneNumber, String profileImageUrl, String timezone,
             String language) {
-        if (nickname != null) {
+        if (nickname != null && !nickname.isBlank()) {
             this.nickname = nickname;
         }
         if (phoneNumber != null) {
@@ -688,21 +693,21 @@ public class User extends BaseTimeEntity {
         return this.otpEnabled && this.otpVerified;
     }
 
-    public com.sleekydz86.finsight.core.notification.domain.NotificationChannel getPreferredNotificationChannel() {
+    public NotificationChannel getPreferredNotificationChannel() {
         if (canReceiveEmailNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.EMAIL;
+            return NotificationChannel.EMAIL;
         } else if (canReceivePushNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.PUSH;
+            return NotificationChannel.PUSH;
         } else if (canReceiveSmsNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.SMS;
+            return NotificationChannel.SMS;
         } else if (canReceiveKakaoNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.KAKAO;
+            return NotificationChannel.KAKAO;
         } else if (canReceiveSlackNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.SLACK;
+            return NotificationChannel.SLACK;
         } else if (canReceiveWebhookNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.WEBHOOK;
+            return NotificationChannel.WEBHOOK;
         } else {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.EMAIL;
+            return NotificationChannel.EMAIL;
         }
     }
 
