@@ -23,6 +23,8 @@ public interface UserPersistencePort {
 
     Optional<User> findByNaverId(String naverId);
 
+    Optional<User> findByKakaoUserId(String kakaoUserId);
+
     Optional<User> findByGoogleId(String googleId);
 
     List<User> findAll();

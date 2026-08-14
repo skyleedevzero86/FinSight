@@ -73,7 +73,12 @@ public class AuthController {
                     socialAuthService.createNaverAuthorizeUrl(),
                     "네이버 인가 URL을 생성했습니다"));
         }
-        if (authProvider == AuthProvider.KAKAO || authProvider == AuthProvider.GOOGLE) {
+        if (authProvider == AuthProvider.KAKAO) {
+            return ResponseEntity.ok(ApiResponse.success(
+                    socialAuthService.createKakaoAuthorizeUrl(),
+                    "카카오 인가 URL을 생성했습니다"));
+        }
+        if (authProvider == AuthProvider.GOOGLE) {
             return ResponseEntity.ok(ApiResponse.success(
                     Map.of(
                             "provider", authProvider.name(),
@@ -94,6 +99,16 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(result, "네이버 로그인에 성공했습니다"));
     }
 
+    @Operation(summary = "카카오 로그인", description = "카카오 인가 코드로 로그인합니다.")
+    @PostMapping("/oauth/kakao")
+    @LogExecution("카카오 로그인")
+    @PerformanceMonitor(threshold = 3000, metricName = "kakao_login")
+    public ResponseEntity<ApiResponse<LoginResultResponse>> loginWithKakao(
+            @RequestBody @Valid SocialOAuthCodeRequest request) {
+        LoginResultResponse result = socialAuthService.loginWithKakao(request.getCode(), request.getState());
+        return ResponseEntity.ok(ApiResponse.success(result, "카카오 로그인에 성공했습니다"));
+    }
+
     @Operation(summary = "네이버 연결 끊기 콜백", description = "네이버 연결 끊기 알림을 처리합니다.")
     @RequestMapping(value = "/oauth/naver/unlink", method = { RequestMethod.GET, RequestMethod.POST })
     @LogExecution("네이버 연결 끊기")
@@ -102,6 +117,17 @@ public class AuthController {
             @RequestParam(value = "user_id", required = false) String userId) {
         String naverId = uid != null && !uid.isBlank() ? uid : userId;
         socialAuthService.unlinkNaverAccount(naverId);
+        return ResponseEntity.ok("SUCCESS");
+    }
+
+    @Operation(summary = "카카오 연결 끊기 콜백", description = "카카오 연결 끊기 알림을 처리합니다.")
+    @RequestMapping(value = "/oauth/kakao/unlink", method = { RequestMethod.GET, RequestMethod.POST })
+    @LogExecution("카카오 연결 끊기")
+    public ResponseEntity<String> unlinkKakao(
+            @RequestParam(value = "user_id", required = false) String userId,
+            @RequestParam(value = "id", required = false) String id) {
+        String kakaoUserId = userId != null && !userId.isBlank() ? userId : id;
+        socialAuthService.unlinkKakaoAccount(kakaoUserId);
         return ResponseEntity.ok("SUCCESS");
     }
 

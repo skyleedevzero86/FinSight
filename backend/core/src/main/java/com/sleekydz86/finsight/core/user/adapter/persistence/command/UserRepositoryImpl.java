@@ -97,6 +97,17 @@ public class UserRepositoryImpl implements UserPersistencePort {
     }
 
     @Override
+    public Optional<User> findByKakaoUserId(String kakaoUserId) {
+        try {
+            return userJpaRepository.findByKakaoUserId(kakaoUserId)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("카카오 ID로 사용자 조회 실패: kakaoUserId={}, error={}", kakaoUserId, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public Optional<User> findByGoogleId(String googleId) {
         try {
             return userJpaRepository.findByGoogleId(googleId)

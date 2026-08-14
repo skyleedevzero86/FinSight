@@ -24,6 +24,8 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
 
         Optional<UserJpaEntity> findByNaverId(String naverId);
 
+        Optional<UserJpaEntity> findByKakaoUserId(String kakaoUserId);
+
         Optional<UserJpaEntity> findByGoogleId(String googleId);
 
         boolean existsByEmail(String email);

@@ -53,6 +53,22 @@ public class UserJpaEntity extends BaseTimeEntity {
     @Column(name = "google_id", unique = true, length = 100)
     private String googleId;
 
+    @Column(name = "kakao_user_id", unique = true, length = 100)
+    private String kakaoUserId;
+
+    @Column(name = "kakao_access_token", length = 500)
+    private String kakaoAccessToken;
+
+    @Column(name = "kakao_token_expires_at")
+    private LocalDateTime kakaoTokenExpiresAt;
+
+    @Column(name = "kakao_refresh_token", length = 500)
+    private String kakaoRefreshToken;
+
+    @Column(name = "kakao_notification_enabled")
+    @Builder.Default
+    private Boolean kakaoNotificationEnabled = false;
+
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 

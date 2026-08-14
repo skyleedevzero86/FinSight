@@ -595,6 +595,30 @@ public class User extends BaseTimeEntity {
         this.authProvider = AuthProvider.KAKAO;
     }
 
+    public void clearKakaoLink() {
+        this.kakaoUserId = null;
+        this.kakaoAccessToken = null;
+        this.kakaoTokenExpiresAt = null;
+        this.kakaoRefreshToken = null;
+        this.kakaoNotificationEnabled = false;
+        if (this.authProvider == AuthProvider.KAKAO) {
+            this.authProvider = AuthProvider.WEB;
+        }
+    }
+
+    public void applyKakaoProfile(String nickname, String email, String profileImageUrl) {
+        if (nickname != null && !nickname.isBlank()) {
+            this.nickname = nickname.length() > 50 ? nickname.substring(0, 50) : nickname;
+        }
+        if (email != null && !email.isBlank() && (this.email == null || this.email.endsWith("@oauth.finsight.local"))) {
+            this.email = email.trim();
+        }
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            this.profileImageUrl = profileImageUrl;
+        }
+        this.authProvider = AuthProvider.KAKAO;
+    }
+
     public void linkGoogle(String googleId) {
         this.googleId = googleId;
         this.authProvider = AuthProvider.GOOGLE;

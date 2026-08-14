@@ -64,10 +64,12 @@ const socialButtons: SocialButton[] = [
 export default function SocialLoginRow() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
 
-  async function startNaverLogin() {
-    setLoadingProvider("NAVER")
+  async function startSocialLogin(provider: "NAVER" | "KAKAO") {
+    setLoadingProvider(provider)
+    const label = provider === "NAVER" ? "네이버" : "카카오"
+    const stateKey = provider === "NAVER" ? "naver_oauth_state" : "kakao_oauth_state"
     try {
-      const res = await fetch("/api/v1/auth/oauth/naver/url", {
+      const res = await fetch(`/api/v1/auth/oauth/${provider.toLowerCase()}/url`, {
         method: "GET",
         headers: { Accept: "application/json" },
       })
@@ -76,7 +78,7 @@ export default function SocialLoginRow() {
         window.alert(
           (payload && typeof payload === "object" && "message" in payload
             ? String((payload as { message?: string }).message)
-            : null) || "네이버 로그인 URL을 가져오지 못했습니다.",
+            : null) || `${label} 로그인 URL을 가져오지 못했습니다.`,
         )
         return
       }
@@ -88,23 +90,23 @@ export default function SocialLoginRow() {
       const authorizeUrl = data?.authorizeUrl
       const state = data?.state
       if (!authorizeUrl) {
-        window.alert("네이버 로그인 URL이 비어 있습니다. 설정을 확인해 주세요.")
+        window.alert(`${label} 로그인 URL이 비어 있습니다. 설정을 확인해 주세요.`)
         return
       }
       if (state) {
-        sessionStorage.setItem("naver_oauth_state", state)
+        sessionStorage.setItem(stateKey, state)
       }
       window.location.href = authorizeUrl
     } catch {
-      window.alert("네이버 로그인을 시작하지 못했습니다.")
+      window.alert(`${label} 로그인을 시작하지 못했습니다.`)
     } finally {
       setLoadingProvider(null)
     }
   }
 
   async function handleClick(provider: SocialButton["provider"]) {
-    if (provider === "NAVER") {
-      await startNaverLogin()
+    if (provider === "NAVER" || provider === "KAKAO") {
+      await startSocialLogin(provider)
       return
     }
     window.alert("서비스 준비중입니다.")

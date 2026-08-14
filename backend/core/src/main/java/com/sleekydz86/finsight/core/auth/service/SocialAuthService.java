@@ -1,6 +1,12 @@
 package com.sleekydz86.finsight.core.auth.service;
 
+import com.sleekydz86.finsight.core.auth.adapter.oauth.KakaoOAuthClient;
+import com.sleekydz86.finsight.core.auth.adapter.oauth.KakaoOAuthTokenResponse;
+import com.sleekydz86.finsight.core.auth.adapter.oauth.KakaoProfileResponse;
 import com.sleekydz86.finsight.core.auth.adapter.oauth.NaverOAuthClient;
+import com.sleekydz86.finsight.core.auth.adapter.oauth.NaverProfileResponse;
+import com.sleekydz86.finsight.core.auth.adapter.oauth.NaverTokenResponse;
+import com.sleekydz86.finsight.core.auth.config.KakaoOAuthProperties;
 import com.sleekydz86.finsight.core.auth.config.NaverOAuthProperties;
 import com.sleekydz86.finsight.core.auth.domain.JwtToken;
 import com.sleekydz86.finsight.core.auth.dto.LoginResultResponse;
@@ -30,6 +36,8 @@ public class SocialAuthService {
 
     private final NaverOAuthProperties naverOAuthProperties;
     private final NaverOAuthClient naverOAuthClient;
+    private final KakaoOAuthProperties kakaoOAuthProperties;
+    private final KakaoOAuthClient kakaoOAuthClient;
     private final UserPersistencePort userPersistencePort;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtil jwtTokenUtil;
@@ -37,11 +45,15 @@ public class SocialAuthService {
     public SocialAuthService(
             NaverOAuthProperties naverOAuthProperties,
             NaverOAuthClient naverOAuthClient,
+            KakaoOAuthProperties kakaoOAuthProperties,
+            KakaoOAuthClient kakaoOAuthClient,
             UserPersistencePort userPersistencePort,
             PasswordEncoder passwordEncoder,
             JwtTokenUtil jwtTokenUtil) {
         this.naverOAuthProperties = naverOAuthProperties;
         this.naverOAuthClient = naverOAuthClient;
+        this.kakaoOAuthProperties = kakaoOAuthProperties;
+        this.kakaoOAuthClient = kakaoOAuthClient;
         this.userPersistencePort = userPersistencePort;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenUtil = jwtTokenUtil;
@@ -58,19 +70,30 @@ public class SocialAuthService {
                 "state", state);
     }
 
+    public Map<String, String> createKakaoAuthorizeUrl() {
+        if (!kakaoOAuthProperties.isConfigured()) {
+            throw new IllegalStateException("카카오 로그인 설정(KAKAO_CLIENT_ID/SECRET)이 없습니다");
+        }
+        String state = kakaoOAuthClient.createState();
+        return Map.of(
+                "provider", AuthProvider.KAKAO.name(),
+                "authorizeUrl", kakaoOAuthClient.createAuthorizeUrl(state),
+                "state", state);
+    }
+
     public LoginResultResponse loginWithNaver(String code, String state) {
         if (!naverOAuthProperties.isConfigured()) {
             throw new IllegalStateException("네이버 로그인 설정(NAVER_CLIENT_ID/SECRET)이 없습니다");
         }
         try {
-            NaverOAuthClient.NaverTokenResponse tokenResponse = naverOAuthClient.exchangeCode(code, state);
-            NaverOAuthClient.NaverProfileResponse profile = naverOAuthClient.fetchProfile(tokenResponse.getAccessToken());
+            NaverTokenResponse tokenResponse = naverOAuthClient.exchangeCode(code, state);
+            NaverProfileResponse profile = naverOAuthClient.fetchProfile(tokenResponse.getAccessToken());
             User user = findOrCreateNaverUser(profile);
             user.updateLastLoginAt(LocalDateTime.now());
             user = userPersistencePort.save(user);
 
             JwtToken jwt = issueToken(user);
-            log.info("네이버 로그인 성공: email={}, naverId={}", user.getEmail(), profile.getId());
+            log.info("네이버 로그인 성공: 이메일={}, 네이버ID={}", user.getEmail(), profile.getId());
             return LoginResultResponse.of(
                     jwt,
                     AuthProvider.NAVER,
@@ -79,7 +102,33 @@ public class SocialAuthService {
                     user.getProfileImageUrl());
         } catch (Exception e) {
             log.error("네이버 로그인 실패: {}", e.getMessage(), e);
-            throw new AuthenticationFailedException("naver");
+            throw new AuthenticationFailedException("네이버");
+        }
+    }
+
+    public LoginResultResponse loginWithKakao(String code, String state) {
+        if (!kakaoOAuthProperties.isConfigured()) {
+            throw new IllegalStateException("카카오 로그인 설정(KAKAO_CLIENT_ID/SECRET)이 없습니다");
+        }
+        try {
+            KakaoOAuthTokenResponse tokenResponse = kakaoOAuthClient.exchangeCode(code);
+            KakaoProfileResponse profile = kakaoOAuthClient.fetchProfile(tokenResponse.getAccessToken());
+            User user = findOrCreateKakaoUser(profile, tokenResponse);
+            user.updateLastLoginAt(LocalDateTime.now());
+            user = userPersistencePort.save(user);
+
+            JwtToken jwt = issueToken(user);
+            log.info("카카오 로그인 성공: 이메일={}, 카카오ID={}, state={}",
+                    user.getEmail(), profile.getIdAsString(), state);
+            return LoginResultResponse.of(
+                    jwt,
+                    AuthProvider.KAKAO,
+                    user.getEmail(),
+                    user.getNickname(),
+                    user.getProfileImageUrl());
+        } catch (Exception e) {
+            log.error("카카오 로그인 실패: {}", e.getMessage(), e);
+            throw new AuthenticationFailedException("카카오");
         }
     }
 
@@ -100,11 +149,83 @@ public class SocialAuthService {
         userPersistencePort.findByNaverId(naverId).ifPresent(user -> {
             user.clearNaverLink();
             userPersistencePort.save(user);
-            log.info("네이버 연결 해제 처리 완료: userId={}, naverId={}", user.getId(), naverId);
+            log.info("네이버 연결 해제 처리 완료: 사용자ID={}, 네이버ID={}", user.getId(), naverId);
         });
     }
 
-    private User findOrCreateNaverUser(NaverOAuthClient.NaverProfileResponse profile) {
+    public void unlinkKakaoAccount(String kakaoUserId) {
+        if (kakaoUserId == null || kakaoUserId.isBlank()) {
+            return;
+        }
+        userPersistencePort.findByKakaoUserId(kakaoUserId).ifPresent(user -> {
+            user.clearKakaoLink();
+            userPersistencePort.save(user);
+            log.info("카카오 연결 해제 처리 완료: 사용자ID={}, 카카오ID={}", user.getId(), kakaoUserId);
+        });
+    }
+
+    private User findOrCreateKakaoUser(KakaoProfileResponse profile, KakaoOAuthTokenResponse tokenResponse) {
+        String kakaoUserId = profile.getIdAsString();
+        Optional<User> byKakaoId = userPersistencePort.findByKakaoUserId(kakaoUserId);
+        if (byKakaoId.isPresent()) {
+            User existing = byKakaoId.get();
+            existing.applyKakaoProfile(profile.getNickname(), profile.getEmail(), profile.getProfileImageUrl());
+            applyKakaoTokens(existing, kakaoUserId, tokenResponse);
+            return existing;
+        }
+
+        String email = resolveKakaoEmail(profile);
+        Optional<User> byEmail = userPersistencePort.findByEmail(email);
+        if (byEmail.isPresent()) {
+            User existing = byEmail.get();
+            if (existing.getAuthProvider() != null
+                    && existing.getAuthProvider() != AuthProvider.WEB
+                    && existing.getAuthProvider() != AuthProvider.KAKAO) {
+                throw new IllegalStateException("이미 다른 SNS로 가입된 이메일입니다: " + existing.getAuthProvider());
+            }
+            existing.linkKakaoLogin(kakaoUserId);
+            existing.applyKakaoProfile(profile.getNickname(), profile.getEmail(), profile.getProfileImageUrl());
+            applyKakaoTokens(existing, kakaoUserId, tokenResponse);
+            return existing;
+        }
+
+        String nickname = resolveKakaoNickname(profile);
+        String username = uniqueUsername("kakao_" + kakaoUserId);
+        LocalDateTime now = LocalDateTime.now();
+
+        User created = User.builder()
+                .username(username)
+                .password(passwordEncoder.encode("SNS-" + UUID.randomUUID()))
+                .nickname(truncate(nickname, 50))
+                .email(email)
+                .status(UserStatus.APPROVED)
+                .role(UserRole.USER)
+                .authProvider(AuthProvider.KAKAO)
+                .kakaoUserId(kakaoUserId)
+                .profileImageUrl(profile.getProfileImageUrl())
+                .approvedAt(now)
+                .passwordChangedAt(now)
+                .passwordChangeCount(0)
+                .loginFailCount(0)
+                .otpEnabled(false)
+                .otpVerified(false)
+                .build();
+        applyKakaoTokens(created, kakaoUserId, tokenResponse);
+        return created;
+    }
+
+    private void applyKakaoTokens(User user, String kakaoUserId, KakaoOAuthTokenResponse tokenResponse) {
+        if (tokenResponse == null || tokenResponse.getAccessToken() == null) {
+            return;
+        }
+        LocalDateTime expiresAt = null;
+        if (tokenResponse.getExpiresIn() != null) {
+            expiresAt = LocalDateTime.now().plusSeconds(tokenResponse.getExpiresIn());
+        }
+        user.updateKakaoInfo(kakaoUserId, tokenResponse.getAccessToken(), expiresAt, tokenResponse.getRefreshToken());
+    }
+
+    private User findOrCreateNaverUser(NaverProfileResponse profile) {
         Optional<User> byNaverId = userPersistencePort.findByNaverId(profile.getId());
         if (byNaverId.isPresent()) {
             User existing = byNaverId.get();
@@ -163,14 +284,21 @@ public class SocialAuthService {
                 .build();
     }
 
-    private String resolveEmail(NaverOAuthClient.NaverProfileResponse profile) {
+    private String resolveEmail(NaverProfileResponse profile) {
         if (profile.getEmail() != null && !profile.getEmail().isBlank()) {
             return profile.getEmail().trim();
         }
         return "naver_" + profile.getId() + "@oauth.finsight.local";
     }
 
-    private String resolveNickname(NaverOAuthClient.NaverProfileResponse profile) {
+    private String resolveKakaoEmail(KakaoProfileResponse profile) {
+        if (profile.getEmail() != null && !profile.getEmail().isBlank()) {
+            return profile.getEmail().trim();
+        }
+        return "kakao_" + profile.getIdAsString() + "@oauth.finsight.local";
+    }
+
+    private String resolveNickname(NaverProfileResponse profile) {
         if (profile.getNickname() != null && !profile.getNickname().isBlank()) {
             return profile.getNickname().trim();
         }
@@ -178,6 +306,13 @@ public class SocialAuthService {
             return profile.getName().trim();
         }
         return "네이버사용자";
+    }
+
+    private String resolveKakaoNickname(KakaoProfileResponse profile) {
+        if (profile.getNickname() != null && !profile.getNickname().isBlank()) {
+            return profile.getNickname().trim();
+        }
+        return "카카오사용자";
     }
 
     private String uniqueUsername(String preferred) {
