@@ -41,6 +41,17 @@ public class User extends BaseTimeEntity {
     private String apiKey;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", length = 20)
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.WEB;
+
+    @Column(name = "naver_id", unique = true, length = 100)
+    private String naverId;
+
+    @Column(name = "google_id", unique = true, length = 100)
+    private String googleId;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private UserStatus status = UserStatus.PENDING;
@@ -547,6 +558,46 @@ public class User extends BaseTimeEntity {
                 this.getId(), this.kakaoNotificationEnabled, this.telegramNotificationEnabled,
                 this.slackNotificationEnabled, this.discordNotificationEnabled, this.lineNotificationEnabled,
                 this.webhookNotificationEnabled);
+    }
+
+    public void linkNaver(String naverId) {
+        this.naverId = naverId;
+        this.authProvider = AuthProvider.NAVER;
+    }
+
+    public void clearNaverLink() {
+        this.naverId = null;
+        if (this.authProvider == AuthProvider.NAVER) {
+            this.authProvider = AuthProvider.WEB;
+        }
+    }
+
+    public void applyNaverProfile(String nickname, String name, String email, String profileImageUrl, String mobile) {
+        if (nickname != null && !nickname.isBlank()) {
+            this.nickname = nickname.length() > 50 ? nickname.substring(0, 50) : nickname;
+        } else if (name != null && !name.isBlank()) {
+            this.nickname = name.length() > 50 ? name.substring(0, 50) : name;
+        }
+        if (email != null && !email.isBlank() && (this.email == null || this.email.endsWith("@oauth.finsight.local"))) {
+            this.email = email.trim();
+        }
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            this.profileImageUrl = profileImageUrl;
+        }
+        if (mobile != null && !mobile.isBlank()) {
+            this.phoneNumber = mobile;
+        }
+        this.authProvider = AuthProvider.NAVER;
+    }
+
+    public void linkKakaoLogin(String kakaoUserId) {
+        this.kakaoUserId = kakaoUserId;
+        this.authProvider = AuthProvider.KAKAO;
+    }
+
+    public void linkGoogle(String googleId) {
+        this.googleId = googleId;
+        this.authProvider = AuthProvider.GOOGLE;
     }
 
     public void updateKakaoInfo(String kakaoUserId, String accessToken, LocalDateTime expiresAt, String refreshToken) {

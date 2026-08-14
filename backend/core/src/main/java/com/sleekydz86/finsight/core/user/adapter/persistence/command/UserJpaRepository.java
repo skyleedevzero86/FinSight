@@ -22,6 +22,10 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
 
         Optional<UserJpaEntity> findByApiKey(String apiKey);
 
+        Optional<UserJpaEntity> findByNaverId(String naverId);
+
+        Optional<UserJpaEntity> findByGoogleId(String googleId);
+
         boolean existsByEmail(String email);
 
         boolean existsByUsername(String username);

@@ -8,7 +8,10 @@ import { useId, useState } from "react"
 import AuthCard from "@/components/auth/AuthCard"
 import SocialLoginRow from "@/components/auth/SocialLoginRow"
 import { postLogin } from "@/lib/authClient"
-import { FINSIGHT_ACCESS_TOKEN_KEY } from "@/lib/finsightToken"
+import {
+  storeAuthSession,
+  type AuthProvider,
+} from "@/lib/finsightToken"
 
 const inputClass =
   "w-full rounded border border-gray-300 bg-white px-3 py-2.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-finsight-secondary focus:ring-1 focus:ring-finsight-secondary/40"
@@ -17,14 +20,30 @@ function extractToken(data: unknown): string | null {
   if (!data || typeof data !== "object") return null
   const o = data as Record<string, unknown>
   if (typeof o.accessToken === "string") return o.accessToken
-  if (typeof o.token === "string") return o.token
+  const token = o.token
+  if (token && typeof token === "object") {
+    const t = token as Record<string, unknown>
+    if (typeof t.accessToken === "string") return t.accessToken
+  }
   const inner = o.data
   if (inner && typeof inner === "object") {
-    const d = inner as Record<string, unknown>
-    if (typeof d.accessToken === "string") return d.accessToken
-    if (typeof d.token === "string") return d.token
+    return extractToken(inner)
   }
   return null
+}
+
+function extractProvider(data: unknown): AuthProvider {
+  if (!data || typeof data !== "object") return "WEB"
+  const o = data as Record<string, unknown>
+  if (typeof o.authProvider === "string") {
+    const p = o.authProvider
+    if (p === "WEB" || p === "KAKAO" || p === "NAVER" || p === "GOOGLE") return p
+  }
+  const inner = o.data
+  if (inner && typeof inner === "object") {
+    return extractProvider(inner)
+  }
+  return "WEB"
 }
 
 export default function LoginForm() {
@@ -50,7 +69,7 @@ export default function LoginForm() {
     }
     setLoading(true)
     const result = await postLogin({
-      username: em,
+      email: em,
       password,
     })
     setLoading(false)
@@ -61,15 +80,14 @@ export default function LoginForm() {
     }
 
     const token = extractToken(result.data)
+    const provider = extractProvider(result.data)
     try {
       if (token) {
-        if (remember) {
-          localStorage.setItem(FINSIGHT_ACCESS_TOKEN_KEY, token)
-          sessionStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
-        } else {
-          sessionStorage.setItem(FINSIGHT_ACCESS_TOKEN_KEY, token)
-          localStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
-        }
+        storeAuthSession({
+          accessToken: token,
+          authProvider: provider,
+          remember,
+        })
       }
     } catch {
       void 0

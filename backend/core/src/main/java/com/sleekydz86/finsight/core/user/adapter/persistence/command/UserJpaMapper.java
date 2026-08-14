@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.user.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
@@ -25,6 +26,11 @@ public class UserJpaMapper {
                 .nickname(user.getNickname())
                 .email(user.getEmail())
                 .apiKey(user.getApiKey())
+                .authProvider(user.getAuthProvider() != null ? user.getAuthProvider() : AuthProvider.WEB)
+                .naverId(user.getNaverId())
+                .googleId(user.getGoogleId())
+                .profileImageUrl(user.getProfileImageUrl())
+                .phoneNumber(user.getPhoneNumber())
                 .status(user.getStatus())
                 .role(user.getRole())
                 .lastLoginAt(user.getLastLoginAt())
@@ -70,6 +76,11 @@ public class UserJpaMapper {
                 .nickname(entity.getNickname())
                 .email(entity.getEmail())
                 .apiKey(entity.getApiKey())
+                .authProvider(entity.getAuthProvider() != null ? entity.getAuthProvider() : AuthProvider.WEB)
+                .naverId(entity.getNaverId())
+                .googleId(entity.getGoogleId())
+                .profileImageUrl(entity.getProfileImageUrl())
+                .phoneNumber(entity.getPhoneNumber())
                 .status(entity.getStatus() != null ? entity.getStatus() : UserStatus.PENDING)
                 .role(entity.getRole() != null ? entity.getRole() : UserRole.USER)
                 .lastLoginAt(entity.getLastLoginAt())

@@ -10,6 +10,7 @@ public class CoreApplication {
     public static void main(String[] args) {
         SpringApplication app = new SpringApplication(CoreApplication.class);
         app.setAdditionalProfiles("local", "core-local");
+        app.setDefaultProperties(java.util.Map.of("server.port", "8081"));
         app.run(args);
     }
 

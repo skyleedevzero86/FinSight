@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.auth.dto.RefreshTokenRequest;
 import com.sleekydz86.finsight.core.auth.dto.UserRegistrationRequest;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
 import com.sleekydz86.finsight.core.global.exception.*;
+import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
@@ -68,12 +69,16 @@ public class AuthenticationService {
             User user = userPersistencePort.findByEmail(request.getEmail())
                     .orElseThrow(() -> new UserNotFoundException(request.getEmail()));
 
+            if (user.getAuthProvider() == null) {
+                user.setAuthProvider(AuthProvider.WEB);
+            }
+
             String accessToken = jwtTokenUtil.generateAccessToken(request.getEmail(), user.getRole());
             String refreshToken = jwtTokenUtil.generateRefreshToken(request.getEmail());
 
             updateLastLoginTime(request.getEmail());
 
-            log.info("로그인 성공: {}", request.getEmail());
+            log.info("로그인 성공: {}, provider={}", request.getEmail(), user.getAuthProvider());
 
             return JwtToken.builder()
                     .accessToken(accessToken)

@@ -80,7 +80,29 @@ public class UserRepositoryImpl implements UserPersistencePort {
             return userJpaRepository.findByApiKey(apiKey)
                     .map(userJpaMapper::toDomain);
         } catch (Exception e) {
-            log.error("API 키로 사용자 조회 실패: apiKey={}, error={}", apiKey, e.getMessage());
+            log.error("API 키로 사용자 조회 실패: error={}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<User> findByNaverId(String naverId) {
+        try {
+            return userJpaRepository.findByNaverId(naverId)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("네이버 ID로 사용자 조회 실패: naverId={}, error={}", naverId, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<User> findByGoogleId(String googleId) {
+        try {
+            return userJpaRepository.findByGoogleId(googleId)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("구글 ID로 사용자 조회 실패: googleId={}, error={}", googleId, e.getMessage());
             return Optional.empty();
         }
     }

@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.user.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.global.BaseTimeEntity;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.UserStatus;
@@ -40,6 +41,23 @@ public class UserJpaEntity extends BaseTimeEntity {
 
     @Column(unique = true, length = 64)
     private String apiKey;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", length = 20)
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.WEB;
+
+    @Column(name = "naver_id", unique = true, length = 100)
+    private String naverId;
+
+    @Column(name = "google_id", unique = true, length = 100)
+    private String googleId;
+
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
+    @Column(name = "phone_number", length = 30)
+    private String phoneNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

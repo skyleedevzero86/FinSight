@@ -1,4 +1,7 @@
 export const FINSIGHT_ACCESS_TOKEN_KEY = "finsight_access_token"
+export const FINSIGHT_AUTH_PROVIDER_KEY = "finsight_auth_provider"
+
+export type AuthProvider = "WEB" | "KAKAO" | "NAVER" | "GOOGLE"
 
 export function readAccessToken(): string | null {
   if (typeof window === "undefined") return null
@@ -9,6 +12,51 @@ export function readAccessToken(): string | null {
     )
   } catch {
     return null
+  }
+}
+
+export function readAuthProvider(): AuthProvider | null {
+  if (typeof window === "undefined") return null
+  try {
+    const value =
+      sessionStorage.getItem(FINSIGHT_AUTH_PROVIDER_KEY) ||
+      localStorage.getItem(FINSIGHT_AUTH_PROVIDER_KEY)
+    if (value === "WEB" || value === "KAKAO" || value === "NAVER" || value === "GOOGLE") {
+      return value
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function storeAuthSession(options: {
+  accessToken: string
+  authProvider: AuthProvider
+  remember?: boolean
+}) {
+  const { accessToken, authProvider, remember } = options
+  if (remember) {
+    localStorage.setItem(FINSIGHT_ACCESS_TOKEN_KEY, accessToken)
+    localStorage.setItem(FINSIGHT_AUTH_PROVIDER_KEY, authProvider)
+    sessionStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
+    sessionStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
+  } else {
+    sessionStorage.setItem(FINSIGHT_ACCESS_TOKEN_KEY, accessToken)
+    sessionStorage.setItem(FINSIGHT_AUTH_PROVIDER_KEY, authProvider)
+    localStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
+    localStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
+  }
+}
+
+export function clearAuthSession() {
+  try {
+    localStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
+    localStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
+    sessionStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
+    sessionStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
+  } catch {
+    void 0
   }
 }
 

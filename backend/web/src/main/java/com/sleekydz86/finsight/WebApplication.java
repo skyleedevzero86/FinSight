@@ -7,10 +7,13 @@ import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Import;
 
-@ConfigurationPropertiesScan
+@ConfigurationPropertiesScan(basePackages = {
+        "com.sleekydz86.finsight.web",
+        "com.sleekydz86.finsight.core"
+})
 @Import(ApplicationComponentScanConfig.class)
 @SpringBootApplication(
-        scanBasePackages = { "com.sleekydz86.finsight" },
+        scanBasePackages = "com.sleekydz86.finsight.web",
         exclude = BatchAutoConfiguration.class)
 public class WebApplication {
 

@@ -2,12 +2,13 @@
 
 import type { ReactNode } from "react"
 import { Apple } from "lucide-react"
+import { useState } from "react"
 
 type SocialButton = {
   label: string
+  provider: "KAKAO" | "NAVER" | "GOOGLE" | "APPLE"
   bgClass: string
   content: ReactNode
-  showPreparingAlert?: boolean
 }
 
 function GoogleMark() {
@@ -36,31 +37,76 @@ function GoogleMark() {
 const socialButtons: SocialButton[] = [
   {
     label: "카카오 로그인",
+    provider: "KAKAO",
     bgClass: "bg-[#FEE500] text-[#3C1E1E]",
     content: <span className="text-base font-black">톡</span>,
   },
   {
     label: "네이버 로그인",
+    provider: "NAVER",
     bgClass: "bg-[#03C75A] text-white",
     content: <span className="text-2xl font-black leading-none">N</span>,
   },
   {
     label: "구글 로그인",
+    provider: "GOOGLE",
     bgClass: "border border-gray-200 bg-white",
     content: <GoogleMark />,
-    showPreparingAlert: true,
   },
   {
     label: "애플 로그인",
+    provider: "APPLE",
     bgClass: "bg-black text-white",
     content: <Apple className="h-7 w-7 fill-current" strokeWidth={2.3} />,
-    showPreparingAlert: true,
   },
 ]
 
 export default function SocialLoginRow() {
-  function handleClick(showPreparingAlert?: boolean) {
-    if (!showPreparingAlert) return
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
+
+  async function startNaverLogin() {
+    setLoadingProvider("NAVER")
+    try {
+      const res = await fetch("/api/v1/auth/oauth/naver/url", {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      })
+      const payload = await res.json().catch(() => null)
+      if (!res.ok) {
+        window.alert(
+          (payload && typeof payload === "object" && "message" in payload
+            ? String((payload as { message?: string }).message)
+            : null) || "네이버 로그인 URL을 가져오지 못했습니다.",
+        )
+        return
+      }
+
+      const data =
+        payload && typeof payload === "object" && "data" in payload
+          ? (payload as { data?: Record<string, string> }).data
+          : null
+      const authorizeUrl = data?.authorizeUrl
+      const state = data?.state
+      if (!authorizeUrl) {
+        window.alert("네이버 로그인 URL이 비어 있습니다. 설정을 확인해 주세요.")
+        return
+      }
+      if (state) {
+        sessionStorage.setItem("naver_oauth_state", state)
+      }
+      window.location.href = authorizeUrl
+    } catch {
+      window.alert("네이버 로그인을 시작하지 못했습니다.")
+    } finally {
+      setLoadingProvider(null)
+    }
+  }
+
+  async function handleClick(provider: SocialButton["provider"]) {
+    if (provider === "NAVER") {
+      await startNaverLogin()
+      return
+    }
     window.alert("서비스 준비중입니다.")
   }
 
@@ -80,8 +126,9 @@ export default function SocialLoginRow() {
             type="button"
             aria-label={button.label}
             title={button.label}
-            onClick={() => handleClick(button.showPreparingAlert)}
-            className={`flex h-13 w-13 items-center justify-center rounded-full shadow-sm transition hover:scale-[1.03] ${button.bgClass}`}
+            disabled={loadingProvider === button.provider}
+            onClick={() => void handleClick(button.provider)}
+            className={`flex h-13 w-13 items-center justify-center rounded-full shadow-sm transition hover:scale-[1.03] disabled:opacity-60 ${button.bgClass}`}
           >
             {button.content}
           </button>

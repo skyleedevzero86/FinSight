@@ -21,6 +21,10 @@ public interface UserPersistencePort {
 
     Optional<User> findByApiKey(String apiKey);
 
+    Optional<User> findByNaverId(String naverId);
+
+    Optional<User> findByGoogleId(String googleId);
+
     List<User> findAll();
 
     Page<User> findAll(Pageable pageable);

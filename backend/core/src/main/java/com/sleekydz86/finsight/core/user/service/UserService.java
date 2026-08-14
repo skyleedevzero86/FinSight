@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.user.service;
 
 import com.sleekydz86.finsight.core.global.exception.InvalidPasswordException;
 import com.sleekydz86.finsight.core.global.exception.UserNotFoundException;
+import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.UserStatus;
@@ -71,6 +72,7 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
                 .nickname(request.getUsername())
                 .role(UserRole.USER)
                 .status(UserStatus.APPROVED)
+                .authProvider(AuthProvider.WEB)
                 .passwordChangedAt(LocalDateTime.now())
                 .notificationPreferences(Arrays.asList(NotificationType.EMAIL))
                 .build();

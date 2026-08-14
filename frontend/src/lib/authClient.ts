@@ -9,7 +9,7 @@ function readApiErrorMessage(payload: unknown, fallback: string): string {
 }
 
 export async function postLogin(body: {
-  username: string
+  email: string
   password: string
 }): Promise<
   | { ok: true; data: unknown }
