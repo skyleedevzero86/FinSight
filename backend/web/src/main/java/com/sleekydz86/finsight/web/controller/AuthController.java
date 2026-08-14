@@ -80,11 +80,8 @@ public class AuthController {
         }
         if (authProvider == AuthProvider.GOOGLE) {
             return ResponseEntity.ok(ApiResponse.success(
-                    Map.of(
-                            "provider", authProvider.name(),
-                            "authorizeUrl", "",
-                            "status", "PREPARING"),
-                    authProvider.name() + " 로그인은 준비 중입니다"));
+                    socialAuthService.createGoogleAuthorizeUrl(),
+                    "구글 인가 URL을 생성했습니다"));
         }
         throw new IllegalArgumentException("지원하지 않는 SNS 제공자입니다: " + provider);
     }
@@ -107,6 +104,16 @@ public class AuthController {
             @RequestBody @Valid SocialOAuthCodeRequest request) {
         LoginResultResponse result = socialAuthService.loginWithKakao(request.getCode(), request.getState());
         return ResponseEntity.ok(ApiResponse.success(result, "카카오 로그인에 성공했습니다"));
+    }
+
+    @Operation(summary = "구글 로그인", description = "구글 인가 코드로 로그인합니다.")
+    @PostMapping("/oauth/google")
+    @LogExecution("구글 로그인")
+    @PerformanceMonitor(threshold = 3000, metricName = "google_login")
+    public ResponseEntity<ApiResponse<LoginResultResponse>> loginWithGoogle(
+            @RequestBody @Valid SocialOAuthCodeRequest request) {
+        LoginResultResponse result = socialAuthService.loginWithGoogle(request.getCode(), request.getState());
+        return ResponseEntity.ok(ApiResponse.success(result, "구글 로그인에 성공했습니다"));
     }
 
     @Operation(summary = "네이버 연결 끊기 콜백", description = "네이버 연결 끊기 알림을 처리합니다.")

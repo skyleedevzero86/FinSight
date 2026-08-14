@@ -50,7 +50,7 @@ public class UserJpaEntity extends BaseTimeEntity {
     @Column(name = "naver_id", unique = true, length = 100)
     private String naverId;
 
-    @Column(name = "google_id", unique = true, length = 100)
+    @Column(name = "google_id", unique = true, length = 255)
     private String googleId;
 
     @Column(name = "kakao_user_id", unique = true, length = 100)

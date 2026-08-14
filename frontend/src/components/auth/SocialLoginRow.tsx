@@ -4,11 +4,25 @@ import type { ReactNode } from "react"
 import { Apple } from "lucide-react"
 import { useState } from "react"
 
+type SocialProvider = "KAKAO" | "NAVER" | "GOOGLE" | "APPLE"
+
 type SocialButton = {
   label: string
-  provider: "KAKAO" | "NAVER" | "GOOGLE" | "APPLE"
+  provider: SocialProvider
   bgClass: string
   content: ReactNode
+}
+
+const SOCIAL_LABEL: Record<"NAVER" | "KAKAO" | "GOOGLE", string> = {
+  NAVER: "네이버",
+  KAKAO: "카카오",
+  GOOGLE: "구글",
+}
+
+const SOCIAL_STATE_KEY: Record<"NAVER" | "KAKAO" | "GOOGLE", string> = {
+  NAVER: "naver_oauth_state",
+  KAKAO: "kakao_oauth_state",
+  GOOGLE: "google_oauth_state",
 }
 
 function GoogleMark() {
@@ -64,10 +78,10 @@ const socialButtons: SocialButton[] = [
 export default function SocialLoginRow() {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
 
-  async function startSocialLogin(provider: "NAVER" | "KAKAO") {
+  async function startSocialLogin(provider: "NAVER" | "KAKAO" | "GOOGLE") {
     setLoadingProvider(provider)
-    const label = provider === "NAVER" ? "네이버" : "카카오"
-    const stateKey = provider === "NAVER" ? "naver_oauth_state" : "kakao_oauth_state"
+    const label = SOCIAL_LABEL[provider]
+    const stateKey = SOCIAL_STATE_KEY[provider]
     try {
       const res = await fetch(`/api/v1/auth/oauth/${provider.toLowerCase()}/url`, {
         method: "GET",
@@ -104,8 +118,8 @@ export default function SocialLoginRow() {
     }
   }
 
-  async function handleClick(provider: SocialButton["provider"]) {
-    if (provider === "NAVER" || provider === "KAKAO") {
+  async function handleClick(provider: SocialProvider) {
+    if (provider === "NAVER" || provider === "KAKAO" || provider === "GOOGLE") {
       await startSocialLogin(provider)
       return
     }

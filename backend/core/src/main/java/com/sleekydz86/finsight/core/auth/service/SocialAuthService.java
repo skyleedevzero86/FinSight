@@ -1,11 +1,15 @@
 package com.sleekydz86.finsight.core.auth.service;
 
+import com.sleekydz86.finsight.core.auth.adapter.oauth.GoogleOAuthClient;
+import com.sleekydz86.finsight.core.auth.adapter.oauth.GoogleOAuthTokenResponse;
+import com.sleekydz86.finsight.core.auth.adapter.oauth.GoogleUserInfoResponse;
 import com.sleekydz86.finsight.core.auth.adapter.oauth.KakaoOAuthClient;
 import com.sleekydz86.finsight.core.auth.adapter.oauth.KakaoOAuthTokenResponse;
 import com.sleekydz86.finsight.core.auth.adapter.oauth.KakaoProfileResponse;
 import com.sleekydz86.finsight.core.auth.adapter.oauth.NaverOAuthClient;
 import com.sleekydz86.finsight.core.auth.adapter.oauth.NaverProfileResponse;
 import com.sleekydz86.finsight.core.auth.adapter.oauth.NaverTokenResponse;
+import com.sleekydz86.finsight.core.auth.config.GoogleOAuthProperties;
 import com.sleekydz86.finsight.core.auth.config.KakaoOAuthProperties;
 import com.sleekydz86.finsight.core.auth.config.NaverOAuthProperties;
 import com.sleekydz86.finsight.core.auth.domain.JwtToken;
@@ -38,6 +42,8 @@ public class SocialAuthService {
     private final NaverOAuthClient naverOAuthClient;
     private final KakaoOAuthProperties kakaoOAuthProperties;
     private final KakaoOAuthClient kakaoOAuthClient;
+    private final GoogleOAuthProperties googleOAuthProperties;
+    private final GoogleOAuthClient googleOAuthClient;
     private final UserPersistencePort userPersistencePort;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtil jwtTokenUtil;
@@ -47,6 +53,8 @@ public class SocialAuthService {
             NaverOAuthClient naverOAuthClient,
             KakaoOAuthProperties kakaoOAuthProperties,
             KakaoOAuthClient kakaoOAuthClient,
+            GoogleOAuthProperties googleOAuthProperties,
+            GoogleOAuthClient googleOAuthClient,
             UserPersistencePort userPersistencePort,
             PasswordEncoder passwordEncoder,
             JwtTokenUtil jwtTokenUtil) {
@@ -54,6 +62,8 @@ public class SocialAuthService {
         this.naverOAuthClient = naverOAuthClient;
         this.kakaoOAuthProperties = kakaoOAuthProperties;
         this.kakaoOAuthClient = kakaoOAuthClient;
+        this.googleOAuthProperties = googleOAuthProperties;
+        this.googleOAuthClient = googleOAuthClient;
         this.userPersistencePort = userPersistencePort;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenUtil = jwtTokenUtil;
@@ -78,6 +88,17 @@ public class SocialAuthService {
         return Map.of(
                 "provider", AuthProvider.KAKAO.name(),
                 "authorizeUrl", kakaoOAuthClient.createAuthorizeUrl(state),
+                "state", state);
+    }
+
+    public Map<String, String> createGoogleAuthorizeUrl() {
+        if (!googleOAuthProperties.isConfigured()) {
+            throw new IllegalStateException("구글 로그인 설정(GOOGLE_CLIENT_ID/SECRET)이 없습니다");
+        }
+        String state = googleOAuthClient.createState();
+        return Map.of(
+                "provider", AuthProvider.GOOGLE.name(),
+                "authorizeUrl", googleOAuthClient.createAuthorizeUrl(state),
                 "state", state);
     }
 
@@ -132,6 +153,32 @@ public class SocialAuthService {
         }
     }
 
+    public LoginResultResponse loginWithGoogle(String code, String state) {
+        if (!googleOAuthProperties.isConfigured()) {
+            throw new IllegalStateException("구글 로그인 설정(GOOGLE_CLIENT_ID/SECRET)이 없습니다");
+        }
+        try {
+            GoogleOAuthTokenResponse tokenResponse = googleOAuthClient.exchangeCode(code);
+            GoogleUserInfoResponse profile = googleOAuthClient.fetchUserInfo(tokenResponse.getAccessToken());
+            User user = findOrCreateGoogleUser(profile);
+            user.updateLastLoginAt(LocalDateTime.now());
+            user = userPersistencePort.save(user);
+
+            JwtToken jwt = issueToken(user);
+            log.info("구글 로그인 성공: 이메일={}, 구글ID={}, state={}",
+                    user.getEmail(), profile.getSub(), state);
+            return LoginResultResponse.of(
+                    jwt,
+                    AuthProvider.GOOGLE,
+                    user.getEmail(),
+                    user.getNickname(),
+                    user.getProfileImageUrl());
+        } catch (Exception e) {
+            log.error("구글 로그인 실패: {}", e.getMessage(), e);
+            throw new AuthenticationFailedException("구글");
+        }
+    }
+
     public LoginResultResponse toWebLoginResult(User user, JwtToken token) {
         AuthProvider provider = user.getAuthProvider() != null ? user.getAuthProvider() : AuthProvider.WEB;
         return LoginResultResponse.of(
@@ -162,6 +209,63 @@ public class SocialAuthService {
             userPersistencePort.save(user);
             log.info("카카오 연결 해제 처리 완료: 사용자ID={}, 카카오ID={}", user.getId(), kakaoUserId);
         });
+    }
+
+    public void unlinkGoogleAccount(String googleId) {
+        if (googleId == null || googleId.isBlank()) {
+            return;
+        }
+        userPersistencePort.findByGoogleId(googleId).ifPresent(user -> {
+            user.clearGoogleLink();
+            userPersistencePort.save(user);
+            log.info("구글 연결 해제 처리 완료: 사용자ID={}, 구글ID={}", user.getId(), googleId);
+        });
+    }
+
+    private User findOrCreateGoogleUser(GoogleUserInfoResponse profile) {
+        String googleId = profile.getSub();
+        Optional<User> byGoogleId = userPersistencePort.findByGoogleId(googleId);
+        if (byGoogleId.isPresent()) {
+            User existing = byGoogleId.get();
+            existing.applyGoogleProfile(profile.getName(), profile.getEmail(), profile.getPicture());
+            return existing;
+        }
+
+        String email = resolveGoogleEmail(profile);
+        Optional<User> byEmail = userPersistencePort.findByEmail(email);
+        if (byEmail.isPresent()) {
+            User existing = byEmail.get();
+            if (existing.getAuthProvider() != null
+                    && existing.getAuthProvider() != AuthProvider.WEB
+                    && existing.getAuthProvider() != AuthProvider.GOOGLE) {
+                throw new IllegalStateException("이미 다른 SNS로 가입된 이메일입니다: " + existing.getAuthProvider());
+            }
+            existing.linkGoogle(googleId);
+            existing.applyGoogleProfile(profile.getName(), profile.getEmail(), profile.getPicture());
+            return existing;
+        }
+
+        String nickname = resolveGoogleNickname(profile);
+        String username = uniqueUsername("google_" + googleId);
+        LocalDateTime now = LocalDateTime.now();
+
+        return User.builder()
+                .username(username)
+                .password(passwordEncoder.encode("SNS-" + UUID.randomUUID()))
+                .nickname(truncate(nickname, 50))
+                .email(email)
+                .status(UserStatus.APPROVED)
+                .role(UserRole.USER)
+                .authProvider(AuthProvider.GOOGLE)
+                .googleId(googleId)
+                .profileImageUrl(profile.getPicture())
+                .approvedAt(now)
+                .passwordChangedAt(now)
+                .passwordChangeCount(0)
+                .loginFailCount(0)
+                .otpEnabled(false)
+                .otpVerified(false)
+                .build();
     }
 
     private User findOrCreateKakaoUser(KakaoProfileResponse profile, KakaoOAuthTokenResponse tokenResponse) {
@@ -313,6 +417,23 @@ public class SocialAuthService {
             return profile.getNickname().trim();
         }
         return "카카오사용자";
+    }
+
+    private String resolveGoogleEmail(GoogleUserInfoResponse profile) {
+        if (profile.getEmail() != null && !profile.getEmail().isBlank()) {
+            return profile.getEmail().trim();
+        }
+        return "google_" + profile.getSub() + "@oauth.finsight.local";
+    }
+
+    private String resolveGoogleNickname(GoogleUserInfoResponse profile) {
+        if (profile.getName() != null && !profile.getName().isBlank()) {
+            return profile.getName().trim();
+        }
+        if (profile.getGivenName() != null && !profile.getGivenName().isBlank()) {
+            return profile.getGivenName().trim();
+        }
+        return "구글사용자";
     }
 
     private String uniqueUsername(String preferred) {

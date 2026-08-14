@@ -624,6 +624,26 @@ public class User extends BaseTimeEntity {
         this.authProvider = AuthProvider.GOOGLE;
     }
 
+    public void clearGoogleLink() {
+        this.googleId = null;
+        if (this.authProvider == AuthProvider.GOOGLE) {
+            this.authProvider = AuthProvider.WEB;
+        }
+    }
+
+    public void applyGoogleProfile(String name, String email, String profileImageUrl) {
+        if (name != null && !name.isBlank()) {
+            this.nickname = name.length() > 50 ? name.substring(0, 50) : name;
+        }
+        if (email != null && !email.isBlank() && (this.email == null || this.email.endsWith("@oauth.finsight.local"))) {
+            this.email = email.trim();
+        }
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            this.profileImageUrl = profileImageUrl;
+        }
+        this.authProvider = AuthProvider.GOOGLE;
+    }
+
     public void updateKakaoInfo(String kakaoUserId, String accessToken, LocalDateTime expiresAt, String refreshToken) {
         this.kakaoUserId = kakaoUserId;
         this.kakaoAccessToken = accessToken;
