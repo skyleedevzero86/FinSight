@@ -77,14 +77,14 @@ public class User extends BaseTimeEntity {
     @Column
     private LocalDateTime approvedAt;
 
-    @Column
+    @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
 
-    @Column(nullable = false)
+    @Column(name = "password_change_count", nullable = false)
     @Builder.Default
     private Integer passwordChangeCount = 0;
 
-    @Column
+    @Column(name = "last_password_change_date")
     private LocalDate lastPasswordChangeDate;
 
     @ElementCollection(targetClass = TargetCategory.class)
@@ -101,14 +101,14 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     private List<NotificationType> notificationPreferences = new ArrayList<>();
 
-    @Column
+    @Column(name = "otp_secret")
     private String otpSecret;
 
-    @Column(nullable = false)
+    @Column(name = "otp_enabled", nullable = false)
     @Builder.Default
     private Boolean otpEnabled = false;
 
-    @Column(nullable = false)
+    @Column(name = "otp_verified", nullable = false)
     @Builder.Default
     private Boolean otpVerified = false;
 
@@ -133,10 +133,10 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     private Boolean smsNotificationEnabled = false;
 
-    @Column
+    @Column(name = "phone_number")
     private String phoneNumber;
 
-    @Column
+    @Column(name = "profile_image_url")
     private String profileImageUrl;
 
     @Column
@@ -145,19 +145,19 @@ public class User extends BaseTimeEntity {
     @Column
     private String language;
 
-    @Column
+    @Column(name = "kakao_user_id")
     private String kakaoUserId;
 
-    @Column
+    @Column(name = "kakao_access_token")
     private String kakaoAccessToken;
 
-    @Column
+    @Column(name = "kakao_token_expires_at")
     private LocalDateTime kakaoTokenExpiresAt;
 
-    @Column
+    @Column(name = "kakao_refresh_token")
     private String kakaoRefreshToken;
 
-    @Column(nullable = false)
+    @Column(name = "kakao_notification_enabled", nullable = false)
     @Builder.Default
     private Boolean kakaoNotificationEnabled = false;
 

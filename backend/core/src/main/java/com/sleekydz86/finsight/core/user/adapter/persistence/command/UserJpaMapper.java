@@ -60,7 +60,7 @@ public class UserJpaMapper {
                 .approvedBy(user.getApprovedBy())
                 .approvedAt(user.getApprovedAt())
                 .passwordChangedAt(user.getPasswordChangedAt())
-                .passwordChangeCount(user.getPasswordChangeCount())
+                .passwordChangeCount(user.getPasswordChangeCount() != null ? user.getPasswordChangeCount() : 0)
                 .lastPasswordChangeDate(user.getLastPasswordChangeDate())
                 .watchlist(user.getWatchlist() != null ? new ArrayList<>(user.getWatchlist()) : new ArrayList<>())
                 .notificationPreferences(
@@ -68,8 +68,8 @@ public class UserJpaMapper {
                                 : new ArrayList<>())
 
                 .otpSecret(user.getOtpSecret())
-                .otpEnabled(user.getOtpEnabled())
-                .otpVerified(user.getOtpVerified())
+                .otpEnabled(boolOr(user.getOtpEnabled(), false))
+                .otpVerified(boolOr(user.getOtpVerified(), false))
 
                 .build();
 

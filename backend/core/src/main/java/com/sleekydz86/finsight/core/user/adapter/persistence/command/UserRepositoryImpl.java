@@ -36,7 +36,7 @@ public class UserRepositoryImpl implements UserPersistencePort {
             UserJpaEntity savedEntity = userJpaRepository.save(entity);
             return userJpaMapper.toDomain(savedEntity);
         } catch (Exception e) {
-            log.error("사용자 저장 실패: {}", e.getMessage());
+            log.error("사용자 저장 실패", e);
             throw new RuntimeException("사용자 저장에 실패했습니다.", e);
         }
     }
