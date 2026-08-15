@@ -3,6 +3,14 @@ export const FINSIGHT_AUTH_PROVIDER_KEY = "finsight_auth_provider"
 
 export type AuthProvider = "WEB" | "KAKAO" | "NAVER" | "GOOGLE"
 
+const consumedOAuthCodes = new Set<string>()
+
+export function consumeOAuthCode(code: string): boolean {
+  if (!code || consumedOAuthCodes.has(code)) return false
+  consumedOAuthCodes.add(code)
+  return true
+}
+
 export function readAccessToken(): string | null {
   if (typeof window === "undefined") return null
   try {

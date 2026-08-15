@@ -15,7 +15,6 @@ import com.sleekydz86.finsight.core.auth.config.NaverOAuthProperties;
 import com.sleekydz86.finsight.core.auth.domain.JwtToken;
 import com.sleekydz86.finsight.core.auth.dto.LoginResultResponse;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
-import com.sleekydz86.finsight.core.global.exception.AuthenticationFailedException;
 import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
@@ -121,9 +120,9 @@ public class SocialAuthService {
                     user.getEmail(),
                     user.getNickname(),
                     user.getProfileImageUrl());
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("네이버 로그인 실패: {}", e.getMessage(), e);
-            throw new AuthenticationFailedException("네이버");
+            throw e;
         }
     }
 
@@ -147,9 +146,9 @@ public class SocialAuthService {
                     user.getEmail(),
                     user.getNickname(),
                     user.getProfileImageUrl());
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("카카오 로그인 실패: {}", e.getMessage(), e);
-            throw new AuthenticationFailedException("카카오");
+            throw e;
         }
     }
 
@@ -173,9 +172,9 @@ public class SocialAuthService {
                     user.getEmail(),
                     user.getNickname(),
                     user.getProfileImageUrl());
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("구글 로그인 실패: {}", e.getMessage(), e);
-            throw new AuthenticationFailedException("구글");
+            throw e;
         }
     }
 

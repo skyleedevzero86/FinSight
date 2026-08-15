@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
-  FINSIGHT_ACCESS_TOKEN_KEY,
-  FINSIGHT_AUTH_PROVIDER_KEY,
+  consumeOAuthCode,
+  storeAuthSession,
+  type AuthProvider,
 } from "@/lib/finsightToken"
 
 function extractToken(data: unknown): string | null {
@@ -23,14 +24,16 @@ function extractToken(data: unknown): string | null {
   return null
 }
 
-function extractProvider(data: unknown): string {
+function extractProvider(data: unknown): AuthProvider {
   if (!data || typeof data !== "object") return "KAKAO"
   const o = data as Record<string, unknown>
-  if (typeof o.authProvider === "string") return o.authProvider
+  if (typeof o.authProvider === "string") {
+    const p = o.authProvider
+    if (p === "WEB" || p === "KAKAO" || p === "NAVER" || p === "GOOGLE") return p
+  }
   const inner = o.data
   if (inner && typeof inner === "object") {
-    const d = inner as Record<string, unknown>
-    if (typeof d.authProvider === "string") return d.authProvider
+    return extractProvider(inner)
   }
   return "KAKAO"
 }
@@ -51,6 +54,9 @@ export default function KakaoCallbackClient() {
     }
     if (!code) {
       setMessage("카카오 인가 코드가 없습니다.")
+      return
+    }
+    if (!consumeOAuthCode(code)) {
       return
     }
 
@@ -87,9 +93,7 @@ export default function KakaoCallbackClient() {
           return
         }
 
-        sessionStorage.setItem(FINSIGHT_ACCESS_TOKEN_KEY, token)
-        localStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
-        sessionStorage.setItem(FINSIGHT_AUTH_PROVIDER_KEY, provider)
+        storeAuthSession({ accessToken: token, authProvider: provider })
         sessionStorage.removeItem("kakao_oauth_state")
         router.replace("/")
         router.refresh()

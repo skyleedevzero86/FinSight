@@ -18,6 +18,7 @@ import com.sleekydz86.finsight.core.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -255,7 +256,12 @@ public class AuthController {
     @GetMapping("/me")
     @LogExecution("현재 사용자 정보 조회")
     @PerformanceMonitor(threshold = 1000, metricName = "current_user_info")
-    public ResponseEntity<ApiResponse<AuthenticatedUser>> getCurrentUser(@CurrentUser AuthenticatedUser currentUser) {
+    public ResponseEntity<ApiResponse<AuthenticatedUser>> getCurrentUser(
+            @CurrentUser(required = false) AuthenticatedUser currentUser) {
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("로그인이 필요합니다", 401));
+        }
         return ResponseEntity.ok(ApiResponse.success(currentUser, "현재 사용자 정보를 성공적으로 조회했습니다"));
     }
 }

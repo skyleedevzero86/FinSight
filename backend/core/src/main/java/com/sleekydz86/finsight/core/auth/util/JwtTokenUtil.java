@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class JwtTokenUtil {
@@ -35,6 +36,8 @@ public class JwtTokenUtil {
 
     @Value("${jwt.issuer:finsight}")
     private String issuer;
+
+    private final String bootId = UUID.randomUUID().toString();
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
@@ -57,6 +60,7 @@ public class JwtTokenUtil {
     private String generateToken(String email, String tokenType, UserRole role, long expiration) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("tokenType", tokenType);
+        claims.put("bootId", bootId);
         if (role != null) {
             claims.put("role", role.name());
         }
@@ -73,11 +77,12 @@ public class JwtTokenUtil {
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parser()
+            Claims claims = Jwts.parser()
                     .verifyWith(getSigningKey())
                     .build()
-                    .parseSignedClaims(token);
-            return true;
+                    .parseSignedClaims(token)
+                    .getPayload();
+            return bootId.equals(claims.get("bootId", String.class));
         } catch (JwtException | IllegalArgumentException e) {
             log.warn("JWT 토큰 검증 실패: {}", e.getMessage());
             return false;
@@ -149,7 +154,8 @@ public class JwtTokenUtil {
     public boolean validateRefreshToken(String token) {
         try {
             Claims claims = getClaimsFromToken(token);
-            return "REFRESH".equals(claims.get("tokenType"));
+            return "REFRESH".equals(claims.get("tokenType"))
+                    && bootId.equals(claims.get("bootId", String.class));
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
