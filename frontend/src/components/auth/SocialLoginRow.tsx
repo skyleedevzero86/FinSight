@@ -25,6 +25,25 @@ const SOCIAL_STATE_KEY: Record<"NAVER" | "KAKAO" | "GOOGLE", string> = {
   GOOGLE: "google_oauth_state",
 }
 
+function oauthUrlErrorMessage(
+  label: string,
+  status: number,
+  payload: unknown,
+): string {
+  const raw =
+    payload && typeof payload === "object" && "message" in payload
+      ? String((payload as { message?: string }).message ?? "").trim()
+      : ""
+  const usable =
+    raw && !raw.startsWith("error.") && raw !== "INTERNAL_SERVER_ERROR"
+      ? raw
+      : ""
+  if (status === 503 || status === 504) {
+    return usable || "백엔드 서버에 연결할 수 없습니다. 서버 실행 여부를 확인해 주세요."
+  }
+  return usable || `${label} 로그인 URL을 가져오지 못했습니다. 잠시 후 다시 시도해 주세요.`
+}
+
 function GoogleMark() {
   return (
     <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden>
@@ -89,11 +108,7 @@ export default function SocialLoginRow() {
       })
       const payload = await res.json().catch(() => null)
       if (!res.ok) {
-        window.alert(
-          (payload && typeof payload === "object" && "message" in payload
-            ? String((payload as { message?: string }).message)
-            : null) || `${label} 로그인 URL을 가져오지 못했습니다.`,
-        )
+        window.alert(oauthUrlErrorMessage(label, res.status, payload))
         return
       }
 

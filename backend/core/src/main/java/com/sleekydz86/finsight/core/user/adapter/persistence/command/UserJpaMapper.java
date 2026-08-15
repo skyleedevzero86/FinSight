@@ -35,6 +35,21 @@ public class UserJpaMapper {
                 .kakaoRefreshToken(user.getKakaoRefreshToken())
                 .kakaoNotificationEnabled(
                         user.getKakaoNotificationEnabled() != null ? user.getKakaoNotificationEnabled() : false)
+                .telegramUserId(user.getTelegramUserId())
+                .telegramChatId(user.getTelegramChatId())
+                .telegramNotificationEnabled(boolOr(user.getTelegramNotificationEnabled(), false))
+                .slackUserId(user.getSlackUserId())
+                .slackChannelId(user.getSlackChannelId())
+                .slackNotificationEnabled(boolOr(user.getSlackNotificationEnabled(), false))
+                .discordUserId(user.getDiscordUserId())
+                .discordNotificationEnabled(boolOr(user.getDiscordNotificationEnabled(), false))
+                .lineUserId(user.getLineUserId())
+                .lineNotificationEnabled(boolOr(user.getLineNotificationEnabled(), false))
+                .webhookUrl(user.getWebhookUrl())
+                .webhookNotificationEnabled(boolOr(user.getWebhookNotificationEnabled(), false))
+                .pushNotificationEnabled(boolOr(user.getPushNotificationEnabled(), true))
+                .emailNotificationEnabled(boolOr(user.getEmailNotificationEnabled(), true))
+                .smsNotificationEnabled(boolOr(user.getSmsNotificationEnabled(), false))
                 .profileImageUrl(user.getProfileImageUrl())
                 .phoneNumber(user.getPhoneNumber())
                 .status(user.getStatus())
@@ -91,6 +106,21 @@ public class UserJpaMapper {
                 .kakaoRefreshToken(entity.getKakaoRefreshToken())
                 .kakaoNotificationEnabled(
                         entity.getKakaoNotificationEnabled() != null ? entity.getKakaoNotificationEnabled() : false)
+                .telegramUserId(entity.getTelegramUserId())
+                .telegramChatId(entity.getTelegramChatId())
+                .telegramNotificationEnabled(boolOr(entity.getTelegramNotificationEnabled(), false))
+                .slackUserId(entity.getSlackUserId())
+                .slackChannelId(entity.getSlackChannelId())
+                .slackNotificationEnabled(boolOr(entity.getSlackNotificationEnabled(), false))
+                .discordUserId(entity.getDiscordUserId())
+                .discordNotificationEnabled(boolOr(entity.getDiscordNotificationEnabled(), false))
+                .lineUserId(entity.getLineUserId())
+                .lineNotificationEnabled(boolOr(entity.getLineNotificationEnabled(), false))
+                .webhookUrl(entity.getWebhookUrl())
+                .webhookNotificationEnabled(boolOr(entity.getWebhookNotificationEnabled(), false))
+                .pushNotificationEnabled(boolOr(entity.getPushNotificationEnabled(), true))
+                .emailNotificationEnabled(boolOr(entity.getEmailNotificationEnabled(), true))
+                .smsNotificationEnabled(boolOr(entity.getSmsNotificationEnabled(), false))
                 .profileImageUrl(entity.getProfileImageUrl())
                 .phoneNumber(entity.getPhoneNumber())
                 .status(entity.getStatus() != null ? entity.getStatus() : UserStatus.PENDING)
@@ -196,6 +226,10 @@ public class UserJpaMapper {
         } catch (Exception e) {
             throw new RuntimeException("Entity UpdatedAt 설정 실패", e);
         }
+    }
+
+    private static boolean boolOr(Boolean value, boolean fallback) {
+        return value != null ? value : fallback;
     }
 
     private Field findIdField(Class<?> clazz) {

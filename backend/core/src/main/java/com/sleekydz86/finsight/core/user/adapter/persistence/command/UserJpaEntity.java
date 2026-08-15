@@ -69,6 +69,59 @@ public class UserJpaEntity extends BaseTimeEntity {
     @Builder.Default
     private Boolean kakaoNotificationEnabled = false;
 
+    @Column(name = "telegramUserId")
+    private String telegramUserId;
+
+    @Column(name = "telegramChatId")
+    private String telegramChatId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean telegramNotificationEnabled = false;
+
+    @Column(name = "slackUserId")
+    private String slackUserId;
+
+    @Column(name = "slackChannelId")
+    private String slackChannelId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean slackNotificationEnabled = false;
+
+    @Column(name = "discordUserId")
+    private String discordUserId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean discordNotificationEnabled = false;
+
+    @Column(name = "lineUserId")
+    private String lineUserId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean lineNotificationEnabled = false;
+
+    @Column(name = "webhookUrl", length = 1000)
+    private String webhookUrl;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean webhookNotificationEnabled = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean pushNotificationEnabled = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean emailNotificationEnabled = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean smsNotificationEnabled = false;
+
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
 
