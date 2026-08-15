@@ -9,7 +9,7 @@ type BrandLogoProps = {
 export default function BrandLogo({ className = "", variant = "header" }: BrandLogoProps) {
   if (variant === "auth") {
     return (
-      <Link href="/" className={`mb-5 block w-full overflow-hidden rounded-lg bg-black ${className}`}>
+      <Link href="/" className={`mb-5 block w-full overflow-hidden ${className}`}>
         <Image
           src="/finsight-wordmark.png"
           alt="finsight"
@@ -23,7 +23,7 @@ export default function BrandLogo({ className = "", variant = "header" }: BrandL
   }
 
   return (
-    <Link href="/" className={`block shrink-0 overflow-hidden rounded-md bg-black ${className}`}>
+    <Link href="/" className={`block shrink-0 overflow-hidden ${className}`}>
       <Image
         src="/finsight-wordmark.png"
         alt="finsight"
