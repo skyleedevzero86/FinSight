@@ -1,11 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
 import { Search, Menu, User } from "lucide-react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import HeaderSearchOverlay from "@/components/HeaderSearchOverlay"
+import BrandLogo from "@/components/BrandLogo"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import type { AuthProvider } from "@/lib/finsightToken"
 
@@ -89,18 +89,7 @@ export default function Header() {
         </div>
 
         <nav className="flex items-center justify-between px-4 md:px-8 pt-10 pb-4">
-          <Link href="/" className="shrink-0">
-            <div className="relative w-40 h-14 md:w-48 md:h-16 overflow-hidden rounded-sm">
-              <Image
-                src="/finsight-logo.png"
-                alt="finsight"
-                fill
-                className="object-cover"
-                style={{ objectPosition: "center 84%" }}
-                priority
-              />
-            </div>
-          </Link>
+          <BrandLogo />
 
           <div className="ml-auto flex items-center gap-6">
             <Link href="/news" className="text-sm hover:text-finsight-secondary transition hidden md:block">

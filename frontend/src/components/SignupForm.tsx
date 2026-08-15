@@ -1,12 +1,12 @@
 "use client"
 
 import type { FormEvent } from "react"
-import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useState } from "react"
 import SignupAgreementModal from "@/components/SignupAgreementModal"
+import BrandLogo from "@/components/BrandLogo"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import { requestEmailVerification } from "@/lib/emailVerification"
 import {
@@ -308,16 +308,7 @@ export default function SignupForm({
 
       <div className="w-full max-w-[460px] rounded-lg border border-gray-200/80 bg-white px-5 py-8 shadow-sm md:px-8 md:py-10">
         <div className="mb-8 flex flex-col items-center">
-          <Link href="/" className="relative mb-6 block h-14 w-40 overflow-hidden rounded-sm md:h-16 md:w-48">
-            <Image
-              src="/finsight-logo.png"
-              alt="finsight"
-              fill
-              className="object-cover"
-              style={{ objectPosition: "center 84%" }}
-              priority
-            />
-          </Link>
+          <BrandLogo variant="auth" className="mb-6" />
           <h1 className="text-center text-xl font-bold text-gray-900 md:text-2xl">
             회원가입
           </h1>
