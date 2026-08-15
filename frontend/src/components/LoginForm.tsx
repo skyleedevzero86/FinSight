@@ -4,10 +4,11 @@ import type { FormEvent } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
-import { useId, useState } from "react"
+import { useId, useState, useEffect } from "react"
 import AuthCard from "@/components/auth/AuthCard"
 import SocialLoginRow from "@/components/auth/SocialLoginRow"
 import { postLogin } from "@/lib/authClient"
+import { useAuthSession } from "@/components/AuthSessionProvider"
 import {
   storeAuthSession,
   type AuthProvider,
@@ -51,6 +52,7 @@ export default function LoginForm() {
   const searchParams = useSearchParams()
   const id = useId()
   const registered = searchParams.get("registered") === "1"
+  const { user, ready } = useAuthSession()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -58,6 +60,12 @@ export default function LoginForm() {
   const [remember, setRemember] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (ready && user) {
+      router.replace("/")
+    }
+  }, [ready, user, router])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()

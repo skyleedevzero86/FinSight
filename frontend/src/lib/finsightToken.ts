@@ -1,5 +1,11 @@
 export const FINSIGHT_ACCESS_TOKEN_KEY = "finsight_access_token"
 export const FINSIGHT_AUTH_PROVIDER_KEY = "finsight_auth_provider"
+export const FINSIGHT_AUTH_CHANGED_EVENT = "finsight-auth-changed"
+
+export function emitAuthChanged() {
+  if (typeof window === "undefined") return
+  window.dispatchEvent(new Event(FINSIGHT_AUTH_CHANGED_EVENT))
+}
 
 export type AuthProvider = "WEB" | "KAKAO" | "NAVER" | "GOOGLE"
 
@@ -55,9 +61,10 @@ export function storeAuthSession(options: {
     localStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
     localStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
   }
+  emitAuthChanged()
 }
 
-export function clearAuthSession() {
+export function clearAuthSession(options?: { emit?: boolean }) {
   try {
     localStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
     localStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
@@ -65,6 +72,9 @@ export function clearAuthSession() {
     sessionStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
   } catch {
     void 0
+  }
+  if (options?.emit !== false) {
+    emitAuthChanged()
   }
 }
 

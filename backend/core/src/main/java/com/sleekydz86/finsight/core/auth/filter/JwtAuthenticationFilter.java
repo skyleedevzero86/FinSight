@@ -116,6 +116,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 path.equals("/api/v1/auth/login") ||
                 path.equals("/api/v1/auth/register") ||
                 path.startsWith("/api/v1/auth/oauth/") ||
+                path.equals("/login/oauth2/code/google") ||
                 path.startsWith("/actuator/") ||
                 path.equals("/favicon.ico") ||
                 path.startsWith("/swagger-ui/") ||

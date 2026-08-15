@@ -9,7 +9,8 @@ public class GoogleOAuthProperties {
 
     private String clientId = "";
     private String clientSecret = "";
-    private String redirectUri = "http://localhost:3000/auth/google/callback";
+    private String redirectUri = "http://localhost:8080/login/oauth2/code/google";
+    private String frontendCallbackUri = "http://localhost:3000/auth/google/callback";
     private String authorizeUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     private String tokenUrl = "https://oauth2.googleapis.com/token";
     private String userInfoUrl = "https://openidconnect.googleapis.com/v1/userinfo";
@@ -43,6 +44,14 @@ public class GoogleOAuthProperties {
 
     public void setRedirectUri(String redirectUri) {
         this.redirectUri = redirectUri == null ? "" : redirectUri.trim();
+    }
+
+    public String getFrontendCallbackUri() {
+        return frontendCallbackUri;
+    }
+
+    public void setFrontendCallbackUri(String frontendCallbackUri) {
+        this.frontendCallbackUri = frontendCallbackUri == null ? "" : frontendCallbackUri.trim();
     }
 
     public String getAuthorizeUrl() {

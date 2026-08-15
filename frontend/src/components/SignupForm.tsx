@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useState } from "react"
 import SignupAgreementModal from "@/components/SignupAgreementModal"
+import { useAuthSession } from "@/components/AuthSessionProvider"
 import { requestEmailVerification } from "@/lib/emailVerification"
 import {
   postRegister,
@@ -47,6 +48,7 @@ export default function SignupForm({
 }: SignupFormProps) {
   const router = useRouter()
   const id = useId()
+  const { user, ready } = useAuthSession()
   const [username, setUsername] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -65,6 +67,12 @@ export default function SignupForm({
   const [submitAttempted, setSubmitAttempted] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (ready && user) {
+      router.replace("/")
+    }
+  }, [ready, user, router])
   const [loading, setLoading] = useState(false)
 
   const [emailVerified, setEmailVerified] = useState(false)

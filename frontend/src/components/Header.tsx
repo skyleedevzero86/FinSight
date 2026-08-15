@@ -2,21 +2,90 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Search, Menu } from "lucide-react"
+import { Search, Menu, User } from "lucide-react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import HeaderSearchOverlay from "@/components/HeaderSearchOverlay"
+import { useAuthSession } from "@/components/AuthSessionProvider"
+import type { AuthProvider } from "@/lib/finsightToken"
+
+function HeaderAvatar({
+  src,
+  provider,
+}: {
+  src: string | null
+  provider: AuthProvider
+}) {
+  const [broken, setBroken] = useState(false)
+  const useSnsPhoto = provider !== "WEB" && Boolean(src) && !broken
+
+  if (useSnsPhoto) {
+    return (
+      <img
+        src={src as string}
+        alt=""
+        className="h-5 w-5 shrink-0 rounded-full object-cover bg-white/20"
+        onError={() => setBroken(true)}
+      />
+    )
+  }
+
+  return (
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/25">
+      <User className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+    </span>
+  )
+}
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const router = useRouter()
+  const { user, logout } = useAuthSession()
+
+  async function onLogout() {
+    if (loggingOut) return
+    setLoggingOut(true)
+    try {
+      await logout()
+      router.replace("/")
+    } finally {
+      setLoggingOut(false)
+    }
+  }
 
   return (
     <header className="bg-finsight-primary text-white sticky top-0 z-50">
       <div className="relative">
-        <div className="absolute right-0 top-0 px-4 py-2 text-xs flex items-center gap-4">
-          <Link href="/signup" className="hover:text-finsight-secondary transition">회원가입</Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/login" className="hover:text-finsight-secondary transition">로그인</Link>
+        <div className="absolute right-0 top-0 px-4 py-2 text-xs flex items-center gap-4 min-h-[2rem]">
+          {user ? (
+            <>
+              <Link
+                href="/my"
+                className="flex max-w-[11rem] items-center gap-1.5 hover:text-finsight-secondary transition"
+                title={user.nickname}
+              >
+                <HeaderAvatar src={user.profileImageUrl} provider={user.authProvider} />
+                <span className="truncate">{user.nickname}</span>
+              </Link>
+              <span className="text-gray-400">|</span>
+              <button
+                type="button"
+                onClick={() => void onLogout()}
+                disabled={loggingOut}
+                className="hover:text-finsight-secondary transition disabled:opacity-60"
+              >
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/signup" className="hover:text-finsight-secondary transition">회원가입</Link>
+              <span className="text-gray-400">|</span>
+              <Link href="/login" className="hover:text-finsight-secondary transition">로그인</Link>
+            </>
+          )}
         </div>
 
         <nav className="flex items-center justify-between px-4 md:px-8 pt-10 pb-4">
