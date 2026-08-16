@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import AuthSessionProvider from "@/components/AuthSessionProvider";
+import PasswordExpiryGuard from "@/components/PasswordExpiryGuard";
 import { cleanupStaleServiceWorkers } from "@/lib/cleanupStaleServiceWorkers";
 import { installNextHmrBfcacheGuard } from "@/lib/nextHmrBfcacheGuard";
 
@@ -21,6 +22,7 @@ export default function ClientBody({
 
   return (
     <AuthSessionProvider>
+      <PasswordExpiryGuard />
       <div className="antialiased">{children}</div>
     </AuthSessionProvider>
   );

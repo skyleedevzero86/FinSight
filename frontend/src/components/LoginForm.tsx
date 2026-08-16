@@ -11,6 +11,7 @@ import { postLogin } from "@/lib/authClient"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import {
   storeAuthSession,
+  FINSIGHT_FORCE_PASSWORD_KEY,
   type AuthProvider,
 } from "@/lib/finsightToken"
 
@@ -31,6 +32,17 @@ function extractToken(data: unknown): string | null {
     return extractToken(inner)
   }
   return null
+}
+
+function extractPasswordChangeRequired(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false
+  const o = data as Record<string, unknown>
+  if (o.passwordChangeRequired === true || o.changeRequired === true) return true
+  const inner = o.data
+  if (inner && typeof inner === "object") {
+    return extractPasswordChangeRequired(inner)
+  }
+  return false
 }
 
 function extractProvider(data: unknown): AuthProvider {
@@ -64,9 +76,16 @@ export default function LoginForm() {
   const [formError, setFormError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (ready && user) {
-      router.replace("/")
+    if (!ready || !user) return
+    try {
+      if (sessionStorage.getItem(FINSIGHT_FORCE_PASSWORD_KEY) === "1") {
+        router.replace("/my?password=required")
+        return
+      }
+    } catch {
+      void 0
     }
+    router.replace("/")
   }, [ready, user, router])
 
   useEffect(() => {
@@ -95,6 +114,7 @@ export default function LoginForm() {
 
     const token = extractToken(result.data)
     const provider = extractProvider(result.data)
+    const passwordRequired = extractPasswordChangeRequired(result.data)
     try {
       if (token) {
         storeAuthSession({
@@ -103,10 +123,13 @@ export default function LoginForm() {
           remember,
         })
       }
+      if (passwordRequired && provider === "WEB") {
+        sessionStorage.setItem(FINSIGHT_FORCE_PASSWORD_KEY, "1")
+      }
     } catch {
       void 0
     }
-    router.push("/")
+    router.push(passwordRequired && provider === "WEB" ? "/my?password=required" : "/")
     router.refresh()
   }
 

@@ -25,6 +25,9 @@ import java.util.Objects;
 @Slf4j
 public class User extends BaseTimeEntity {
 
+    public static final int PASSWORD_EXPIRY_DAYS = 90;
+    public static final int PASSWORD_RECOMMEND_DAYS = 75;
+
     @Column(unique = true, nullable = false)
     private String username;
 
@@ -86,6 +89,9 @@ public class User extends BaseTimeEntity {
 
     @Column(name = "last_password_change_date")
     private LocalDate lastPasswordChangeDate;
+
+    @Column(name = "password_expiry_notified_at")
+    private LocalDateTime passwordExpiryNotifiedAt;
 
     @ElementCollection(targetClass = TargetCategory.class)
     @Enumerated(EnumType.STRING)
@@ -239,34 +245,75 @@ public class User extends BaseTimeEntity {
         return this.passwordChangeCount == null ? 0 : this.passwordChangeCount;
     }
 
+    public boolean isWebAccount() {
+        return this.authProvider == null || this.authProvider == AuthProvider.WEB;
+    }
+
     public boolean isPasswordChangeRequired() {
-        if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 필요 - 최초 변경 안함: userId={}", this.getId());
-            return true;
+        if (!isWebAccount()) {
+            return false;
         }
-
-        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
-        boolean isRequired = this.passwordChangedAt.isBefore(thirtyDaysAgo);
-
-        log.debug("비밀번호 변경 필요 여부: userId={}, passwordChangedAt={}, required={}",
-                this.getId(), this.passwordChangedAt, isRequired);
-
-        return isRequired;
+        LocalDateTime baseline = passwordBaseline();
+        if (baseline == null) {
+            return false;
+        }
+        return baseline.isBefore(LocalDateTime.now().minusDays(PASSWORD_EXPIRY_DAYS));
     }
 
     public boolean isPasswordChangeRecommended() {
-        if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 권장 - 최초 변경 안함: userId={}", this.getId());
+        if (!isWebAccount() || isPasswordChangeRequired()) {
+            return false;
+        }
+        LocalDateTime baseline = passwordBaseline();
+        if (baseline == null) {
+            return false;
+        }
+        return baseline.isBefore(LocalDateTime.now().minusDays(PASSWORD_RECOMMEND_DAYS));
+    }
+
+    public long daysSincePasswordChange() {
+        LocalDateTime baseline = passwordBaseline();
+        if (baseline == null) {
+            return 0;
+        }
+        return java.time.temporal.ChronoUnit.DAYS.between(baseline.toLocalDate(), LocalDate.now());
+    }
+
+    private LocalDateTime passwordBaseline() {
+        if (this.passwordChangedAt != null) {
+            return this.passwordChangedAt;
+        }
+        return getCreatedAt();
+    }
+
+    public long daysUntilPasswordExpiry() {
+        if (!isWebAccount()) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(0, PASSWORD_EXPIRY_DAYS - daysSincePasswordChange());
+    }
+
+    public boolean shouldSendPasswordExpiryMail() {
+        if (!isWebAccount() || !isPasswordChangeRequired()) {
+            return false;
+        }
+        if (this.email == null || this.email.isBlank() || this.email.endsWith("@oauth.finsight.local")) {
+            return false;
+        }
+        if (this.passwordExpiryNotifiedAt == null) {
             return true;
         }
+        return this.passwordExpiryNotifiedAt.isBefore(LocalDateTime.now().minusHours(24));
+    }
 
-        LocalDateTime fourteenDaysAgo = LocalDateTime.now().minusDays(14);
-        boolean isRecommended = this.passwordChangedAt.isBefore(fourteenDaysAgo);
+    public void markPasswordExpiryNotified() {
+        this.passwordExpiryNotifiedAt = LocalDateTime.now();
+    }
 
-        log.debug("비밀번호 변경 권장 여부: userId={}, passwordChangedAt={}, recommended={}",
-                this.getId(), this.passwordChangedAt, isRecommended);
-
-        return isRecommended;
+    public void updateProfileImage(String profileImageUrl) {
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            this.profileImageUrl = profileImageUrl;
+        }
     }
 
     public String getName() {

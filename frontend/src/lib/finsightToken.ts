@@ -1,6 +1,7 @@
 export const FINSIGHT_ACCESS_TOKEN_KEY = "finsight_access_token"
 export const FINSIGHT_AUTH_PROVIDER_KEY = "finsight_auth_provider"
 export const FINSIGHT_AUTH_CHANGED_EVENT = "finsight-auth-changed"
+export const FINSIGHT_FORCE_PASSWORD_KEY = "finsight_force_password"
 
 export function emitAuthChanged() {
   if (typeof window === "undefined") return
@@ -82,4 +83,10 @@ export function authHeadersJson(): HeadersInit {
   const t = readAccessToken()
   if (!t) return { Accept: "application/json" }
   return { Accept: "application/json", Authorization: `Bearer ${t}` }
+}
+
+export function authHeaders(): HeadersInit {
+  const t = readAccessToken()
+  if (!t) return {}
+  return { Authorization: `Bearer ${t}` }
 }

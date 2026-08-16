@@ -7,17 +7,10 @@ import { useRouter } from "next/navigation"
 import HeaderSearchOverlay from "@/components/HeaderSearchOverlay"
 import BrandLogo from "@/components/BrandLogo"
 import { useAuthSession } from "@/components/AuthSessionProvider"
-import type { AuthProvider } from "@/lib/finsightToken"
 
-function HeaderAvatar({
-  src,
-  provider,
-}: {
-  src: string | null
-  provider: AuthProvider
-}) {
+function HeaderAvatar({ src }: { src: string | null }) {
   const [broken, setBroken] = useState(false)
-  const useSnsPhoto = provider !== "WEB" && Boolean(src) && !broken
+  const useSnsPhoto = Boolean(src) && !broken
 
   if (useSnsPhoto) {
     return (
@@ -66,7 +59,7 @@ export default function Header() {
                 className="flex max-w-[11rem] items-center gap-1.5 hover:text-finsight-secondary transition"
                 title={user.nickname}
               >
-                <HeaderAvatar src={user.profileImageUrl} provider={user.authProvider} />
+                <HeaderAvatar src={user.profileImageUrl} />
                 <span className="truncate">{user.nickname}</span>
               </Link>
               <span className="text-gray-400">|</span>

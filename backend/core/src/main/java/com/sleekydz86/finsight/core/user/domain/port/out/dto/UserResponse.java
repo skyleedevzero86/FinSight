@@ -1,6 +1,8 @@
 package com.sleekydz86.finsight.core.user.domain.port.out.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.UserStatus;
@@ -47,6 +49,15 @@ public class UserResponse {
 
     @Schema(description = "이메일 주소", example = "test@example.com", maxLength = 100, format = "email")
     private String email;
+
+    @Schema(description = "가입 경로", example = "WEB")
+    private AuthProvider authProvider;
+
+    @Schema(description = "프로필 이미지 URL")
+    private String profileImageUrl;
+
+    @Schema(description = "관심 타깃 카테고리")
+    private java.util.List<TargetCategory> watchlist;
 
     @Schema(description = "사용자 상태", example = "APPROVED", implementation = UserStatus.class)
     private UserStatus status;
@@ -103,6 +114,9 @@ public class UserResponse {
                 .username(user.getUsername())
                 .nickname(user.getNickname())
                 .email(user.getEmail())
+                .authProvider(user.getAuthProvider() != null ? user.getAuthProvider() : AuthProvider.WEB)
+                .profileImageUrl(user.getProfileImageUrl())
+                .watchlist(user.getWatchlist())
                 .status(user.getStatus())
                 .role(user.getRole())
                 .otpEnabled(Boolean.TRUE.equals(user.getOtpEnabled()))

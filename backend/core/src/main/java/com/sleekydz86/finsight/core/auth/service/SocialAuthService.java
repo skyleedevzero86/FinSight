@@ -185,7 +185,7 @@ public class SocialAuthService {
                 provider,
                 user.getEmail(),
                 user.getNickname(),
-                user.getProfileImageUrl());
+                user.getProfileImageUrl()).withPasswordPolicy(user);
     }
 
     public void unlinkNaverAccount(String naverId) {
@@ -225,9 +225,7 @@ public class SocialAuthService {
         String googleId = profile.getSub();
         Optional<User> byGoogleId = userPersistencePort.findByGoogleId(googleId);
         if (byGoogleId.isPresent()) {
-            User existing = byGoogleId.get();
-            existing.applyGoogleProfile(profile.getName(), profile.getEmail(), profile.getPicture());
-            return existing;
+            return byGoogleId.get();
         }
 
         String email = resolveGoogleEmail(profile);
@@ -272,7 +270,6 @@ public class SocialAuthService {
         Optional<User> byKakaoId = userPersistencePort.findByKakaoUserId(kakaoUserId);
         if (byKakaoId.isPresent()) {
             User existing = byKakaoId.get();
-            existing.applyKakaoProfile(profile.getNickname(), profile.getEmail(), profile.getProfileImageUrl());
             applyKakaoTokens(existing, kakaoUserId, tokenResponse);
             return existing;
         }
@@ -331,10 +328,7 @@ public class SocialAuthService {
     private User findOrCreateNaverUser(NaverProfileResponse profile) {
         Optional<User> byNaverId = userPersistencePort.findByNaverId(profile.getId());
         if (byNaverId.isPresent()) {
-            User existing = byNaverId.get();
-            existing.applyNaverProfile(profile.getNickname(), profile.getName(), profile.getEmail(),
-                    profile.getProfileImage(), profile.getMobile());
-            return existing;
+            return byNaverId.get();
         }
 
         String email = resolveEmail(profile);

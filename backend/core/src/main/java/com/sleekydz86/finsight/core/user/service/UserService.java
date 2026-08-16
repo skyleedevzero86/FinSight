@@ -137,7 +137,7 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
     }
 
     @Override
-    @CacheEvict(value = "userCache", key = "#userId")
+    @CacheEvict(value = { "userCache", "user", "userProfile" }, key = "#userId")
     public void updateWatchlist(Long userId, WatchlistUpdateRequest request) {
         log.info("관심종목 수정: 사용자ID={}", userId);
 

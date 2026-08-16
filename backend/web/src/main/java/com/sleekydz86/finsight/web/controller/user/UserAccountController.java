@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.web.controller.user;
 
+import com.sleekydz86.finsight.core.auth.domain.JwtToken;
+import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
 import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.annotation.LogExecution;
 import com.sleekydz86.finsight.core.global.annotation.PerformanceMonitor;
@@ -17,22 +19,33 @@ import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserPasswordChangeRe
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserUpdateRequest;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.WatchlistUpdateRequest;
 import com.sleekydz86.finsight.core.user.domain.port.out.dto.PasswordStatusResponse;
+import com.sleekydz86.finsight.core.user.domain.port.out.dto.ProfileUpdateResponse;
 import com.sleekydz86.finsight.core.user.domain.port.out.dto.UserDashboardResponse;
 import com.sleekydz86.finsight.core.user.domain.port.out.dto.UserResponse;
+import com.sleekydz86.finsight.core.user.service.ProfileImageStorageService;
+import com.sleekydz86.finsight.core.user.service.StoredProfileImage;
 import com.sleekydz86.finsight.core.user.service.UserApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +59,8 @@ public class UserAccountController {
     private final UserQueryUseCase userQueryUseCase;
     private final UserCommandUseCase userCommandUseCase;
     private final UserApplicationService userApplicationService;
+    private final ProfileImageStorageService profileImageStorageService;
+    private final AuthenticationService authenticationService;
 
     @GetMapping("/profile")
     @LogExecution("사용자 프로필 조회")
@@ -67,19 +82,69 @@ public class UserAccountController {
     @PerformanceMonitor(threshold = 2000, operation = "user_profile_update")
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = { Exception.class })
     @Operation(summary = "사용자 프로필 수정")
-    public ResponseEntity<ApiResponse<UserResponse>> updateUserProfile(
+    public ResponseEntity<ApiResponse<ProfileUpdateResponse>> updateUserProfile(
             @RequestBody @Valid UserUpdateRequest request,
             @CurrentUser AuthenticatedUser currentUser) {
         try {
             validateUpdateRequest(request);
+            String previousEmail = currentUser.getEmail();
             UserResponse response = userApplicationService.updateProfile(currentUser.getId(), request);
-            return ResponseEntity.ok(ApiResponse.success(response, "사용자 프로필이 성공적으로 수정되었습니다"));
+            JwtToken token = null;
+            if (response.getEmail() != null && previousEmail != null
+                    && !response.getEmail().equalsIgnoreCase(previousEmail)) {
+                token = authenticationService.issueTokens(
+                        userQueryUseCase.findById(currentUser.getId())
+                                .orElseThrow(() -> new ValidationException("사용자를 찾을 수 없습니다", List.of("USER_NOT_FOUND"))));
+            }
+            return ResponseEntity.ok(ApiResponse.success(
+                    ProfileUpdateResponse.of(response, token),
+                    "사용자 프로필이 성공적으로 수정되었습니다"));
         } catch (ValidationException e) {
             throw e;
+        } catch (RuntimeException e) {
+            throw new ValidationException(e.getMessage(), List.of("PROFILE_UPDATE_FAILED"));
         } catch (Exception e) {
             log.error("사용자 프로필 수정 실패: {}", e.getMessage());
             throw new SystemException("사용자 프로필 수정 중 오류가 발생했습니다", "USER_PROFILE_UPDATE_ERROR", e);
         }
+    }
+
+    @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "프로필 사진 업로드")
+    public ResponseEntity<ApiResponse<UserResponse>> uploadProfileImage(
+            @RequestPart("image") MultipartFile image,
+            @CurrentUser AuthenticatedUser currentUser) {
+        try {
+            UserResponse current = userApplicationService.getCurrentUserInfo(currentUser.getId());
+            if (current.getAuthProvider() == null
+                    || current.getAuthProvider() == com.sleekydz86.finsight.core.user.domain.AuthProvider.WEB) {
+                throw new ValidationException("SNS 계정만 프로필 사진을 변경할 수 있습니다", List.of("SNS_ONLY"));
+            }
+            String url = profileImageStorageService.store(currentUser.getId(), image);
+            UserResponse response = userApplicationService.updateProfile(
+                    currentUser.getId(),
+                    UserUpdateRequest.builder().profileImageUrl(url).build());
+            return ResponseEntity.ok(ApiResponse.success(response, "프로필 사진이 변경되었습니다"));
+        } catch (ValidationException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new SystemException("프로필 사진 저장 중 오류가 발생했습니다", "PROFILE_IMAGE_SAVE_ERROR", e);
+        }
+    }
+
+    @GetMapping("/avatars/{userId}")
+    @Operation(summary = "프로필 사진 조회")
+    public ResponseEntity<Resource> getAvatar(@PathVariable Long userId) {
+        Optional<StoredProfileImage> stored = profileImageStorageService.load(userId);
+        if (stored.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        StoredProfileImage image = stored.get();
+        Resource resource = new FileSystemResource(image.getPath());
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(image.getContentType()))
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(resource);
     }
 
     @GetMapping("/watchlist")
@@ -231,6 +296,9 @@ public class UserAccountController {
         }
         if (request.getNickname() != null && request.getNickname().length() > 50) {
             throw new ValidationException("닉네임은 50자를 초과할 수 없습니다", List.of("NICKNAME_TOO_LONG"));
+        }
+        if (request.getEmail() != null && request.getEmail().trim().isEmpty()) {
+            throw new ValidationException("이메일은 비어있을 수 없습니다", List.of("EMAIL_EMPTY"));
         }
     }
 

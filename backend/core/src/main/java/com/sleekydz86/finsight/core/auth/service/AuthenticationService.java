@@ -162,7 +162,17 @@ public class AuthenticationService {
         return savedUser;
     }
 
-    private User resolveLoginUser(String loginId) {
+    public JwtToken issueTokens(User user) {
+        String email = user.getEmail();
+        return JwtToken.builder()
+                .accessToken(jwtTokenUtil.generateAccessToken(email, user.getRole()))
+                .refreshToken(jwtTokenUtil.generateRefreshToken(email))
+                .tokenType("Bearer")
+                .expiresIn(LocalDateTime.now().plusSeconds(jwtTokenUtil.getAccessTokenExpiration() / 1000))
+                .build();
+    }
+
+    public User resolveLoginUser(String loginId) {
         if (loginId == null || loginId.isBlank()) {
             throw new UserNotFoundException("");
         }

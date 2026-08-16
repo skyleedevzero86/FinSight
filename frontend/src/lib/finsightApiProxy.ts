@@ -242,3 +242,83 @@ export async function mirrorRequestToFinSight(
     )
   }
 }
+
+export async function mirrorBinaryRequestToFinSight(
+  req: Request,
+  backendPathAndQuery: string,
+): Promise<Response> {
+  try {
+    const base = getFinSightBaseUrl()
+    if (!base) return finSightUnavailableResponse()
+
+    const method = req.method
+    const headers: Record<string, string> = {
+      Accept: req.headers.get("accept") ?? "*/*",
+      ...clientForwardHeaders(req),
+    }
+    const auth = req.headers.get("authorization")
+    if (auth) headers.Authorization = auth
+    const cookie = req.headers.get("cookie")
+    if (cookie) headers.Cookie = cookie
+    const contentType = req.headers.get("content-type")
+    if (
+      contentType &&
+      method !== "GET" &&
+      method !== "HEAD" &&
+      method !== "DELETE"
+    ) {
+      headers["Content-Type"] = contentType
+    }
+
+    const target = `${base}${backendPathAndQuery.startsWith("/") ? "" : "/"}${backendPathAndQuery}`
+    const controller = new AbortController()
+    const timeoutMs = Math.max(getProxyTimeoutMs(), 45_000)
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+    let upstream: Response
+    try {
+      const body =
+        method !== "GET" && method !== "HEAD"
+          ? await req.arrayBuffer()
+          : undefined
+      upstream = await fetch(target, {
+        method,
+        headers,
+        body: body && body.byteLength > 0 ? body : undefined,
+        signal: controller.signal,
+      })
+    } catch (err) {
+      const aborted = isAbortError(err)
+      return upstreamFailureResponse(err, aborted)
+    } finally {
+      clearTimeout(timeoutId)
+    }
+
+    let buf: ArrayBuffer
+    try {
+      buf = await upstream.arrayBuffer()
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("백엔드 응답 본문을 읽는 중 오류가 발생했습니다.", err)
+      }
+      return jsonResponse(
+        503,
+        "백엔드 응답을 받는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      )
+    }
+
+    return new Response(buf, {
+      status: upstream.status,
+      headers: copyUpstreamHeaders(upstream),
+    })
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("백엔드 요청 처리 중 오류가 발생했습니다.", err)
+    }
+    return jsonResponse(
+      500,
+      "요청을 처리하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+    )
+  }
+}
+

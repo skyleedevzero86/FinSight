@@ -63,6 +63,7 @@ public class AdvancedSecurityConfig {
                         .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/favicon.ico").permitAll()
                         .requestMatchers("/ws-editor/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/avatars/**").permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/boards/my-boards",
                                 "/api/v1/boards/my-scraps",

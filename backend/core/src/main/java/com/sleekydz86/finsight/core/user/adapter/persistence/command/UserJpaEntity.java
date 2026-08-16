@@ -164,6 +164,9 @@ public class UserJpaEntity extends BaseTimeEntity {
     @Column(name = "last_password_change_date")
     private LocalDate lastPasswordChangeDate;
 
+    @Column(name = "password_expiry_notified_at")
+    private LocalDateTime passwordExpiryNotifiedAt;
+
     @ElementCollection(targetClass = TargetCategory.class)
     @CollectionTable(name = "user_watchlist", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)

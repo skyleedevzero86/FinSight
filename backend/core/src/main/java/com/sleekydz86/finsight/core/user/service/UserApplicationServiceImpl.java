@@ -55,12 +55,24 @@ public class UserApplicationServiceImpl implements UserApplicationService {
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
+        if (!user.isWebAccount()) {
+            throw new RuntimeException("SNS 계정은 사이트 비밀번호를 변경할 수 없습니다.");
+        }
+
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new RuntimeException("기존 비밀번호가 올바르지 않습니다.");
         }
 
         if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
             throw new RuntimeException("새 비밀번호 확인이 일치하지 않습니다.");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new RuntimeException("기존 비밀번호와 다른 비밀번호를 입력해 주세요.");
+        }
+
+        if (!user.canChangePassword()) {
+            throw new RuntimeException("일일 비밀번호 변경 횟수를 초과했습니다.");
         }
 
         user.changePassword(passwordEncoder.encode(request.getNewPassword()));
@@ -230,25 +242,29 @@ public class UserApplicationServiceImpl implements UserApplicationService {
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        String nickname = request.getNickname() != null ? request.getNickname() : user.getNickname();
-        String email = request.getEmail() != null ? request.getEmail() : user.getEmail();
-        user.updateProfile(nickname, email);
-
-        if (request.getUsername() != null && !request.getUsername().isBlank()) {
-            if (!request.getUsername().equals(user.getUsername())
-                    && userPersistencePort.existsByUsername(request.getUsername())) {
-                throw new RuntimeException("이미 사용 중인 사용자명입니다.");
+        if (user.isWebAccount()) {
+            if (request.getEmail() != null && !request.getEmail().isBlank()) {
+                String nextEmail = request.getEmail().trim();
+                userPersistencePort.findByEmail(nextEmail).ifPresent(other -> {
+                    if (!other.getId().equals(user.getId())) {
+                        throw new RuntimeException("이미 사용 중인 이메일입니다.");
+                    }
+                });
+                user.updateProfile(user.getNickname(), nextEmail);
             }
-            user.setUsername(request.getUsername());
-        }
-
-        if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            PasswordValidationService.PasswordValidationResult validation =
-                    passwordValidationService.validatePassword(request.getPassword());
-            if (!validation.isValid()) {
-                throw new RuntimeException(String.join(", ", validation.getErrors()));
+        } else {
+            if (request.getEmail() != null && !request.getEmail().isBlank()
+                    && !request.getEmail().trim().equalsIgnoreCase(user.getEmail())) {
+                throw new RuntimeException("SNS 계정은 이메일을 변경할 수 없습니다.");
             }
-            user.changePassword(passwordEncoder.encode(request.getPassword()));
+            if (request.getPassword() != null && !request.getPassword().isBlank()) {
+                throw new RuntimeException("SNS 계정은 사이트 비밀번호를 변경할 수 없습니다.");
+            }
+            String nickname = request.getNickname() != null ? request.getNickname() : user.getNickname();
+            user.updateProfile(nickname, user.getEmail());
+            if (request.getProfileImageUrl() != null && !request.getProfileImageUrl().isBlank()) {
+                user.updateProfileImage(request.getProfileImageUrl().trim());
+            }
         }
 
         User savedUser = userPersistencePort.save(user);
@@ -318,8 +334,28 @@ public class UserApplicationServiceImpl implements UserApplicationService {
         boolean isChangeRequired = user.isPasswordChangeRequired();
         boolean isChangeRecommended = user.isPasswordChangeRecommended();
         long todayChangeCount = user.getTodayPasswordChangeCount();
+        Long daysSince = user.isWebAccount() ? user.daysSincePasswordChange() : null;
+        Long daysUntil = user.isWebAccount() ? user.daysUntilPasswordExpiry() : null;
+        String statusMessage;
+        if (!user.isWebAccount()) {
+            statusMessage = "SNS 계정은 사이트 비밀번호 변경 주기가 적용되지 않습니다";
+        } else if (isChangeRequired) {
+            statusMessage = "비밀번호를 변경한 지 90일이 지나 변경이 필요합니다";
+        } else if (isChangeRecommended) {
+            statusMessage = "비밀번호 변경 시기가 다가왔습니다";
+        } else {
+            statusMessage = "비밀번호 상태가 정상입니다";
+        }
 
-        return PasswordStatusResponse.of(isChangeRequired, isChangeRecommended, todayChangeCount);
+        return PasswordStatusResponse.of(
+                isChangeRequired,
+                isChangeRecommended,
+                todayChangeCount,
+                daysSince,
+                daysUntil,
+                3,
+                null,
+                statusMessage);
     }
 
     @Transactional

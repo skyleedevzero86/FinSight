@@ -15,6 +15,7 @@ import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserRegistrationRequest;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
+import com.sleekydz86.finsight.core.user.service.PasswordExpiryNoticeService;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,17 +36,20 @@ public class AuthController {
     private final OtpAuthenticationService otpAuthenticationService;
     private final SocialAuthService socialAuthService;
     private final UserPersistencePort userPersistencePort;
+    private final PasswordExpiryNoticeService passwordExpiryNoticeService;
 
     public AuthController(AuthenticationService authenticationService,
             UserService userService,
             OtpAuthenticationService otpAuthenticationService,
             SocialAuthService socialAuthService,
-            UserPersistencePort userPersistencePort) {
+            UserPersistencePort userPersistencePort,
+            PasswordExpiryNoticeService passwordExpiryNoticeService) {
         this.authenticationService = authenticationService;
         this.userService = userService;
         this.otpAuthenticationService = otpAuthenticationService;
         this.socialAuthService = socialAuthService;
         this.userPersistencePort = userPersistencePort;
+        this.passwordExpiryNoticeService = passwordExpiryNoticeService;
     }
 
     @Operation(summary = "사용자 로그인", description = "이메일과 비밀번호로 로그인합니다.")
@@ -55,8 +59,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResultResponse>> login(@RequestBody @Valid LoginRequest request) {
         try {
             JwtToken token = authenticationService.login(request);
-            User user = userPersistencePort.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
+            User user = authenticationService.resolveLoginUser(request.getEmail());
+            passwordExpiryNoticeService.notifyIfDue(user);
             LoginResultResponse result = socialAuthService.toWebLoginResult(user, token);
             return ResponseEntity.ok(ApiResponse.success(result, "로그인에 성공했습니다"));
         } catch (Exception e) {

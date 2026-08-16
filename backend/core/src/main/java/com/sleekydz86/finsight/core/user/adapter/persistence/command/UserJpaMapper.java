@@ -62,6 +62,7 @@ public class UserJpaMapper {
                 .passwordChangedAt(user.getPasswordChangedAt())
                 .passwordChangeCount(user.getPasswordChangeCount() != null ? user.getPasswordChangeCount() : 0)
                 .lastPasswordChangeDate(user.getLastPasswordChangeDate())
+                .passwordExpiryNotifiedAt(user.getPasswordExpiryNotifiedAt())
                 .watchlist(user.getWatchlist() != null ? new ArrayList<>(user.getWatchlist()) : new ArrayList<>())
                 .notificationPreferences(
                         user.getNotificationPreferences() != null ? new ArrayList<>(user.getNotificationPreferences())
@@ -133,6 +134,7 @@ public class UserJpaMapper {
                 .passwordChangedAt(entity.getPasswordChangedAt())
                 .passwordChangeCount(entity.getPasswordChangeCount() != null ? entity.getPasswordChangeCount() : 0)
                 .lastPasswordChangeDate(entity.getLastPasswordChangeDate())
+                .passwordExpiryNotifiedAt(entity.getPasswordExpiryNotifiedAt())
                 .watchlist(entity.getWatchlist() != null ? new ArrayList<>(entity.getWatchlist()) : new ArrayList<>())
                 .notificationPreferences(entity.getNotificationPreferences() != null
                         ? new ArrayList<>(entity.getNotificationPreferences())
