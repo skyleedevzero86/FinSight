@@ -76,9 +76,20 @@ function upstreamFailureResponse(err: unknown, aborted: boolean) {
   )
 }
 
+function clientForwardHeaders(req: Request): Record<string, string> {
+  const headers: Record<string, string> = {}
+  const forwarded = req.headers.get("x-forwarded-for")
+  const realIp = req.headers.get("x-real-ip")
+  if (forwarded) headers["X-Forwarded-For"] = forwarded
+  else if (realIp) headers["X-Forwarded-For"] = realIp
+  if (realIp) headers["X-Real-IP"] = realIp
+  return headers
+}
+
 export async function proxyJsonToFinSight(
   req: Request,
   backendPath: string,
+  options?: { timeoutMs?: number },
 ): Promise<Response> {
   try {
     const base = getFinSightBaseUrl()
@@ -94,7 +105,7 @@ export async function proxyJsonToFinSight(
 
     const target = `${base}${backendPath.startsWith("/") ? "" : "/"}${backendPath}`
     const controller = new AbortController()
-    const timeoutMs = getProxyTimeoutMs()
+    const timeoutMs = options?.timeoutMs ?? getProxyTimeoutMs()
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
     let upstream: Response
@@ -104,6 +115,7 @@ export async function proxyJsonToFinSight(
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          ...clientForwardHeaders(req),
           ...(req.headers.get("authorization")
             ? { Authorization: req.headers.get("authorization") as string }
             : {}),
@@ -161,6 +173,7 @@ export async function mirrorRequestToFinSight(
     const method = req.method
     const headers: Record<string, string> = {
       Accept: req.headers.get("accept") ?? "application/json",
+      ...clientForwardHeaders(req),
     }
     const auth = req.headers.get("authorization")
     if (auth) headers.Authorization = auth

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react"
 import SignupAgreementModal from "@/components/SignupAgreementModal"
 import BrandLogo from "@/components/BrandLogo"
 import { useAuthSession } from "@/components/AuthSessionProvider"
-import { requestEmailVerification } from "@/lib/emailVerification"
+import { requestEmailVerification, saveSignupDraft, savePendingVerification, loadSignupDraft, isEmailMarkedVerified } from "@/lib/emailVerification"
 import {
   postRegister,
   validateEmail,
@@ -79,6 +79,18 @@ export default function SignupForm({
   const [verifyLoading, setVerifyLoading] = useState(false)
   const [verifyHint, setVerifyHint] = useState<string | null>(null)
   const [verifyReminderOpen, setVerifyReminderOpen] = useState(false)
+
+  useEffect(() => {
+    const draft = loadSignupDraft()
+    if (!draft) return
+    setUsername(draft.username)
+    setEmail(draft.email)
+    setNickname(draft.nickname)
+    if (isEmailMarkedVerified(draft.email, "SIGNUP")) {
+      setEmailVerified(true)
+      setVerifyHint("이메일 인증이 완료되었습니다. 회원가입을 진행해 주세요.")
+    }
+  }, [])
 
   const allChecked = agreeTerms && agreePrivacy && agreeMarketing
 
@@ -198,19 +210,20 @@ export default function SignupForm({
       return
     }
     setVerifyLoading(true)
-    const result = await requestEmailVerification(em)
+    saveSignupDraft({
+      username,
+      email: em,
+      nickname,
+    })
+    savePendingVerification(em, "SIGNUP")
+    const result = await requestEmailVerification(em, "SIGNUP")
     setVerifyLoading(false)
     if (!result.ok) {
       setEmailVerified(false)
       setFormError(result.message ?? "이메일 인증에 실패했습니다.")
       return
     }
-    setEmailVerified(true)
-    setVerifyHint(
-      result.message && result.message.length > 0
-        ? result.message
-        : "이메일 인증이 완료되었습니다. 회원가입을 진행해 주세요.",
-    )
+    router.push(`/verify/${encodeURIComponent(result.data.challengeToken)}`)
   }
 
   async function onSubmit(e: FormEvent) {
@@ -291,8 +304,8 @@ export default function SignupForm({
               이메일 인증을 먼저 완료해 주세요.
               <br />
               <span className="mt-2 block text-sm text-gray-600">
-                <strong className="text-gray-800">인증하기</strong> 버튼을 눌러
-                백엔드에서 인증이 처리된 뒤 회원가입을 진행할 수 있습니다.
+                <strong className="text-gray-800">인증하기</strong> 버튼을 누르면
+                메일로 검증 코드가 발송되고, 코드 입력 페이지로 이동합니다.
               </span>
             </p>
             <button

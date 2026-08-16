@@ -14,6 +14,7 @@ import com.sleekydz86.finsight.core.user.domain.port.in.dto.WatchlistUpdateReque
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
+import com.sleekydz86.finsight.core.auth.email.EmailVerificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
@@ -36,13 +37,16 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
     private final UserPersistencePort userPersistencePort;
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidationService passwordValidationService;
+    private final EmailVerificationService emailVerificationService;
 
     public UserService(UserPersistencePort userPersistencePort,
             PasswordEncoder passwordEncoder,
-            PasswordValidationService passwordValidationService) {
+            PasswordValidationService passwordValidationService,
+            EmailVerificationService emailVerificationService) {
         this.userPersistencePort = userPersistencePort;
         this.passwordEncoder = passwordEncoder;
         this.passwordValidationService = passwordValidationService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @Override
@@ -54,6 +58,8 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
             log.warn("사용자 등록 실패: 이미 존재하는 이메일 - {}", request.getEmail());
             throw new IllegalArgumentException("이미 존재하는 이메일입니다: " + request.getEmail());
         }
+
+        emailVerificationService.requirePassedSignup(request.getEmail());
 
         PasswordValidationService.PasswordValidationResult validationResult = passwordValidationService
                 .validatePassword(request.getPassword());
@@ -78,6 +84,7 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
                 .build();
 
         User savedUser = userPersistencePort.save(newUser);
+        emailVerificationService.consumeSignupVerification(request.getEmail());
         log.info("사용자 등록 완료: ID={}", savedUser.getId());
 
         return savedUser;

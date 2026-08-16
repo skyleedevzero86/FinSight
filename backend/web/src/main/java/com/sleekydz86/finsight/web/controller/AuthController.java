@@ -9,6 +9,7 @@ import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.annotation.LogExecution;
 import com.sleekydz86.finsight.core.global.annotation.PerformanceMonitor;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
+import com.sleekydz86.finsight.core.global.exception.BaseException;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.User;
@@ -222,6 +223,8 @@ public class AuthController {
         try {
             User user = userService.registerUser(request);
             return ResponseEntity.ok(ApiResponse.success(user, "회원가입에 성공했습니다"));
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("회원가입 처리 중 오류가 발생했습니다: " + e.getMessage(), e);
         }

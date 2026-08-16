@@ -52,9 +52,11 @@ export default function LoginForm() {
   const searchParams = useSearchParams()
   const id = useId()
   const registered = searchParams.get("registered") === "1"
+  const resetDone = searchParams.get("reset") === "1"
+  const accountParam = searchParams.get("account") ?? ""
   const { user, ready } = useAuthSession()
 
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState(accountParam)
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [remember, setRemember] = useState(false)
@@ -67,12 +69,16 @@ export default function LoginForm() {
     }
   }, [ready, user, router])
 
+  useEffect(() => {
+    if (accountParam) setEmail(accountParam)
+  }, [accountParam])
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
     const em = email.trim()
     if (!em || !password) {
-      setFormError("이메일과 비밀번호를 입력해 주세요.")
+      setFormError("이메일 또는 아이디와 비밀번호를 입력해 주세요.")
       return
     }
     setLoading(true)
@@ -117,6 +123,13 @@ export default function LoginForm() {
           >
             회원가입이 완료되었습니다. 로그인해 주세요.
           </div>
+        ) : resetDone ? (
+          <div
+            role="status"
+            className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+          >
+            비밀번호가 변경되었습니다. 새 비밀번호로 로그인해 주세요.
+          </div>
         ) : undefined
       }
     >
@@ -132,10 +145,10 @@ export default function LoginForm() {
       <form className="space-y-3" onSubmit={onSubmit} noValidate>
         <input
           id={`${id}-email`}
-          type="email"
-          name="email"
-          autoComplete="email"
-          placeholder="이메일을 입력하세요."
+          type="text"
+          name="username"
+          autoComplete="username"
+          placeholder="이메일 또는 아이디"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className={inputClass}
@@ -176,7 +189,7 @@ export default function LoginForm() {
               href="/find-email"
               className="hover:text-gray-800 hover:underline underline-offset-2"
             >
-              이메일 찾기
+              아이디 찾기
             </Link>
             <span className="text-gray-300">|</span>
             <Link

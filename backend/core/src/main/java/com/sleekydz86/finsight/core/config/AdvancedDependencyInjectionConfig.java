@@ -20,6 +20,7 @@ import com.sleekydz86.finsight.core.comment.service.CommentCommandService;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import com.sleekydz86.finsight.core.user.service.PasswordValidationService;
+import com.sleekydz86.finsight.core.auth.email.EmailVerificationService;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
 import com.sleekydz86.finsight.core.health.domain.port.out.ExternalHealthCheckPort;
 import com.sleekydz86.finsight.core.health.domain.port.out.HealthPersistencePort;
@@ -131,8 +132,8 @@ public class AdvancedDependencyInjectionConfig {
     }
 
     @Bean
-    public UserService userService(PasswordEncoder passwordEncoder) {
-        return new UserService(userPersistencePort, passwordEncoder, passwordValidationService);
+    public UserService userService(PasswordEncoder passwordEncoder, EmailVerificationService emailVerificationService) {
+        return new UserService(userPersistencePort, passwordEncoder, passwordValidationService, emailVerificationService);
     }
 
     @Bean
