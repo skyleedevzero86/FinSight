@@ -72,17 +72,17 @@ public class NewsScrapJobConfig {
                 .listener(new JobExecutionListener() {
                     @Override
                     public void beforeJob(JobExecution jobExecution) {
-                        log.info("Starting news scraping job: {}", jobExecution.getJobInstance().getJobName());
+                        log.info("뉴스 스크래핑 작업 시작: {}", jobExecution.getJobInstance().getJobName());
                         stepExecutionMetrics.computeIfAbsent("jobs_started", k -> new AtomicLong(0)).incrementAndGet();
                     }
 
                     @Override
                     public void afterJob(JobExecution jobExecution) {
                         if (jobExecution.getStatus() == BatchStatus.COMPLETED) {
-                            log.info("News scraping job completed successfully");
+                            log.info("뉴스 스크래핑 작업이 성공적으로 완료되었습니다");
                             stepExecutionMetrics.computeIfAbsent("jobs_completed", k -> new AtomicLong(0)).incrementAndGet();
                         } else {
-                            log.error("News scraping job failed with status: {}", jobExecution.getStatus());
+                            log.error("뉴스 스크래핑 작업 실패 - 상태: {}", jobExecution.getStatus());
                             stepExecutionMetrics.computeIfAbsent("jobs_failed", k -> new AtomicLong(0)).incrementAndGet();
                         }
                     }
@@ -99,17 +99,17 @@ public class NewsScrapJobConfig {
                 .listener(new StepExecutionListener() {
                     @Override
                     public void beforeStep(StepExecution stepExecution) {
-                        log.info("Starting news crawling step");
+                        log.info("뉴스 크롤링 단계 시작");
                         stepExecutionMetrics.computeIfAbsent("crawling_started", k -> new AtomicLong(0)).incrementAndGet();
                     }
 
                     @Override
                     public ExitStatus afterStep(StepExecution stepExecution) {
                         if (stepExecution.getStatus() == BatchStatus.COMPLETED) {
-                            log.info("News crawling step completed successfully");
+                            log.info("뉴스 크롤링 단계가 성공적으로 완료되었습니다");
                             stepExecutionMetrics.computeIfAbsent("crawling_completed", k -> new AtomicLong(0)).incrementAndGet();
                         } else {
-                            log.error("News crawling step failed");
+                            log.error("뉴스 크롤링 단계 실패");
                             stepExecutionMetrics.computeIfAbsent("crawling_failed", k -> new AtomicLong(0)).incrementAndGet();
                         }
                         return ExitStatus.COMPLETED;
@@ -128,18 +128,18 @@ public class NewsScrapJobConfig {
                 .listener(new ChunkListener() {
                     @Override
                     public void beforeChunk(ChunkContext context) {
-                        log.debug("Starting AI analysis chunk processing");
+                        log.debug("AI 분석 청크 처리 시작");
                     }
 
                     @Override
                     public void afterChunk(ChunkContext context) {
-                        log.debug("AI analysis chunk processing completed");
+                        log.debug("AI 분석 청크 처리 완료");
                         stepExecutionMetrics.computeIfAbsent("chunks_processed", k -> new AtomicLong(0)).incrementAndGet();
                     }
 
                     @Override
                     public void afterChunkError(ChunkContext context) {
-                        log.error("AI analysis chunk processing failed");
+                        log.error("AI 분석 청크 처리 실패");
                         stepExecutionMetrics.computeIfAbsent("chunks_failed", k -> new AtomicLong(0)).incrementAndGet();
                         errorMetrics.computeIfAbsent("ai_analysis_errors", k -> new AtomicLong(0)).incrementAndGet();
                     }
@@ -163,13 +163,13 @@ public class NewsScrapJobConfig {
         return newsEntity -> {
             try {
                 if (newsEntity.getOverview() == null) {
-                    log.debug("Processing news for AI analysis: {}", newsEntity.getId());
+                    log.debug("AI 분석 대상 뉴스 처리 중: {}", newsEntity.getId());
                     stepExecutionMetrics.computeIfAbsent("news_processed", k -> new AtomicLong(0)).incrementAndGet();
                     return newsEntity;
                 }
                 return null;
             } catch (Exception e) {
-                log.error("Error processing news entity: {}", newsEntity.getId(), e);
+                log.error("뉴스 엔티티 처리 중 오류 발생: {}", newsEntity.getId(), e);
                 errorMetrics.computeIfAbsent("processing_errors", k -> new AtomicLong(0)).incrementAndGet();
                 throw e;
             }
@@ -180,10 +180,10 @@ public class NewsScrapJobConfig {
     public ItemWriter<NewsJpaEntity> aiAnalysisWriter() {
         return items -> {
             try {
-                log.info("Writing {} processed news items", items.size());
+                log.info("처리된 뉴스 {}건 쓰기 수행", items.size());
                 stepExecutionMetrics.computeIfAbsent("news_written", k -> new AtomicLong(0)).incrementAndGet();
             } catch (Exception e) {
-                log.error("Error writing news items", e);
+                log.error("뉴스 항목 쓰기 중 오류 발생", e);
                 errorMetrics.computeIfAbsent("writing_errors", k -> new AtomicLong(0)).incrementAndGet();
                 throw e;
             }
@@ -211,7 +211,7 @@ public class NewsScrapJobConfig {
     public void resetMetrics() {
         stepExecutionMetrics.clear();
         errorMetrics.clear();
-        log.info("Batch job metrics reset");
+        log.info("배치 작업 지표 초기화 완료");
     }
 
     public record BatchJobMetrics(
@@ -263,12 +263,12 @@ public class NewsScrapJobConfig {
                 .listener(new JobExecutionListener() {
                     @Override
                     public void beforeJob(JobExecution jobExecution) {
-                        log.info("Starting DJL news scraping job: {}", jobExecution.getJobInstance().getJobName());
+                        log.info("DJL 뉴스 스크래핑 작업 시작: {}", jobExecution.getJobInstance().getJobName());
                     }
 
                     @Override
                     public void afterJob(JobExecution jobExecution) {
-                        log.info("DJL news scraping job completed with status: {}", jobExecution.getStatus());
+                        log.info("DJL 뉴스 스크래핑 작업 완료 - 상태: {}", jobExecution.getStatus());
                     }
                 })
                 .build();
@@ -305,12 +305,12 @@ public class NewsScrapJobConfig {
                 .listener(new JobExecutionListener() {
                     @Override
                     public void beforeJob(JobExecution jobExecution) {
-                        log.info("Starting sentiment analysis news scraping job: {}", jobExecution.getJobInstance().getJobName());
+                        log.info("감정 분석 뉴스 스크래핑 작업 시작: {}", jobExecution.getJobInstance().getJobName());
                     }
 
                     @Override
                     public void afterJob(JobExecution jobExecution) {
-                        log.info("Sentiment analysis news scraping job completed with status: {}", jobExecution.getStatus());
+                        log.info("감정 분석 뉴스 스크래핑 작업 완료 - 상태: {}", jobExecution.getStatus());
                     }
                 })
                 .build();

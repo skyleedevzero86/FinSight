@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.core.auth.filter;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -25,10 +27,14 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
 
     private static final Logger auditLogger = LoggerFactory.getLogger("SECURITY_AUDIT");
     private static final Logger logger = LoggerFactory.getLogger(SecurityAuditFilter.class);
-
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
     private static final AtomicLong requestCounter = new AtomicLong(0);
+
+    private final ObjectMapper objectMapper;
+
+    public SecurityAuditFilter(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     private static final ConcurrentHashMap<String, IpRequestPattern> ipPatterns = new ConcurrentHashMap<>();
 
@@ -83,7 +89,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
                     .contentLength(request.getContentLength())
                     .build();
 
-            auditLogger.info("SECURITY_AUDIT: {}", new ObjectMapper().writeValueAsString(event));
+            auditLogger.info("SECURITY_AUDIT: {}", objectMapper.writeValueAsString(event));
 
         } catch (Exception e) {
             logger.error("보안 감사 로깅 실패", e);
@@ -108,7 +114,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
                     .authorities(authentication != null ? authentication.getAuthorities().toString() : "none")
                     .build();
 
-            auditLogger.info("SECURITY_AUDIT: {}", new ObjectMapper().writeValueAsString(event));
+            auditLogger.info("SECURITY_AUDIT: {}", objectMapper.writeValueAsString(event));
 
         } catch (Exception e) {
             logger.error("보안 감사 로깅 실패", e);
@@ -129,7 +135,7 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
                     .exceptionMessage(e.getMessage())
                     .build();
 
-            auditLogger.error("SECURITY_AUDIT: {}", new ObjectMapper().writeValueAsString(event));
+            auditLogger.error("SECURITY_AUDIT: {}", objectMapper.writeValueAsString(event));
 
         } catch (Exception ex) {
             logger.error("보안 예외 로깅 실패", ex);
@@ -262,6 +268,8 @@ public class SecurityAuditFilter extends OncePerRequestFilter {
         }
     }
 
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private static class SecurityAuditEvent {
         private String timestamp;
         private String requestId;

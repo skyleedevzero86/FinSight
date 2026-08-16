@@ -37,6 +37,9 @@ public class NewsOpenAiAnalysisRequester implements NewsAiRequester {
 
     @Override
     public AiChatResponse request(AiChatRequest aiChatRequest) {
+        if (!openAiProperties.isConfigured()) {
+            throw new IllegalStateException("OpenAI API 키가 설정되어 있지 않습니다. OPENAI_API_KEY를 설정하세요.");
+        }
         try {
             return requestAsync(aiChatRequest)
                     .timeout(Duration.ofSeconds(30))
@@ -46,13 +49,17 @@ public class NewsOpenAiAnalysisRequester implements NewsAiRequester {
         }
     }
 
-    /**
-     * 비동기 요청 처리를 위한 메서드
-     */
-    /**
-     * 비동기 요청 처리를 위한 메서드
-     */
+    
+
+
+    
+
+
     public Mono<AiChatResponse> requestAsync(AiChatRequest aiChatRequest) {
+        if (!openAiProperties.isConfigured()) {
+            return Mono.error(new IllegalStateException(
+                    "OpenAI API 키가 설정되어 있지 않습니다. OPENAI_API_KEY를 설정하세요."));
+        }
         try {
             String prompt = getPrompt(aiChatRequest);
 

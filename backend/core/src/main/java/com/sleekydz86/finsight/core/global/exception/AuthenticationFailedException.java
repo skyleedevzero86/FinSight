@@ -9,6 +9,11 @@ public class AuthenticationFailedException extends BaseException {
         this.email = email;
     }
 
+    public AuthenticationFailedException(String email, String message) {
+        super(message, "AUTH_001", "인증 실패", 401);
+        this.email = email;
+    }
+
     public String getEmail() {
         return email;
     }

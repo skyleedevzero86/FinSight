@@ -43,7 +43,7 @@ public class NewsScrapScheduler {
 
     @Scheduled(cron = "0 0 * * * *")
     public void scheduleNewsScraping() {
-        log.info("Starting scheduled news scraping job");
+        log.info("정기 뉴스 스크래핑 작업 시작");
         scheduledJobCount.incrementAndGet();
 
         try {
@@ -54,27 +54,27 @@ public class NewsScrapScheduler {
 
             jobLauncher.run(newsScrapJob, jobParameters);
             successfulJobCount.incrementAndGet();
-            log.info("Scheduled news scraping job completed successfully");
+            log.info("정기 뉴스 스크래핑 작업이 성공적으로 완료되었습니다");
 
         } catch (JobExecutionAlreadyRunningException e) {
-            log.warn("News scraping job is already running");
+            log.warn("뉴스 스크래핑 작업이 이미 실행 중입니다");
         } catch (JobRestartException e) {
-            log.error("Failed to restart news scraping job", e);
+            log.error("뉴스 스크래핑 작업 재시작 실패", e);
             failedJobCount.incrementAndGet();
         } catch (JobInstanceAlreadyCompleteException e) {
-            log.warn("News scraping job instance already completed");
+            log.warn("뉴스 스크래핑 작업 인스턴스가 이미 완료되었습니다");
         } catch (JobParametersInvalidException e) {
-            log.error("Invalid job parameters for news scraping job", e);
+            log.error("뉴스 스크래핑 작업 파라미터가 올바르지 않습니다", e);
             failedJobCount.incrementAndGet();
         } catch (Exception e) {
-            log.error("Unexpected error during news scraping job execution", e);
+            log.error("뉴스 스크래핑 작업 실행 중 예기치 않은 오류 발생", e);
             failedJobCount.incrementAndGet();
         }
     }
 
     @Scheduled(cron = "0 0 2 * * *")
     public void scheduleFullNewsScraping() {
-        log.info("Starting full news scraping job");
+        log.info("전체 뉴스 스크래핑 작업 시작");
         scheduledJobCount.incrementAndGet();
 
         try {
@@ -86,16 +86,16 @@ public class NewsScrapScheduler {
 
             jobLauncher.run(newsScrapJob, jobParameters);
             successfulJobCount.incrementAndGet();
-            log.info("Full news scraping job completed successfully");
+            log.info("전체 뉴스 스크래핑 작업이 성공적으로 완료되었습니다");
 
         } catch (Exception e) {
-            log.error("Failed to execute full news scraping job", e);
+            log.error("전체 뉴스 스크래핑 작업 실행 실패", e);
             failedJobCount.incrementAndGet();
         }
     }
 
     public CompletableFuture<Void> executeManualNewsScraping() {
-        log.info("Executing manual news scraping");
+        log.info("수동 뉴스 스크래핑 실행");
         scheduledJobCount.incrementAndGet();
 
         return CompletableFuture.runAsync(() -> {
@@ -108,12 +108,12 @@ public class NewsScrapScheduler {
 
                 jobLauncher.run(newsScrapJob, jobParameters);
                 successfulJobCount.incrementAndGet();
-                log.info("Manual news scraping completed successfully");
+                log.info("수동 뉴스 스크래핑이 성공적으로 완료되었습니다");
 
             } catch (Exception e) {
-                log.error("Failed to execute manual news scraping", e);
+                log.error("수동 뉴스 스크래핑 실행 실패", e);
                 failedJobCount.incrementAndGet();
-                throw new RuntimeException("Manual news scraping failed", e);
+                throw new RuntimeException("수동 뉴스 스크래핑 실행 실패", e);
             }
         });
     }
@@ -130,7 +130,7 @@ public class NewsScrapScheduler {
         scheduledJobCount.set(0);
         successfulJobCount.set(0);
         failedJobCount.set(0);
-        log.info("Scheduling metrics reset");
+        log.info("스케줄링 지표 초기화 완료");
     }
 
     public record SchedulingMetrics(

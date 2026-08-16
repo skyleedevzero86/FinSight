@@ -30,6 +30,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         log.debug("사용자 인증 정보 로드: {}", email);
 
         User user = userPersistencePort.findByEmail(email)
+                .or(() -> userPersistencePort.findByUsername(email))
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email));
 
         if (!user.isActive()) {

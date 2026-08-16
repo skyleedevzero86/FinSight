@@ -36,7 +36,7 @@ public class UserRepositoryImpl implements UserPersistencePort {
             UserJpaEntity savedEntity = userJpaRepository.save(entity);
             return userJpaMapper.toDomain(savedEntity);
         } catch (Exception e) {
-            log.error("사용자 저장 실패: {}", e.getMessage());
+            log.error("사용자 저장 실패", e);
             throw new RuntimeException("사용자 저장에 실패했습니다.", e);
         }
     }
@@ -80,7 +80,40 @@ public class UserRepositoryImpl implements UserPersistencePort {
             return userJpaRepository.findByApiKey(apiKey)
                     .map(userJpaMapper::toDomain);
         } catch (Exception e) {
-            log.error("API 키로 사용자 조회 실패: apiKey={}, error={}", apiKey, e.getMessage());
+            log.error("API 키로 사용자 조회 실패: error={}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<User> findByNaverId(String naverId) {
+        try {
+            return userJpaRepository.findByNaverId(naverId)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("네이버 ID로 사용자 조회 실패: naverId={}, error={}", naverId, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<User> findByKakaoUserId(String kakaoUserId) {
+        try {
+            return userJpaRepository.findByKakaoUserId(kakaoUserId)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("카카오 ID로 사용자 조회 실패: kakaoUserId={}, error={}", kakaoUserId, e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public Optional<User> findByGoogleId(String googleId) {
+        try {
+            return userJpaRepository.findByGoogleId(googleId)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("구글 ID로 사용자 조회 실패: googleId={}, error={}", googleId, e.getMessage());
             return Optional.empty();
         }
     }
@@ -268,6 +301,18 @@ public class UserRepositoryImpl implements UserPersistencePort {
     public Optional<User> findByEmailAndUsername(String email, String username) {
         return userJpaRepository.findByEmailAndUsername(email, username)
                 .map(userJpaMapper::toDomain);
+    }
+
+    @Override
+    public Page<User> searchUsers(UserStatus status, String keyword, Pageable pageable) {
+        try {
+            String trimmed = keyword == null ? "" : keyword.trim();
+            return userJpaRepository.searchUsers(status, trimmed, pageable)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("사용자 검색 실패: status={}, keyword={}, error={}", status, keyword, e.getMessage());
+            return Page.empty();
+        }
     }
 
 }

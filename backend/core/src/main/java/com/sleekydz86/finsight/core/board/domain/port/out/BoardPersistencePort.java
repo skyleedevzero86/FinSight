@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.board.domain.port.out;
 
 import com.sleekydz86.finsight.core.board.domain.Board;
+import com.sleekydz86.finsight.core.board.domain.BoardStatus;
 import com.sleekydz86.finsight.core.board.domain.BoardType;
 import com.sleekydz86.finsight.core.board.domain.Boards;
 import com.sleekydz86.finsight.core.board.domain.port.in.dto.BoardSearchRequest;
@@ -34,4 +35,8 @@ public interface BoardPersistencePort {
     List<Board> findPreviousAndNext(Long boardId, BoardType boardType);
 
     void incrementViewCount(Long boardId);
+
+    List<Board> findByStatusAndReportCountAtLeast(BoardStatus status, int minReportCount);
+
+    Boards findEditorDocuments(BoardType boardType, BoardStatus status, String keyword, int page, int size);
 }

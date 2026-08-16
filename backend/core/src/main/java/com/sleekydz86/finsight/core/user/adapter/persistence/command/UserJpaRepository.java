@@ -22,6 +22,12 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
 
         Optional<UserJpaEntity> findByApiKey(String apiKey);
 
+        Optional<UserJpaEntity> findByNaverId(String naverId);
+
+        Optional<UserJpaEntity> findByKakaoUserId(String kakaoUserId);
+
+        Optional<UserJpaEntity> findByGoogleId(String googleId);
+
         boolean existsByEmail(String email);
 
         boolean existsByUsername(String username);
@@ -57,4 +63,19 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
         List<UserJpaEntity> findAllActiveUsers();
 
         Optional<UserJpaEntity> findByEmailAndUsername(String email, String username);
+
+        @Query("""
+                SELECT u FROM UserJpaEntity u
+                WHERE (:status IS NULL OR u.status = :status)
+                  AND (
+                    :keyword IS NULL OR :keyword = ''
+                    OR LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(u.nickname) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                  )
+                """)
+        Page<UserJpaEntity> searchUsers(
+                @Param("status") UserStatus status,
+                @Param("keyword") String keyword,
+                Pageable pageable);
 }

@@ -73,8 +73,12 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             return AuthenticatedUser.builder()
                     .id(user.getId())
                     .email(user.getEmail())
-                    .nickname(user.getUsername())
+                    .nickname(user.getNickname() != null ? user.getNickname() : user.getUsername())
                     .role(user.getRole().name())
+                    .authProvider(user.getAuthProvider() != null
+                            ? user.getAuthProvider()
+                            : com.sleekydz86.finsight.core.user.domain.AuthProvider.WEB)
+                    .profileImageUrl(user.getProfileImageUrl())
                     .build();
 
         } catch (Exception e) {

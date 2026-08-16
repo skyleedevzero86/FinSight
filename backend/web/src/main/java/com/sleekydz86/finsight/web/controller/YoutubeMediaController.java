@@ -27,13 +27,13 @@ public class YoutubeMediaController {
     public ResponseEntity<ApiResponse<PaginationResponse<YoutubeVideoListResponse>>> getPublishedVideos(
             @Valid YoutubeVideoSearchRequest request) {
         PaginationResponse<YoutubeVideoListResponse> response = youtubeMediaQueryUseCase.getPublishedVideos(request);
-        return ResponseEntity.ok(ApiResponse.success(response, "Published YouTube videos retrieved successfully."));
+        return ResponseEntity.ok(ApiResponse.success(response, "게시된 YouTube 영상 목록을 성공적으로 조회했습니다."));
     }
 
     @GetMapping("/{boardId}")
     public ResponseEntity<ApiResponse<YoutubeVideoDetailResponse>> getPublishedVideoDetail(
             @PathVariable Long boardId) {
         YoutubeVideoDetailResponse response = youtubeMediaQueryUseCase.getPublishedVideoDetail(boardId);
-        return ResponseEntity.ok(ApiResponse.success(response, "Published YouTube video detail retrieved successfully."));
+        return ResponseEntity.ok(ApiResponse.success(response, "게시된 YouTube 영상 상세 정보를 성공적으로 조회했습니다."));
     }
 }

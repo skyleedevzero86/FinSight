@@ -543,3 +543,38 @@
     display: none;
   }
 }
+
+.fcb-page .board-decorate {
+  margin: 0;
+  padding: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.fcb-page .bbs_listbtn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--fcb-border);
+}
+
+.fcb-page .bbs_listbtn .left,
+.fcb-page .bbs_listbtn .right {
+  min-height: 1px;
+}
+
+.fcb-page .sr-only,
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+

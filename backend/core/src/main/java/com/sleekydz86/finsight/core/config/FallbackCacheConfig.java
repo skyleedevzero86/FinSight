@@ -24,7 +24,7 @@ public class FallbackCacheConfig {
     @Bean
     @Primary
     public CacheManager fallbackCacheManager() {
-        logger.info("Redis 연결 실패로 인한 대체 캐시 매니저 사용");
+        logger.info("RedisTemplate이 없어 Caffeine 로컬 캐시를 사용합니다");
 
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         cacheManager.setCacheNames(Arrays.asList(

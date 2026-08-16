@@ -45,7 +45,7 @@ public class NewsCrawlingTasklet implements Tasklet {
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
-        log.info("Starting news crawling tasklet");
+        log.info("뉴스 크롤링 태스크릿 시작");
 
         LocalDateTime publishTimeAfter = LocalDateTime.now().minusHours(24);
         int limit = 100;
@@ -59,10 +59,10 @@ public class NewsCrawlingTasklet implements Tasklet {
                         return executeScrapingForProvider(provider, requester, publishTimeAfter, limit)
                                 .whenComplete((result, throwable) -> {
                                     if (throwable != null) {
-                                        log.error("Error scraping news from provider: {}", provider, throwable);
+                                        log.error("뉴스 제공자 스크래핑 중 오류 발생: {}", provider, throwable);
                                         errorCount.computeIfAbsent(provider, k -> new AtomicInteger(0)).incrementAndGet();
                                     } else {
-                                        log.info("Successfully scraped {} news from provider: {}",
+                                        log.info("제공자 {}에서 뉴스 {}건 스크래핑 완료",
                                                 result.size(), provider);
                                         scrapedNewsCount.computeIfAbsent(provider, k -> new AtomicInteger(0))
                                                 .addAndGet(result.size());
@@ -80,18 +80,18 @@ public class NewsCrawlingTasklet implements Tasklet {
                     .toList();
 
             if (!allScrapedNews.isEmpty()) {
-                log.info("Saving {} scraped news articles", allScrapedNews.size());
+                log.info("스크래핑한 뉴스 {}건 저장 시작", allScrapedNews.size());
                 newsPersistencePort.saveAllNews(allScrapedNews);
-                log.info("Successfully saved all scraped news articles");
+                log.info("스크래핑한 뉴스 저장 완료");
             } else {
-                log.warn("No news articles were scraped");
+                log.warn("스크래핑된 뉴스가 없습니다");
             }
 
             contribution.incrementWriteCount(allScrapedNews.size());
-            log.info("News crawling tasklet completed successfully. Total scraped: {}", totalScrapedCount.get());
+            log.info("뉴스 크롤링 태스크릿 완료 - 총 스크래핑 건수: {}", totalScrapedCount.get());
 
         } catch (Exception e) {
-            log.error("Error during news crawling tasklet execution", e);
+            log.error("뉴스 크롤링 태스크릿 실행 중 오류 발생", e);
             throw e;
         }
 
@@ -106,18 +106,18 @@ public class NewsCrawlingTasklet implements Tasklet {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                log.debug("Starting scraping for provider: {} with limit: {}", provider, limit);
+                log.debug("제공자 {} 스크래핑 시작 - 제한 건수: {}", provider, limit);
 
                 List<News> scrapedNews = requester.scrap(publishTimeAfter, limit).get();
 
-                log.debug("Completed scraping for provider: {}. Found {} articles",
+                log.debug("제공자 {} 스크래핑 완료 - 조회 건수: {}",
                         provider, scrapedNews.size());
 
                 return scrapedNews;
 
             } catch (Exception e) {
-                log.error("Failed to scrape news from provider: {}", provider, e);
-                throw new RuntimeException("Scraping failed for provider: " + provider, e);
+                log.error("제공자 뉴스 스크래핑 실패: {}", provider, e);
+                throw new RuntimeException("제공자 스크래핑 실패: " + provider, e);
             }
         });
     }
@@ -140,7 +140,7 @@ public class NewsCrawlingTasklet implements Tasklet {
         scrapedNewsCount.clear();
         errorCount.clear();
         totalScrapedCount.set(0);
-        log.info("Crawling metrics reset");
+        log.info("크롤링 지표 초기화 완료");
     }
 
     public record CrawlingMetrics(

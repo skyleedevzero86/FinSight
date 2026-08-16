@@ -1,6 +1,6 @@
 package com.sleekydz86.finsight.core.global.dto;
 
-import com.sleekydz86.finsight.core.user.domain.UserRole;
+import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,41 +15,8 @@ public class AuthenticatedUser {
     private String email;
     private String nickname;
     private String role;
-
-    public static AuthenticatedUserBuilder builder() {
-        return new AuthenticatedUserBuilder();
-    }
-
-    public static class AuthenticatedUserBuilder {
-        private Long id;
-        private String email;
-        private String nickname;
-        private String role;
-
-        public AuthenticatedUserBuilder id(Long id) {
-            this.id = id;
-            return this;
-        }
-
-        public AuthenticatedUserBuilder email(String email) {
-            this.email = email;
-            return this;
-        }
-
-        public AuthenticatedUserBuilder nickname(String nickname) {
-            this.nickname = nickname;
-            return this;
-        }
-
-        public AuthenticatedUserBuilder role(String role) {
-            this.role = role;
-            return this;
-        }
-
-        public AuthenticatedUser build() {
-            return new AuthenticatedUser(id, email, nickname, role);
-        }
-    }
+    private AuthProvider authProvider;
+    private String profileImageUrl;
 
     public Long getId() {
         return id;
@@ -67,6 +34,14 @@ public class AuthenticatedUser {
         return role;
     }
 
+    public AuthProvider getAuthProvider() {
+        return authProvider;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
     @Override
     public String toString() {
         return "AuthenticatedUser{" +
@@ -74,6 +49,7 @@ public class AuthenticatedUser {
                 ", email='" + email + '\'' +
                 ", nickname='" + nickname + '\'' +
                 ", role='" + role + '\'' +
+                ", authProvider=" + authProvider +
                 '}';
     }
 

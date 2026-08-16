@@ -9,7 +9,7 @@ function readApiErrorMessage(payload: unknown, fallback: string): string {
 }
 
 export async function postLogin(body: {
-  username: string
+  email: string
   password: string
 }): Promise<
   | { ok: true; data: unknown }
@@ -32,7 +32,7 @@ export async function postLogin(body: {
       status: res.status,
       message: readApiErrorMessage(
         data,
-        "로그인에 실패했습니다. 이메일과 비밀번호를 확인해 주세요.",
+        "로그인에 실패했습니다. 이메일(또는 아이디)과 비밀번호를 확인해 주세요.",
       ),
     }
   }

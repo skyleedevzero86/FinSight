@@ -32,7 +32,7 @@ public class EmailNotificationService {
 
     private final JavaMailSender mailSender;
 
-    @Value("${spring.mail.username}")
+    @Value("${spring.mail.username:}")
     private String fromEmail;
 
     @Value("${app.name:FinSight}")
@@ -136,6 +136,144 @@ public class EmailNotificationService {
         }
     }
 
+    public void sendVerificationCodeEmail(
+            String toEmail,
+            String code,
+            String purposeLabel,
+            String requestedAtText,
+            String requestLocation) {
+        if (!emailEnabled) {
+            throw new IllegalStateException("이메일 발송이 비활성화되어 있습니다. MAIL 설정을 확인해 주세요.");
+        }
+        if (fromEmail == null || fromEmail.isBlank()) {
+            throw new IllegalStateException("네이버 메일 계정(MAIL_USERNAME)이 설정되어 있지 않습니다.");
+        }
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(toEmail);
+            helper.setSubject(String.format("[%s] %s 코드", appName, purposeLabel));
+            helper.setText(createVerificationCodeHtml(code, purposeLabel, requestedAtText, requestLocation), true);
+            mailSender.send(message);
+            log.info("검증 코드 이메일 발송 성공 - 수신: {}, 구분: {}", toEmail, purposeLabel);
+        } catch (MessagingException e) {
+            log.error("검증 코드 이메일 발송 실패 - 수신: {}, 오류: {}", toEmail, e.getMessage(), e);
+            throw new RuntimeException("인증 메일 발송에 실패했습니다. 네이버 SMTP 설정을 확인해 주세요.", e);
+        }
+    }
+
+    public void sendPasswordChangeReminder(User user, boolean warningOnly) {
+        if (!emailEnabled) {
+            log.debug("이메일 알림이 비활성화되어 비밀번호 안내를 건너뜁니다.");
+            return;
+        }
+        if (fromEmail == null || fromEmail.isBlank() || user == null || user.getEmail() == null) {
+            throw new IllegalStateException("비밀번호 안내 메일을 보낼 수 없습니다.");
+        }
+
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(user.getEmail());
+            String subject = warningOnly
+                    ? String.format(" [%s] 비밀번호 변경 예정 안내", appName)
+                    : String.format("[%s] 비밀번호를 변경해 주세요", appName);
+            helper.setSubject(subject.trim());
+            helper.setText(createPasswordChangeReminderHtml(user, warningOnly), true);
+            mailSender.send(message);
+            log.info("비밀번호 변경 안내 메일 발송 성공 - 사용자: {}, 경고만: {}", user.getEmail(), warningOnly);
+        } catch (MessagingException e) {
+            log.error("비밀번호 변경 안내 메일 발송 실패 - 사용자: {}", user.getEmail(), e);
+            throw new RuntimeException("비밀번호 변경 안내 메일 발송에 실패했습니다.", e);
+        }
+    }
+
+    private String createPasswordChangeReminderHtml(User user, boolean warningOnly) {
+        String name = escapeHtml(user.getNickname() != null ? user.getNickname() : user.getUsername());
+        String changeUrl = escapeHtml(frontendUrl + "/my?password=required");
+        long daysLeft = user.daysUntilPasswordExpiry();
+        int year = LocalDateTime.now().getYear();
+        String title = warningOnly ? "비밀번호 변경 시기가 다가왔습니다" : "비밀번호를 변경해 주세요";
+        String body = warningOnly
+                ? String.format("보안을 위해 사이트 비밀번호는 90일마다 변경해야 합니다. 남은 기간은 약 %d일입니다.", daysLeft)
+                : "사이트 비밀번호를 마지막으로 변경한 지 90일이 지났습니다. 로그인 후 내정보에서 새 비밀번호로 바꿔 주세요.";
+        return """
+                <!DOCTYPE html>
+                <html lang="ko">
+                <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>%s</title>
+                </head>
+                <body style="margin:0;padding:0;background:#ffffff;font-family:'Apple SD Gothic Neo','Malgun Gothic',Arial,sans-serif;color:#111111;">
+                  <div style="max-width:560px;margin:0 auto;padding:32px 28px 24px;">
+                    <h1 style="margin:0 0 16px;font-size:24px;line-height:1.3;font-weight:700;">%s</h1>
+                    <p style="margin:0 0 12px;font-size:15px;color:#222;">안녕하세요, %s님.</p>
+                    <p style="margin:0 0 24px;font-size:14px;line-height:1.7;color:#333;">%s</p>
+                    <p style="margin:0 0 28px;">
+                      <a href="%s" style="display:inline-block;background:#111111;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:6px;font-size:14px;font-weight:600;">비밀번호 변경하기</a>
+                    </p>
+                    <div style="border-top:1px dashed #cfcfcf;padding-top:16px;">
+                      <p style="margin:0;font-size:12px;color:#8a8a8a;">© %d %s</p>
+                    </div>
+                  </div>
+                </body>
+                </html>
+                """.formatted(title, title, name, body, changeUrl, year, escapeHtml(appName));
+    }
+
+    private String createVerificationCodeHtml(
+            String code,
+            String purposeLabel,
+            String requestedAtText,
+            String requestLocation) {
+        String safeCode = escapeHtml(code);
+        String safeWhen = escapeHtml(requestedAtText);
+        String safeWhere = escapeHtml(requestLocation);
+        int year = LocalDateTime.now().getYear();
+        return """
+                <!DOCTYPE html>
+                <html lang="ko">
+                <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>검증 코드</title>
+                </head>
+                <body style="margin:0;padding:0;background:#ffffff;font-family:'Apple SD Gothic Neo','Malgun Gothic',Arial,sans-serif;color:#111111;">
+                  <div style="max-width:560px;margin:0 auto;padding:32px 28px 24px;">
+                    <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(145deg,#7c3aed 0%%,#6d28d9 100%%);margin-bottom:28px;"></div>
+                    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.3;font-weight:700;">검증 코드</h1>
+                    <p style="margin:0 0 18px;font-size:15px;color:#222;">다음 인증 코드를 입력하세요:</p>
+                    <p style="margin:0 0 18px;font-size:36px;letter-spacing:4px;font-weight:700;line-height:1.2;">%s</p>
+                    <p style="margin:0 0 36px;font-size:14px;color:#333;">계정을 보호하기 위해 이 코드를 공유하지 마세요.</p>
+                    <p style="margin:0 0 10px;font-size:15px;font-weight:700;">이걸 요청하지 않았나요?</p>
+                    <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#222;">
+                      이 코드는 <strong>%s</strong>에 <strong>%s</strong>에서 요청되었습니다.
+                    </p>
+                    <p style="margin:0 0 28px;font-size:14px;color:#333;">이 요청을 하지 않으셨다면 이 이메일을 무시해도 됩니다.</p>
+                    <div style="border-top:1px dashed #cfcfcf;padding-top:16px;">
+                      <p style="margin:0;font-size:12px;color:#8a8a8a;">© %d %s · %s</p>
+                    </div>
+                  </div>
+                </body>
+                </html>
+                """.formatted(safeCode, safeWhen, safeWhere, year, appName, escapeHtml(purposeLabel));
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
+    }
+
     private String createNewsAlertSubject(News news) {
         List<TargetCategory> categories = news.getAiOverView().getTargetCategories();
         String categoryText = categories.isEmpty() ? "관심종목" : categories.get(0).name();
@@ -226,7 +364,6 @@ public class EmailNotificationService {
                 .orElse("일반");
     }
 
-    // 템플릿 로드 실패 시 fallback HTML
     private String createFallbackNewsAlert(User user, News news) {
         return String.format(
                 """

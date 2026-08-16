@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.user.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
@@ -25,6 +26,32 @@ public class UserJpaMapper {
                 .nickname(user.getNickname())
                 .email(user.getEmail())
                 .apiKey(user.getApiKey())
+                .authProvider(user.getAuthProvider() != null ? user.getAuthProvider() : AuthProvider.WEB)
+                .naverId(user.getNaverId())
+                .googleId(user.getGoogleId())
+                .kakaoUserId(user.getKakaoUserId())
+                .kakaoAccessToken(user.getKakaoAccessToken())
+                .kakaoTokenExpiresAt(user.getKakaoTokenExpiresAt())
+                .kakaoRefreshToken(user.getKakaoRefreshToken())
+                .kakaoNotificationEnabled(
+                        user.getKakaoNotificationEnabled() != null ? user.getKakaoNotificationEnabled() : false)
+                .telegramUserId(user.getTelegramUserId())
+                .telegramChatId(user.getTelegramChatId())
+                .telegramNotificationEnabled(boolOr(user.getTelegramNotificationEnabled(), false))
+                .slackUserId(user.getSlackUserId())
+                .slackChannelId(user.getSlackChannelId())
+                .slackNotificationEnabled(boolOr(user.getSlackNotificationEnabled(), false))
+                .discordUserId(user.getDiscordUserId())
+                .discordNotificationEnabled(boolOr(user.getDiscordNotificationEnabled(), false))
+                .lineUserId(user.getLineUserId())
+                .lineNotificationEnabled(boolOr(user.getLineNotificationEnabled(), false))
+                .webhookUrl(user.getWebhookUrl())
+                .webhookNotificationEnabled(boolOr(user.getWebhookNotificationEnabled(), false))
+                .pushNotificationEnabled(boolOr(user.getPushNotificationEnabled(), true))
+                .emailNotificationEnabled(boolOr(user.getEmailNotificationEnabled(), true))
+                .smsNotificationEnabled(boolOr(user.getSmsNotificationEnabled(), false))
+                .profileImageUrl(user.getProfileImageUrl())
+                .phoneNumber(user.getPhoneNumber())
                 .status(user.getStatus())
                 .role(user.getRole())
                 .lastLoginAt(user.getLastLoginAt())
@@ -33,16 +60,17 @@ public class UserJpaMapper {
                 .approvedBy(user.getApprovedBy())
                 .approvedAt(user.getApprovedAt())
                 .passwordChangedAt(user.getPasswordChangedAt())
-                .passwordChangeCount(user.getPasswordChangeCount())
+                .passwordChangeCount(user.getPasswordChangeCount() != null ? user.getPasswordChangeCount() : 0)
                 .lastPasswordChangeDate(user.getLastPasswordChangeDate())
+                .passwordExpiryNotifiedAt(user.getPasswordExpiryNotifiedAt())
                 .watchlist(user.getWatchlist() != null ? new ArrayList<>(user.getWatchlist()) : new ArrayList<>())
                 .notificationPreferences(
                         user.getNotificationPreferences() != null ? new ArrayList<>(user.getNotificationPreferences())
                                 : new ArrayList<>())
 
                 .otpSecret(user.getOtpSecret())
-                .otpEnabled(user.getOtpEnabled())
-                .otpVerified(user.getOtpVerified())
+                .otpEnabled(boolOr(user.getOtpEnabled(), false))
+                .otpVerified(boolOr(user.getOtpVerified(), false))
 
                 .build();
 
@@ -70,6 +98,32 @@ public class UserJpaMapper {
                 .nickname(entity.getNickname())
                 .email(entity.getEmail())
                 .apiKey(entity.getApiKey())
+                .authProvider(entity.getAuthProvider() != null ? entity.getAuthProvider() : AuthProvider.WEB)
+                .naverId(entity.getNaverId())
+                .googleId(entity.getGoogleId())
+                .kakaoUserId(entity.getKakaoUserId())
+                .kakaoAccessToken(entity.getKakaoAccessToken())
+                .kakaoTokenExpiresAt(entity.getKakaoTokenExpiresAt())
+                .kakaoRefreshToken(entity.getKakaoRefreshToken())
+                .kakaoNotificationEnabled(
+                        entity.getKakaoNotificationEnabled() != null ? entity.getKakaoNotificationEnabled() : false)
+                .telegramUserId(entity.getTelegramUserId())
+                .telegramChatId(entity.getTelegramChatId())
+                .telegramNotificationEnabled(boolOr(entity.getTelegramNotificationEnabled(), false))
+                .slackUserId(entity.getSlackUserId())
+                .slackChannelId(entity.getSlackChannelId())
+                .slackNotificationEnabled(boolOr(entity.getSlackNotificationEnabled(), false))
+                .discordUserId(entity.getDiscordUserId())
+                .discordNotificationEnabled(boolOr(entity.getDiscordNotificationEnabled(), false))
+                .lineUserId(entity.getLineUserId())
+                .lineNotificationEnabled(boolOr(entity.getLineNotificationEnabled(), false))
+                .webhookUrl(entity.getWebhookUrl())
+                .webhookNotificationEnabled(boolOr(entity.getWebhookNotificationEnabled(), false))
+                .pushNotificationEnabled(boolOr(entity.getPushNotificationEnabled(), true))
+                .emailNotificationEnabled(boolOr(entity.getEmailNotificationEnabled(), true))
+                .smsNotificationEnabled(boolOr(entity.getSmsNotificationEnabled(), false))
+                .profileImageUrl(entity.getProfileImageUrl())
+                .phoneNumber(entity.getPhoneNumber())
                 .status(entity.getStatus() != null ? entity.getStatus() : UserStatus.PENDING)
                 .role(entity.getRole() != null ? entity.getRole() : UserRole.USER)
                 .lastLoginAt(entity.getLastLoginAt())
@@ -80,6 +134,7 @@ public class UserJpaMapper {
                 .passwordChangedAt(entity.getPasswordChangedAt())
                 .passwordChangeCount(entity.getPasswordChangeCount() != null ? entity.getPasswordChangeCount() : 0)
                 .lastPasswordChangeDate(entity.getLastPasswordChangeDate())
+                .passwordExpiryNotifiedAt(entity.getPasswordExpiryNotifiedAt())
                 .watchlist(entity.getWatchlist() != null ? new ArrayList<>(entity.getWatchlist()) : new ArrayList<>())
                 .notificationPreferences(entity.getNotificationPreferences() != null
                         ? new ArrayList<>(entity.getNotificationPreferences())
@@ -173,6 +228,10 @@ public class UserJpaMapper {
         } catch (Exception e) {
             throw new RuntimeException("Entity UpdatedAt 설정 실패", e);
         }
+    }
+
+    private static boolean boolOr(Boolean value, boolean fallback) {
+        return value != null ? value : fallback;
     }
 
     private Field findIdField(Class<?> clazz) {

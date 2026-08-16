@@ -48,7 +48,7 @@ public class SlackNotificationService {
         payload.put("text", message.get("text"));
         payload.put("attachments", message.get("attachments"));
 
-        // 실제 슬랙 웹훅 호출 로직
+        
         log.debug("슬랙 메시지 발송 - 채널: {}, 메시지: {}", channel, message);
     }
 

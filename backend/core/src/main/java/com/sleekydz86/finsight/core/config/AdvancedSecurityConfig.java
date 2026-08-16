@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.auth.service.CustomUserDetailsService;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -56,10 +57,19 @@ public class AdvancedSecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/login/oauth2/code/google").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/static/**", "/css/**", "/js/**", "/images/**").permitAll()
                         .requestMatchers("/favicon.ico").permitAll()
+                        .requestMatchers("/ws-editor/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/avatars/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/v1/boards/my-boards",
+                                "/api/v1/boards/my-scraps",
+                                "/api/v1/boards/*/reaction-status")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/boards", "/api/v1/boards/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

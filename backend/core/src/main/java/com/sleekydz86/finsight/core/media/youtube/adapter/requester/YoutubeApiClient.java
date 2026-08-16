@@ -41,7 +41,7 @@ public class YoutubeApiClient {
 
     public List<FetchedYoutubeVideo> fetchBySource(YoutubeImportSource source) {
         if (!isConfigured()) {
-            log.warn("YouTube API key is not configured");
+            log.warn("YouTube API 키가 설정되어 있지 않습니다");
             return List.of();
         }
 
@@ -68,7 +68,7 @@ public class YoutubeApiClient {
             String sourceValue) {
 
         if (!isConfigured()) {
-            log.warn("YouTube API key is not configured");
+            log.warn("YouTube API 키가 설정되어 있지 않습니다");
             return List.of();
         }
 
@@ -240,7 +240,7 @@ public class YoutubeApiClient {
         try {
             return restTemplate.getForObject(url, responseType);
         } catch (Exception e) {
-            log.error("Failed to call YouTube API: {}", e.getMessage());
+            log.error("YouTube API 호출 실패: {}", e.getMessage());
             return null;
         }
     }

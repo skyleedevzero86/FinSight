@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.user.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.global.BaseTimeEntity;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.UserStatus;
@@ -42,6 +43,92 @@ public class UserJpaEntity extends BaseTimeEntity {
     private String apiKey;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", length = 20)
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.WEB;
+
+    @Column(name = "naver_id", unique = true, length = 100)
+    private String naverId;
+
+    @Column(name = "google_id", unique = true, length = 255)
+    private String googleId;
+
+    @Column(name = "kakao_user_id", unique = true, length = 100)
+    private String kakaoUserId;
+
+    @Column(name = "kakao_access_token", length = 500)
+    private String kakaoAccessToken;
+
+    @Column(name = "kakao_token_expires_at")
+    private LocalDateTime kakaoTokenExpiresAt;
+
+    @Column(name = "kakao_refresh_token", length = 500)
+    private String kakaoRefreshToken;
+
+    @Column(name = "kakao_notification_enabled")
+    @Builder.Default
+    private Boolean kakaoNotificationEnabled = false;
+
+    @Column(name = "telegramUserId")
+    private String telegramUserId;
+
+    @Column(name = "telegramChatId")
+    private String telegramChatId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean telegramNotificationEnabled = false;
+
+    @Column(name = "slackUserId")
+    private String slackUserId;
+
+    @Column(name = "slackChannelId")
+    private String slackChannelId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean slackNotificationEnabled = false;
+
+    @Column(name = "discordUserId")
+    private String discordUserId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean discordNotificationEnabled = false;
+
+    @Column(name = "lineUserId")
+    private String lineUserId;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean lineNotificationEnabled = false;
+
+    @Column(name = "webhookUrl", length = 1000)
+    private String webhookUrl;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean webhookNotificationEnabled = false;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean pushNotificationEnabled = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean emailNotificationEnabled = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean smsNotificationEnabled = false;
+
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
+    @Column(name = "phone_number", length = 30)
+    private String phoneNumber;
+
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
     private UserStatus status = UserStatus.PENDING;
@@ -76,6 +163,9 @@ public class UserJpaEntity extends BaseTimeEntity {
 
     @Column(name = "last_password_change_date")
     private LocalDate lastPasswordChangeDate;
+
+    @Column(name = "password_expiry_notified_at")
+    private LocalDateTime passwordExpiryNotifiedAt;
 
     @ElementCollection(targetClass = TargetCategory.class)
     @CollectionTable(name = "user_watchlist", joinColumns = @JoinColumn(name = "user_id"))

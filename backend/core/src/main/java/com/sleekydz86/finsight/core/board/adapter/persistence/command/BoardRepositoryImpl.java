@@ -155,6 +155,24 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
         boardJpaRepository.incrementViewCount(boardId);
     }
 
+    @Override
+    public List<Board> findByStatusAndReportCountAtLeast(BoardStatus status, int minReportCount) {
+        return boardJpaRepository
+                .findByStatusAndReportCountGreaterThanEqualOrderByReportCountDesc(status, minReportCount)
+                .stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public Boards findEditorDocuments(BoardType boardType, BoardStatus status, String keyword, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        String kw = keyword == null ? "" : keyword.trim();
+        var pageResult = boardJpaRepository.findEditorDocuments(boardType, status, kw, pageable);
+        List<Board> boards = pageResult.getContent().stream().map(boardJpaMapper::toDomain).toList();
+        return new Boards(boards, pageResult.getTotalElements());
+    }
+
     private Boards searchByKeyword(BoardSearchRequest request, Pageable pageable) {
         var pageResult = boardJpaRepository.findByBoardTypeAndStatusAndTitleContainingOrContentContaining(
                 request.getBoardType(), BoardStatus.ACTIVE, request.getKeyword(), pageable);

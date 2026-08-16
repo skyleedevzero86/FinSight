@@ -45,7 +45,7 @@ public class NewsRepositoryImpl implements NewsPersistencePort {
 
     @Override
     public Newses findAllByFilters(NewsQueryRequest request) {
-        // Criteria API를 사용하여 동적 쿼리 예정
+        
         List<NewsJpaEntity> entities = newsJpaRepository.findAll();
         return new Newses(entities.stream()
                 .map(newsJpaMapper::toDomain)

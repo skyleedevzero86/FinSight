@@ -7,32 +7,38 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "ai.openai.api")
 public class OpenAiProperties {
 
-    private String baseUrl;
-    private String apiKey;
-    private String model;
+    private String baseUrl = "https://api.openai.com/v1/chat/completions";
+    private String apiKey = "";
+    private String model = "gpt-3.5-turbo";
 
     public OpenAiProperties() {
     }
 
     public void setBaseUrl(String baseUrl) {
         if (baseUrl == null || baseUrl.isBlank()) {
-            throw new IllegalArgumentException("OpenAI base-url은 비어 있을 수 없습니다");
+            this.baseUrl = "https://api.openai.com/v1/chat/completions";
+            return;
         }
         this.baseUrl = baseUrl;
     }
 
     public void setApiKey(String apiKey) {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new IllegalArgumentException("OpenAI api-key는 비어 있을 수 없습니다");
-        }
-        this.apiKey = apiKey;
+        this.apiKey = apiKey == null ? "" : apiKey.trim();
     }
 
     public void setModel(String model) {
         if (model == null || model.isBlank()) {
-            throw new IllegalArgumentException("OpenAI model은 비어 있을 수 없습니다");
+            this.model = "gpt-3.5-turbo";
+            return;
         }
         this.model = model;
+    }
+
+    public boolean isConfigured() {
+        return apiKey != null
+                && !apiKey.isBlank()
+                && !apiKey.contains("placeholder")
+                && !apiKey.startsWith("local-");
     }
 
     public String getBaseUrl() { return baseUrl; }

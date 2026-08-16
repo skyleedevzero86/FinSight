@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sleekydz86.finsight.WebApplication;
 import com.sleekydz86.finsight.core.auth.dto.*;
 import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
 import com.sleekydz86.finsight.core.auth.service.OtpAuthenticationService;
@@ -12,6 +13,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -20,6 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
+@ContextConfiguration(classes = WebApplication.class)
 class OtpAuthControllerTest {
 
     @Autowired
@@ -33,6 +36,15 @@ class OtpAuthControllerTest {
 
     @MockBean
     private OtpAuthenticationService otpAuthenticationService;
+
+    @MockBean
+    private com.sleekydz86.finsight.core.user.service.PasswordExpiryNoticeService passwordExpiryNoticeService;
+
+    @MockBean
+    private com.sleekydz86.finsight.core.auth.service.SocialAuthService socialAuthService;
+
+    @MockBean
+    private com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort userPersistencePort;
 
     @Autowired
     private ObjectMapper objectMapper;

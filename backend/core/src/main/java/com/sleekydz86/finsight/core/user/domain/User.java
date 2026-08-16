@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.user.domain;
 
 import com.sleekydz86.finsight.core.global.BaseTimeEntity;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.notification.domain.NotificationChannel;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
@@ -24,13 +25,16 @@ import java.util.Objects;
 @Slf4j
 public class User extends BaseTimeEntity {
 
+    public static final int PASSWORD_EXPIRY_DAYS = 90;
+    public static final int PASSWORD_RECOMMEND_DAYS = 75;
+
     @Column(unique = true, nullable = false)
     private String username;
 
     @Column(nullable = false)
     private String password;
 
-    @Column
+    @Column(length = 50, nullable = false)
     private String nickname;
 
     @Column(unique = true, nullable = false)
@@ -38,6 +42,17 @@ public class User extends BaseTimeEntity {
 
     @Column(unique = true)
     private String apiKey;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_provider", length = 20)
+    @Builder.Default
+    private AuthProvider authProvider = AuthProvider.WEB;
+
+    @Column(name = "naver_id", unique = true, length = 100)
+    private String naverId;
+
+    @Column(name = "google_id", unique = true, length = 100)
+    private String googleId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -65,15 +80,18 @@ public class User extends BaseTimeEntity {
     @Column
     private LocalDateTime approvedAt;
 
-    @Column
+    @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
 
-    @Column(nullable = false)
+    @Column(name = "password_change_count", nullable = false)
     @Builder.Default
     private Integer passwordChangeCount = 0;
 
-    @Column
+    @Column(name = "last_password_change_date")
     private LocalDate lastPasswordChangeDate;
+
+    @Column(name = "password_expiry_notified_at")
+    private LocalDateTime passwordExpiryNotifiedAt;
 
     @ElementCollection(targetClass = TargetCategory.class)
     @Enumerated(EnumType.STRING)
@@ -89,14 +107,14 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     private List<NotificationType> notificationPreferences = new ArrayList<>();
 
-    @Column
+    @Column(name = "otp_secret")
     private String otpSecret;
 
-    @Column(nullable = false)
+    @Column(name = "otp_enabled", nullable = false)
     @Builder.Default
     private Boolean otpEnabled = false;
 
-    @Column(nullable = false)
+    @Column(name = "otp_verified", nullable = false)
     @Builder.Default
     private Boolean otpVerified = false;
 
@@ -121,10 +139,10 @@ public class User extends BaseTimeEntity {
     @Builder.Default
     private Boolean smsNotificationEnabled = false;
 
-    @Column
+    @Column(name = "phone_number")
     private String phoneNumber;
 
-    @Column
+    @Column(name = "profile_image_url")
     private String profileImageUrl;
 
     @Column
@@ -133,19 +151,19 @@ public class User extends BaseTimeEntity {
     @Column
     private String language;
 
-    @Column
+    @Column(name = "kakao_user_id")
     private String kakaoUserId;
 
-    @Column
+    @Column(name = "kakao_access_token")
     private String kakaoAccessToken;
 
-    @Column
+    @Column(name = "kakao_token_expires_at")
     private LocalDateTime kakaoTokenExpiresAt;
 
-    @Column
+    @Column(name = "kakao_refresh_token")
     private String kakaoRefreshToken;
 
-    @Column(nullable = false)
+    @Column(name = "kakao_notification_enabled", nullable = false)
     @Builder.Default
     private Boolean kakaoNotificationEnabled = false;
 
@@ -227,34 +245,75 @@ public class User extends BaseTimeEntity {
         return this.passwordChangeCount == null ? 0 : this.passwordChangeCount;
     }
 
+    public boolean isWebAccount() {
+        return this.authProvider == null || this.authProvider == AuthProvider.WEB;
+    }
+
     public boolean isPasswordChangeRequired() {
-        if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 필요 - 최초 변경 안함: userId={}", this.getId());
-            return true;
+        if (!isWebAccount()) {
+            return false;
         }
-
-        LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
-        boolean isRequired = this.passwordChangedAt.isBefore(thirtyDaysAgo);
-
-        log.debug("비밀번호 변경 필요 여부: userId={}, passwordChangedAt={}, required={}",
-                this.getId(), this.passwordChangedAt, isRequired);
-
-        return isRequired;
+        LocalDateTime baseline = passwordBaseline();
+        if (baseline == null) {
+            return false;
+        }
+        return baseline.isBefore(LocalDateTime.now().minusDays(PASSWORD_EXPIRY_DAYS));
     }
 
     public boolean isPasswordChangeRecommended() {
-        if (this.passwordChangedAt == null) {
-            log.debug("비밀번호 변경 권장 - 최초 변경 안함: userId={}", this.getId());
+        if (!isWebAccount() || isPasswordChangeRequired()) {
+            return false;
+        }
+        LocalDateTime baseline = passwordBaseline();
+        if (baseline == null) {
+            return false;
+        }
+        return baseline.isBefore(LocalDateTime.now().minusDays(PASSWORD_RECOMMEND_DAYS));
+    }
+
+    public long daysSincePasswordChange() {
+        LocalDateTime baseline = passwordBaseline();
+        if (baseline == null) {
+            return 0;
+        }
+        return java.time.temporal.ChronoUnit.DAYS.between(baseline.toLocalDate(), LocalDate.now());
+    }
+
+    private LocalDateTime passwordBaseline() {
+        if (this.passwordChangedAt != null) {
+            return this.passwordChangedAt;
+        }
+        return getCreatedAt();
+    }
+
+    public long daysUntilPasswordExpiry() {
+        if (!isWebAccount()) {
+            return Long.MAX_VALUE;
+        }
+        return Math.max(0, PASSWORD_EXPIRY_DAYS - daysSincePasswordChange());
+    }
+
+    public boolean shouldSendPasswordExpiryMail() {
+        if (!isWebAccount() || !isPasswordChangeRequired()) {
+            return false;
+        }
+        if (this.email == null || this.email.isBlank() || this.email.endsWith("@oauth.finsight.local")) {
+            return false;
+        }
+        if (this.passwordExpiryNotifiedAt == null) {
             return true;
         }
+        return this.passwordExpiryNotifiedAt.isBefore(LocalDateTime.now().minusHours(24));
+    }
 
-        LocalDateTime fourteenDaysAgo = LocalDateTime.now().minusDays(14);
-        boolean isRecommended = this.passwordChangedAt.isBefore(fourteenDaysAgo);
+    public void markPasswordExpiryNotified() {
+        this.passwordExpiryNotifiedAt = LocalDateTime.now();
+    }
 
-        log.debug("비밀번호 변경 권장 여부: userId={}, passwordChangedAt={}, recommended={}",
-                this.getId(), this.passwordChangedAt, isRecommended);
-
-        return isRecommended;
+    public void updateProfileImage(String profileImageUrl) {
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            this.profileImageUrl = profileImageUrl;
+        }
     }
 
     public String getName() {
@@ -312,9 +371,13 @@ public class User extends BaseTimeEntity {
     }
 
     public void updateProfile(String nickname, String email) {
-        this.nickname = nickname;
-        this.email = email;
-        log.info("프로필 업데이트: userId={}, nickname={}, email={}", this.getId(), nickname, email);
+        if (nickname != null && !nickname.isBlank()) {
+            this.nickname = nickname;
+        }
+        if (email != null) {
+            this.email = email;
+        }
+        log.info("프로필 업데이트: userId={}, nickname={}, email={}", this.getId(), this.nickname, this.email);
     }
 
     public void approve(Long approverId) {
@@ -365,9 +428,57 @@ public class User extends BaseTimeEntity {
         log.info("회원 잠금 해제: userId={}", this.getId());
     }
 
+    public void restore() {
+        if (this.status != UserStatus.SUSPENDED && this.status != UserStatus.WITHDRAWN) {
+            throw new IllegalStateException("정지 또는 탈퇴 계정만 복구할 수 있습니다.");
+        }
+        UserStatus previous = this.status;
+        this.status = UserStatus.APPROVED;
+        this.accountLockedAt = null;
+        this.loginFailCount = 0;
+        log.info("회원 복구: userId={}, previousStatus={}", this.getId(), previous);
+    }
+
     public void updateLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
         log.debug("마지막 로그인 시간 업데이트: userId={}, lastLoginAt={}", this.getId(), lastLoginAt);
+    }
+
+    public String getMaskedPhoneNumber() {
+        if (this.phoneNumber == null || this.phoneNumber.isBlank()) {
+            return null;
+        }
+        String digits = this.phoneNumber.replaceAll("\\D", "");
+        if (digits.length() <= 4) {
+            return "*".repeat(Math.max(digits.length(), 4));
+        }
+        return "*".repeat(digits.length() - 4) + digits.substring(digits.length() - 4);
+    }
+
+    public String getMaskedUsername() {
+        if (this.username == null || this.username.isBlank()) {
+            return this.username;
+        }
+        if (this.username.length() <= 2) {
+            return this.username.charAt(0) + "*";
+        }
+        int stars = Math.min(this.username.length() - 2, 8);
+        return this.username.charAt(0) + "*".repeat(stars) + this.username.charAt(this.username.length() - 1);
+    }
+
+    public void assertCanLogin() {
+        if (this.status == UserStatus.WITHDRAWN) {
+            throw new IllegalStateException("탈퇴한 계정입니다. 로그인할 수 없습니다.");
+        }
+        if (this.status == UserStatus.SUSPENDED) {
+            throw new IllegalStateException("정지된 계정입니다. 관리자에게 문의해 주세요.");
+        }
+        if (this.status == UserStatus.REJECTED) {
+            throw new IllegalStateException("승인 거부된 계정입니다.");
+        }
+        if (this.status == UserStatus.PENDING) {
+            throw new IllegalStateException("승인 대기 중인 계정입니다.");
+        }
     }
 
     public String getMaskedEmail() {
@@ -544,6 +655,90 @@ public class User extends BaseTimeEntity {
                 this.webhookNotificationEnabled);
     }
 
+    public void linkNaver(String naverId) {
+        this.naverId = naverId;
+        this.authProvider = AuthProvider.NAVER;
+    }
+
+    public void clearNaverLink() {
+        this.naverId = null;
+        if (this.authProvider == AuthProvider.NAVER) {
+            this.authProvider = AuthProvider.WEB;
+        }
+    }
+
+    public void applyNaverProfile(String nickname, String name, String email, String profileImageUrl, String mobile) {
+        if (nickname != null && !nickname.isBlank()) {
+            this.nickname = nickname.length() > 50 ? nickname.substring(0, 50) : nickname;
+        } else if (name != null && !name.isBlank()) {
+            this.nickname = name.length() > 50 ? name.substring(0, 50) : name;
+        }
+        if (email != null && !email.isBlank() && (this.email == null || this.email.endsWith("@oauth.finsight.local"))) {
+            this.email = email.trim();
+        }
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            this.profileImageUrl = profileImageUrl;
+        }
+        if (mobile != null && !mobile.isBlank()) {
+            this.phoneNumber = mobile;
+        }
+        this.authProvider = AuthProvider.NAVER;
+    }
+
+    public void linkKakaoLogin(String kakaoUserId) {
+        this.kakaoUserId = kakaoUserId;
+        this.authProvider = AuthProvider.KAKAO;
+    }
+
+    public void clearKakaoLink() {
+        this.kakaoUserId = null;
+        this.kakaoAccessToken = null;
+        this.kakaoTokenExpiresAt = null;
+        this.kakaoRefreshToken = null;
+        this.kakaoNotificationEnabled = false;
+        if (this.authProvider == AuthProvider.KAKAO) {
+            this.authProvider = AuthProvider.WEB;
+        }
+    }
+
+    public void applyKakaoProfile(String nickname, String email, String profileImageUrl) {
+        if (nickname != null && !nickname.isBlank()) {
+            this.nickname = nickname.length() > 50 ? nickname.substring(0, 50) : nickname;
+        }
+        if (email != null && !email.isBlank() && (this.email == null || this.email.endsWith("@oauth.finsight.local"))) {
+            this.email = email.trim();
+        }
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            this.profileImageUrl = profileImageUrl;
+        }
+        this.authProvider = AuthProvider.KAKAO;
+    }
+
+    public void linkGoogle(String googleId) {
+        this.googleId = googleId;
+        this.authProvider = AuthProvider.GOOGLE;
+    }
+
+    public void clearGoogleLink() {
+        this.googleId = null;
+        if (this.authProvider == AuthProvider.GOOGLE) {
+            this.authProvider = AuthProvider.WEB;
+        }
+    }
+
+    public void applyGoogleProfile(String name, String email, String profileImageUrl) {
+        if (name != null && !name.isBlank()) {
+            this.nickname = name.length() > 50 ? name.substring(0, 50) : name;
+        }
+        if (email != null && !email.isBlank() && (this.email == null || this.email.endsWith("@oauth.finsight.local"))) {
+            this.email = email.trim();
+        }
+        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+            this.profileImageUrl = profileImageUrl;
+        }
+        this.authProvider = AuthProvider.GOOGLE;
+    }
+
     public void updateKakaoInfo(String kakaoUserId, String accessToken, LocalDateTime expiresAt, String refreshToken) {
         this.kakaoUserId = kakaoUserId;
         this.kakaoAccessToken = accessToken;
@@ -628,7 +823,7 @@ public class User extends BaseTimeEntity {
 
     public void updateProfileSettings(String nickname, String phoneNumber, String profileImageUrl, String timezone,
             String language) {
-        if (nickname != null) {
+        if (nickname != null && !nickname.isBlank()) {
             this.nickname = nickname;
         }
         if (phoneNumber != null) {
@@ -688,21 +883,21 @@ public class User extends BaseTimeEntity {
         return this.otpEnabled && this.otpVerified;
     }
 
-    public com.sleekydz86.finsight.core.notification.domain.NotificationChannel getPreferredNotificationChannel() {
+    public NotificationChannel getPreferredNotificationChannel() {
         if (canReceiveEmailNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.EMAIL;
+            return NotificationChannel.EMAIL;
         } else if (canReceivePushNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.PUSH;
+            return NotificationChannel.PUSH;
         } else if (canReceiveSmsNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.SMS;
+            return NotificationChannel.SMS;
         } else if (canReceiveKakaoNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.KAKAO;
+            return NotificationChannel.KAKAO;
         } else if (canReceiveSlackNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.SLACK;
+            return NotificationChannel.SLACK;
         } else if (canReceiveWebhookNotification()) {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.WEBHOOK;
+            return NotificationChannel.WEBHOOK;
         } else {
-            return com.sleekydz86.finsight.core.notification.domain.NotificationChannel.EMAIL;
+            return NotificationChannel.EMAIL;
         }
     }
 

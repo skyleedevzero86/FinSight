@@ -1,8 +1,8 @@
 package com.sleekydz86.finsight.batch.user.schedul.job;
 
 import com.sleekydz86.finsight.core.user.domain.User;
-import com.sleekydz86.finsight.core.user.domain.UserStatus;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
+import com.sleekydz86.finsight.core.user.service.PasswordExpiryNoticeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,30 +17,27 @@ import java.util.List;
 public class PasswordExpirationScheduler {
 
     private final UserPersistencePort userPersistencePort;
+    private final PasswordExpiryNoticeService passwordExpiryNoticeService;
 
     @Scheduled(cron = "0 0 9 * * ?")
     public void checkPasswordExpiration() {
         try {
-            LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
-            List<User> expiredUsers = userPersistencePort.findUsersWithPasswordChangedBefore(thirtyDaysAgo);
+            LocalDateTime recommendThreshold = LocalDateTime.now().minusDays(User.PASSWORD_RECOMMEND_DAYS);
+            List<User> candidates = userPersistencePort.findUsersWithPasswordChangedBefore(recommendThreshold);
 
             int expiredCount = 0;
             int warningCount = 0;
 
-            for (User user : expiredUsers) {
-                if (user.getPasswordChangedAt() != null) {
-                    long daysSinceChange = java.time.temporal.ChronoUnit.DAYS.between(
-                            user.getPasswordChangedAt().toLocalDate(),
-                            java.time.LocalDate.now()
-                    );
-
-                    if (daysSinceChange >= 30) {
-                        expiredCount++;
-                        sendPasswordExpirationAlert(user);
-                    } else if (daysSinceChange >= 25) {
-                        warningCount++;
-                        sendPasswordExpirationWarning(user);
-                    }
+            for (User user : candidates) {
+                if (!user.isWebAccount()) {
+                    continue;
+                }
+                if (user.isPasswordChangeRequired()) {
+                    expiredCount++;
+                    passwordExpiryNoticeService.notifyIfDue(user);
+                } else if (user.isPasswordChangeRecommended()) {
+                    warningCount++;
+                    passwordExpiryNoticeService.notifyWarningIfDue(user);
                 }
             }
 
@@ -58,33 +55,19 @@ public class PasswordExpirationScheduler {
             LocalDateTime oneWeekAgo = LocalDateTime.now().minusDays(7);
             long weeklyChanges = userPersistencePort.countPasswordChangesAfter(oneWeekAgo);
 
-            LocalDateTime thirtyDaysAgo = LocalDateTime.now().minusDays(30);
-            long expiredUsers = userPersistencePort.countUsersWithPasswordChangedBefore(thirtyDaysAgo);
+            LocalDateTime expiryThreshold = LocalDateTime.now().minusDays(User.PASSWORD_EXPIRY_DAYS);
+            long expiredUsers = userPersistencePort.countUsersWithPasswordChangedBefore(expiryThreshold);
 
-            LocalDateTime twentyFiveDaysAgo = LocalDateTime.now().minusDays(25);
-            long expiringSoonUsers = userPersistencePort.countUsersWithPasswordChangedBefore(twentyFiveDaysAgo) - expiredUsers;
+            LocalDateTime recommendThreshold = LocalDateTime.now().minusDays(User.PASSWORD_RECOMMEND_DAYS);
+            long expiringSoonUsers = Math.max(0,
+                    userPersistencePort.countUsersWithPasswordChangedBefore(recommendThreshold) - expiredUsers);
 
-            sendWeeklyPasswordReport(weeklyChanges, expiredUsers, expiringSoonUsers);
-
-            log.info("비밀번호 변경 주간 보고서 생성 완료: 주간 변경 {}, 만료 {}, 만료 예정 {}",
-                    weeklyChanges, expiredUsers, expiringSoonUsers);
+            log.info("=== 비밀번호 변경 주간 보고서 ===");
+            log.info("주간 비밀번호 변경: {}건", weeklyChanges);
+            log.info("만료된 비밀번호: {}명", expiredUsers);
+            log.info("만료 예정 비밀번호: {}명", expiringSoonUsers);
         } catch (Exception e) {
             log.error("비밀번호 변경 보고서 생성 실패: {}", e.getMessage());
         }
-    }
-
-    private void sendPasswordExpirationWarning(User user) {
-        log.info("비밀번호 만료 경고 알림: {} ({})", user.getUsername(), user.getEmail());
-    }
-
-    private void sendPasswordExpirationAlert(User user) {
-        log.info("비밀번호 만료 알림: {} ({})", user.getUsername(), user.getEmail());
-    }
-
-    private void sendWeeklyPasswordReport(long weeklyChanges, long expiredUsers, long expiringSoonUsers) {
-        log.info("=== 비밀번호 변경 주간 보고서 ===");
-        log.info("주간 비밀번호 변경: {}건", weeklyChanges);
-        log.info("만료된 비밀번호: {}명", expiredUsers);
-        log.info("만료 예정 비밀번호: {}명", expiringSoonUsers);
     }
 }

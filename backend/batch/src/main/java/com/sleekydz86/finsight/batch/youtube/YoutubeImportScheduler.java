@@ -29,7 +29,7 @@ public class YoutubeImportScheduler {
         }
 
         YoutubeSyncSummaryResponse summary = youtubeMediaImportUseCase.syncActiveSources();
-        log.info("YouTube sync finished: sources={}, imported={}, updated={}, failed={}",
+        log.info("YouTube 동기화 완료 - 소스: {}, 신규 가져옴: {}, 갱신: {}, 실패: {}",
                 summary.getSourceCount(),
                 summary.getImportedCount(),
                 summary.getUpdatedCount(),

@@ -126,8 +126,8 @@ public class NotificationController {
         User user = userPersistencePort.findById(currentUser.getId())
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        // 테스트 알림 생성 및 발송 로직 미처리
-        // 실제 구현에서는 NotificationTemplate을 사용하여 테스트 알림 생성예정
+        
+        
 
         return ResponseEntity.ok(ApiResponse.success(null, "테스트 알림이 발송되었습니다."));
     }

@@ -1,37 +1,97 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
-import { Search, Menu } from "lucide-react"
+import { Search, Menu, User } from "lucide-react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import HeaderSearchOverlay from "@/components/HeaderSearchOverlay"
+import BrandLogo from "@/components/BrandLogo"
+import { useAuthSession } from "@/components/AuthSessionProvider"
+import { canManageUsers } from "@/lib/adminUsers"
+
+function HeaderAvatar({ src }: { src: string | null }) {
+  const [broken, setBroken] = useState(false)
+  const useSnsPhoto = Boolean(src) && !broken
+
+  if (useSnsPhoto) {
+    return (
+      <img
+        src={src as string}
+        alt=""
+        className="h-5 w-5 shrink-0 rounded-full object-cover bg-white/20"
+        onError={() => setBroken(true)}
+      />
+    )
+  }
+
+  return (
+    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/25">
+      <User className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
+    </span>
+  )
+}
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const router = useRouter()
+  const { user, logout } = useAuthSession()
+
+  async function onLogout() {
+    if (loggingOut) return
+    setLoggingOut(true)
+    try {
+      await logout()
+      router.replace("/")
+    } finally {
+      setLoggingOut(false)
+    }
+  }
 
   return (
     <header className="bg-finsight-primary text-white sticky top-0 z-50">
       <div className="relative">
-        <div className="absolute right-0 top-0 px-4 py-2 text-xs flex items-center gap-4">
-          <Link href="/signup" className="hover:text-finsight-secondary transition">회원가입</Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/login" className="hover:text-finsight-secondary transition">로그인</Link>
+        <div className="absolute right-0 top-0 px-4 py-2 text-xs flex items-center gap-4 min-h-[2rem]">
+          {user ? (
+            <>
+              <Link
+                href="/my"
+                className="flex max-w-[11rem] items-center gap-1.5 hover:text-finsight-secondary transition"
+                title={user.nickname}
+              >
+                <HeaderAvatar src={user.profileImageUrl} />
+                <span className="truncate">{user.nickname}</span>
+              </Link>
+              {canManageUsers(user.role) ? (
+                <>
+                  <span className="text-gray-400">|</span>
+                  <Link href="/admin/users" className="hover:text-finsight-secondary transition">
+                    사용자 관리
+                  </Link>
+                </>
+              ) : null}
+              <span className="text-gray-400">|</span>
+              <button
+                type="button"
+                onClick={() => void onLogout()}
+                disabled={loggingOut}
+                className="hover:text-finsight-secondary transition disabled:opacity-60"
+              >
+                로그아웃
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/signup" className="hover:text-finsight-secondary transition">회원가입</Link>
+              <span className="text-gray-400">|</span>
+              <Link href="/login" className="hover:text-finsight-secondary transition">로그인</Link>
+            </>
+          )}
         </div>
 
         <nav className="flex items-center justify-between px-4 md:px-8 pt-10 pb-4">
-          <Link href="/" className="shrink-0">
-            <div className="relative w-40 h-14 md:w-48 md:h-16 overflow-hidden rounded-sm">
-              <Image
-                src="/finsight-logo.png"
-                alt="finsight"
-                fill
-                className="object-cover"
-                style={{ objectPosition: "center 84%" }}
-                priority
-              />
-            </div>
-          </Link>
+          <BrandLogo />
 
           <div className="ml-auto flex items-center gap-6">
             <Link href="/news" className="text-sm hover:text-finsight-secondary transition hidden md:block">
@@ -134,6 +194,16 @@ export default function Header() {
                   커뮤니티
                 </Link>
               </li>
+              {user && canManageUsers(user.role) ? (
+                <li>
+                  <Link
+                    href="/admin/users"
+                    className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                  >
+                    사용자 관리
+                  </Link>
+                </li>
+              ) : null}
             </ul>
           </div>
         )}

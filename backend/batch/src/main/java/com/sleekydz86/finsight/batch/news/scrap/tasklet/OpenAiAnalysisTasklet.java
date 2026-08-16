@@ -54,7 +54,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
-        log.info("Starting AI analysis tasklet");
+        log.info("AI 분석 태스크릿 시작");
 
         int pageSize = 50;
         int pageNumber = 0;
@@ -66,12 +66,12 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                 Page<NewsJpaEntity> newsPage = newsJpaRepository.findByOverviewIsNull(pageable);
 
                 if (newsPage.isEmpty()) {
-                    log.info("No more news articles to analyze. Stopping at page: {}", pageNumber);
+                    log.info("분석할 뉴스가 더 이상 없습니다. 페이지 {}에서 종료합니다", pageNumber);
                     hasMoreData = false;
                     break;
                 }
 
-                log.info("Processing page {} with {} news articles", pageNumber, newsPage.getContent().size());
+                log.info("페이지 {} 처리 중 - 뉴스 {}건", pageNumber, newsPage.getContent().size());
 
                 List<CompletableFuture<Boolean>> analysisFutures = newsPage.getContent().stream()
                         .map(this::processNewsAnalysis)
@@ -84,21 +84,21 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                         .filter(Boolean::booleanValue)
                         .count();
 
-                log.info("Page {} completed. Successfully analyzed: {}/{}",
+                log.info("페이지 {} 처리 완료 - 분석 성공: {}/{}",
                         pageNumber, successfulCount, newsPage.getContent().size());
 
                 pageNumber++;
 
                 if (pageNumber > 100) {
-                    log.warn("Reached maximum page limit (100). Stopping processing.");
+                    log.warn("최대 페이지 제한(100)에 도달하여 처리를 중단합니다.");
                     break;
                 }
             }
 
-            log.info("AI analysis tasklet completed successfully. Total processed: {}", processedNewsCount.get());
+            log.info("AI 분석 태스크릿 완료 - 총 처리 건수: {}", processedNewsCount.get());
 
         } catch (Exception e) {
-            log.error("Error during AI analysis tasklet execution", e);
+            log.error("AI 분석 태스크릿 실행 중 오류 발생", e);
             throw e;
         }
 
@@ -110,11 +110,11 @@ public class OpenAiAnalysisTasklet implements Tasklet {
             long startTime = System.currentTimeMillis();
 
             try {
-                log.debug("Starting AI analysis for news: {}", newsEntity.getId());
+                log.debug("뉴스 AI 분석 시작: {}", newsEntity.getId());
                 processedNewsCount.incrementAndGet();
 
                 AiModel selectedModel = selectOptimalModel(newsEntity);
-                log.debug("Selected AI model: {} for news: {}", selectedModel, newsEntity.getId());
+                log.debug("뉴스 {}에 선택된 AI 모델: {}", newsEntity.getId(), selectedModel);
 
                 Content aiChatRequest = new Content(
                         newsEntity.getOriginalTitle(),
@@ -133,35 +133,35 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                     long processingTime = System.currentTimeMillis() - startTime;
                     totalProcessingTime.addAndGet(processingTime);
 
-                    log.debug("AI analysis completed for news: {} in {}ms using model: {}",
+                    log.debug("뉴스 {} AI 분석 완료 - 처리시간: {}ms, 모델: {}",
                             newsEntity.getId(), processingTime, selectedModel);
                     return true;
 
                 } else {
-                    log.warn("AI analysis returned no results for news: {}", newsEntity.getId());
+                    log.warn("뉴스 {} AI 분석 결과가 비어 있습니다", newsEntity.getId());
                     failedAnalysisCount.incrementAndGet();
 
                     try {
-                        log.info("Attempting fallback analysis for news: {}", newsEntity.getId());
+                        log.info("뉴스 {}에 대해 폴백 분석을 시도합니다", newsEntity.getId());
                         List<News> fallbackNews = newsAiAnalysisRequesterPort.analyseNewses(AiModel.GEMMA, aiChatRequest);
 
                         if (fallbackNews != null && !fallbackNews.isEmpty()) {
                             updateNewsEntityWithAnalysis(newsEntity, fallbackNews.get(0));
                             newsJpaRepository.save(newsEntity);
                             successfulAnalysisCount.incrementAndGet();
-                            log.info("Fallback analysis succeeded for news: {}", newsEntity.getId());
+                            log.info("뉴스 {} 폴백 분석 성공", newsEntity.getId());
                             return true;
                         }
                     } catch (Exception fallbackEx) {
-                        log.warn("Fallback analysis also failed for news: {}", newsEntity.getId(), fallbackEx);
-                        throw new AiAnalysisFailedException(AiModel.GEMMA.name(), "Fallback analysis failed: " + fallbackEx.getMessage());
+                        log.warn("뉴스 {} 폴백 분석도 실패했습니다", newsEntity.getId(), fallbackEx);
+                        throw new AiAnalysisFailedException(AiModel.GEMMA.name(), "폴백 분석 실패: " + fallbackEx.getMessage());
                     }
 
-                    throw new AiAnalysisFailedException(selectedModel.name(), "No analysis results returned");
+                    throw new AiAnalysisFailedException(selectedModel.name(), "분석 결과가 반환되지 않았습니다");
                 }
 
             } catch (Exception e) {
-                log.error("Error during AI analysis for news: {}", newsEntity.getId(), e);
+                log.error("뉴스 {} AI 분석 중 오류 발생", newsEntity.getId(), e);
                 failedAnalysisCount.incrementAndGet();
 
                 if (e instanceof AiAnalysisFailedException) {
@@ -173,10 +173,10 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                     newsEntity.setSentimentType(SentimentType.NEUTRAL);
                     newsEntity.setSentimentScore(0.5);
                     newsJpaRepository.save(newsEntity);
-                    log.info("Saved basic fallback data for news: {}", newsEntity.getId());
+                    log.info("뉴스 {} 기본 폴백 데이터 저장 완료", newsEntity.getId());
                 } catch (Exception saveEx) {
-                    log.error("Failed to save fallback data for news: {}", newsEntity.getId(), saveEx);
-                    throw new DatabaseConnectionException("H2", "Failed to save fallback data: " + saveEx.getMessage());
+                    log.error("뉴스 {} 폴백 데이터 저장 실패", newsEntity.getId(), saveEx);
+                    throw new DatabaseConnectionException("H2", "폴백 데이터 저장 실패: " + saveEx.getMessage());
                 }
 
                 return false;
@@ -216,10 +216,10 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                 newsEntity.setTranslatedContent(analyzedNews.getTranslatedContent().getContent());
             }
 
-            log.debug("Updated news entity {} with AI analysis results", newsEntity.getId());
+            log.debug("뉴스 엔티티 {}에 AI 분석 결과 반영 완료", newsEntity.getId());
 
         } catch (Exception e) {
-            log.error("Error updating news entity with AI analysis results: {}", newsEntity.getId(), e);
+            log.error("뉴스 엔티티 {} AI 분석 결과 반영 중 오류 발생", newsEntity.getId(), e);
         }
     }
 
@@ -241,7 +241,7 @@ public class OpenAiAnalysisTasklet implements Tasklet {
         failedAnalysisCount.set(0);
         totalProcessingTime.set(0);
         modelUsageCount.clear();
-        log.info("AI analysis metrics reset");
+        log.info("AI 분석 지표 초기화 완료");
     }
 
     public record AiAnalysisMetrics(

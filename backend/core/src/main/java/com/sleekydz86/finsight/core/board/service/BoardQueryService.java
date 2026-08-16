@@ -5,6 +5,7 @@ import com.sleekydz86.finsight.core.board.domain.BoardType;
 import com.sleekydz86.finsight.core.board.domain.BoardStatus;
 import com.sleekydz86.finsight.core.board.domain.port.BoardQueryUseCase;
 import com.sleekydz86.finsight.core.board.domain.port.in.dto.*;
+import com.sleekydz86.finsight.core.board.markdown.MarkdownRenderingService;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardReactionPersistencePort;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardScrapPersistencePort;
@@ -31,13 +32,16 @@ public class BoardQueryService implements BoardQueryUseCase {
         private final BoardPersistencePort boardPersistencePort;
         private final BoardReactionPersistencePort boardReactionPersistencePort;
         private final BoardScrapPersistencePort boardScrapPersistencePort;
+        private final MarkdownRenderingService markdownRenderingService;
 
         public BoardQueryService(BoardPersistencePort boardPersistencePort,
                         BoardReactionPersistencePort boardReactionPersistencePort,
-                        BoardScrapPersistencePort boardScrapPersistencePort) {
+                        BoardScrapPersistencePort boardScrapPersistencePort,
+                        MarkdownRenderingService markdownRenderingService) {
                 this.boardPersistencePort = boardPersistencePort;
                 this.boardReactionPersistencePort = boardReactionPersistencePort;
                 this.boardScrapPersistencePort = boardScrapPersistencePort;
+                this.markdownRenderingService = markdownRenderingService;
         }
 
         @Override
@@ -58,6 +62,21 @@ public class BoardQueryService implements BoardQueryUseCase {
         }
 
         @Override
+        public PaginationResponse<BoardListResponse> getEditorDocuments(
+                        BoardType boardType, BoardStatus status, String keyword, int page, int size) {
+                var boards = boardPersistencePort.findEditorDocuments(boardType, status, keyword, page, size);
+                List<BoardListResponse> responses = boards.getBoards().stream()
+                                .map(BoardListResponse::from)
+                                .collect(Collectors.toList());
+                return PaginationResponse.<BoardListResponse>builder()
+                                .content(responses)
+                                .page(page)
+                                .size(size)
+                                .totalElements(boards.getTotalElements())
+                                .build();
+        }
+
+        @Override
         public BoardDetailResponse getBoardDetail(Long boardId) {
                 log.info("게시판 상세 조회 요청: boardId={}", boardId);
 
@@ -66,7 +85,7 @@ public class BoardQueryService implements BoardQueryUseCase {
 
                 boardPersistencePort.incrementViewCount(boardId);
 
-                return BoardDetailResponse.from(board);
+                return BoardDetailResponse.from(board, markdownRenderingService.render(board.getContent()));
         }
 
         @Override
@@ -97,7 +116,7 @@ public class BoardQueryService implements BoardQueryUseCase {
 
                 boardPersistencePort.incrementViewCount(boardId);
 
-                return BoardDetailResponse.from(board, navigation);
+                return BoardDetailResponse.from(board, navigation, markdownRenderingService.render(board.getContent()));
         }
 
         @Override

@@ -48,26 +48,27 @@ public class BoardCommandService implements BoardCommandUseCase {
 
     @Override
     public Board createBoard(String userEmail, BoardCreateRequest request) {
-        log.info("Creating board for user: {}", userEmail);
+        log.info("게시글 생성 요청 - 사용자: {}", userEmail);
 
+        BoardStatus initialStatus = request.getStatus() != null ? request.getStatus() : BoardStatus.ACTIVE;
         Board board = Board.builder()
                 .title(request.getTitle())
                 .content(request.getContent())
                 .authorEmail(userEmail)
                 .boardType(request.getBoardType())
-                .status(BoardStatus.ACTIVE)
+                .status(initialStatus)
                 .hashtags(request.getHashtags())
                 .build();
 
         Board savedBoard = boardPersistencePort.save(board);
-        log.info("Board created successfully with ID: {}", savedBoard.getId());
+        log.info("게시글 생성 완료 - 게시글 ID: {}", savedBoard.getId());
 
         return savedBoard;
     }
 
     @Override
     public Board updateBoard(String userEmail, Long boardId, BoardUpdateRequest request) {
-        log.info("Updating board {} by user: {}", boardId, userEmail);
+        log.info("게시글 수정 요청 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
 
         Board existingBoard = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
@@ -80,16 +81,19 @@ public class BoardCommandService implements BoardCommandUseCase {
                 request.getTitle(),
                 request.getContent(),
                 request.getHashtags());
+        if (request.getStatus() != null) {
+            updatedBoard = updatedBoard.updateStatus(request.getStatus());
+        }
 
         Board savedBoard = boardPersistencePort.save(updatedBoard);
-        log.info("Board {} updated successfully", boardId);
+        log.info("게시글 수정 완료 - 게시글 ID: {}", boardId);
 
         return savedBoard;
     }
 
     @Override
     public void deleteBoard(String userEmail, Long boardId) {
-        log.info("Deleting board {} by user: {}", boardId, userEmail);
+        log.info("게시글 삭제 요청 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
 
         Board existingBoard = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
@@ -99,12 +103,12 @@ public class BoardCommandService implements BoardCommandUseCase {
         }
 
         boardPersistencePort.deleteById(boardId);
-        log.info("Board {} deleted successfully", boardId);
+        log.info("게시글 삭제 완료 - 게시글 ID: {}", boardId);
     }
 
     @Override
     public Board likeBoard(String userEmail, Long boardId) {
-        log.info("User {} liking board {}", userEmail, boardId);
+        log.info("게시글 좋아요 요청 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
 
         Board board = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
@@ -129,7 +133,6 @@ public class BoardCommandService implements BoardCommandUseCase {
                 return boardPersistencePort.save(updatedBoard);
             }
         } else {
-            // User hasn't reacted, add like
             Board updatedBoard = board.incrementLike();
             boardReactionPersistencePort.save(BoardReaction.builder()
                     .boardId(boardId)
@@ -143,7 +146,7 @@ public class BoardCommandService implements BoardCommandUseCase {
 
     @Override
     public Board dislikeBoard(String userEmail, Long boardId) {
-        log.info("User {} disliking board {}", userEmail, boardId);
+        log.info("게시글 싫어요 요청 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
 
         Board board = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
@@ -181,7 +184,7 @@ public class BoardCommandService implements BoardCommandUseCase {
 
     @Override
     public void reportBoard(String userEmail, Long boardId, BoardReportRequest request) {
-        log.info("User {} reporting board {}", userEmail, boardId);
+        log.info("게시글 신고 요청 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
 
         Board board = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
@@ -207,12 +210,12 @@ public class BoardCommandService implements BoardCommandUseCase {
         Board updatedBoard = board.incrementReport();
         boardPersistencePort.save(updatedBoard);
 
-        log.info("Board {} reported successfully", boardId);
+        log.info("게시글 신고 완료 - 게시글 ID: {}", boardId);
     }
 
     @Override
     public void blockBoard(Long boardId) {
-        log.info("Blocking board {}", boardId);
+        log.info("게시글 차단 요청 - 게시글 ID: {}", boardId);
 
         Board board = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
@@ -220,12 +223,12 @@ public class BoardCommandService implements BoardCommandUseCase {
         Board blockedBoard = board.updateStatus(BoardStatus.BLOCKED);
         boardPersistencePort.save(blockedBoard);
 
-        log.info("Board {} blocked successfully", boardId);
+        log.info("게시글 차단 완료 - 게시글 ID: {}", boardId);
     }
 
     @Override
     public BoardScrap scrapBoard(String userEmail, Long boardId) {
-        log.info("User {} scraping board {}", userEmail, boardId);
+        log.info("게시글 스크랩 요청 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
 
         Board board = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
@@ -244,22 +247,22 @@ public class BoardCommandService implements BoardCommandUseCase {
                 .build();
 
         BoardScrap savedScrap = boardScrapPersistencePort.save(scrap);
-        log.info("Board {} scrapped successfully by user {}", boardId, userEmail);
+        log.info("게시글 스크랩 완료 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
 
         return savedScrap;
     }
 
     @Override
     public void unscrapBoard(String userEmail, Long boardId) {
-        log.info("User {} unscraping board {}", userEmail, boardId);
+        log.info("게시글 스크랩 해제 요청 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
 
         boardScrapPersistencePort.deleteByBoardIdAndUserEmail(boardId, userEmail);
-        log.info("Board {} unscrapped successfully by user {}", boardId, userEmail);
+        log.info("게시글 스크랩 해제 완료 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
     }
 
     @Override
     public BoardFile uploadFile(String userEmail, Long boardId, String fileName, String filePath, long fileSize) {
-        log.info("User {} uploading file {} to board {}", userEmail, fileName, boardId);
+        log.info("게시글 파일 업로드 요청 - 게시글 ID: {}, 사용자: {}, 파일명: {}", boardId, userEmail, fileName);
 
         Board board = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
@@ -277,14 +280,14 @@ public class BoardCommandService implements BoardCommandUseCase {
                 .build();
 
         BoardFile savedFile = boardFilePersistencePort.save(file);
-        log.info("File {} uploaded successfully to board {}", fileName, boardId);
+        log.info("게시글 파일 업로드 완료 - 게시글 ID: {}, 파일명: {}", boardId, fileName);
 
         return savedFile;
     }
 
     @Override
     public void deleteFile(String userEmail, Long fileId) {
-        log.info("User {} deleting file {}", userEmail, fileId);
+        log.info("게시글 파일 삭제 요청 - 파일 ID: {}, 사용자: {}", fileId, userEmail);
 
         BoardFile file = boardFilePersistencePort.findById(fileId)
                 .orElseThrow(() -> new UserNotFoundException("파일을 찾을 수 없습니다"));
@@ -297,6 +300,6 @@ public class BoardCommandService implements BoardCommandUseCase {
         }
 
         boardFilePersistencePort.deleteById(fileId);
-        log.info("File {} deleted successfully", fileId);
+        log.info("게시글 파일 삭제 완료 - 파일 ID: {}", fileId);
     }
 }

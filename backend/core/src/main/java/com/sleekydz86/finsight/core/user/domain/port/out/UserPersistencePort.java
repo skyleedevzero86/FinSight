@@ -21,6 +21,12 @@ public interface UserPersistencePort {
 
     Optional<User> findByApiKey(String apiKey);
 
+    Optional<User> findByNaverId(String naverId);
+
+    Optional<User> findByKakaoUserId(String kakaoUserId);
+
+    Optional<User> findByGoogleId(String googleId);
+
     List<User> findAll();
 
     Page<User> findAll(Pageable pageable);
@@ -54,4 +60,6 @@ public interface UserPersistencePort {
     List<User> findAllActiveUsers();
 
     Optional<User> findByEmailAndUsername(String email, String username);
+
+    Page<User> searchUsers(UserStatus status, String keyword, Pageable pageable);
 }

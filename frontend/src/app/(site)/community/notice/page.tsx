@@ -1,10 +1,14 @@
 import type { Metadata } from "next"
 import CommunityBoardLayout from "@/components/community/CommunityBoardLayout"
 import CommunityBoardList from "@/components/community/CommunityBoardList"
+import { COMMUNITY_SECTION_BOARD_TYPE } from "@/data/communityBoardConfig"
 import {
-  MOCK_NOTICE_ROWS,
   NOTICE_CATEGORY_TABS,
 } from "@/data/communityBoardData"
+import {
+  fetchBoardListServer,
+  mapListToBoardRows,
+} from "@/lib/finsightBoardServer"
 
 export const metadata: Metadata = {
   title: "공지사항 | 커뮤니티 | finsight",
@@ -12,11 +16,37 @@ export const metadata: Metadata = {
 }
 
 type PageProps = {
-  searchParams: Promise<{ cate?: string }>
+  searchParams: Promise<{
+    cate?: string
+    page?: string
+    search_type?: string
+    search_value?: string
+  }>
 }
 
 export default async function CommunityNoticePage({ searchParams }: PageProps) {
-  const { cate } = await searchParams
+  const sp = await searchParams
+  const cate = typeof sp.cate === "string" ? sp.cate : undefined
+  const pageOneBased = Math.max(1, parseInt(sp.page ?? "1", 10) || 1)
+  const pageIndex = pageOneBased - 1
+  const searchValue =
+    typeof sp.search_value === "string" ? sp.search_value : ""
+  const searchType =
+    typeof sp.search_type === "string" ? sp.search_type : ""
+  const pagination = await fetchBoardListServer({
+    boardType: COMMUNITY_SECTION_BOARD_TYPE.notice,
+    page: pageIndex,
+    size: 20,
+    keyword: searchValue.trim() || undefined,
+  })
+  const basePath = "/community/notice"
+  const rows = pagination
+    ? mapListToBoardRows(pagination.content, basePath)
+    : []
+  const totalCount = pagination?.totalElements ?? 0
+  const totalPages = Math.max(1, pagination?.totalPages ?? 1)
+  const offline = pagination == null
+
   const categoryTabs = NOTICE_CATEGORY_TABS.map((tab) => {
     const isAll = tab.href === "/community/notice"
     const active =
@@ -33,14 +63,25 @@ export default async function CommunityNoticePage({ searchParams }: PageProps) {
       heading="공지사항"
       description="센터 소식과 운영 안내를 전해 드립니다."
     >
+      {offline ? (
+        <p className="mb-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          게시글 목록을 불러오지 못했습니다. 서버 연결(FINSIGHT_API_BASE_URL)을
+          확인해 주세요.
+        </p>
+      ) : null}
       <CommunityBoardList
         boardId="bbs_notice"
         caption="공지사항"
-        totalCount={MOCK_NOTICE_ROWS.length + 800}
-        currentPage={1}
-        totalPages={12}
+        basePath={basePath}
+        extraSearchParams={cate ? { cate } : {}}
+        totalCount={Number(totalCount)}
+        currentPage={pageOneBased}
+        totalPages={totalPages}
         categoryTabs={categoryTabs}
-        rows={MOCK_NOTICE_ROWS}
+        rows={rows}
+        initialSearchType={searchType}
+        initialSearchValue={searchValue}
+        showWriteButton={false}
       />
     </CommunityBoardLayout>
   )

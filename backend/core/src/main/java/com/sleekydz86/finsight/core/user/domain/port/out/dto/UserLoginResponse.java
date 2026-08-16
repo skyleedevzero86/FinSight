@@ -11,5 +11,4 @@ public class UserLoginResponse {
     private UserResponse user;
     private String accessToken;
     private String refreshToken;
-    private String apiKey;
 }

@@ -56,7 +56,7 @@ public class AdvancedNewsCommandService implements NewsCommandUseCase {
                 .map(provider -> CompletableFuture.supplyAsync(() ->
                                 newsScrapRequesterPort.scrap(provider))
                         .exceptionally(throwable -> {
-                            // 개별 실패 처리
+                            
                             return List.<News>of();
                         }))
                 .collect(Collectors.toList());
@@ -75,7 +75,7 @@ public class AdvancedNewsCommandService implements NewsCommandUseCase {
     }
 
     public Newses scrapNewsesFallback(Exception e) {
-        // Circuit Breaker가 열렸을 때의 폴백 로직
+        
         return new Newses(List.of());
     }
 }

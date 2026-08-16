@@ -76,7 +76,7 @@ public class YoutubeAiContentRequester {
 
             return parseResponse(responseBody, videoMeta, board);
         } catch (Exception e) {
-            log.warn("Failed to generate YouTube AI content for board {}: {}", board.getId(), e.getMessage());
+            log.warn("게시글 {}에 대한 YouTube AI 콘텐츠 생성 실패: {}", board.getId(), e.getMessage());
             return createFallbackContent(videoMeta, board);
         }
     }
@@ -96,18 +96,18 @@ public class YoutubeAiContentRequester {
     private String extractContent(Map<String, Object> responseBody) {
         List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
         if (choices == null || choices.isEmpty()) {
-            throw new IllegalStateException("OpenAI response choices are empty");
+            throw new IllegalStateException("OpenAI 응답 choices가 비어 있습니다");
         }
 
         Map<String, Object> firstChoice = choices.get(0);
         Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
         if (message == null) {
-            throw new IllegalStateException("OpenAI response message is missing");
+            throw new IllegalStateException("OpenAI 응답 message가 누락되었습니다");
         }
 
         String content = (String) message.get("content");
         if (content == null || content.isBlank()) {
-            throw new IllegalStateException("OpenAI response content is blank");
+            throw new IllegalStateException("OpenAI 응답 content가 비어 있습니다");
         }
 
         return content;

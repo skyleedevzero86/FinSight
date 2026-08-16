@@ -17,11 +17,11 @@ public class LoggingConfig {
         configurator.setContext(context);
         context.reset();
 
-        // 로그 설정 파일 로드
+        
         try {
             configurator.doConfigure(getClass().getResourceAsStream("/logback-spring.xml"));
         } catch (Exception e) {
-            // 기본 설정 사용
+            
         }
     }
 }

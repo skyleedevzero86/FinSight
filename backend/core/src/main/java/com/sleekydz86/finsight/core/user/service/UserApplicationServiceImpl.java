@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.user.domain.UserStatus;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.*;
 import com.sleekydz86.finsight.core.user.domain.port.out.dto.*;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
+import com.sleekydz86.finsight.core.user.domain.port.out.UserPasswordHistoryRepository;
 import com.sleekydz86.finsight.core.auth.service.RateLimitServiceInterface;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,7 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     private final RateLimitServiceInterface rateLimitService;
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidationService passwordValidationService;
+    private final UserPasswordHistoryRepository userPasswordHistoryRepository;
     private final Executor asyncExecutor;
 
     @Autowired
@@ -41,12 +43,14 @@ public class UserApplicationServiceImpl implements UserApplicationService {
             RateLimitServiceInterface rateLimitService,
             PasswordEncoder passwordEncoder,
             PasswordValidationService passwordValidationService,
+            UserPasswordHistoryRepository userPasswordHistoryRepository,
             @Qualifier("applicationTaskExecutor") Executor asyncExecutor) {
         this.userPersistencePort = userPersistencePort;
         this.jwtTokenUtil = jwtTokenUtil;
         this.rateLimitService = rateLimitService;
         this.passwordEncoder = passwordEncoder;
         this.passwordValidationService = passwordValidationService;
+        this.userPasswordHistoryRepository = userPasswordHistoryRepository;
         this.asyncExecutor = asyncExecutor;
     }
 
@@ -55,12 +59,24 @@ public class UserApplicationServiceImpl implements UserApplicationService {
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
+        if (!user.isWebAccount()) {
+            throw new RuntimeException("SNS 계정은 사이트 비밀번호를 변경할 수 없습니다.");
+        }
+
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             throw new RuntimeException("기존 비밀번호가 올바르지 않습니다.");
         }
 
         if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
             throw new RuntimeException("새 비밀번호 확인이 일치하지 않습니다.");
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new RuntimeException("기존 비밀번호와 다른 비밀번호를 입력해 주세요.");
+        }
+
+        if (!user.canChangePassword()) {
+            throw new RuntimeException("일일 비밀번호 변경 횟수를 초과했습니다.");
         }
 
         user.changePassword(passwordEncoder.encode(request.getNewPassword()));
@@ -143,7 +159,6 @@ public class UserApplicationServiceImpl implements UserApplicationService {
                     .user(UserResponse.from(user))
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
-                    .apiKey(user.getApiKey())
                     .build();
 
         } catch (Exception e) {
@@ -210,6 +225,9 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     public UserResponse suspendUser(Long userId) {
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new RuntimeException("관리자 계정은 정지할 수 없습니다.");
+        }
         user.suspend();
         User savedUser = userPersistencePort.save(user);
         return UserResponse.from(savedUser);
@@ -226,12 +244,51 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     }
 
     @Transactional
+    @CacheEvict(value = { "user", "userProfile" }, allEntries = true)
+    public UserResponse restoreUser(Long userId) {
+        User user = userPersistencePort.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        try {
+            user.restore();
+        } catch (IllegalStateException e) {
+            throw new RuntimeException(e.getMessage());
+        }
+        User savedUser = userPersistencePort.save(user);
+        log.info("관리자 계정 복구: userId={}, username={}", userId, savedUser.getUsername());
+        return UserResponse.from(savedUser);
+    }
+
+    @Transactional
     @CacheEvict(value = { "user", "userProfile" }, key = "#userId")
     public UserResponse updateProfile(Long userId, UserUpdateRequest request) {
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        user.updateProfile(request.getUsername(), request.getEmail());
+        if (user.isWebAccount()) {
+            if (request.getEmail() != null && !request.getEmail().isBlank()) {
+                String nextEmail = request.getEmail().trim();
+                userPersistencePort.findByEmail(nextEmail).ifPresent(other -> {
+                    if (!other.getId().equals(user.getId())) {
+                        throw new RuntimeException("이미 사용 중인 이메일입니다.");
+                    }
+                });
+                user.updateProfile(user.getNickname(), nextEmail);
+            }
+        } else {
+            if (request.getEmail() != null && !request.getEmail().isBlank()
+                    && !request.getEmail().trim().equalsIgnoreCase(user.getEmail())) {
+                throw new RuntimeException("SNS 계정은 이메일을 변경할 수 없습니다.");
+            }
+            if (request.getPassword() != null && !request.getPassword().isBlank()) {
+                throw new RuntimeException("SNS 계정은 사이트 비밀번호를 변경할 수 없습니다.");
+            }
+            String nickname = request.getNickname() != null ? request.getNickname() : user.getNickname();
+            user.updateProfile(nickname, user.getEmail());
+            if (request.getProfileImageUrl() != null && !request.getProfileImageUrl().isBlank()) {
+                user.updateProfileImage(request.getProfileImageUrl().trim());
+            }
+        }
+
         User savedUser = userPersistencePort.save(user);
         return UserResponse.from(savedUser);
     }
@@ -263,14 +320,18 @@ public class UserApplicationServiceImpl implements UserApplicationService {
         try {
             User user = userPersistencePort.findById(userId)
                     .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-
+            if (user.getRole() == UserRole.ADMIN) {
+                throw new RuntimeException("관리자 계정은 이 방법으로 탈퇴할 수 없습니다.");
+            }
             user.withdraw();
             userPersistencePort.save(user);
 
-            log.info("사용자 삭제 완료: userId={}, username={}", userId, user.getUsername());
+            log.info("사용자 탈퇴(로그인 차단) 완료: userId={}, username={}", userId, user.getUsername());
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            log.error("사용자 삭제 실패: userId={}, error={}", userId, e.getMessage());
-            throw new RuntimeException("사용자 삭제에 실패했습니다.");
+            log.error("사용자 탈퇴 실패: userId={}, error={}", userId, e.getMessage());
+            throw new RuntimeException("사용자 탈퇴에 실패했습니다.");
         }
     }
 
@@ -299,8 +360,28 @@ public class UserApplicationServiceImpl implements UserApplicationService {
         boolean isChangeRequired = user.isPasswordChangeRequired();
         boolean isChangeRecommended = user.isPasswordChangeRecommended();
         long todayChangeCount = user.getTodayPasswordChangeCount();
+        Long daysSince = user.isWebAccount() ? user.daysSincePasswordChange() : null;
+        Long daysUntil = user.isWebAccount() ? user.daysUntilPasswordExpiry() : null;
+        String statusMessage;
+        if (!user.isWebAccount()) {
+            statusMessage = "SNS 계정은 사이트 비밀번호 변경 주기가 적용되지 않습니다";
+        } else if (isChangeRequired) {
+            statusMessage = "비밀번호를 변경한 지 90일이 지나 변경이 필요합니다";
+        } else if (isChangeRecommended) {
+            statusMessage = "비밀번호 변경 시기가 다가왔습니다";
+        } else {
+            statusMessage = "비밀번호 상태가 정상입니다";
+        }
 
-        return PasswordStatusResponse.of(isChangeRequired, isChangeRecommended, todayChangeCount);
+        return PasswordStatusResponse.of(
+                isChangeRequired,
+                isChangeRecommended,
+                todayChangeCount,
+                daysSince,
+                daysUntil,
+                3,
+                null,
+                statusMessage);
     }
 
     @Transactional
@@ -337,7 +418,7 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     }
 
     public void evictAllUserCache() {
-        // 캐시 구현체에서 제공하는 메서드 호출
+        
         log.info("모든 사용자 캐시 삭제 완료");
     }
 
@@ -348,5 +429,57 @@ public class UserApplicationServiceImpl implements UserApplicationService {
 
     private String generateApiKey() {
         return UUID.randomUUID().toString().replace("-", "");
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserResponse> searchAdminUsers(UserStatus status, String keyword, boolean revealUsername,
+            boolean revealEmail, boolean revealPhone, Pageable pageable) {
+        return userPersistencePort.searchUsers(status, keyword, pageable)
+                .map(user -> UserResponse.fromAdmin(user, revealUsername, revealEmail, revealPhone));
+    }
+
+    @Transactional
+    @CacheEvict(value = { "user", "userProfile" }, key = "#userId")
+    public void adminResetPassword(Long userId, AdminPasswordResetRequest request, Long actorId) {
+        User user = userPersistencePort.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        if (!user.isWebAccount()) {
+            throw new RuntimeException("SNS 계정은 사이트 비밀번호를 변경할 수 없습니다.");
+        }
+        if (!request.getNewPassword().equals(request.getNewPasswordConfirm())) {
+            throw new RuntimeException("새 비밀번호 확인이 일치하지 않습니다.");
+        }
+        user.changePassword(passwordEncoder.encode(request.getNewPassword()));
+        userPersistencePort.save(user);
+        log.info("관리자 비밀번호 재설정: targetUserId={}, actorId={}", userId, actorId);
+    }
+
+    @Transactional
+    @CacheEvict(value = { "user", "userProfile", "userList" }, allEntries = true)
+    public void hardDeleteUser(Long userId, Long actorId) {
+        if (actorId != null && actorId.equals(userId)) {
+            throw new RuntimeException("본인 계정은 삭제할 수 없습니다.");
+        }
+        User user = userPersistencePort.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new RuntimeException("관리자 계정은 삭제할 수 없습니다.");
+        }
+        userPasswordHistoryRepository.deleteByUserId(userId);
+        userPersistencePort.deleteById(userId);
+        log.info("관리자 사용자 DB 삭제: userId={}, username={}, actorId={}", userId, user.getUsername(), actorId);
+    }
+
+    @Transactional
+    @CacheEvict(value = { "user", "userProfile" }, key = "#userId")
+    public void withdrawSelf(Long userId) {
+        User user = userPersistencePort.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        if (user.getRole() == UserRole.ADMIN) {
+            throw new RuntimeException("관리자 계정은 직접 탈퇴할 수 없습니다. 다른 관리자에게 요청해 주세요.");
+        }
+        user.withdraw();
+        userPersistencePort.save(user);
+        log.info("사용자 본인 탈퇴: userId={}", userId);
     }
 }

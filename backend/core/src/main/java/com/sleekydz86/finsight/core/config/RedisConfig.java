@@ -53,17 +53,19 @@ public class RedisConfig {
     @Primary
     public LettuceConnectionFactory lettuceConnectionFactory() {
         try {
-            logger.info("Redis 연결 설정 시작 - Host: {}, Port: {}", redisHost, redisPort);
+            boolean hasPassword = redisPassword != null && !redisPassword.trim().isEmpty();
+            logger.info("Redis 연결 설정 시작 - Host: {}, Port: {}, Password: {}",
+                    redisHost, redisPort, hasPassword ? "설정됨" : "없음");
 
             RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
             config.setHostName(redisHost);
             config.setPort(redisPort);
 
-            if (redisPassword != null && !redisPassword.trim().isEmpty()) {
-                config.setPassword(redisPassword);
+            if (hasPassword) {
+                config.setPassword(redisPassword.trim());
             }
 
-            // Lettuce 클라이언트 옵션 설정
+            
             ClientOptions options = ClientOptions.builder()
                     .protocolVersion(ProtocolVersion.RESP2)
                     .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
@@ -96,7 +98,7 @@ public class RedisConfig {
             RedisTemplate<String, Object> template = new RedisTemplate<>();
             template.setConnectionFactory(connectionFactory);
 
-            // 직렬화 설정
+            
             template.setKeySerializer(new StringRedisSerializer());
             template.setHashKeySerializer(new StringRedisSerializer());
             template.setValueSerializer(new GenericJackson2JsonRedisSerializer());

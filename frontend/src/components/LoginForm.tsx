@@ -4,28 +4,59 @@ import type { FormEvent } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
-import { useId, useState } from "react"
+import { useId, useState, useEffect } from "react"
 import AuthCard from "@/components/auth/AuthCard"
 import SocialLoginRow from "@/components/auth/SocialLoginRow"
 import { postLogin } from "@/lib/authClient"
+import { useAuthSession } from "@/components/AuthSessionProvider"
+import {
+  storeAuthSession,
+  FINSIGHT_FORCE_PASSWORD_KEY,
+  type AuthProvider,
+} from "@/lib/finsightToken"
 
 const inputClass =
   "w-full rounded border border-gray-300 bg-white px-3 py-2.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-finsight-secondary focus:ring-1 focus:ring-finsight-secondary/40"
-
-const TOKEN_KEY = "finsight_access_token"
 
 function extractToken(data: unknown): string | null {
   if (!data || typeof data !== "object") return null
   const o = data as Record<string, unknown>
   if (typeof o.accessToken === "string") return o.accessToken
-  if (typeof o.token === "string") return o.token
+  const token = o.token
+  if (token && typeof token === "object") {
+    const t = token as Record<string, unknown>
+    if (typeof t.accessToken === "string") return t.accessToken
+  }
   const inner = o.data
   if (inner && typeof inner === "object") {
-    const d = inner as Record<string, unknown>
-    if (typeof d.accessToken === "string") return d.accessToken
-    if (typeof d.token === "string") return d.token
+    return extractToken(inner)
   }
   return null
+}
+
+function extractPasswordChangeRequired(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false
+  const o = data as Record<string, unknown>
+  if (o.passwordChangeRequired === true || o.changeRequired === true) return true
+  const inner = o.data
+  if (inner && typeof inner === "object") {
+    return extractPasswordChangeRequired(inner)
+  }
+  return false
+}
+
+function extractProvider(data: unknown): AuthProvider {
+  if (!data || typeof data !== "object") return "WEB"
+  const o = data as Record<string, unknown>
+  if (typeof o.authProvider === "string") {
+    const p = o.authProvider
+    if (p === "WEB" || p === "KAKAO" || p === "NAVER" || p === "GOOGLE") return p
+  }
+  const inner = o.data
+  if (inner && typeof inner === "object") {
+    return extractProvider(inner)
+  }
+  return "WEB"
 }
 
 export default function LoginForm() {
@@ -33,25 +64,45 @@ export default function LoginForm() {
   const searchParams = useSearchParams()
   const id = useId()
   const registered = searchParams.get("registered") === "1"
+  const resetDone = searchParams.get("reset") === "1"
+  const accountParam = searchParams.get("account") ?? ""
+  const { user, ready } = useAuthSession()
 
-  const [email, setEmail] = useState("")
+  const [email, setEmail] = useState(accountParam)
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [remember, setRemember] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
+  useEffect(() => {
+    if (!ready || !user) return
+    try {
+      if (sessionStorage.getItem(FINSIGHT_FORCE_PASSWORD_KEY) === "1") {
+        router.replace("/my?password=required")
+        return
+      }
+    } catch {
+      void 0
+    }
+    router.replace("/")
+  }, [ready, user, router])
+
+  useEffect(() => {
+    if (accountParam) setEmail(accountParam)
+  }, [accountParam])
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
     const em = email.trim()
     if (!em || !password) {
-      setFormError("이메일과 비밀번호를 입력해 주세요.")
+      setFormError("이메일 또는 아이디와 비밀번호를 입력해 주세요.")
       return
     }
     setLoading(true)
     const result = await postLogin({
-      username: em,
+      email: em,
       password,
     })
     setLoading(false)
@@ -62,25 +113,30 @@ export default function LoginForm() {
     }
 
     const token = extractToken(result.data)
+    const provider = extractProvider(result.data)
+    const passwordRequired = extractPasswordChangeRequired(result.data)
     try {
       if (token) {
-        if (remember) {
-          localStorage.setItem(TOKEN_KEY, token)
-          sessionStorage.removeItem(TOKEN_KEY)
-        } else {
-          sessionStorage.setItem(TOKEN_KEY, token)
-          localStorage.removeItem(TOKEN_KEY)
-        }
+        storeAuthSession({
+          accessToken: token,
+          authProvider: provider,
+          remember,
+        })
+      }
+      if (passwordRequired && provider === "WEB") {
+        sessionStorage.setItem(FINSIGHT_FORCE_PASSWORD_KEY, "1")
       }
     } catch {
       void 0
     }
-    router.push("/")
+    router.push(passwordRequired && provider === "WEB" ? "/my?password=required" : "/")
     router.refresh()
   }
 
   return (
-    <AuthCard
+    <section className="w-full px-4 py-16 md:px-6 md:py-20 lg:py-24">
+      <div className="mx-auto flex w-full max-w-6xl justify-center">
+        <AuthCard
       title="로그인"
       topBanner={
         registered ? (
@@ -89,6 +145,13 @@ export default function LoginForm() {
             className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
           >
             회원가입이 완료되었습니다. 로그인해 주세요.
+          </div>
+        ) : resetDone ? (
+          <div
+            role="status"
+            className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+          >
+            비밀번호가 변경되었습니다. 새 비밀번호로 로그인해 주세요.
           </div>
         ) : undefined
       }
@@ -105,10 +168,10 @@ export default function LoginForm() {
       <form className="space-y-3" onSubmit={onSubmit} noValidate>
         <input
           id={`${id}-email`}
-          type="email"
-          name="email"
-          autoComplete="email"
-          placeholder="이메일을 입력하세요."
+          type="text"
+          name="username"
+          autoComplete="username"
+          placeholder="이메일 또는 아이디"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className={inputClass}
@@ -149,7 +212,7 @@ export default function LoginForm() {
               href="/find-email"
               className="hover:text-gray-800 hover:underline underline-offset-2"
             >
-              이메일 찾기
+              아이디 찾기
             </Link>
             <span className="text-gray-300">|</span>
             <Link
@@ -186,6 +249,8 @@ export default function LoginForm() {
       <p className="mt-4 text-center text-[11px] leading-relaxed text-gray-400">
         • 로그인 유지 설정 시, 개인정보 유출 위험에 유의해 주세요.
       </p>
-    </AuthCard>
+        </AuthCard>
+      </div>
+    </section>
   )
 }

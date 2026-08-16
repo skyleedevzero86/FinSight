@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.auth.dto.RefreshTokenRequest;
 import com.sleekydz86.finsight.core.auth.dto.UserRegistrationRequest;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
 import com.sleekydz86.finsight.core.global.exception.*;
+import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
@@ -53,27 +54,29 @@ public class AuthenticationService {
 
     public JwtToken login(LoginRequest request) {
         try {
-            PasswordValidationService.PasswordValidationResult validationResult = passwordValidationService
-                    .validatePassword(request.getPassword());
-            if (!validationResult.isValid()) {
-                log.warn("비밀번호 유효성 검증 실패: {}", validationResult.getErrors());
-                throw new AuthenticationFailedException(request.getEmail());
+            User user = resolveLoginUser(request.getEmail());
+            try {
+                user.assertCanLogin();
+            } catch (IllegalStateException ex) {
+                throw new AuthenticationFailedException(user.getEmail(), ex.getMessage());
             }
 
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+                    new UsernamePasswordAuthenticationToken(user.getEmail(), request.getPassword()));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            User user = userPersistencePort.findByEmail(request.getEmail())
-                    .orElseThrow(() -> new UserNotFoundException(request.getEmail()));
+            if (user.getAuthProvider() == null) {
+                user.setAuthProvider(AuthProvider.WEB);
+            }
 
-            String accessToken = jwtTokenUtil.generateAccessToken(request.getEmail(), user.getRole());
-            String refreshToken = jwtTokenUtil.generateRefreshToken(request.getEmail());
+            String email = user.getEmail();
+            String accessToken = jwtTokenUtil.generateAccessToken(email, user.getRole());
+            String refreshToken = jwtTokenUtil.generateRefreshToken(email);
 
-            updateLastLoginTime(request.getEmail());
+            updateLastLoginTime(email);
 
-            log.info("로그인 성공: {}", request.getEmail());
+            log.info("로그인 성공: {}, provider={}", email, user.getAuthProvider());
 
             return JwtToken.builder()
                     .accessToken(accessToken)
@@ -82,6 +85,8 @@ public class AuthenticationService {
                     .expiresIn(LocalDateTime.now().plusSeconds(jwtTokenUtil.getAccessTokenExpiration() / 1000))
                     .build();
 
+        } catch (AuthenticationFailedException e) {
+            throw e;
         } catch (Exception e) {
             log.error("로그인 실패: {}", e.getMessage(), e);
             throw new AuthenticationFailedException(request.getEmail());
@@ -162,6 +167,27 @@ public class AuthenticationService {
         log.info("사용자 등록 성공: {} (ID: {})", request.getEmail(), savedUser.getId());
 
         return savedUser;
+    }
+
+    public JwtToken issueTokens(User user) {
+        String email = user.getEmail();
+        return JwtToken.builder()
+                .accessToken(jwtTokenUtil.generateAccessToken(email, user.getRole()))
+                .refreshToken(jwtTokenUtil.generateRefreshToken(email))
+                .tokenType("Bearer")
+                .expiresIn(LocalDateTime.now().plusSeconds(jwtTokenUtil.getAccessTokenExpiration() / 1000))
+                .build();
+    }
+
+    public User resolveLoginUser(String loginId) {
+        if (loginId == null || loginId.isBlank()) {
+            throw new UserNotFoundException("");
+        }
+        String trimmed = loginId.trim();
+        return userPersistencePort.findByEmail(trimmed)
+                .or(() -> userPersistencePort.findByEmail(trimmed.toLowerCase(java.util.Locale.ROOT)))
+                .or(() -> userPersistencePort.findByUsername(trimmed))
+                .orElseThrow(() -> new UserNotFoundException(trimmed));
     }
 
     private void updateLastLoginTime(String email) {

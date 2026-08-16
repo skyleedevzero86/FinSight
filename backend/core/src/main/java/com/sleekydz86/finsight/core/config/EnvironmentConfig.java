@@ -45,15 +45,14 @@ public class EnvironmentConfig {
         String[] requiredProps = {
                 "spring.datasource.url",
                 "spring.datasource.username",
-                "jwt.secret",
-                "jwt.expiration-period"
+                "jwt.secret"
         };
 
         for (String prop : requiredProps) {
             String value = environment.getProperty(prop);
             if (value == null || value.trim().isEmpty()) {
-                logger.error("필수 환경 변수가 설정되지 않았습니다: {}", prop);
-                throw new IllegalStateException("필수 환경 변수 누락: " + prop);
+                logger.error("필수 속성이 누락되었습니다: {}", prop);
+                throw new IllegalStateException("필수 속성이 누락되었습니다: " + prop);
             }
         }
     }
@@ -61,24 +60,24 @@ public class EnvironmentConfig {
     private void validateSecurityProperties() {
         String jwtSecret = environment.getProperty("jwt.secret");
         if (jwtSecret != null && jwtSecret.length() < 256) {
-            logger.warn("JWT 시크릿 키가 너무 짧습니다. 최소 256자 이상 권장. 현재 길이: {}", jwtSecret.length());
+            logger.warn("JWT 시크릿 길이가 권장값보다 짧습니다. 권장 최소 길이: 256자, 현재 길이: {}", jwtSecret.length());
         }
 
         String minLength = environment.getProperty("security.password.min-length");
         if (minLength != null && Integer.parseInt(minLength) < 12) {
-            logger.warn("비밀번호 최소 길이가 너무 짧습니다. 최소 12자 이상 권장. 현재 설정: {}", minLength);
+            logger.warn("비밀번호 최소 길이가 권장값보다 낮습니다. 권장 최소 길이: 12, 현재 값: {}", minLength);
         }
     }
 
     private void validateDatabaseProperties() {
         String dbUrl = environment.getProperty("spring.datasource.url");
         if (dbUrl != null && !dbUrl.contains("useSSL=true")) {
-            logger.warn("데이터베이스 연결에 SSL이 활성화되지 않았습니다. 운영 환경에서는 SSL 사용을 권장합니다.");
+            logger.warn("데이터베이스 연결에 SSL이 활성화되어 있지 않습니다. 로컬 개발 환경 외에서는 SSL 사용을 권장합니다.");
         }
 
         String dbPassword = environment.getProperty("spring.datasource.password");
         if (dbPassword != null && dbPassword.length() < 8) {
-            logger.warn("데이터베이스 비밀번호가 너무 짧습니다. 최소 8자 이상 권장.");
+            logger.warn("데이터베이스 비밀번호 길이가 권장값보다 짧습니다. 권장 최소 길이: 8자");
         }
     }
 
@@ -90,19 +89,21 @@ public class EnvironmentConfig {
 
         for (String apiKey : apiKeys) {
             String value = environment.getProperty(apiKey);
-            if (value != null && value.startsWith("sk-") && value.length() < 50) {
-                logger.warn("API 키가 너무 짧거나 형식이 올바르지 않습니다: {}", apiKey);
+            if (value == null || value.isBlank()) {
+                logger.warn("선택 API 키가 비어 있습니다. 해당 기능은 비활성 상태로 기동합니다: {}", apiKey);
+            } else if (value.startsWith("sk-") && value.length() < 50) {
+                logger.warn("API 키 길이가 예상보다 짧아 보입니다: {}", apiKey);
             }
         }
     }
 
     public void logEnvironmentSummary() {
         logger.info("=== 환경 설정 요약 ===");
-        logger.info("Active Profiles: {}", Arrays.toString(environment.getActiveProfiles()));
-        logger.info("Database URL: {}", maskSensitiveValue(environment.getProperty("spring.datasource.url")));
-        logger.info("Redis Host: {}", environment.getProperty("spring.data.redis.host"));
-        logger.info("JWT Expiration: {}ms", environment.getProperty("jwt.expiration-period"));
-        logger.info("Rate Limit: {} requests/min", environment.getProperty("security.rate-limit.requests-per-minute"));
+        logger.info("활성 프로필: {}", Arrays.toString(environment.getActiveProfiles()));
+        logger.info("데이터베이스 URL: {}", maskSensitiveValue(environment.getProperty("spring.datasource.url")));
+        logger.info("Redis 호스트: {}", environment.getProperty("spring.data.redis.host"));
+        logger.info("JWT 만료 시간: {}ms", environment.getProperty("jwt.access-token.expiration", "3600000"));
+        logger.info("요청 제한: 분당 {}회", environment.getProperty("security.rate-limit.requests-per-minute"));
     }
 
     private String maskSensitiveValue(String value) {
