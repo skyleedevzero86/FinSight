@@ -34,6 +34,8 @@ public interface UserApplicationService {
 
     UserResponse unlockUser(Long userId);
 
+    UserResponse restoreUser(Long userId);
+
     UserResponse updateProfile(Long userId, UserUpdateRequest request);
 
     UserResponse changeRole(Long userId, UserRole role);
@@ -63,4 +65,13 @@ public interface UserApplicationService {
     Long getUserIdByUsername(String username);
 
     void changePassword(Long userId, UserPasswordChangeRequest request);
+
+    Page<UserResponse> searchAdminUsers(UserStatus status, String keyword, boolean revealUsername,
+            boolean revealEmail, boolean revealPhone, Pageable pageable);
+
+    void adminResetPassword(Long userId, AdminPasswordResetRequest request, Long actorId);
+
+    void hardDeleteUser(Long userId, Long actorId);
+
+    void withdrawSelf(Long userId);
 }

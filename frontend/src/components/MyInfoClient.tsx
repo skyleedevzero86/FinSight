@@ -15,6 +15,7 @@ import {
   uploadProfileImage,
   type PasswordStatus,
 } from "@/lib/myAccount"
+import { withdrawSelf } from "@/lib/adminUsers"
 import {
   validateEmail,
   validateNickname,
@@ -73,7 +74,7 @@ export default function MyInfoClient() {
   const [showNew, setShowNew] = useState(false)
 
   const [passwordStatus, setPasswordStatus] = useState<PasswordStatus | null>(null)
-  const [saving, setSaving] = useState(false)
+  const [withdrawing, setWithdrawing] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [formOk, setFormOk] = useState<string | null>(null)
 
@@ -119,6 +120,25 @@ export default function MyInfoClient() {
     }
     await logout()
     router.replace("/")
+  }
+
+  async function onWithdraw() {
+    if (
+      !window.confirm(
+        "탈퇴하면 같은 계정으로 로그인할 수 없습니다. 정말 탈퇴할까요?",
+      )
+    ) {
+      return
+    }
+    setFormError(null)
+    setWithdrawing(true)
+    const result = await withdrawSelf()
+    setWithdrawing(false)
+    if (!result.ok) {
+      setFormError(result.message)
+      return
+    }
+    await onLogout()
   }
 
   function toggleWatch(value: TargetCategory) {
@@ -426,8 +446,16 @@ export default function MyInfoClient() {
 
           <button
             type="button"
+            onClick={() => void onWithdraw()}
+            disabled={withdrawing || user.role === "ADMIN"}
+            className="mt-3 w-full rounded-md border border-red-200 px-4 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+          >
+            {withdrawing ? "탈퇴 처리 중..." : "회원 탈퇴"}
+          </button>
+          <button
+            type="button"
             onClick={() => void onLogout()}
-            className="mt-6 w-full rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50"
+            className="mt-3 w-full rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50"
           >
             로그아웃
           </button>

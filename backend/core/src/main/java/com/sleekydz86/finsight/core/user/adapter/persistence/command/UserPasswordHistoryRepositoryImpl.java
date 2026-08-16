@@ -3,6 +3,7 @@ package com.sleekydz86.finsight.core.user.adapter.persistence.command;
 import com.sleekydz86.finsight.core.user.domain.UserPasswordHistory;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPasswordHistoryRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -80,6 +81,7 @@ public class UserPasswordHistoryRepositoryImpl implements UserPasswordHistoryRep
     }
 
     @Override
+    @Transactional
     public void deleteByUserId(Long userId) {
         userPasswordHistoryJpaRepository.deleteByUserId(userId);
     }

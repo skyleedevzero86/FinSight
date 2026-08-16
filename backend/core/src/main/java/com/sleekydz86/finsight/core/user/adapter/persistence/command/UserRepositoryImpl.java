@@ -303,4 +303,16 @@ public class UserRepositoryImpl implements UserPersistencePort {
                 .map(userJpaMapper::toDomain);
     }
 
+    @Override
+    public Page<User> searchUsers(UserStatus status, String keyword, Pageable pageable) {
+        try {
+            String trimmed = keyword == null ? "" : keyword.trim();
+            return userJpaRepository.searchUsers(status, trimmed, pageable)
+                    .map(userJpaMapper::toDomain);
+        } catch (Exception e) {
+            log.error("사용자 검색 실패: status={}, keyword={}, error={}", status, keyword, e.getMessage());
+            return Page.empty();
+        }
+    }
+
 }

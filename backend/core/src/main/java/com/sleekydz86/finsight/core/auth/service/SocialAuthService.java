@@ -109,6 +109,7 @@ public class SocialAuthService {
             NaverTokenResponse tokenResponse = naverOAuthClient.exchangeCode(code, state);
             NaverProfileResponse profile = naverOAuthClient.fetchProfile(tokenResponse.getAccessToken());
             User user = findOrCreateNaverUser(profile);
+            user.assertCanLogin();
             user.updateLastLoginAt(LocalDateTime.now());
             user = userPersistencePort.save(user);
 
@@ -134,6 +135,7 @@ public class SocialAuthService {
             KakaoOAuthTokenResponse tokenResponse = kakaoOAuthClient.exchangeCode(code);
             KakaoProfileResponse profile = kakaoOAuthClient.fetchProfile(tokenResponse.getAccessToken());
             User user = findOrCreateKakaoUser(profile, tokenResponse);
+            user.assertCanLogin();
             user.updateLastLoginAt(LocalDateTime.now());
             user = userPersistencePort.save(user);
 
@@ -160,6 +162,7 @@ public class SocialAuthService {
             GoogleOAuthTokenResponse tokenResponse = googleOAuthClient.exchangeCode(code);
             GoogleUserInfoResponse profile = googleOAuthClient.fetchUserInfo(tokenResponse.getAccessToken());
             User user = findOrCreateGoogleUser(profile);
+            user.assertCanLogin();
             user.updateLastLoginAt(LocalDateTime.now());
             user = userPersistencePort.save(user);
 

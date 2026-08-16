@@ -63,6 +63,8 @@ public class AuthController {
             passwordExpiryNoticeService.notifyIfDue(user);
             LoginResultResponse result = socialAuthService.toWebLoginResult(user, token);
             return ResponseEntity.ok(ApiResponse.success(result, "로그인에 성공했습니다"));
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("로그인 처리 중 오류가 발생했습니다: " + e.getMessage(), e);
         }

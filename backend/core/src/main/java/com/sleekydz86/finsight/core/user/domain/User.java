@@ -428,9 +428,57 @@ public class User extends BaseTimeEntity {
         log.info("회원 잠금 해제: userId={}", this.getId());
     }
 
+    public void restore() {
+        if (this.status != UserStatus.SUSPENDED && this.status != UserStatus.WITHDRAWN) {
+            throw new IllegalStateException("정지 또는 탈퇴 계정만 복구할 수 있습니다.");
+        }
+        UserStatus previous = this.status;
+        this.status = UserStatus.APPROVED;
+        this.accountLockedAt = null;
+        this.loginFailCount = 0;
+        log.info("회원 복구: userId={}, previousStatus={}", this.getId(), previous);
+    }
+
     public void updateLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
         log.debug("마지막 로그인 시간 업데이트: userId={}, lastLoginAt={}", this.getId(), lastLoginAt);
+    }
+
+    public String getMaskedPhoneNumber() {
+        if (this.phoneNumber == null || this.phoneNumber.isBlank()) {
+            return null;
+        }
+        String digits = this.phoneNumber.replaceAll("\\D", "");
+        if (digits.length() <= 4) {
+            return "*".repeat(Math.max(digits.length(), 4));
+        }
+        return "*".repeat(digits.length() - 4) + digits.substring(digits.length() - 4);
+    }
+
+    public String getMaskedUsername() {
+        if (this.username == null || this.username.isBlank()) {
+            return this.username;
+        }
+        if (this.username.length() <= 2) {
+            return this.username.charAt(0) + "*";
+        }
+        int stars = Math.min(this.username.length() - 2, 8);
+        return this.username.charAt(0) + "*".repeat(stars) + this.username.charAt(this.username.length() - 1);
+    }
+
+    public void assertCanLogin() {
+        if (this.status == UserStatus.WITHDRAWN) {
+            throw new IllegalStateException("탈퇴한 계정입니다. 로그인할 수 없습니다.");
+        }
+        if (this.status == UserStatus.SUSPENDED) {
+            throw new IllegalStateException("정지된 계정입니다. 관리자에게 문의해 주세요.");
+        }
+        if (this.status == UserStatus.REJECTED) {
+            throw new IllegalStateException("승인 거부된 계정입니다.");
+        }
+        if (this.status == UserStatus.PENDING) {
+            throw new IllegalStateException("승인 대기 중인 계정입니다.");
+        }
     }
 
     public String getMaskedEmail() {

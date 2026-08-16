@@ -60,4 +60,6 @@ public interface UserPersistencePort {
     List<User> findAllActiveUsers();
 
     Optional<User> findByEmailAndUsername(String email, String username);
+
+    Page<User> searchUsers(UserStatus status, String keyword, Pageable pageable);
 }

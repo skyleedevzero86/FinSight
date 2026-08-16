@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import HeaderSearchOverlay from "@/components/HeaderSearchOverlay"
 import BrandLogo from "@/components/BrandLogo"
 import { useAuthSession } from "@/components/AuthSessionProvider"
+import { canManageUsers } from "@/lib/adminUsers"
 
 function HeaderAvatar({ src }: { src: string | null }) {
   const [broken, setBroken] = useState(false)
@@ -62,6 +63,14 @@ export default function Header() {
                 <HeaderAvatar src={user.profileImageUrl} />
                 <span className="truncate">{user.nickname}</span>
               </Link>
+              {canManageUsers(user.role) ? (
+                <>
+                  <span className="text-gray-400">|</span>
+                  <Link href="/admin/users" className="hover:text-finsight-secondary transition">
+                    사용자 관리
+                  </Link>
+                </>
+              ) : null}
               <span className="text-gray-400">|</span>
               <button
                 type="button"
@@ -185,6 +194,16 @@ export default function Header() {
                   커뮤니티
                 </Link>
               </li>
+              {user && canManageUsers(user.role) ? (
+                <li>
+                  <Link
+                    href="/admin/users"
+                    className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                  >
+                    사용자 관리
+                  </Link>
+                </li>
+              ) : null}
             </ul>
           </div>
         )}

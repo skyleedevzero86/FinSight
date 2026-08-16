@@ -259,6 +259,18 @@ public class UserAccountController {
         }
     }
 
+    @PostMapping("/withdraw")
+    @Operation(summary = "회원 탈퇴 (로그인 차단)")
+    public ResponseEntity<ApiResponse<Void>> withdrawSelf(@CurrentUser AuthenticatedUser user) {
+        try {
+            userApplicationService.withdrawSelf(user.getId());
+            return ResponseEntity.ok(ApiResponse.success(null, "탈퇴가 완료되었습니다"));
+        } catch (Exception e) {
+            log.error("회원 탈퇴 실패: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     @GetMapping("/dashboard")
     @LogExecution("사용자 대시보드 조회")
     @PerformanceMonitor(threshold = 3000, operation = "user_dashboard")

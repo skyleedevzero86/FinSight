@@ -50,6 +50,18 @@ public class UserResponse {
     @Schema(description = "이메일 주소", example = "test@example.com", maxLength = 100, format = "email")
     private String email;
 
+    @Schema(description = "전화번호")
+    private String phoneNumber;
+
+    @Schema(description = "아이디 마스킹 여부")
+    private Boolean usernameMasked;
+
+    @Schema(description = "이메일 마스킹 여부")
+    private Boolean emailMasked;
+
+    @Schema(description = "전화번호 마스킹 여부")
+    private Boolean phoneMasked;
+
     @Schema(description = "가입 경로", example = "WEB")
     private AuthProvider authProvider;
 
@@ -114,6 +126,40 @@ public class UserResponse {
                 .username(user.getUsername())
                 .nickname(user.getNickname())
                 .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .usernameMasked(false)
+                .emailMasked(false)
+                .phoneMasked(false)
+                .authProvider(user.getAuthProvider() != null ? user.getAuthProvider() : AuthProvider.WEB)
+                .profileImageUrl(user.getProfileImageUrl())
+                .watchlist(user.getWatchlist())
+                .status(user.getStatus())
+                .role(user.getRole())
+                .otpEnabled(Boolean.TRUE.equals(user.getOtpEnabled()))
+                .otpVerified(Boolean.TRUE.equals(user.getOtpVerified()))
+                .createDate(user.getCreatedAt())
+                .modifyDate(user.getUpdatedAt())
+                .lastLoginAt(user.getLastLoginAt())
+                .loginFailCount(user.getLoginFailCount())
+                .accountLockedAt(user.getAccountLockedAt())
+                .approvedBy(user.getApprovedBy())
+                .approvedAt(user.getApprovedAt())
+                .passwordChangedAt(user.getPasswordChangedAt())
+                .passwordChangeCount(user.getPasswordChangeCount())
+                .lastPasswordChangeDate(user.getLastPasswordChangeDate() != null ? user.getLastPasswordChangeDate().atStartOfDay() : null)
+                .build();
+    }
+
+    public static UserResponse fromAdmin(User user, boolean revealUsername, boolean revealEmail, boolean revealPhone) {
+        return UserResponse.builder()
+                .id(user.getId())
+                .username(revealUsername ? user.getUsername() : user.getMaskedUsername())
+                .nickname(user.getNickname())
+                .email(revealEmail ? user.getEmail() : user.getMaskedEmail())
+                .phoneNumber(revealPhone ? user.getPhoneNumber() : user.getMaskedPhoneNumber())
+                .usernameMasked(!revealUsername)
+                .emailMasked(!revealEmail)
+                .phoneMasked(!revealPhone)
                 .authProvider(user.getAuthProvider() != null ? user.getAuthProvider() : AuthProvider.WEB)
                 .profileImageUrl(user.getProfileImageUrl())
                 .watchlist(user.getWatchlist())

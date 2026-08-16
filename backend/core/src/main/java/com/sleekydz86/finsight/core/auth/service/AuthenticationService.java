@@ -55,6 +55,11 @@ public class AuthenticationService {
     public JwtToken login(LoginRequest request) {
         try {
             User user = resolveLoginUser(request.getEmail());
+            try {
+                user.assertCanLogin();
+            } catch (IllegalStateException ex) {
+                throw new AuthenticationFailedException(user.getEmail(), ex.getMessage());
+            }
 
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.getEmail(), request.getPassword()));
@@ -80,6 +85,8 @@ public class AuthenticationService {
                     .expiresIn(LocalDateTime.now().plusSeconds(jwtTokenUtil.getAccessTokenExpiration() / 1000))
                     .build();
 
+        } catch (AuthenticationFailedException e) {
+            throw e;
         } catch (Exception e) {
             log.error("로그인 실패: {}", e.getMessage(), e);
             throw new AuthenticationFailedException(request.getEmail());
