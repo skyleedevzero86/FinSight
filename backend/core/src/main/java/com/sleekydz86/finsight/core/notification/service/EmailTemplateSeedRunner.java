@@ -1,0 +1,61 @@
+package com.sleekydz86.finsight.core.notification.service;
+
+import com.sleekydz86.finsight.core.notification.domain.EmailTemplate;
+import com.sleekydz86.finsight.core.notification.domain.port.out.EmailTemplatePersistencePort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StreamUtils;
+
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+
+@Component
+@Order(40)
+public class EmailTemplateSeedRunner implements ApplicationRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(EmailTemplateSeedRunner.class);
+    public static final String VERIFICATION_CODE = "verification-code";
+
+    private final EmailTemplatePersistencePort emailTemplatePersistencePort;
+
+    public EmailTemplateSeedRunner(EmailTemplatePersistencePort emailTemplatePersistencePort) {
+        this.emailTemplatePersistencePort = emailTemplatePersistencePort;
+    }
+
+    @Override
+    @Transactional
+    public void run(ApplicationArguments args) {
+        seedVerificationCode();
+    }
+
+    private void seedVerificationCode() {
+        try {
+            ClassPathResource resource = new ClassPathResource("templates/email/verification-code.html");
+            String html = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+            EmailTemplate template = emailTemplatePersistencePort.findByName(VERIFICATION_CODE)
+                    .orElseGet(EmailTemplate::new);
+            boolean created = template.getId() == null;
+            template.setName(VERIFICATION_CODE);
+            template.setSubject("[{{appName}}] {{purposeLabel}} 코드");
+            template.setHtmlContent(html);
+            template.setTextContent("검증 코드: {{code}}");
+            template.setTemplateVariables(
+                    "[\"code\",\"purposeLabel\",\"requestedAt\",\"requestLocation\",\"appName\",\"year\"]");
+            template.setActive(true);
+            if (created) {
+                template.setCreatedAt(LocalDateTime.now());
+            }
+            template.setUpdatedAt(LocalDateTime.now());
+            emailTemplatePersistencePort.save(template);
+            log.info("email_templates {} 완료: {}", created ? "시드" : "갱신", VERIFICATION_CODE);
+        } catch (Exception e) {
+            log.warn("email_templates 시드 실패: {}", e.getMessage());
+        }
+    }
+}

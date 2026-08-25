@@ -4,6 +4,7 @@ import com.sleekydz86.finsight.core.notification.domain.EmailMailPurpose;
 import com.sleekydz86.finsight.core.notification.domain.EmailSendContext;
 import com.sleekydz86.finsight.core.notification.domain.EmailSendContexts;
 import com.sleekydz86.finsight.core.notification.domain.Notification;
+import com.sleekydz86.finsight.core.notification.domain.RenderedEmailTemplate;
 import com.sleekydz86.finsight.core.notification.domain.port.in.EmailLogCommandUseCase;
 import com.sleekydz86.finsight.core.notification.domain.port.in.dto.EmailLogWriteCommand;
 import com.sleekydz86.finsight.core.user.domain.User;
@@ -12,13 +13,13 @@ import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.util.StreamUtils;
 
 import jakarta.mail.MessagingException;
@@ -27,7 +28,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -35,8 +38,12 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 public class EmailNotificationService {
 
+    private static final String LOGO_CID = "finsight-logo";
+    private static final String LOGO_CLASSPATH = "static/mail/finsight-logo.png";
+
     private final JavaMailSender mailSender;
     private final EmailLogCommandUseCase emailLogCommandUseCase;
+    private final EmailTemplateQueryService emailTemplateQueryService;
 
     @Value("${spring.mail.username:}")
     private String mailUsername;
@@ -93,8 +100,24 @@ public class EmailNotificationService {
         }
         requireFromEmail();
 
-        String subject = String.format("[%s] %s 코드", appName, purposeLabel);
-        String htmlContent = createVerificationCodeHtml(code, purposeLabel, requestedAtText, requestLocation);
+        Map<String, String> variables = new LinkedHashMap<>();
+        variables.put("code", escapeHtml(code));
+        variables.put("purposeLabel", escapeHtml(purposeLabel));
+        variables.put("requestedAt", escapeHtml(requestedAtText));
+        variables.put("requestLocation", escapeHtml(requestLocation));
+        variables.put("appName", escapeHtml(appName));
+        variables.put("year", String.valueOf(LocalDateTime.now().getYear()));
+
+        RenderedEmailTemplate rendered = emailTemplateQueryService
+                .renderActive(EmailTemplateSeedRunner.VERIFICATION_CODE, variables)
+                .or(() -> emailTemplateQueryService.renderClasspathFallback(
+                        "templates/email/verification-code.html",
+                        "[{{appName}}] {{purposeLabel}} 코드",
+                        variables))
+                .orElseGet(() -> new RenderedEmailTemplate(
+                        String.format("[%s] %s 코드", appName, purposeLabel),
+                        createVerificationCodeHtml(code, purposeLabel, requestedAtText, requestLocation)));
+
         EmailSendContext ctx = context != null
                 ? context
                 : EmailSendContexts.anonymous(
@@ -113,7 +136,7 @@ public class EmailNotificationService {
                 ctx.userAgent(),
                 ctx.relatedRef(),
                 "검증 코드 메일 · 구분: " + purposeLabel + " · 요청시각: " + requestedAtText);
-        sendAndLog(toEmail, subject, htmlContent, "verification-code", masked, false);
+        sendAndLog(toEmail, rendered.subject(), rendered.htmlContent(), "verification-code", masked, false);
     }
 
     public void sendPasswordChangeReminder(User user, boolean warningOnly) {
@@ -202,6 +225,7 @@ public class EmailNotificationService {
             helper.setTo(toEmail);
             helper.setSubject(subject);
             helper.setText(htmlContent, true);
+            attachInlineLogoIfNeeded(helper, htmlContent);
             mailSender.send(message);
 
             emailLogCommandUseCase.recordSuccess(new EmailLogWriteCommand(
@@ -217,6 +241,18 @@ public class EmailNotificationService {
             log.error("이메일 발송 실패 - to={}, template={}, error={}", toEmail, templateType, message, e);
             throw new RuntimeException("이메일 발송 실패: " + message, e);
         }
+    }
+
+    private void attachInlineLogoIfNeeded(MimeMessageHelper helper, String htmlContent) throws MessagingException {
+        if (htmlContent == null || !htmlContent.contains("cid:" + LOGO_CID)) {
+            return;
+        }
+        ClassPathResource logo = new ClassPathResource(LOGO_CLASSPATH);
+        if (!logo.exists()) {
+            log.warn("메일 로고 리소스 없음: {}", LOGO_CLASSPATH);
+            return;
+        }
+        helper.addInline(LOGO_CID, logo, "image/png");
     }
 
     private void requireFromEmail() {
@@ -290,7 +326,7 @@ public class EmailNotificationService {
                 </head>
                 <body style="margin:0;padding:0;background:#ffffff;font-family:'Apple SD Gothic Neo','Malgun Gothic',Arial,sans-serif;color:#111111;">
                   <div style="max-width:560px;margin:0 auto;padding:32px 28px 24px;">
-                    <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(145deg,#7c3aed 0%%,#6d28d9 100%%);margin-bottom:28px;"></div>
+                    <img src="cid:finsight-logo" alt="FinSight" width="140" style="display:block;width:140px;height:auto;margin:0 0 28px 0;border:0;" />
                     <h1 style="margin:0 0 16px;font-size:28px;line-height:1.3;font-weight:700;">검증 코드</h1>
                     <p style="margin:0 0 18px;font-size:15px;color:#222;">다음 인증 코드를 입력하세요:</p>
                     <p style="margin:0 0 18px;font-size:36px;letter-spacing:4px;font-weight:700;line-height:1.2;">%s</p>
