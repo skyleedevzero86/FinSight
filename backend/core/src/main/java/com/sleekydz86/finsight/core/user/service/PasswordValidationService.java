@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class PasswordValidationService {
 
-    @Value("${security.password.min-length:12}")
+    @Value("${security.password.min-length:8}")
     private int minLength;
 
     @Value("${security.password.require-special-chars:true}")
@@ -21,10 +21,10 @@ public class PasswordValidationService {
     @Value("${security.password.require-numbers:true}")
     private boolean requireNumbers;
 
-    @Value("${security.password.require-uppercase:true}")
+    @Value("${security.password.require-uppercase:false}")
     private boolean requireUppercase;
 
-    @Value("${security.password.require-lowercase:true}")
+    @Value("${security.password.require-lowercase:false}")
     private boolean requireLowercase;
 
     private final UserPersistencePort userPersistencePort;
@@ -33,6 +33,7 @@ public class PasswordValidationService {
     private static final Pattern NUMBERS_PATTERN = Pattern.compile("\\d");
     private static final Pattern UPPERCASE_PATTERN = Pattern.compile("[A-Z]");
     private static final Pattern LOWERCASE_PATTERN = Pattern.compile("[a-z]");
+    private static final Pattern LETTER_PATTERN = Pattern.compile("[A-Za-z]");
 
     public PasswordValidationResult validatePassword(String password) {
         List<String> errors = new ArrayList<>();
@@ -44,6 +45,10 @@ public class PasswordValidationService {
 
         if (password.length() < minLength) {
             errors.add("Password must be at least " + minLength + " characters long");
+        }
+
+        if (!LETTER_PATTERN.matcher(password).find()) {
+            errors.add("Password must contain at least one letter");
         }
 
         if (requireSpecialChars && !SPECIAL_CHARS_PATTERN.matcher(password).find()) {

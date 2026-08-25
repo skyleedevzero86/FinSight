@@ -30,7 +30,7 @@ public class UserPasswordService {
     private static final int PASSWORD_HISTORY_CHECK_COUNT = 5;
 
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
-            "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*(),.?\":{}|<>_+=\\-\\[\\]\\\\;'`~])[A-Za-z\\d!@#$%^&*(),.?\":{}|<>_+=\\-\\[\\]\\\\;'`~]{8,}$");
+            "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*(),.?\":{}|<>_+=\\-\\[\\]\\\\;'`~])[A-Za-z\\d!@#$%^&*(),.?\":{}|<>_+=\\-\\[\\]\\\\;'`~]{8,}$");
 
     @Transactional
     public void changePassword(Long userId, UserPasswordChangeRequest request) {
@@ -77,7 +77,7 @@ public class UserPasswordService {
             throw new RuntimeException("새 비밀번호 확인은 필수입니다.");
         }
         if (!isValidPassword(request.getNewPassword())) {
-            throw new RuntimeException("비밀번호는 영문 대소문자, 숫자, 특수문자를 포함하여 8자 이상이어야 합니다.");
+            throw new RuntimeException("비밀번호는 영문·숫자·특수문자를 포함하여 8자 이상이어야 합니다.");
         }
     }
 

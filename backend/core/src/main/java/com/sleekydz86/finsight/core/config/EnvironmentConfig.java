@@ -64,8 +64,8 @@ public class EnvironmentConfig {
         }
 
         String minLength = environment.getProperty("security.password.min-length");
-        if (minLength != null && Integer.parseInt(minLength) < 12) {
-            logger.warn("비밀번호 최소 길이가 권장값보다 낮습니다. 권장 최소 길이: 12, 현재 값: {}", minLength);
+        if (minLength != null && Integer.parseInt(minLength) < 8) {
+            logger.warn("비밀번호 최소 길이가 권장값보다 낮습니다. 권장 최소 길이: 8, 현재 값: {}", minLength);
         }
     }
 
