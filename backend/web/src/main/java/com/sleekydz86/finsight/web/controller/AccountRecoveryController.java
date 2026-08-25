@@ -45,7 +45,7 @@ public class AccountRecoveryController {
             log.error("계정 복구 시작 실패 - 이메일: {}, 사용자명: {}, 오류: {}",
                     request.getEmail(), request.getUsername(), e.getMessage(), e);
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("계정 복구 시작에 실패했습니다: " + e.getMessage()));
+                    .body(ApiResponse.error(userFacingMessage(e, "계정 복구 시작에 실패했습니다. 잠시 후 다시 시도해 주세요.")));
         }
     }
 
@@ -65,7 +65,7 @@ public class AccountRecoveryController {
             log.error("복구 OTP 검증 실패 - 이메일: {}, 사용자명: {}, 오류: {}",
                     request.getEmail(), request.getUsername(), e.getMessage(), e);
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("OTP 검증에 실패했습니다: " + e.getMessage()));
+                    .body(ApiResponse.error(userFacingMessage(e, "OTP 검증에 실패했습니다. 잠시 후 다시 시도해 주세요.")));
         }
     }
 
@@ -85,7 +85,36 @@ public class AccountRecoveryController {
         } catch (Exception e) {
             log.error("비밀번호 재설정 실패 - 오류: {}", e.getMessage(), e);
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("비밀번호 재설정에 실패했습니다: " + e.getMessage()));
+                    .body(ApiResponse.error(userFacingMessage(e, "비밀번호 재설정에 실패했습니다. 잠시 후 다시 시도해 주세요.")));
         }
+    }
+
+    private String userFacingMessage(Throwable error, String fallback) {
+        if (error instanceof com.sleekydz86.finsight.core.global.exception.InvalidPasswordException invalid) {
+            if (invalid.getValidationErrors() != null && !invalid.getValidationErrors().isEmpty()) {
+                return String.join(" ", invalid.getValidationErrors());
+            }
+        }
+        if (error instanceof com.sleekydz86.finsight.core.global.exception.BaseException base) {
+            String message = base.getMessage();
+            if (message != null && !message.isBlank() && looksKorean(message)) {
+                return message;
+            }
+        }
+        String message = error.getMessage();
+        if (message != null && !message.isBlank() && looksKorean(message)) {
+            return message;
+        }
+        return fallback;
+    }
+
+    private boolean looksKorean(String text) {
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (c >= 0xAC00 && c <= 0xD7A3) {
+                return true;
+            }
+        }
+        return false;
     }
 }

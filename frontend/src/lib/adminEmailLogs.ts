@@ -40,6 +40,7 @@ export type EmailMailPurpose =
   | "PASSWORD_CHANGE_REMINDER"
   | "ACCOUNT_RECOVERY_OTP"
   | "PASSWORD_RESET_CONFIRMATION"
+  | "ACCOUNT_SUSPENDED_NOTICE"
   | "OTHER"
 
 export type EmailActorType = "ANONYMOUS" | "USER" | "SYSTEM" | "ADMIN"
@@ -98,6 +99,7 @@ export const EMAIL_PURPOSE_OPTIONS: { value: EmailMailPurpose | ""; label: strin
   { value: "ACCOUNT_RECOVERY_OTP", label: "계정 복구 OTP" },
   { value: "PASSWORD_RESET_CONFIRMATION", label: "비밀번호 재설정 확인" },
   { value: "PASSWORD_CHANGE_REMINDER", label: "비밀번호 변경 안내" },
+  { value: "ACCOUNT_SUSPENDED_NOTICE", label: "계정 정지 안내" },
   { value: "NEWS_ALERT", label: "뉴스 알림" },
   { value: "SYSTEM_NOTIFICATION", label: "시스템 알림" },
   { value: "WELCOME", label: "환영 메일" },

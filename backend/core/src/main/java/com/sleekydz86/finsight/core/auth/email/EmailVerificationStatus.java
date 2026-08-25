@@ -4,5 +4,6 @@ public enum EmailVerificationStatus {
     PENDING,
     PASSED,
     EXPIRED,
-    FAILED
+    FAILED,
+    DISPUTED
 }

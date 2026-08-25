@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -106,10 +107,17 @@ public class BatchGlobalExceptionHandler {
         Locale locale = getLocale(request);
         log.error("유효하지 않은 비밀번호입니다", ex);
 
+        List<String> validationErrors = ex.getValidationErrors() != null
+                ? ex.getValidationErrors()
+                : List.of();
+        String message = !validationErrors.isEmpty()
+                ? String.join(" ", validationErrors)
+                : getLocalizedMessage("user.message.password.invalid", locale);
+
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INVALID_PASSWORD");
-        response.put("message", getLocalizedMessage("error.invalid.password", locale));
-        response.put("errors", ex.getValidationErrors()); 
+        response.put("message", message);
+        response.put("errors", validationErrors);
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
 

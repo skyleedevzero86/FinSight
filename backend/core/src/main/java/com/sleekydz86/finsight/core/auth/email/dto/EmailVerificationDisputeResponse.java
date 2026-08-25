@@ -10,15 +10,11 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EmailVerificationConfirmResponse {
+public class EmailVerificationDisputeResponse {
 
-    private boolean verified;
+    private boolean disputed;
+    private boolean accountSuspended;
     private EmailVerificationPurpose purpose;
     private String purposeLabel;
-    private String maskedEmail;
-    private String username;
-    private String maskedUsername;
-    private String redirectTo;
-    private boolean canResetPassword;
-    private String email;
+    private String message;
 }

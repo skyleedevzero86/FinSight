@@ -135,17 +135,20 @@ public class EmailNotificationService {
             String purposeLabel,
             String requestedAtText,
             String requestLocation,
+            String challengeToken,
             EmailSendContext context) {
         if (!emailEnabled) {
             throw new IllegalStateException("이메일 발송이 비활성화되어 있습니다. MAIL 설정을 확인해 주세요.");
         }
         requireFromEmail();
 
+        String disputeUrl = buildDisputeUrl(challengeToken);
         Map<String, String> variables = new LinkedHashMap<>();
         variables.put("code", escapeHtml(code));
         variables.put("purposeLabel", escapeHtml(purposeLabel));
         variables.put("requestedAt", escapeHtml(requestedAtText));
         variables.put("requestLocation", escapeHtml(requestLocation));
+        variables.put("disputeUrl", escapeHtml(disputeUrl));
         variables.put("appName", escapeHtml(appName));
         variables.put("year", String.valueOf(LocalDateTime.now().getYear()));
 
@@ -157,7 +160,8 @@ public class EmailNotificationService {
                         variables))
                 .orElseGet(() -> new RenderedEmailTemplate(
                         String.format("[%s] %s 코드", appName, purposeLabel),
-                        createVerificationCodeHtml(code, purposeLabel, requestedAtText, requestLocation)));
+                        createVerificationCodeHtml(
+                                code, purposeLabel, requestedAtText, requestLocation, disputeUrl)));
 
         EmailSendContext ctx = context != null
                 ? context
@@ -178,6 +182,97 @@ public class EmailNotificationService {
                 ctx.relatedRef(),
                 "검증 코드 메일 · 구분: " + purposeLabel + " · 요청시각: " + requestedAtText);
         sendAndLog(toEmail, rendered.subject(), rendered.htmlContent(), "verification-code", masked, false);
+    }
+
+    public void sendAccountSuspendedNoticeEmail(User user, String purposeLabel, EmailSendContext context) {
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+            throw new IllegalStateException("계정 정지 안내 메일을 보낼 수 없습니다.");
+        }
+        requireFromEmail();
+
+        String displayName = user.getNickname() != null && !user.getNickname().isBlank()
+                ? user.getNickname()
+                : user.getUsername();
+        Map<String, String> variables = new LinkedHashMap<>();
+        variables.put("userName", escapeHtml(displayName));
+        variables.put("maskedUsername", escapeHtml(maskUsernameForMail(user.getUsername())));
+        variables.put("maskedEmail", escapeHtml(maskEmailForMail(user.getEmail())));
+        variables.put("purposeLabel", escapeHtml(purposeLabel != null ? purposeLabel : "이메일 인증"));
+        variables.put("frontendUrl", escapeHtml(frontendUrl));
+        variables.put("appName", escapeHtml(appName));
+        variables.put("year", String.valueOf(LocalDateTime.now().getYear()));
+
+        RenderedEmailTemplate rendered = emailTemplateQueryService
+                .renderActive(EmailTemplateSeedRunner.ACCOUNT_SUSPENDED_NOTICE, variables)
+                .or(() -> emailTemplateQueryService.renderClasspathFallback(
+                        "templates/email/account-suspended-notice.html",
+                        "[{{appName}}] 계정 정지 안내",
+                        variables))
+                .orElseGet(() -> new RenderedEmailTemplate(
+                        String.format("[%s] 계정 정지 안내", appName),
+                        createAccountSuspendedNoticeHtml(displayName, purposeLabel)));
+
+        EmailSendContext ctx = context != null
+                ? context
+                : EmailSendContexts.forUser(EmailMailPurpose.ACCOUNT_SUSPENDED_NOTICE, user.getId());
+        EmailSendContext masked = new EmailSendContext(
+                EmailMailPurpose.ACCOUNT_SUSPENDED_NOTICE,
+                ctx.actorType(),
+                user.getId(),
+                ctx.actorUserId(),
+                ctx.requestIp(),
+                ctx.requestLocation(),
+                ctx.userAgent(),
+                ctx.relatedRef(),
+                "계정 정지 안내 · 원인: 요청하지 않은 인증 신고 · 구분: " + purposeLabel);
+        sendAndLog(user.getEmail(), rendered.subject(), rendered.htmlContent(), "account-suspended-notice", masked, false);
+    }
+
+    private String buildDisputeUrl(String challengeToken) {
+        String base = frontendUrl == null ? "" : frontendUrl.trim();
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        String token = challengeToken == null ? "" : challengeToken.trim();
+        try {
+            return base + "/verify/dispute/" + java.net.URLEncoder.encode(token, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            return base + "/verify/dispute/" + token;
+        }
+    }
+
+    private static String maskUsernameForMail(String username) {
+        if (username == null || username.isBlank()) {
+            return "***";
+        }
+        String value = username.trim();
+        int n = value.length();
+        if (n == 1) {
+            return "*";
+        }
+        if (n == 2) {
+            return value.charAt(0) + "*";
+        }
+        if (n <= 4) {
+            return value.charAt(0) + "*".repeat(n - 2) + value.charAt(n - 1);
+        }
+        return value.substring(0, 2) + "*".repeat(n - 4) + value.substring(n - 2);
+    }
+
+    private static String maskEmailForMail(String email) {
+        if (email == null || email.isBlank()) {
+            return "***";
+        }
+        int at = email.indexOf('@');
+        if (at <= 0) {
+            return "***";
+        }
+        String local = email.substring(0, at);
+        String domain = email.substring(at);
+        if (local.length() <= 2) {
+            return local.charAt(0) + "***" + domain;
+        }
+        return local.substring(0, 2) + "***" + domain;
     }
 
     public void sendPasswordChangeReminder(User user, boolean warningOnly) {
@@ -352,10 +447,12 @@ public class EmailNotificationService {
             String code,
             String purposeLabel,
             String requestedAtText,
-            String requestLocation) {
+            String requestLocation,
+            String disputeUrl) {
         String safeCode = escapeHtml(code);
         String safeWhen = escapeHtml(requestedAtText);
         String safeWhere = escapeHtml(requestLocation);
+        String safeDispute = escapeHtml(disputeUrl);
         int year = LocalDateTime.now().getYear();
         return """
                 <!DOCTYPE html>
@@ -372,18 +469,52 @@ public class EmailNotificationService {
                     <p style="margin:0 0 18px;font-size:15px;color:#222;">다음 인증 코드를 입력하세요:</p>
                     <p style="margin:0 0 18px;font-size:36px;letter-spacing:4px;font-weight:700;line-height:1.2;">%s</p>
                     <p style="margin:0 0 36px;font-size:14px;color:#333;">계정을 보호하기 위해 이 코드를 공유하지 마세요.</p>
-                    <p style="margin:0 0 10px;font-size:15px;font-weight:700;">이걸 요청하지 않았나요?</p>
+                    <p style="margin:0 0 10px;font-size:15px;font-weight:700;">
+                      <a href="%s" style="color:#111111;text-decoration:underline;">이걸 요청하지 않았나요?</a>
+                    </p>
                     <p style="margin:0 0 8px;font-size:14px;line-height:1.6;color:#222;">
                       이 코드는 <strong>%s</strong>에 <strong>%s</strong>에서 요청되었습니다.
                     </p>
-                    <p style="margin:0 0 28px;font-size:14px;color:#333;">이 요청을 하지 않으셨다면 이 이메일을 무시해도 됩니다.</p>
+                    <p style="margin:0 0 28px;font-size:14px;color:#333;">이 요청을 하지 않으셨다면 위 링크를 눌러 계정을 보호해 주세요.</p>
                     <div style="border-top:1px dashed #cfcfcf;padding-top:16px;">
                       <p style="margin:0;font-size:12px;color:#8a8a8a;">© %d %s · %s</p>
                     </div>
                   </div>
                 </body>
                 </html>
-                """.formatted(safeCode, safeWhen, safeWhere, year, appName, escapeHtml(purposeLabel));
+                """.formatted(safeCode, safeDispute, safeWhen, safeWhere, year, appName, escapeHtml(purposeLabel));
+    }
+
+    private String createAccountSuspendedNoticeHtml(String userName, String purposeLabel) {
+        String safeName = escapeHtml(userName);
+        String safePurpose = escapeHtml(purposeLabel != null ? purposeLabel : "이메일 인증");
+        int year = LocalDateTime.now().getYear();
+        return """
+                <!DOCTYPE html>
+                <html lang="ko">
+                <head>
+                  <meta charset="UTF-8">
+                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                  <title>계정 정지 안내</title>
+                </head>
+                <body style="margin:0;padding:0;background:#ffffff;font-family:'Apple SD Gothic Neo','Malgun Gothic',Arial,sans-serif;color:#111111;">
+                  <div style="max-width:560px;margin:0 auto;padding:32px 28px 24px;">
+                    <img src="cid:finsight-logo" alt="FinSight" width="140" style="display:block;width:140px;height:auto;margin:0 0 28px 0;border:0;" />
+                    <h1 style="margin:0 0 16px;font-size:26px;line-height:1.3;font-weight:700;">계정 정지 안내</h1>
+                    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#222;">%s님, 안녕하세요.</p>
+                    <p style="margin:0 0 14px;font-size:15px;line-height:1.6;color:#222;">
+                      요청하지 않은 <strong>%s</strong> 인증 신고로 계정이 정지되었습니다.
+                    </p>
+                    <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#222;">
+                      계정 복구가 필요하시면 관리자에게 문의해 주세요.
+                    </p>
+                    <div style="border-top:1px dashed #cfcfcf;padding-top:16px;">
+                      <p style="margin:0;font-size:12px;color:#8a8a8a;">© %d %s</p>
+                    </div>
+                  </div>
+                </body>
+                </html>
+                """.formatted(safeName, safePurpose, year, appName);
     }
 
     private String escapeHtml(String value) {

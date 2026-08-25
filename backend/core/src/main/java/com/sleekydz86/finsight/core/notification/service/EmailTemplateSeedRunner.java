@@ -22,6 +22,7 @@ public class EmailTemplateSeedRunner implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(EmailTemplateSeedRunner.class);
     public static final String VERIFICATION_CODE = "verification-code";
     public static final String WELCOME = "welcome";
+    public static final String ACCOUNT_SUSPENDED_NOTICE = "account-suspended-notice";
 
     private final EmailTemplatePersistencePort emailTemplatePersistencePort;
 
@@ -34,6 +35,7 @@ public class EmailTemplateSeedRunner implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         seedVerificationCode();
         seedWelcome();
+        seedAccountSuspendedNotice();
     }
 
     private void seedVerificationCode() {
@@ -48,7 +50,7 @@ public class EmailTemplateSeedRunner implements ApplicationRunner {
             template.setHtmlContent(html);
             template.setTextContent("검증 코드: {{code}}");
             template.setTemplateVariables(
-                    "[\"code\",\"purposeLabel\",\"requestedAt\",\"requestLocation\",\"appName\",\"year\"]");
+                    "[\"code\",\"purposeLabel\",\"requestedAt\",\"requestLocation\",\"disputeUrl\",\"appName\",\"year\"]");
             template.setActive(true);
             if (created) {
                 template.setCreatedAt(LocalDateTime.now());
@@ -83,6 +85,31 @@ public class EmailTemplateSeedRunner implements ApplicationRunner {
             log.info("email_templates {} 완료: {}", created ? "시드" : "갱신", WELCOME);
         } catch (Exception e) {
             log.warn("email_templates welcome 시드 실패: {}", e.getMessage());
+        }
+    }
+
+    private void seedAccountSuspendedNotice() {
+        try {
+            ClassPathResource resource = new ClassPathResource("templates/email/account-suspended-notice.html");
+            String html = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+            EmailTemplate template = emailTemplatePersistencePort.findByName(ACCOUNT_SUSPENDED_NOTICE)
+                    .orElseGet(EmailTemplate::new);
+            boolean created = template.getId() == null;
+            template.setName(ACCOUNT_SUSPENDED_NOTICE);
+            template.setSubject("[{{appName}}] 계정 정지 안내");
+            template.setHtmlContent(html);
+            template.setTextContent("요청하지 않은 인증 신고로 계정이 정지되었습니다. 관리자에게 문의해 주세요.");
+            template.setTemplateVariables(
+                    "[\"userName\",\"maskedUsername\",\"maskedEmail\",\"purposeLabel\",\"frontendUrl\",\"appName\",\"year\"]");
+            template.setActive(true);
+            if (created) {
+                template.setCreatedAt(LocalDateTime.now());
+            }
+            template.setUpdatedAt(LocalDateTime.now());
+            emailTemplatePersistencePort.save(template);
+            log.info("email_templates {} 완료: {}", created ? "시드" : "갱신", ACCOUNT_SUSPENDED_NOTICE);
+        } catch (Exception e) {
+            log.warn("email_templates account-suspended-notice 시드 실패: {}", e.getMessage());
         }
     }
 }

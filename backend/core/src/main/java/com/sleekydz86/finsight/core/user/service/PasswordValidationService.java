@@ -39,44 +39,44 @@ public class PasswordValidationService {
         List<String> errors = new ArrayList<>();
 
         if (password == null || password.isEmpty()) {
-            errors.add("Password cannot be empty");
+            errors.add("비밀번호를 입력해 주세요.");
             return new PasswordValidationResult(false, errors);
         }
 
         if (password.length() < minLength) {
-            errors.add("Password must be at least " + minLength + " characters long");
+            errors.add("비밀번호는 최소 " + minLength + "자 이상이어야 합니다.");
         }
 
         if (!LETTER_PATTERN.matcher(password).find()) {
-            errors.add("Password must contain at least one letter");
+            errors.add("비밀번호에 영문을 포함해 주세요.");
         }
 
         if (requireSpecialChars && !SPECIAL_CHARS_PATTERN.matcher(password).find()) {
-            errors.add("Password must contain at least one special character");
+            errors.add("비밀번호에 특수문자를 포함해 주세요.");
         }
 
         if (requireNumbers && !NUMBERS_PATTERN.matcher(password).find()) {
-            errors.add("Password must contain at least one number");
+            errors.add("비밀번호에 숫자를 포함해 주세요.");
         }
 
         if (requireUppercase && !UPPERCASE_PATTERN.matcher(password).find()) {
-            errors.add("Password must contain at least one uppercase letter");
+            errors.add("비밀번호에 대문자를 포함해 주세요.");
         }
 
         if (requireLowercase && !LOWERCASE_PATTERN.matcher(password).find()) {
-            errors.add("Password must contain at least one lowercase letter");
+            errors.add("비밀번호에 소문자를 포함해 주세요.");
         }
 
         if (hasConsecutiveCharacters(password)) {
-            errors.add("Password cannot contain consecutive characters");
+            errors.add("연속된 문자는 사용할 수 없습니다.");
         }
 
         if (hasRepeatedCharacters(password)) {
-            errors.add("Password cannot contain repeated characters");
+            errors.add("같은 문자를 3번 이상 반복할 수 없습니다.");
         }
 
         if (isCommonWeakPassword(password)) {
-            errors.add("Password is too common or weak");
+            errors.add("너무 단순하거나 흔한 비밀번호입니다.");
         }
 
         return new PasswordValidationResult(errors.isEmpty(), errors);
@@ -157,7 +157,7 @@ public class PasswordValidationService {
 
         public String getErrorMessage() {
             if (errors.isEmpty()) {
-                return "Password is valid";
+                return "비밀번호가 유효합니다.";
             }
             return String.join("; ", errors);
         }

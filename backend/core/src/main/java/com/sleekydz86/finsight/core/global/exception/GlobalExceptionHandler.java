@@ -25,6 +25,31 @@ public class GlobalExceptionHandler {
 
         private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+        @ExceptionHandler(InvalidPasswordException.class)
+        public ResponseEntity<ApiResponse<ValidationErrorResponse>> handleInvalidPasswordException(
+                        InvalidPasswordException ex, WebRequest request) {
+                logger.error("InvalidPasswordException occurred: {}", ex.getMessage(), ex);
+
+                List<String> validationErrors = ex.getValidationErrors() != null
+                                ? ex.getValidationErrors()
+                                : List.of();
+                String message = validationErrors.isEmpty()
+                                ? ex.getMessage()
+                                : String.join(" ", validationErrors);
+
+                ValidationErrorResponse errorResponse = ValidationErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .errorCode(ex.getErrorCode())
+                                .message(message)
+                                .path(request.getDescription(false).replace("uri=", ""))
+                                .validationErrors(validationErrors)
+                                .build();
+
+                return ResponseEntity.badRequest()
+                                .body(ApiResponse.error(errorResponse));
+        }
+
         @ExceptionHandler(BaseException.class)
         public ResponseEntity<ApiResponse<ErrorResponse>> handleBaseException(BaseException ex, WebRequest request) {
                 logger.error("BaseException occurred: {}", ex.getMessage(), ex);

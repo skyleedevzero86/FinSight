@@ -10,6 +10,7 @@ public enum EmailMailPurpose {
     PASSWORD_CHANGE_REMINDER("비밀번호 변경 안내"),
     ACCOUNT_RECOVERY_OTP("계정 복구 OTP"),
     PASSWORD_RESET_CONFIRMATION("비밀번호 재설정 확인"),
+    ACCOUNT_SUSPENDED_NOTICE("계정 정지 안내"),
     OTHER("기타");
 
     private final String label;

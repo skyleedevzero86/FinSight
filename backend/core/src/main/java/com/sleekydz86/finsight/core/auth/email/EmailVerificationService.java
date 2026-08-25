@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.auth.email;
 
 import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationChallengeResponse;
 import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationConfirmResponse;
+import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationDisputeResponse;
 import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationIssueResponse;
 import com.sleekydz86.finsight.core.global.exception.EmailVerificationException;
 import com.sleekydz86.finsight.core.global.exception.InvalidPasswordException;
@@ -10,6 +11,7 @@ import com.sleekydz86.finsight.core.notification.domain.EmailSendContext;
 import com.sleekydz86.finsight.core.notification.domain.EmailSendContexts;
 import com.sleekydz86.finsight.core.notification.service.EmailNotificationService;
 import com.sleekydz86.finsight.core.user.domain.User;
+import com.sleekydz86.finsight.core.user.domain.UserStatus;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.user.service.PasswordValidationService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +28,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -94,6 +97,7 @@ public class EmailVerificationService {
         entity.setStatus(EmailVerificationStatus.PENDING);
         repository.save(entity);
 
+        String token = tokenCodec.encrypt(challengeId);
         EmailSendContext sendContext = EmailSendContexts.anonymous(
                 toMailPurpose(purpose),
                 ip,
@@ -108,13 +112,13 @@ public class EmailVerificationService {
                     purpose.getLabel(),
                     requestedAtText,
                     location,
+                    token,
                     sendContext);
         } catch (RuntimeException e) {
             repository.delete(entity);
             throw e;
         }
 
-        String token = tokenCodec.encrypt(challengeId);
         log.info("이메일 인증 코드 발송 - purpose={}, email={}", purpose, maskEmail(email));
         return EmailVerificationIssueResponse.builder()
                 .challengeToken(token)
@@ -147,6 +151,9 @@ public class EmailVerificationService {
         EmailVerificationJpaEntity entity = requireEntity(token);
         if (entity.getStatus() == EmailVerificationStatus.PASSED) {
             return toConfirmResponse(entity, true);
+        }
+        if (entity.getStatus() == EmailVerificationStatus.DISPUTED) {
+            throw new EmailVerificationException("요청하지 않음으로 신고되어 사용할 수 없는 인증입니다.");
         }
         if (entity.getStatus() == EmailVerificationStatus.FAILED) {
             throw new EmailVerificationException("인증 시도 횟수를 초과했습니다. 다시 인증하기를 눌러 주세요.");
@@ -207,7 +214,8 @@ public class EmailVerificationService {
 
         User user = userPersistencePort.findByEmail(entity.getEmail())
                 .orElseThrow(() -> new EmailVerificationException("가입된 계정을 찾을 수 없습니다."));
-        if (username == null || !user.getUsername().equalsIgnoreCase(username.trim())) {
+        if (username != null && !username.isBlank()
+                && !user.getUsername().equalsIgnoreCase(username.trim())) {
             throw new EmailVerificationException("아이디가 일치하지 않습니다.");
         }
         user.changePassword(passwordEncoder.encode(rawPassword));
@@ -215,6 +223,74 @@ public class EmailVerificationService {
         entity.setConsumedAt(LocalDateTime.now());
         repository.save(entity);
         log.info("비밀번호 재설정 완료 - email={}, username={}", maskEmail(entity.getEmail()), user.getUsername());
+    }
+
+    @Transactional
+    public EmailVerificationDisputeResponse dispute(String token) {
+        EmailVerificationJpaEntity entity = requireEntity(token);
+        EmailVerificationPurpose purpose = entity.getPurpose();
+        if (purpose != EmailVerificationPurpose.SIGNUP
+                && purpose != EmailVerificationPurpose.FIND_EMAIL
+                && purpose != EmailVerificationPurpose.FIND_PASSWORD) {
+            throw new EmailVerificationException("이 인증 요청에서는 신고할 수 없습니다.");
+        }
+
+        if (entity.getStatus() == EmailVerificationStatus.DISPUTED) {
+            boolean alreadySuspended = userPersistencePort.findByEmail(entity.getEmail())
+                    .map(u -> u.getStatus() == UserStatus.SUSPENDED)
+                    .orElse(false);
+            return EmailVerificationDisputeResponse.builder()
+                    .disputed(true)
+                    .accountSuspended(alreadySuspended)
+                    .purpose(purpose)
+                    .purposeLabel(entity.getPurposeLabel())
+                    .message(alreadySuspended
+                            ? "이미 계정이 정지되었습니다. 관리자에게 문의해 주세요."
+                            : "이미 처리된 요청입니다. 해당 인증은 더 이상 사용할 수 없습니다.")
+                    .build();
+        }
+
+        entity.setStatus(EmailVerificationStatus.DISPUTED);
+        entity.setConsumedAt(LocalDateTime.now());
+        repository.save(entity);
+        expireStalePending(entity.getEmail(), purpose);
+
+        Optional<User> userOpt = userPersistencePort.findByEmail(entity.getEmail());
+        boolean suspended = false;
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            if (user.getStatus() != UserStatus.SUSPENDED) {
+                user.suspend();
+                userPersistencePort.save(user);
+                suspended = true;
+                try {
+                    emailNotificationService.sendAccountSuspendedNoticeEmail(
+                            user,
+                            entity.getPurposeLabel(),
+                            EmailSendContexts.forUser(
+                                    EmailMailPurpose.ACCOUNT_SUSPENDED_NOTICE,
+                                    user.getId()));
+                } catch (RuntimeException e) {
+                    log.warn("계정 정지 안내 메일 발송 실패 - email={}: {}",
+                            maskEmail(entity.getEmail()), e.getMessage());
+                }
+            } else {
+                suspended = true;
+            }
+        }
+
+        String message = suspended
+                ? "요청하지 않은 인증으로 계정이 정지되었습니다. 안내 메일을 확인해 주시고, 복구가 필요하면 관리자에게 문의해 주세요."
+                : "요청하지 않은 인증으로 처리되었습니다. 해당 인증 코드는 더 이상 사용할 수 없습니다.";
+        log.info("이메일 인증 분쟁 처리 - purpose={}, email={}, suspended={}",
+                purpose, maskEmail(entity.getEmail()), suspended);
+        return EmailVerificationDisputeResponse.builder()
+                .disputed(true)
+                .accountSuspended(suspended)
+                .purpose(purpose)
+                .purposeLabel(entity.getPurposeLabel())
+                .message(message)
+                .build();
     }
 
     @Transactional
@@ -291,6 +367,7 @@ public class EmailVerificationService {
 
     private EmailVerificationConfirmResponse toConfirmResponse(EmailVerificationJpaEntity entity, boolean verified) {
         String username = null;
+        String maskedUsername = null;
         String email = null;
         if (entity.getPurpose() == EmailVerificationPurpose.FIND_EMAIL
                 || entity.getPurpose() == EmailVerificationPurpose.FIND_PASSWORD) {
@@ -299,6 +376,12 @@ public class EmailVerificationService {
         if (entity.getPurpose() == EmailVerificationPurpose.FIND_EMAIL) {
             username = userPersistencePort.findByEmail(entity.getEmail())
                     .map(User::getUsername)
+                    .orElse(null);
+        }
+        if (entity.getPurpose() == EmailVerificationPurpose.FIND_PASSWORD) {
+            maskedUsername = userPersistencePort.findByEmail(entity.getEmail())
+                    .map(User::getUsername)
+                    .map(EmailVerificationService::maskUsername)
                     .orElse(null);
         }
         String redirectTo = switch (entity.getPurpose()) {
@@ -313,6 +396,7 @@ public class EmailVerificationService {
                 .maskedEmail(maskEmail(entity.getEmail()))
                 .email(email)
                 .username(username)
+                .maskedUsername(maskedUsername)
                 .redirectTo(redirectTo)
                 .canResetPassword(entity.getPurpose() == EmailVerificationPurpose.FIND_PASSWORD)
                 .build();
@@ -340,6 +424,24 @@ public class EmailVerificationService {
             return local.charAt(0) + "***" + domain;
         }
         return local.substring(0, 2) + "***" + domain;
+    }
+
+    static String maskUsername(String username) {
+        if (username == null || username.isBlank()) {
+            return "***";
+        }
+        String value = username.trim();
+        int n = value.length();
+        if (n == 1) {
+            return "*";
+        }
+        if (n == 2) {
+            return value.charAt(0) + "*";
+        }
+        if (n <= 4) {
+            return value.charAt(0) + "*".repeat(n - 2) + value.charAt(n - 1);
+        }
+        return value.substring(0, 2) + "*".repeat(n - 4) + value.substring(n - 2);
     }
 
     private static EmailMailPurpose toMailPurpose(EmailVerificationPurpose purpose) {

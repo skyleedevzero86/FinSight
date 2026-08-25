@@ -14,7 +14,6 @@ public class EmailVerificationResetPasswordRequest {
     @NotBlank(message = "인증 토큰이 필요합니다")
     private String token;
 
-    @NotBlank(message = "아이디는 필수입니다")
     private String username;
 
     @NotBlank(message = "비밀번호는 필수입니다")
