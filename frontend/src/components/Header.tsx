@@ -69,6 +69,10 @@ export default function Header() {
                   <Link href="/admin/users" className="hover:text-finsight-secondary transition">
                     사용자 관리
                   </Link>
+                  <span className="text-gray-400">|</span>
+                  <Link href="/admin/email-logs" className="hover:text-finsight-secondary transition">
+                    메일 이력
+                  </Link>
                 </>
               ) : null}
               <span className="text-gray-400">|</span>
@@ -195,14 +199,24 @@ export default function Header() {
                 </Link>
               </li>
               {user && canManageUsers(user.role) ? (
-                <li>
-                  <Link
-                    href="/admin/users"
-                    className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                  >
-                    사용자 관리
-                  </Link>
-                </li>
+                <>
+                  <li>
+                    <Link
+                      href="/admin/users"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      사용자 관리
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/admin/email-logs"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      메일 이력
+                    </Link>
+                  </li>
+                </>
               ) : null}
             </ul>
           </div>

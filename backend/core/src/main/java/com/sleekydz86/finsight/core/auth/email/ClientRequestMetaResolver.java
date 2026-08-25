@@ -42,6 +42,10 @@ public class ClientRequestMetaResolver {
         return request.getRemoteAddr();
     }
 
+    public String resolveUserAgent(HttpServletRequest request) {
+        return trimToNull(request.getHeader("User-Agent"));
+    }
+
     public String resolveLocation(String ip) {
         if (ip == null || ip.isBlank() || PRIVATE_IP.matcher(ip).matches()) {
             return "로컬 환경 " + (ip == null ? "" : ip).trim();

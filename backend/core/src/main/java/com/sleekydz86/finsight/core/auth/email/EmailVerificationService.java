@@ -5,6 +5,9 @@ import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationConfirmRespo
 import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationIssueResponse;
 import com.sleekydz86.finsight.core.global.exception.EmailVerificationException;
 import com.sleekydz86.finsight.core.global.exception.InvalidPasswordException;
+import com.sleekydz86.finsight.core.notification.domain.EmailMailPurpose;
+import com.sleekydz86.finsight.core.notification.domain.EmailSendContext;
+import com.sleekydz86.finsight.core.notification.domain.EmailSendContexts;
 import com.sleekydz86.finsight.core.notification.service.EmailNotificationService;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
@@ -74,6 +77,7 @@ public class EmailVerificationService {
         LocalDateTime expiresAt = now.plusMinutes(CODE_TTL_MINUTES);
         String ip = requestMetaResolver.resolveClientIp(request);
         String location = requestMetaResolver.resolveLocation(ip);
+        String userAgent = requestMetaResolver.resolveUserAgent(request);
         String requestedAtText = now.atOffset(ZoneOffset.UTC).format(REQUESTED_AT_FORMAT) + " UTC";
 
         EmailVerificationJpaEntity entity = new EmailVerificationJpaEntity();
@@ -90,13 +94,21 @@ public class EmailVerificationService {
         entity.setStatus(EmailVerificationStatus.PENDING);
         repository.save(entity);
 
+        EmailSendContext sendContext = EmailSendContexts.anonymous(
+                toMailPurpose(purpose),
+                ip,
+                location,
+                userAgent,
+                challengeId);
+
         try {
             emailNotificationService.sendVerificationCodeEmail(
                     email,
                     code,
                     purpose.getLabel(),
                     requestedAtText,
-                    location);
+                    location,
+                    sendContext);
         } catch (RuntimeException e) {
             repository.delete(entity);
             throw e;
@@ -328,5 +340,13 @@ public class EmailVerificationService {
             return local.charAt(0) + "***" + domain;
         }
         return local.substring(0, 2) + "***" + domain;
+    }
+
+    private static EmailMailPurpose toMailPurpose(EmailVerificationPurpose purpose) {
+        return switch (purpose) {
+            case SIGNUP -> EmailMailPurpose.VERIFICATION_SIGNUP;
+            case FIND_EMAIL -> EmailMailPurpose.VERIFICATION_FIND_EMAIL;
+            case FIND_PASSWORD -> EmailMailPurpose.VERIFICATION_FIND_PASSWORD;
+        };
     }
 }

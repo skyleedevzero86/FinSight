@@ -12,6 +12,7 @@ import com.sleekydz86.finsight.core.global.annotation.SecurityAudit;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,10 +35,11 @@ public class AccountRecoveryController {
     @SecurityAudit(action = "ACCOUNT_RECOVERY_INITIATE", resource = "ACCOUNT_RECOVERY", level = SecurityAudit.SecurityLevel.INFO)
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
     public ResponseEntity<ApiResponse<AccountRecoveryResponse>> initiateRecovery(
-            @RequestBody @Valid AccountRecoveryRequest request) {
+            @RequestBody @Valid AccountRecoveryRequest request,
+            HttpServletRequest httpRequest) {
 
         try {
-            AccountRecoveryResponse response = accountRecoveryService.initiateAccountRecovery(request);
+            AccountRecoveryResponse response = accountRecoveryService.initiateAccountRecovery(request, httpRequest);
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("계정 복구 시작 실패 - 이메일: {}, 사용자명: {}, 오류: {}",
@@ -74,10 +76,11 @@ public class AccountRecoveryController {
     @SecurityAudit(action = "ACCOUNT_RECOVERY_RESET_PASSWORD", resource = "ACCOUNT_RECOVERY", level = SecurityAudit.SecurityLevel.INFO)
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = { Exception.class })
     public ResponseEntity<ApiResponse<AccountRecoveryResponse>> resetPassword(
-            @RequestBody @Valid PasswordResetRequest request) {
+            @RequestBody @Valid PasswordResetRequest request,
+            HttpServletRequest httpRequest) {
 
         try {
-            AccountRecoveryResponse response = accountRecoveryService.resetPassword(request);
+            AccountRecoveryResponse response = accountRecoveryService.resetPassword(request, httpRequest);
             return ResponseEntity.ok(ApiResponse.success(response));
         } catch (Exception e) {
             log.error("비밀번호 재설정 실패 - 오류: {}", e.getMessage(), e);

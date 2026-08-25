@@ -1,6 +1,11 @@
 package com.sleekydz86.finsight.core.notification.service;
 
+import com.sleekydz86.finsight.core.notification.domain.EmailMailPurpose;
+import com.sleekydz86.finsight.core.notification.domain.EmailSendContext;
+import com.sleekydz86.finsight.core.notification.domain.EmailSendContexts;
 import com.sleekydz86.finsight.core.notification.domain.Notification;
+import com.sleekydz86.finsight.core.notification.domain.port.in.EmailLogCommandUseCase;
+import com.sleekydz86.finsight.core.notification.domain.port.in.dto.EmailLogWriteCommand;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
@@ -31,6 +36,7 @@ import java.util.concurrent.CompletableFuture;
 public class EmailNotificationService {
 
     private final JavaMailSender mailSender;
+    private final EmailLogCommandUseCase emailLogCommandUseCase;
 
     @Value("${spring.mail.username:}")
     private String fromEmail;
@@ -47,93 +53,29 @@ public class EmailNotificationService {
     @Async("notificationExecutor")
     @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public CompletableFuture<Void> sendNewsAlert(User user, News news) {
-        if (!emailEnabled) {
-            log.debug("이메일 알림이 비활성화되어 있습니다.");
-            return CompletableFuture.completedFuture(null);
-        }
-
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(user.getEmail());
-            helper.setSubject(createNewsAlertSubject(news));
-
-            String htmlContent = createNewsAlertHtmlContent(user, news);
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
-            log.info("뉴스 알림 이메일 발송 성공 - 사용자: {}, 뉴스: {}",
-                    user.getEmail(), news.getOriginalContent().getTitle());
-
-            return CompletableFuture.completedFuture(null);
-
-        } catch (MessagingException e) {
-            log.error("뉴스 알림 이메일 발송 실패 - 사용자: {}, 오류: {}",
-                    user.getEmail(), e.getMessage(), e);
-            throw new RuntimeException("이메일 발송 실패", e);
-        }
+        EmailSendContext context = EmailSendContexts.forUser(EmailMailPurpose.NEWS_ALERT, user.getId());
+        String subject = createNewsAlertSubject(news);
+        String htmlContent = createNewsAlertHtmlContent(user, news);
+        sendAndLog(user.getEmail(), subject, htmlContent, "news-alert", context, true);
+        return CompletableFuture.completedFuture(null);
     }
 
     @Async("notificationExecutor")
     @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public CompletableFuture<Void> sendSystemNotification(User user, Notification notification) {
-        if (!emailEnabled) {
-            log.debug("이메일 알림이 비활성화되어 있습니다.");
-            return CompletableFuture.completedFuture(null);
-        }
-
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(user.getEmail());
-            helper.setSubject(notification.getTitle());
-
-            String htmlContent = createSystemNotificationHtmlContent(user, notification);
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
-            log.info("시스템 알림 이메일 발송 성공 - 사용자: {}, 알림: {}",
-                    user.getEmail(), notification.getTitle());
-
-            return CompletableFuture.completedFuture(null);
-
-        } catch (MessagingException e) {
-            log.error("시스템 알림 이메일 발송 실패 - 사용자: {}, 오류: {}",
-                    user.getEmail(), e.getMessage(), e);
-            throw new RuntimeException("이메일 발송 실패", e);
-        }
+        EmailSendContext context = EmailSendContexts.forUser(EmailMailPurpose.SYSTEM_NOTIFICATION, user.getId());
+        String htmlContent = createSystemNotificationHtmlContent(user, notification);
+        sendAndLog(user.getEmail(), notification.getTitle(), htmlContent, "system-notification", context, true);
+        return CompletableFuture.completedFuture(null);
     }
 
     @Async("notificationExecutor")
     public CompletableFuture<Void> sendWelcomeEmail(User user) {
-        if (!emailEnabled) {
-            return CompletableFuture.completedFuture(null);
-        }
-
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(user.getEmail());
-            helper.setSubject(String.format("[%s] 회원가입을 환영합니다!", appName));
-
-            String htmlContent = createWelcomeEmailContent(user);
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
-            log.info("환영 이메일 발송 성공 - 사용자: {}", user.getEmail());
-
-            return CompletableFuture.completedFuture(null);
-
-        } catch (MessagingException e) {
-            log.error("환영 이메일 발송 실패 - 사용자: {}, 오류: {}", user.getEmail(), e.getMessage(), e);
-            throw new RuntimeException("이메일 발송 실패", e);
-        }
+        EmailSendContext context = EmailSendContexts.forUser(EmailMailPurpose.WELCOME, user.getId());
+        String subject = String.format("[%s] 회원가입을 환영합니다!", appName);
+        String htmlContent = createWelcomeEmailContent(user);
+        sendAndLog(user.getEmail(), subject, htmlContent, "welcome", context, true);
+        return CompletableFuture.completedFuture(null);
     }
 
     public void sendVerificationCodeEmail(
@@ -141,27 +83,34 @@ public class EmailNotificationService {
             String code,
             String purposeLabel,
             String requestedAtText,
-            String requestLocation) {
+            String requestLocation,
+            EmailSendContext context) {
         if (!emailEnabled) {
             throw new IllegalStateException("이메일 발송이 비활성화되어 있습니다. MAIL 설정을 확인해 주세요.");
         }
-        if (fromEmail == null || fromEmail.isBlank()) {
-            throw new IllegalStateException("네이버 메일 계정(MAIL_USERNAME)이 설정되어 있지 않습니다.");
-        }
+        requireFromEmail();
 
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(fromEmail);
-            helper.setTo(toEmail);
-            helper.setSubject(String.format("[%s] %s 코드", appName, purposeLabel));
-            helper.setText(createVerificationCodeHtml(code, purposeLabel, requestedAtText, requestLocation), true);
-            mailSender.send(message);
-            log.info("검증 코드 이메일 발송 성공 - 수신: {}, 구분: {}", toEmail, purposeLabel);
-        } catch (MessagingException e) {
-            log.error("검증 코드 이메일 발송 실패 - 수신: {}, 오류: {}", toEmail, e.getMessage(), e);
-            throw new RuntimeException("인증 메일 발송에 실패했습니다. 네이버 SMTP 설정을 확인해 주세요.", e);
-        }
+        String subject = String.format("[%s] %s 코드", appName, purposeLabel);
+        String htmlContent = createVerificationCodeHtml(code, purposeLabel, requestedAtText, requestLocation);
+        EmailSendContext ctx = context != null
+                ? context
+                : EmailSendContexts.anonymous(
+                        EmailMailPurpose.OTHER,
+                        null,
+                        requestLocation,
+                        null,
+                        null);
+        EmailSendContext masked = new EmailSendContext(
+                ctx.purpose(),
+                ctx.actorType(),
+                ctx.userId(),
+                ctx.actorUserId(),
+                ctx.requestIp(),
+                ctx.requestLocation() != null ? ctx.requestLocation() : requestLocation,
+                ctx.userAgent(),
+                ctx.relatedRef(),
+                "검증 코드 메일 · 구분: " + purposeLabel + " · 요청시각: " + requestedAtText);
+        sendAndLog(toEmail, subject, htmlContent, "verification-code", masked, false);
     }
 
     public void sendPasswordChangeReminder(User user, boolean warningOnly) {
@@ -169,25 +118,106 @@ public class EmailNotificationService {
             log.debug("이메일 알림이 비활성화되어 비밀번호 안내를 건너뜁니다.");
             return;
         }
-        if (fromEmail == null || fromEmail.isBlank() || user == null || user.getEmail() == null) {
+        requireFromEmail();
+        if (user == null || user.getEmail() == null) {
             throw new IllegalStateException("비밀번호 안내 메일을 보낼 수 없습니다.");
         }
+
+        String subject = warningOnly
+                ? String.format("[%s] 비밀번호 변경 예정 안내", appName)
+                : String.format("[%s] 비밀번호를 변경해 주세요", appName);
+        String htmlContent = createPasswordChangeReminderHtml(user, warningOnly);
+        EmailSendContext context = EmailSendContexts.forUser(EmailMailPurpose.PASSWORD_CHANGE_REMINDER, user.getId());
+        sendAndLog(user.getEmail(), subject.trim(), htmlContent, "password-change-reminder", context, false);
+    }
+
+    @Async("notificationExecutor")
+    @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
+    public CompletableFuture<Void> sendRecoveryOtpEmail(User user, String subject, String content) {
+        return sendRecoveryOtpEmail(user, subject, content, null);
+    }
+
+    @Async("notificationExecutor")
+    @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
+    public CompletableFuture<Void> sendRecoveryOtpEmail(
+            User user, String subject, String content, EmailSendContext context) {
+        EmailSendContext ctx = context != null
+                ? context
+                : EmailSendContexts.forUser(EmailMailPurpose.ACCOUNT_RECOVERY_OTP, user.getId());
+        EmailSendContext masked = new EmailSendContext(
+                EmailMailPurpose.ACCOUNT_RECOVERY_OTP,
+                ctx.actorType(),
+                user.getId(),
+                ctx.actorUserId(),
+                ctx.requestIp(),
+                ctx.requestLocation(),
+                ctx.userAgent(),
+                ctx.relatedRef(),
+                "계정 복구 OTP 메일 (코드 본문은 이력에 저장하지 않음)");
+        sendAndLog(user.getEmail(), subject, content, "account-recovery-otp", masked, true);
+        return CompletableFuture.completedFuture(null);
+    }
+
+    @Async("notificationExecutor")
+    @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
+    public CompletableFuture<Void> sendPasswordResetConfirmationEmail(User user, String subject, String content) {
+        return sendPasswordResetConfirmationEmail(user, subject, content, null);
+    }
+
+    @Async("notificationExecutor")
+    @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
+    public CompletableFuture<Void> sendPasswordResetConfirmationEmail(
+            User user, String subject, String content, EmailSendContext context) {
+        EmailSendContext ctx = context != null
+                ? context
+                : EmailSendContexts.forUser(EmailMailPurpose.PASSWORD_RESET_CONFIRMATION, user.getId());
+        sendAndLog(user.getEmail(), subject, content, "password-reset-confirmation", ctx, true);
+        return CompletableFuture.completedFuture(null);
+    }
+
+    private void sendAndLog(
+            String toEmail,
+            String subject,
+            String htmlContent,
+            String templateType,
+            EmailSendContext context,
+            boolean skipWhenDisabled) {
+        if (!emailEnabled) {
+            log.debug("이메일 알림이 비활성화되어 있습니다. template={}", templateType);
+            if (skipWhenDisabled) {
+                return;
+            }
+            throw new IllegalStateException("이메일 발송이 비활성화되어 있습니다. MAIL 설정을 확인해 주세요.");
+        }
+        requireFromEmail();
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromEmail);
-            helper.setTo(user.getEmail());
-            String subject = warningOnly
-                    ? String.format(" [%s] 비밀번호 변경 예정 안내", appName)
-                    : String.format("[%s] 비밀번호를 변경해 주세요", appName);
-            helper.setSubject(subject.trim());
-            helper.setText(createPasswordChangeReminderHtml(user, warningOnly), true);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
             mailSender.send(message);
-            log.info("비밀번호 변경 안내 메일 발송 성공 - 사용자: {}, 경고만: {}", user.getEmail(), warningOnly);
-        } catch (MessagingException e) {
-            log.error("비밀번호 변경 안내 메일 발송 실패 - 사용자: {}", user.getEmail(), e);
-            throw new RuntimeException("비밀번호 변경 안내 메일 발송에 실패했습니다.", e);
+
+            emailLogCommandUseCase.recordSuccess(new EmailLogWriteCommand(
+                    toEmail, subject, fromEmail, templateType, htmlContent, context, null));
+            log.info("이메일 발송 성공 - to={}, purpose={}, template={}",
+                    toEmail,
+                    context != null ? context.purpose() : null,
+                    templateType);
+        } catch (MessagingException | RuntimeException e) {
+            String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
+            emailLogCommandUseCase.recordFailure(new EmailLogWriteCommand(
+                    toEmail, subject, fromEmail, templateType, htmlContent, context, message));
+            log.error("이메일 발송 실패 - to={}, template={}, error={}", toEmail, templateType, message, e);
+            throw new RuntimeException("이메일 발송 실패: " + message, e);
+        }
+    }
+
+    private void requireFromEmail() {
+        if (fromEmail == null || fromEmail.isBlank()) {
+            throw new IllegalStateException("네이버 메일 계정(MAIL_USERNAME)이 설정되어 있지 않습니다.");
         }
     }
 
@@ -476,61 +506,5 @@ public class EmailNotificationService {
                         </html>
                         """,
                 appName, user.getUsername(), appName, frontendUrl, appName);
-    }
-
-    @Async("notificationExecutor")
-    @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
-    public CompletableFuture<Void> sendRecoveryOtpEmail(User user, String subject, String content) {
-        if (!emailEnabled) {
-            log.debug("이메일 알림이 비활성화되어 있습니다.");
-            return CompletableFuture.completedFuture(null);
-        }
-
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(user.getEmail());
-            helper.setSubject(subject);
-            helper.setText(content, true);
-
-            mailSender.send(message);
-            log.info("복구 OTP 이메일 발송 성공 - 사용자: {}", user.getEmail());
-
-            return CompletableFuture.completedFuture(null);
-
-        } catch (MessagingException e) {
-            log.error("복구 OTP 이메일 발송 실패 - 사용자: {}, 오류: {}", user.getEmail(), e.getMessage(), e);
-            throw new RuntimeException("이메일 발송 실패", e);
-        }
-    }
-
-    @Async("notificationExecutor")
-    @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
-    public CompletableFuture<Void> sendPasswordResetConfirmationEmail(User user, String subject, String content) {
-        if (!emailEnabled) {
-            log.debug("이메일 알림이 비활성화되어 있습니다.");
-            return CompletableFuture.completedFuture(null);
-        }
-
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom(fromEmail);
-            helper.setTo(user.getEmail());
-            helper.setSubject(subject);
-            helper.setText(content, true);
-
-            mailSender.send(message);
-            log.info("비밀번호 재설정 확인 이메일 발송 성공 - 사용자: {}", user.getEmail());
-
-            return CompletableFuture.completedFuture(null);
-
-        } catch (MessagingException e) {
-            log.error("비밀번호 재설정 확인 이메일 발송 실패 - 사용자: {}, 오류: {}", user.getEmail(), e.getMessage(), e);
-            throw new RuntimeException("이메일 발송 실패", e);
-        }
     }
 }
