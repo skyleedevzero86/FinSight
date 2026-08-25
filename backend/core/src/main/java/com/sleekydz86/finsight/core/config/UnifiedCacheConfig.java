@@ -18,7 +18,9 @@ public class UnifiedCacheConfig {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         cacheManager.setCacheNames(Arrays.asList(
                 "news", "news_list", "news_search", "board", "board_list",
-                "comment", "comment_list", "user", "user_profile"
+                "comment", "comment_list",
+                "user", "userCache", "userProfile", "user_profile",
+                "userList", "pendingUsers"
         ));
         cacheManager.setCaffeine(Caffeine.newBuilder()
                 .maximumSize(10_000)
