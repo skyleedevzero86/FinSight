@@ -80,12 +80,53 @@ public class EmailNotificationService {
     }
 
     @Async("notificationExecutor")
+    @Retryable(retryFor = { Exception.class }, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public CompletableFuture<Void> sendWelcomeEmail(User user) {
-        EmailSendContext context = EmailSendContexts.forUser(EmailMailPurpose.WELCOME, user.getId());
-        String subject = String.format("[%s] 회원가입을 환영합니다!", appName);
-        String htmlContent = createWelcomeEmailContent(user);
-        sendAndLog(user.getEmail(), subject, htmlContent, "welcome", context, true);
+        sendWelcomeEmailSync(user);
         return CompletableFuture.completedFuture(null);
+    }
+
+    public void sendWelcomeEmailSync(User user) {
+        if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
+            throw new IllegalStateException("환영 메일을 보낼 수신자가 없습니다.");
+        }
+
+        String displayName = user.getNickname() != null && !user.getNickname().isBlank()
+                ? user.getNickname()
+                : user.getUsername();
+        LocalDateTime registeredAt = user.getCreatedAt() != null ? user.getCreatedAt() : LocalDateTime.now();
+        String registeredAtText = registeredAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+
+        Map<String, String> variables = new LinkedHashMap<>();
+        variables.put("userName", escapeHtml(displayName));
+        variables.put("userEmail", escapeHtml(user.getEmail()));
+        variables.put("registeredAt", escapeHtml(registeredAtText));
+        variables.put("frontendUrl", escapeHtml(frontendUrl));
+        variables.put("appName", escapeHtml(appName));
+        variables.put("year", String.valueOf(LocalDateTime.now().getYear()));
+
+        RenderedEmailTemplate rendered = emailTemplateQueryService
+                .renderActive(EmailTemplateSeedRunner.WELCOME, variables)
+                .or(() -> emailTemplateQueryService.renderClasspathFallback(
+                        "templates/email/welcome.html",
+                        "[{{appName}}] 회원가입을 축하합니다",
+                        variables))
+                .orElseGet(() -> new RenderedEmailTemplate(
+                        String.format("[%s] 회원가입을 축하합니다", appName),
+                        createFallbackWelcomeEmail(user, registeredAtText)));
+
+        EmailSendContext context = EmailSendContexts.forUser(EmailMailPurpose.WELCOME, user.getId());
+        EmailSendContext masked = new EmailSendContext(
+                context.purpose(),
+                context.actorType(),
+                user.getId(),
+                context.actorUserId(),
+                context.requestIp(),
+                context.requestLocation(),
+                context.userAgent(),
+                context.relatedRef(),
+                "회원가입 축하 메일 · 가입시각: " + registeredAtText);
+        sendAndLog(user.getEmail(), rendered.subject(), rendered.htmlContent(), "welcome", masked, true);
     }
 
     public void sendVerificationCodeEmail(
@@ -402,24 +443,6 @@ public class EmailNotificationService {
         }
     }
 
-    private String createWelcomeEmailContent(User user) {
-        try {
-            String template = loadEmailTemplate("welcome.html");
-
-            return template
-                    .replace("{{userName}}", user.getUsername())
-                    .replace("{{userEmail}}", user.getEmail())
-                    .replace("{{frontendUrl}}", frontendUrl)
-                    .replace("{{appName}}", appName)
-                    .replace("{{currentTime}}",
-                            LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
-
-        } catch (IOException e) {
-            log.error("환영 이메일 템플릿 로드 실패", e);
-            return createFallbackWelcomeEmail(user);
-        }
-    }
-
     private String loadEmailTemplate(String templateName) throws IOException {
         ClassPathResource resource = new ClassPathResource("templates/email/" + templateName);
         if (!resource.exists()) {
@@ -522,41 +545,33 @@ public class EmailNotificationService {
                 notification.getContent(), appName);
     }
 
-    private String createFallbackWelcomeEmail(User user) {
-        return String.format(
-                """
-                        <!DOCTYPE html>
-                        <html>
-                        <head>
-                            <meta charset="UTF-8">
-                            <title>환영합니다!</title>
-                            <style>
-                                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                                .header { background: #7c3aed; color: white; padding: 20px; text-align: center; }
-                                .content { padding: 20px; background: #f8f9fa; }
-                                .footer { padding: 10px; text-align: center; font-size: 12px; color: #666; }
-                                .button { background: #7c3aed; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="container">
-                                <div class="header">
-                                    <h1>%s에 오신 것을 환영합니다!</h1>
-                                </div>
-                                <div class="content">
-                                    <h2>안녕하세요, %s님!</h2>
-                                    <p>%s 회원이 되어주셔서 감사합니다.</p>
-                                    <p>이제 맞춤형 금융 뉴스와 AI 분석을 받아보실 수 있습니다.</p>
-                                    <p><a href="%s" class="button">시작하기</a></p>
-                                </div>
-                                <div class="footer">
-                                    <p>© 2024 %s. All rights reserved.</p>
-                                </div>
-                            </div>
-                        </body>
-                        </html>
-                        """,
-                appName, user.getUsername(), appName, frontendUrl, appName);
+    private String createFallbackWelcomeEmail(User user, String registeredAtText) {
+        String name = escapeHtml(user.getNickname() != null && !user.getNickname().isBlank()
+                ? user.getNickname()
+                : user.getUsername());
+        return """
+                <!DOCTYPE html>
+                <html lang="ko">
+                <head><meta charset="UTF-8"><title>회원가입 축하</title></head>
+                <body style="margin:0;padding:0;background:#ffffff;font-family:'Apple SD Gothic Neo','Malgun Gothic',Arial,sans-serif;color:#111111;">
+                  <div style="max-width:560px;margin:0 auto;padding:32px 28px 24px;">
+                    <img src="cid:finsight-logo" alt="FinSight" width="140" style="display:block;width:140px;height:auto;margin:0 0 28px 0;border:0;" />
+                    <h1 style="margin:0 0 16px;font-size:28px;font-weight:700;">가입을 축하합니다</h1>
+                    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;">안녕하세요, <strong>%s</strong>님.</p>
+                    <p style="margin:0 0 18px;font-size:14px;line-height:1.6;">가입 이메일: <strong>%s</strong><br/>가입 시각: <strong>%s</strong></p>
+                    <p style="margin:0 0 28px;font-size:15px;line-height:1.6;">%s 회원이 되어 주셔서 감사합니다.</p>
+                    <p style="margin:0 0 36px;"><a href="%s" style="display:inline-block;padding:12px 22px;background:#111111;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;">시작하기</a></p>
+                    <p style="margin:0;font-size:12px;color:#8a8a8a;">© %d %s</p>
+                  </div>
+                </body>
+                </html>
+                """.formatted(
+                name,
+                escapeHtml(user.getEmail()),
+                escapeHtml(registeredAtText),
+                escapeHtml(appName),
+                escapeHtml(frontendUrl),
+                LocalDateTime.now().getYear(),
+                escapeHtml(appName));
     }
 }

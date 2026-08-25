@@ -15,10 +15,12 @@ import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.auth.email.EmailVerificationService;
+import com.sleekydz86.finsight.core.user.domain.event.UserRegisteredEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,15 +40,18 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidationService passwordValidationService;
     private final EmailVerificationService emailVerificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public UserService(UserPersistencePort userPersistencePort,
             PasswordEncoder passwordEncoder,
             PasswordValidationService passwordValidationService,
-            EmailVerificationService emailVerificationService) {
+            EmailVerificationService emailVerificationService,
+            ApplicationEventPublisher eventPublisher) {
         this.userPersistencePort = userPersistencePort;
         this.passwordEncoder = passwordEncoder;
         this.passwordValidationService = passwordValidationService;
         this.emailVerificationService = emailVerificationService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -85,6 +90,10 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
 
         User savedUser = userPersistencePort.save(newUser);
         emailVerificationService.consumeSignupVerification(request.getEmail());
+        LocalDateTime registeredAt = savedUser.getCreatedAt() != null
+                ? savedUser.getCreatedAt()
+                : LocalDateTime.now();
+        eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getId(), registeredAt));
         log.info("사용자 등록 완료: ID={}", savedUser.getId());
 
         return savedUser;

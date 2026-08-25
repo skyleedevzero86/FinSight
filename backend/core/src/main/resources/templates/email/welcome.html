@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>회원가입 축하</title>
+</head>
+<body style="margin:0;padding:0;background:#ffffff;font-family:'Apple SD Gothic Neo','Malgun Gothic',Arial,sans-serif;color:#111111;">
+  <div style="max-width:560px;margin:0 auto;padding:32px 28px 24px;">
+    <img src="cid:finsight-logo" alt="FinSight" width="140" style="display:block;width:140px;height:auto;margin:0 0 28px 0;border:0;outline:none;text-decoration:none;" />
+    <h1 style="margin:0 0 16px;font-size:28px;line-height:1.3;font-weight:700;">가입을 축하합니다</h1>
+    <p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:#222;">
+      안녕하세요, <strong>{{userName}}</strong>님.<br />
+      {{appName}} 회원이 되어 주셔서 감사합니다.
+    </p>
+    <p style="margin:0 0 18px;font-size:14px;line-height:1.6;color:#333;">
+      가입 이메일: <strong>{{userEmail}}</strong><br />
+      가입 시각: <strong>{{registeredAt}}</strong>
+    </p>
+    <p style="margin:0 0 28px;font-size:15px;line-height:1.6;color:#222;">
+      이제 관심 종목 뉴스와 AI 요약을 {{appName}}에서 받아보실 수 있습니다.
+    </p>
+    <p style="margin:0 0 36px;">
+      <a href="{{frontendUrl}}"
+         style="display:inline-block;padding:12px 22px;background:#111111;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;">
+        {{appName}} 시작하기
+      </a>
+    </p>
+    <div style="border-top:1px dashed #cfcfcf;padding-top:16px;">
+      <p style="margin:0;font-size:12px;color:#8a8a8a;">© {{year}} {{appName}} · 회원가입 축하 안내</p>
+    </div>
+  </div>
+</body>
+</html>

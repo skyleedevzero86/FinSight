@@ -144,7 +144,7 @@ export default function LoginForm() {
             role="status"
             className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
           >
-            회원가입이 완료되었습니다. 로그인해 주세요.
+            회원가입이 완료되었습니다. 가입 축하 메일이 2시간 이내에 발송됩니다. 로그인해 주세요.
           </div>
         ) : resetDone ? (
           <div

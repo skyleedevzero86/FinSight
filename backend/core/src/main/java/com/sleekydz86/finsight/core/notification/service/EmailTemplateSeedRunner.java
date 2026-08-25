@@ -21,6 +21,7 @@ public class EmailTemplateSeedRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(EmailTemplateSeedRunner.class);
     public static final String VERIFICATION_CODE = "verification-code";
+    public static final String WELCOME = "welcome";
 
     private final EmailTemplatePersistencePort emailTemplatePersistencePort;
 
@@ -32,6 +33,7 @@ public class EmailTemplateSeedRunner implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         seedVerificationCode();
+        seedWelcome();
     }
 
     private void seedVerificationCode() {
@@ -56,6 +58,31 @@ public class EmailTemplateSeedRunner implements ApplicationRunner {
             log.info("email_templates {} 완료: {}", created ? "시드" : "갱신", VERIFICATION_CODE);
         } catch (Exception e) {
             log.warn("email_templates 시드 실패: {}", e.getMessage());
+        }
+    }
+
+    private void seedWelcome() {
+        try {
+            ClassPathResource resource = new ClassPathResource("templates/email/welcome.html");
+            String html = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+            EmailTemplate template = emailTemplatePersistencePort.findByName(WELCOME)
+                    .orElseGet(EmailTemplate::new);
+            boolean created = template.getId() == null;
+            template.setName(WELCOME);
+            template.setSubject("[{{appName}}] 회원가입을 축하합니다");
+            template.setHtmlContent(html);
+            template.setTextContent("{{userName}}님, {{appName}} 가입을 축하합니다.");
+            template.setTemplateVariables(
+                    "[\"userName\",\"userEmail\",\"registeredAt\",\"frontendUrl\",\"appName\",\"year\"]");
+            template.setActive(true);
+            if (created) {
+                template.setCreatedAt(LocalDateTime.now());
+            }
+            template.setUpdatedAt(LocalDateTime.now());
+            emailTemplatePersistencePort.save(template);
+            log.info("email_templates {} 완료: {}", created ? "시드" : "갱신", WELCOME);
+        } catch (Exception e) {
+            log.warn("email_templates welcome 시드 실패: {}", e.getMessage());
         }
     }
 }

@@ -28,6 +28,7 @@ import com.sleekydz86.finsight.core.health.service.HealthQueryService;
 import com.sleekydz86.finsight.core.health.service.HealthCommandService;
 import com.sleekydz86.finsight.core.notification.domain.port.out.NotificationSenderPort;
 import com.sleekydz86.finsight.core.notification.service.NotificationService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -132,8 +133,16 @@ public class AdvancedDependencyInjectionConfig {
     }
 
     @Bean
-    public UserService userService(PasswordEncoder passwordEncoder, EmailVerificationService emailVerificationService) {
-        return new UserService(userPersistencePort, passwordEncoder, passwordValidationService, emailVerificationService);
+    public UserService userService(
+            PasswordEncoder passwordEncoder,
+            EmailVerificationService emailVerificationService,
+            ApplicationEventPublisher eventPublisher) {
+        return new UserService(
+                userPersistencePort,
+                passwordEncoder,
+                passwordValidationService,
+                emailVerificationService,
+                eventPublisher);
     }
 
     @Bean

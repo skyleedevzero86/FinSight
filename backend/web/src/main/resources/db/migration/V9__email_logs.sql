@@ -1,9 +1,10 @@
 -- =============================================================================
--- V9: 메일 발송 이력 (email_logs)
+-- V9: 메일 발송 이력
 -- -----------------------------------------------------------------------------
 -- 목적
---   - 시스템/사용자/비로그인 요청으로 나간 모든 메일의 발송 결과를 보관한다.
---   - 관리자가 언제·누구에게·어떤 용도로·어디서(IP) 요청했는지 추적할 수 있게 한다.
+--   - 대상 테이블명 email_logs
+--   - 시스템·사용자·비로그인 요청으로 나간 모든 메일의 발송 결과를 보관한다.
+--   - 관리자가 언제·누구에게·어떤 용도로·어디서 요청했는지 IP 등으로 추적할 수 있게 한다.
 --
 -- 비로그인 정책
 --   - actor_type = 'ANONYMOUS' 인 경우 user_id 는 NULL 일 수 있다.
@@ -39,12 +40,12 @@ CREATE TABLE email_logs (
     request_location VARCHAR(255) NULL COMMENT 'IP 기반 대략 위치 문자열',
     user_agent VARCHAR(512) NULL COMMENT '요청 User-Agent',
 
-    -- 본문/오류 (민감정보 마스킹된 미리보기만 저장)
+    -- 본문/오류. 민감정보는 마스킹된 미리보기만 저장
     body_preview TEXT NULL COMMENT '본문 미리보기(HTML 제거, OTP/인증코드 마스킹)',
     error_message TEXT NULL COMMENT '발송 실패 시 오류 메시지',
     related_ref VARCHAR(100) NULL COMMENT '연관 참조키 (예: email verification challengeId)',
 
-    -- 전달/열람 확장 필드 (현재는 SMTP 단방향이라 대부분 NULL)
+    -- 전달/열람 확장 필드. 현재는 SMTP 단방향이라 대부분 NULL
     sent_at DATETIME(6) NULL COMMENT 'SMTP 전송 성공 시각',
     delivered_at DATETIME(6) NULL COMMENT '수신 서버 전달 시각(확장용)',
     opened_at DATETIME(6) NULL COMMENT '열람 시각(확장용)',
@@ -59,18 +60,11 @@ CREATE TABLE email_logs (
     PRIMARY KEY (id),
 
     -- 관리자 목록/필터용 인덱스
-    -- 최신순 목록 조회
     KEY idx_email_logs_created_at (created_at),
-    -- 수신 주소 검색
     KEY idx_email_logs_recipient (recipient),
-    -- 비로그인 IP 추적
     KEY idx_email_logs_request_ip (request_ip),
-    -- 성공/실패 필터
     KEY idx_email_logs_status (status),
-    -- 용도별 필터
     KEY idx_email_logs_purpose (purpose),
-    -- 사용자별 이력
     KEY idx_email_logs_user_id (user_id),
-    -- 주체(비로그인/시스템) 필터
     KEY idx_email_logs_actor_type (actor_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='메일 발송 이력';
