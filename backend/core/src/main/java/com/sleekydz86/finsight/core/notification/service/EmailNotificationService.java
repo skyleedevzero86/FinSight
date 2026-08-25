@@ -39,6 +39,9 @@ public class EmailNotificationService {
     private final EmailLogCommandUseCase emailLogCommandUseCase;
 
     @Value("${spring.mail.username:}")
+    private String mailUsername;
+
+    @Value("${app.mail.from:${spring.mail.username:}}")
     private String fromEmail;
 
     @Value("${app.name:FinSight}")
@@ -190,18 +193,19 @@ public class EmailNotificationService {
             throw new IllegalStateException("이메일 발송이 비활성화되어 있습니다. MAIL 설정을 확인해 주세요.");
         }
         requireFromEmail();
+        String from = resolveFromAddress();
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            helper.setFrom(fromEmail);
+            helper.setFrom(from);
             helper.setTo(toEmail);
             helper.setSubject(subject);
             helper.setText(htmlContent, true);
             mailSender.send(message);
 
             emailLogCommandUseCase.recordSuccess(new EmailLogWriteCommand(
-                    toEmail, subject, fromEmail, templateType, htmlContent, context, null));
+                    toEmail, subject, from, templateType, htmlContent, context, null));
             log.info("이메일 발송 성공 - to={}, purpose={}, template={}",
                     toEmail,
                     context != null ? context.purpose() : null,
@@ -209,16 +213,28 @@ public class EmailNotificationService {
         } catch (MessagingException | RuntimeException e) {
             String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
             emailLogCommandUseCase.recordFailure(new EmailLogWriteCommand(
-                    toEmail, subject, fromEmail, templateType, htmlContent, context, message));
+                    toEmail, subject, from, templateType, htmlContent, context, message));
             log.error("이메일 발송 실패 - to={}, template={}, error={}", toEmail, templateType, message, e);
             throw new RuntimeException("이메일 발송 실패: " + message, e);
         }
     }
 
     private void requireFromEmail() {
-        if (fromEmail == null || fromEmail.isBlank()) {
-            throw new IllegalStateException("네이버 메일 계정(MAIL_USERNAME)이 설정되어 있지 않습니다.");
+        if (resolveFromAddress().isBlank()) {
+            throw new IllegalStateException("네이버 메일 계정(MAIL_USERNAME / app.mail.from)이 설정되어 있지 않습니다.");
         }
+    }
+
+    private String resolveFromAddress() {
+        String from = fromEmail != null ? fromEmail.trim() : "";
+        if (!from.isBlank()) {
+            return from.contains("@") ? from : from + "@naver.com";
+        }
+        String user = mailUsername != null ? mailUsername.trim() : "";
+        if (user.isBlank()) {
+            return "";
+        }
+        return user.contains("@") ? user : user + "@naver.com";
     }
 
     private String createPasswordChangeReminderHtml(User user, boolean warningOnly) {

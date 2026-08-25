@@ -145,8 +145,13 @@ export default function SignupForm({
   }
   const onChangeEmail = (v: string) => {
     setEmail(v)
-    setEmailVerified(false)
-    setVerifyHint(null)
+    if (isEmailMarkedVerified(v, "SIGNUP")) {
+      setEmailVerified(true)
+      setVerifyHint("이메일 인증이 완료되었습니다. 회원가입을 진행해 주세요.")
+    } else {
+      setEmailVerified(false)
+      setVerifyHint(null)
+    }
     if (touched.email || submitAttempted) {
       const e = validateEmail(v)
       setFieldErrors((f) => ({ ...f, email: e ?? undefined }))
@@ -385,10 +390,10 @@ export default function SignupForm({
             <button
               type="button"
               onClick={handleEmailVerify}
-              disabled={verifyLoading}
+              disabled={verifyLoading || emailVerified}
               className="mt-2 w-full rounded border border-gray-300 bg-white py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {verifyLoading ? "요청 중…" : "인증하기"}
+              {emailVerified ? "인증 완료" : verifyLoading ? "요청 중…" : "인증하기"}
             </button>
             {emailVerified && verifyHint && (
               <p className="mt-2 text-xs font-medium text-emerald-700">
