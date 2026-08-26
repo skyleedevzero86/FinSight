@@ -396,40 +396,23 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
             return new ArrayList<>();
         }
 
-        List<LiveVodFeedResponse.LiveVodSectionResponse> sections = new ArrayList<>();
-        String[] headings = resolveMainHeadings(tab);
-        int chunkSize = 4;
-        boolean expandAll = !"ALL".equals(tab);
-        int sectionIndex = 0;
-        for (int i = 0; i < items.size(); i += chunkSize) {
-            if (!expandAll && sectionIndex >= headings.length) {
-                break;
-            }
-            String heading = headings[Math.min(sectionIndex, headings.length - 1)];
-            if (sectionIndex >= headings.length) {
-                heading = headings[headings.length - 1] + " " + (sectionIndex - headings.length + 2);
-            }
-            List<LiveVodFeedResponse.LiveVodItemResponse> chunk =
-                    items.subList(i, Math.min(i + chunkSize, items.size()));
+        if ("ALL".equals(tab)) {
+            List<LiveVodFeedResponse.LiveVodSectionResponse> sections = new ArrayList<>();
+            int firstSize = Math.min(4, items.size());
             sections.add(new LiveVodFeedResponse.LiveVodSectionResponse(
-                    heading,
-                    new ArrayList<>(chunk)));
-            sectionIndex++;
+                    "최신 VOD",
+                    new ArrayList<>(items.subList(0, firstSize))));
+            if (items.size() > firstSize) {
+                sections.add(new LiveVodFeedResponse.LiveVodSectionResponse(
+                        "관련 영상",
+                        new ArrayList<>(items.subList(firstSize, items.size()))));
+            }
+            return sections;
         }
-        return sections;
-    }
 
-    private String[] resolveMainHeadings(String tab) {
-        return switch (tab) {
-            case "LIVE" -> new String[]{"라이브 관련", "실시간 이슈", "다시보기", "더보기"};
-            case "MARKET" -> new String[]{"시장 브리핑", "관련 브리핑", "추가 브리핑"};
-            case "GOMHEE" -> new String[]{"박곰희 TV", "관련 영상", "더보기"};
-            case "SYUKA" -> new String[]{"슈카월드", "관련 영상", "더보기"};
-            case "BOOTYFUL" -> new String[]{"부티플", "관련 영상", "더보기"};
-            case "THEME" -> new String[]{"테마 분석", "관련 영상", "더보기"};
-            case "MACRO" -> new String[]{"글로벌 매크로", "관련 영상", "더보기"};
-            default -> new String[]{"최신 VOD", "관련 영상"};
-        };
+        return List.of(new LiveVodFeedResponse.LiveVodSectionResponse(
+                "",
+                new ArrayList<>(items)));
     }
 
     private void appendMoreSection(

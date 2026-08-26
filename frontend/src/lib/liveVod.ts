@@ -41,6 +41,9 @@ export function toPrivacyEmbedUrl(
   return `https://www.youtube-nocookie.com/embed/${id}?${params.toString()}`
 }
 
+export const YOUTUBE_EMBED_ALLOW =
+  "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen; compute-pressure"
+
 export function liveVodWatchHref(
   item: Pick<LiveVodItem, "videoId" | "title" | "channelTitle">,
   tab?: string,

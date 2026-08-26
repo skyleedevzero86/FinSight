@@ -7,11 +7,13 @@ import { LIVE_VOD_NAV_ITEMS } from "@/data/liveVodNavData"
 
 function navItemActive(pathname: string, tabParam: string | null, itemTab: string): boolean {
   if (pathname !== "/live-vod" && !pathname.startsWith("/live-vod/watch")) return false
+  const q = tabParam?.trim().toUpperCase() ?? ""
   if (itemTab === "ALL") {
-    const q = tabParam?.trim().toUpperCase() ?? ""
     return q === "" || q === "ALL"
   }
-  const q = tabParam?.trim().toUpperCase() ?? ""
+  if (itemTab === "FAVORITES") {
+    return q === "FAVORITES"
+  }
   return q === itemTab.toUpperCase()
 }
 

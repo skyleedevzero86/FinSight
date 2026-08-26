@@ -50,6 +50,12 @@
   margin-top: 0;
 }
 
+.finsight-live-vod-page .flv-relate:not(:has(> h3)) {
+  margin-top: 24px;
+  padding-top: 8px;
+  border-top: none;
+}
+
 .finsight-live-vod-page .flv-relate ul {
   list-style: none;
   margin: 0;
@@ -113,7 +119,12 @@
 .finsight-live-vod-page .flv-watch-toolbar {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+}
+
+.finsight-live-vod-page .flv-watch-top {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .finsight-live-vod-page .flv-back-link {
@@ -128,8 +139,109 @@
   text-decoration: underline;
 }
 
-.finsight-live-vod-page .flv-watch-channel {
+.finsight-live-vod-page .flv-watch-heading-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 16px;
+  position: relative;
+}
+
+.finsight-live-vod-page .flv-watch-heading-row h1 {
+  grid-column: 1 / -1;
+  grid-row: 1;
   margin: 0;
-  font-size: 14px;
+  text-align: center;
+  padding: 0 120px;
+  min-width: 0;
+}
+
+.finsight-live-vod-page .flv-watch-actions {
+  grid-column: 2;
+  grid-row: 1;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .finsight-live-vod-page .flv-watch-heading-row h1 {
+    padding: 0 0 44px;
+  }
+
+  .finsight-live-vod-page .flv-watch-actions {
+    justify-self: end;
+    margin-top: 4px;
+  }
+}
+
+.finsight-live-vod-page .flv-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  color: #444;
+  cursor: pointer;
+}
+
+.finsight-live-vod-page .flv-icon-btn:hover {
+  border-color: #bbb;
+  color: #111;
+  background: #f7f7f7;
+}
+
+.finsight-live-vod-page .flv-icon-btn.is-on {
+  color: #c45c00;
+  border-color: #e0b48a;
+  background: #fff8f0;
+}
+
+.finsight-live-vod-page .flv-share-hint {
+  margin: 0;
+  text-align: right;
+  font-size: 12px;
   color: #666;
+}
+
+.finsight-live-vod-page .flv-fav-desc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.finsight-live-vod-page .flv-favorites li {
+  position: relative;
+}
+
+.finsight-live-vod-page .flv-fav-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  padding: 4px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  color: #444;
+  cursor: pointer;
+}
+
+.finsight-live-vod-page .flv-fav-remove:hover {
+  color: #111;
+  background: #fff;
+}
+
+@media print {
+  .finsight-live-vod-page .flv-watch-top,
+  .finsight-live-vod-page .flv-watch-actions,
+  #liveVodNavi {
+    display: none !important;
+  }
 }

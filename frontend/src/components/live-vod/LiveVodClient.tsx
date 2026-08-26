@@ -7,8 +7,75 @@ import {
   fetchLiveVodFeed,
   liveVodWatchHref,
   toPrivacyEmbedUrl,
+  YOUTUBE_EMBED_ALLOW,
   type LiveVodFeed,
 } from "@/lib/liveVod"
+import {
+  listLiveVodFavorites,
+  removeLiveVodFavorite,
+  type LiveVodFavorite,
+} from "@/lib/liveVodFavorites"
+
+function FavoritesBody() {
+  const [items, setItems] = useState<LiveVodFavorite[]>([])
+
+  useEffect(() => {
+    const sync = () => setItems(listLiveVodFavorites())
+    sync()
+    window.addEventListener("finsight:live-vod-favorites-changed", sync)
+    window.addEventListener("storage", sync)
+    return () => {
+      window.removeEventListener("finsight:live-vod-favorites-changed", sync)
+      window.removeEventListener("storage", sync)
+    }
+  }, [])
+
+  return (
+    <div className="finsight-live-vod-page">
+      <div className="mx-auto max-w-[1240px] px-4 py-6 md:px-6 md:py-8">
+        <div className="flv-toolbar">
+          <h1>나의 즐겨찾기</h1>
+          <p className="flv-fav-desc">이 브라우저에 저장한 LIVE/VOD 목록입니다.</p>
+        </div>
+
+        {items.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            아직 저장한 영상이 없습니다. 상세 화면에서 별 아이콘을 눌러 추가해 보세요.
+          </p>
+        ) : (
+          <section className="flv-relate flv-favorites">
+            <ul>
+              {items.map((it) => (
+                <li key={it.videoId}>
+                  <Link
+                    href={liveVodWatchHref(
+                      {
+                        videoId: it.videoId,
+                        title: it.title,
+                        channelTitle: it.channelTitle,
+                      },
+                      "FAVORITES",
+                    )}
+                  >
+                    <img src={it.thumbnailUrl} alt="" />
+                    <div className="flv-vod-title">{it.title}</div>
+                  </Link>
+                  <button
+                    type="button"
+                    className="flv-fav-remove"
+                    onClick={() => removeLiveVodFavorite(it.videoId)}
+                  >
+                    삭제
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function LiveVodBody({ tab }: { tab: string }) {
   const [feed, setFeed] = useState<LiveVodFeed | null>(null)
@@ -70,7 +137,7 @@ function LiveVodBody({ tab }: { tab: string }) {
                 title={feed.featuredTitle || "finsight LIVE"}
                 src={toPrivacyEmbedUrl(feed.featuredVideoId, feed.embedUrl)}
                 referrerPolicy="strict-origin-when-cross-origin"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                allow={YOUTUBE_EMBED_ALLOW}
                 allowFullScreen
               />
             </div>
@@ -83,8 +150,8 @@ function LiveVodBody({ tab }: { tab: string }) {
         </div>
 
         {feed.sections.map((sec, sectionIndex) => (
-          <section key={`section-${sectionIndex}-${sec.heading}`} className="flv-relate">
-            <h3>{sec.heading}</h3>
+          <section key={`section-${sectionIndex}-${sec.heading || "list"}`} className="flv-relate">
+            {sec.heading ? <h3>{sec.heading}</h3> : null}
             <ul>
               {sec.items.map((it, itemIndex) => (
                 <li key={`${it.videoId}-${itemIndex}`}>
@@ -105,6 +172,9 @@ function LiveVodBody({ tab }: { tab: string }) {
 function LiveVodWithTab() {
   const searchParams = useSearchParams()
   const tab = (searchParams.get("tab") || "ALL").trim().toUpperCase() || "ALL"
+  if (tab === "FAVORITES") {
+    return <FavoritesBody />
+  }
   return <LiveVodBody tab={tab} />
 }
 
