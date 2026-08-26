@@ -6,9 +6,11 @@ import { useAuthSession } from "@/components/AuthSessionProvider"
 import { authProviderLabel } from "@/lib/authSession"
 import { validatePassword } from "@/lib/registration"
 import {
+  approveAdminUser,
   canManageUsers,
   deleteAdminUser,
   fetchAdminUsers,
+  rejectAdminUser,
   resetAdminUserPassword,
   restoreAdminUser,
   suspendAdminUser,
@@ -157,6 +159,7 @@ export default function AdminUsersClient() {
       <div className="mx-auto w-full max-w-6xl">
         <h1 className="mb-2 text-2xl font-bold text-gray-900">사용자 관리</h1>
         <p className="mb-8 text-sm text-gray-500">
+          상태 필터로 승인 대기·정상·거부 계정을 나눌 수 있습니다. 승인 대기/거부 계정은 목록에서 승인하면 바로 로그인할 수 있습니다.
           민감 정보 컬럼을 선택하면 마스킹이 해제됩니다. 정지·사용자 탈퇴 계정은 복구하면 다시 로그인할 수 있고, 관리자 탈퇴는 DB에서 삭제합니다.
         </p>
 
@@ -279,7 +282,42 @@ export default function AdminUsersClient() {
                       <td className="px-2 py-3 text-gray-500">{formatDate(row.lastLoginAt)}</td>
                       <td className="px-2 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {row.status === "SUSPENDED" ? (
+                          {row.status === "PENDING" || row.status === "REJECTED" ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled={saving}
+                                className="rounded border border-emerald-200 px-2 py-1 text-xs text-emerald-800 hover:bg-emerald-50 disabled:opacity-50"
+                                onClick={() => {
+                                  if (!window.confirm(`${row.nickname} 계정을 승인할까요? 승인 후 로그인할 수 있습니다.`)) {
+                                    return
+                                  }
+                                  void runAction(
+                                    () => approveAdminUser(row.id),
+                                    "사용자를 승인했습니다. 이제 로그인할 수 있습니다.",
+                                  )
+                                }}
+                              >
+                                승인
+                              </button>
+                              {row.status === "PENDING" ? (
+                                <button
+                                  type="button"
+                                  disabled={saving}
+                                  className="rounded border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+                                  onClick={() => {
+                                    if (!window.confirm(`${row.nickname} 계정을 거부할까요?`)) return
+                                    void runAction(
+                                      () => rejectAdminUser(row.id),
+                                      "사용자를 거부했습니다.",
+                                    )
+                                  }}
+                                >
+                                  거부
+                                </button>
+                              ) : null}
+                            </>
+                          ) : row.status === "SUSPENDED" ? (
                             <button
                               type="button"
                               disabled={saving}

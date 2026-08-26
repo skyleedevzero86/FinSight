@@ -185,6 +185,14 @@ export function restoreAdminUser(userId: number) {
   return postAction(`/api/v1/admin/users/${userId}/restore`, "계정을 복구하지 못했습니다.")
 }
 
+export function approveAdminUser(userId: number) {
+  return postAction(`/api/v1/admin/users/${userId}/approve`, "사용자를 승인하지 못했습니다.")
+}
+
+export function rejectAdminUser(userId: number) {
+  return postAction(`/api/v1/admin/users/${userId}/reject`, "사용자를 거부하지 못했습니다.")
+}
+
 export async function deleteAdminUser(
   userId: number,
 ): Promise<{ ok: true } | { ok: false; message: string }> {

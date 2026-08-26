@@ -27,13 +27,14 @@ export async function postLogin(body: {
     data = null
   }
   if (!res.ok) {
+    const fallback =
+      res.status >= 500
+        ? "로그인 서버에 일시적인 문제가 있습니다. 잠시 후 다시 시도해 주세요."
+        : "로그인에 실패했습니다. 이메일(또는 아이디)과 비밀번호를 확인해 주세요."
     return {
       ok: false,
       status: res.status,
-      message: readApiErrorMessage(
-        data,
-        "로그인에 실패했습니다. 이메일(또는 아이디)과 비밀번호를 확인해 주세요.",
-      ),
+      message: readApiErrorMessage(data, fallback),
     }
   }
   return { ok: true, data }
