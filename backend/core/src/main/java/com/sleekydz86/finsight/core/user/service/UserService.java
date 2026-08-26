@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -146,22 +147,30 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
     }
 
     @Override
-    @CacheEvict(value = { "userCache", "user", "userProfile" }, key = "#userId")
+    @Caching(evict = {
+            @CacheEvict(value = "userCache", key = "'watchlist_' + #userId"),
+            @CacheEvict(value = "userCache", key = "#userId"),
+            @CacheEvict(value = { "user", "userProfile" }, key = "#userId")
+    })
     public void updateWatchlist(Long userId, WatchlistUpdateRequest request) {
         log.info("관심종목 수정: 사용자ID={}", userId);
 
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
 
-        if (request.getCategories() != null) {
-            user.updateWatchlist(request.getCategories());
-            userPersistencePort.save(user);
-            log.info("관심종목 수정 완료: 사용자ID={}", userId);
-        }
+        List<TargetCategory> categories = request.getCategories() != null
+                ? request.getCategories()
+                : List.of();
+        user.updateWatchlist(categories);
+        userPersistencePort.save(user);
+        log.info("관심종목 수정 완료: 사용자ID={}, count={}", userId, categories.size());
     }
 
     @Override
-    @CacheEvict(value = "userCache", key = "#userId")
+    @Caching(evict = {
+            @CacheEvict(value = "userCache", key = "'notifications_' + #userId"),
+            @CacheEvict(value = "userCache", key = "#userId")
+    })
     public void updateNotificationPreferences(Long userId, List<NotificationType> preferences) {
         log.info("알림 설정 수정: 사용자ID={}", userId);
 

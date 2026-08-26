@@ -533,7 +533,14 @@ public class User extends BaseTimeEntity {
     }
 
     public void updateWatchlist(List<TargetCategory> watchlist) {
-        this.watchlist = new ArrayList<>(watchlist);
+        if (this.watchlist == null) {
+            this.watchlist = new ArrayList<>();
+        } else {
+            this.watchlist.clear();
+        }
+        if (watchlist != null) {
+            this.watchlist.addAll(watchlist);
+        }
     }
 
     public void updateDeviceToken(String deviceToken, String deviceType) {

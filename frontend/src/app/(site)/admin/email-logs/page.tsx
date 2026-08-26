@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import AdminEmailLogsClient from "@/components/admin/AdminEmailLogsClient"
 
 export const metadata: Metadata = {
@@ -7,5 +8,15 @@ export const metadata: Metadata = {
 }
 
 export default function AdminEmailLogsPage() {
-  return <AdminEmailLogsClient />
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-6xl px-4 py-16 text-sm text-gray-600">
+          불러오는 중…
+        </div>
+      }
+    >
+      <AdminEmailLogsClient />
+    </Suspense>
+  )
 }

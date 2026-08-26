@@ -116,12 +116,14 @@ export const EMAIL_ACTOR_OPTIONS: { value: EmailActorType | ""; label: string }[
 
 function parseLog(raw: unknown): AdminEmailLog | null {
   const o = asRecord(raw)
-  if (!o || typeof o.id !== "number") return null
+  if (!o) return null
+  const id = typeof o.id === "number" ? o.id : Number(o.id)
+  if (!Number.isFinite(id)) return null
   const status = typeof o.status === "string" ? (o.status as EmailStatus) : "SENT"
   const purpose = typeof o.purpose === "string" ? (o.purpose as EmailMailPurpose) : "OTHER"
   const actorType = typeof o.actorType === "string" ? (o.actorType as EmailActorType) : "SYSTEM"
   return {
-    id: o.id,
+    id,
     recipient: typeof o.recipient === "string" ? o.recipient : "",
     subject: typeof o.subject === "string" ? o.subject : "",
     templateType: typeof o.templateType === "string" ? o.templateType : null,

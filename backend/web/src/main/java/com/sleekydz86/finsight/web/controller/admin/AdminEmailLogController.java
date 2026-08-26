@@ -47,21 +47,18 @@ public class AdminEmailLogController {
             @RequestParam(required = false) String requestIp,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
-        try {
-            EmailLogSearchCriteria criteria = new EmailLogSearchCriteria(
-                    keyword, status, purpose, actorType, requestIp, from, to);
-            PaginationResponse<EmailLogResponse> response = PaginationResponse.from(
-                    emailLogQueryUseCase.search(
-                            criteria,
-                            PageRequest.of(
-                                    Math.max(page, 0),
-                                    Math.min(Math.max(size, 1), 100),
-                                    Sort.by(Sort.Direction.DESC, "createdAt"))));
-            return ResponseEntity.ok(ApiResponse.success(response));
-        } catch (Exception e) {
-            log.error("메일 발송 이력 조회 실패: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
-        }
+        log.info("메일 발송 이력 조회: page={}, size={}, keyword={}, status={}, purpose={}, actorType={}",
+                page, size, keyword, status, purpose, actorType);
+        EmailLogSearchCriteria criteria = new EmailLogSearchCriteria(
+                keyword, status, purpose, actorType, requestIp, from, to);
+        PaginationResponse<EmailLogResponse> response = PaginationResponse.from(
+                emailLogQueryUseCase.search(
+                        criteria,
+                        PageRequest.of(
+                                Math.max(page, 0),
+                                Math.min(Math.max(size, 1), 100),
+                                Sort.by(Sort.Direction.DESC, "createdAt"))));
+        return ResponseEntity.ok(ApiResponse.success(response, "메일 발송 이력을 조회했습니다"));
     }
 
     @GetMapping("/{id}")

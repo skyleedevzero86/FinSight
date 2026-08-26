@@ -41,6 +41,7 @@ export default function AdminUsersClient() {
   const [page, setPage] = useState(0)
   const [status, setStatus] = useState<UserStatus | "">("")
   const [keyword, setKeyword] = useState("")
+  const [keywordInput, setKeywordInput] = useState("")
   const [reveal, setReveal] = useState<RevealField[]>([])
   const [rows, setRows] = useState<AdminUser[]>([])
   const [totalPages, setTotalPages] = useState(1)
@@ -67,6 +68,9 @@ export default function AdminUsersClient() {
     })
     setLoading(false)
     if (!result.ok) {
+      setRows([])
+      setTotalElements(0)
+      setTotalPages(1)
       setError(result.message)
       return
     }
@@ -86,6 +90,14 @@ export default function AdminUsersClient() {
       router.replace("/")
     }
   }, [ready, user, router])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setPage(0)
+      setKeyword(keywordInput.trim())
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [keywordInput])
 
   useEffect(() => {
     if (!allowed) return
@@ -154,11 +166,8 @@ export default function AdminUsersClient() {
               검색
               <input
                 className={`${inputClass} mt-1 w-full`}
-                value={keyword}
-                onChange={(e) => {
-                  setPage(0)
-                  setKeyword(e.target.value)
-                }}
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
                 placeholder="아이디, 이메일, 닉네임"
               />
             </label>

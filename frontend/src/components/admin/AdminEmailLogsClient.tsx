@@ -53,23 +53,34 @@ export default function AdminEmailLogsClient() {
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const result = await fetchAdminEmailLogs({
-      page,
-      size: 20,
-      keyword,
-      status,
-      purpose,
-      actorType,
-      requestIp,
-    })
-    setLoading(false)
-    if (!result.ok) {
-      setError(result.message)
-      return
+    try {
+      const result = await fetchAdminEmailLogs({
+        page,
+        size: 20,
+        keyword,
+        status,
+        purpose,
+        actorType,
+        requestIp,
+      })
+      if (!result.ok) {
+        setRows([])
+        setTotalElements(0)
+        setTotalPages(1)
+        setError(result.message)
+        return
+      }
+      setRows(result.data.content)
+      setTotalPages(Math.max(1, result.data.totalPages))
+      setTotalElements(result.data.totalElements)
+    } catch {
+      setRows([])
+      setTotalElements(0)
+      setTotalPages(1)
+      setError("메일 발송 이력을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.")
+    } finally {
+      setLoading(false)
     }
-    setRows(result.data.content)
-    setTotalPages(Math.max(1, result.data.totalPages))
-    setTotalElements(result.data.totalElements)
   }, [page, keyword, status, purpose, actorType, requestIp])
 
   useEffect(() => {

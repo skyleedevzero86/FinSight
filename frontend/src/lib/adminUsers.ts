@@ -124,21 +124,37 @@ export async function fetchAdminUsers(options: {
   }
   const root = asRecord(payload)
   const data = asRecord(root?.data)
-  if (!data) return { ok: false, message: "사용자 목록 형식이 올바르지 않습니다." }
-  const contentRaw = data.content
-  const content = Array.isArray(contentRaw)
-    ? contentRaw.map(parseUser).filter((v): v is AdminUser => v !== null)
-    : []
+  if (!data) {
+    return { ok: false, message: "사용자 목록 형식이 올바르지 않습니다." }
+  }
+  const contentRaw = Array.isArray(data.content)
+    ? data.content
+    : Array.isArray(data.items)
+      ? data.items
+      : []
+  const content = contentRaw
+    .map(parseUser)
+    .filter((v): v is AdminUser => v !== null)
+  const totalElements =
+    typeof data.totalElements === "number"
+      ? data.totalElements
+      : typeof data.total === "number"
+        ? data.total
+        : content.length
+  const totalPages =
+    typeof data.totalPages === "number"
+      ? data.totalPages
+      : Math.max(1, Math.ceil(totalElements / Math.max(options.size, 1)))
   return {
     ok: true,
     data: {
       content,
-      page: typeof data.page === "number" ? data.page : 0,
+      page: typeof data.page === "number" ? data.page : typeof data.number === "number" ? data.number : 0,
       size: typeof data.size === "number" ? data.size : options.size,
-      totalElements: typeof data.totalElements === "number" ? data.totalElements : content.length,
-      totalPages: typeof data.totalPages === "number" ? data.totalPages : 1,
-      hasNext: data.hasNext === true,
-      hasPrevious: data.hasPrevious === true,
+      totalElements,
+      totalPages,
+      hasNext: data.hasNext === true || data.last === false,
+      hasPrevious: data.hasPrevious === true || data.first === false,
     },
   }
 }
@@ -208,5 +224,7 @@ export async function withdrawSelf(): Promise<{ ok: true } | { ok: false; messag
 }
 
 export function canManageUsers(role: string | undefined): boolean {
-  return role === "ADMIN" || role === "MANAGER"
+  if (!role) return false
+  const normalized = role.startsWith("ROLE_") ? role.slice(5) : role
+  return normalized === "ADMIN" || normalized === "MANAGER"
 }
