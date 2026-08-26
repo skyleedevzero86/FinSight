@@ -66,6 +66,9 @@ export default function LoginForm() {
   const registered = searchParams.get("registered") === "1"
   const resetDone = searchParams.get("reset") === "1"
   const accountParam = searchParams.get("account") ?? ""
+  const nextPathRaw = searchParams.get("next")?.trim() || ""
+  const nextPath =
+    nextPathRaw.startsWith("/") && !nextPathRaw.startsWith("//") ? nextPathRaw : ""
   const { user, ready } = useAuthSession()
 
   const [email, setEmail] = useState(accountParam)
@@ -85,8 +88,8 @@ export default function LoginForm() {
     } catch {
       void 0
     }
-    router.replace("/")
-  }, [ready, user, router])
+    router.replace(nextPath || "/")
+  }, [ready, user, router, nextPath])
 
   useEffect(() => {
     if (accountParam) setEmail(accountParam)
@@ -129,7 +132,11 @@ export default function LoginForm() {
     } catch {
       void 0
     }
-    router.push(passwordRequired && provider === "WEB" ? "/my?password=required" : "/")
+    router.push(
+      passwordRequired && provider === "WEB"
+        ? "/my?password=required"
+        : nextPath || "/",
+    )
     router.refresh()
   }
 

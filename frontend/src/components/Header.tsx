@@ -63,6 +63,10 @@ export default function Header() {
                 <HeaderAvatar src={user.profileImageUrl} />
                 <span className="truncate">{user.nickname}</span>
               </Link>
+              <span className="text-gray-400">|</span>
+              <Link href="/my/favorites" className="hover:text-finsight-secondary transition">
+                나의 즐겨찾기
+              </Link>
               {canManageUsers(user.role) ? (
                 <>
                   <span className="text-gray-400">|</span>
@@ -200,6 +204,16 @@ export default function Header() {
                   커뮤니티
                 </Link>
               </li>
+              {user ? (
+                <li>
+                  <Link
+                    href="/my/favorites"
+                    className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                  >
+                    나의 즐겨찾기
+                  </Link>
+                </li>
+              ) : null}
               {user && canManageUsers(user.role) ? (
                 <>
                   <li>

@@ -13,5 +13,4 @@ export const LIVE_VOD_NAV_ITEMS: LiveVodNavItem[] = [
   { label: "테마분석", tab: "THEME", href: "/live-vod?tab=THEME" },
   { label: "글로벌매크로", tab: "MACRO", href: "/live-vod?tab=MACRO" },
   { label: "슈카월드", tab: "SYUKA", href: "/live-vod?tab=SYUKA" },
-  { label: "나의 즐겨찾기", tab: "FAVORITES", href: "/live-vod?tab=FAVORITES" },
 ]

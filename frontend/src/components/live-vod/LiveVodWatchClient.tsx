@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { Suspense, useEffect, useState } from "react"
-import { useParams, useSearchParams } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
+import { useAuthSession } from "@/components/AuthSessionProvider"
 import { toPrivacyEmbedUrl, YOUTUBE_EMBED_ALLOW } from "@/lib/liveVod"
 import {
   isLiveVodFavorite,
@@ -47,16 +48,18 @@ function IconShare({ className }: { className?: string }) {
 function LiveVodWatchBody() {
   const params = useParams<{ videoId: string }>()
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const { user, ready } = useAuthSession()
   const videoId = typeof params.videoId === "string" ? params.videoId : ""
   const title = searchParams.get("title")?.trim() || "VOD 상세"
   const channel = searchParams.get("channel")?.trim() || null
   const tab = (searchParams.get("tab") || "ALL").trim().toUpperCase() || "ALL"
   const backHref =
-    tab === "ALL" || tab === "FAVORITES"
-      ? tab === "FAVORITES"
-        ? "/live-vod?tab=FAVORITES"
-        : "/live-vod"
-      : `/live-vod?tab=${encodeURIComponent(tab)}`
+    tab === "FAVORITES"
+      ? "/my/favorites"
+      : tab === "ALL"
+        ? "/live-vod"
+        : `/live-vod?tab=${encodeURIComponent(tab)}`
   const embedSrc = toPrivacyEmbedUrl(videoId)
   const [favorited, setFavorited] = useState(false)
   const [shareHint, setShareHint] = useState<string | null>(null)
@@ -92,6 +95,15 @@ function LiveVodWatchBody() {
   }
 
   const onToggleFavorite = () => {
+    if (!ready) return
+    if (!user) {
+      const returnTo =
+        typeof window !== "undefined"
+          ? `${window.location.pathname}${window.location.search}`
+          : "/my/favorites"
+      router.push(`/login?next=${encodeURIComponent(returnTo)}`)
+      return
+    }
     const next = toggleLiveVodFavorite({
       videoId,
       title,
