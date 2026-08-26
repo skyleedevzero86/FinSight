@@ -1,4 +1,4 @@
-const DEFAULT_PROXY_TIMEOUT_MS = 15_000
+const DEFAULT_PROXY_TIMEOUT_MS = 30_000
 const DEFAULT_API_BASE_URL = "http://localhost:8080"
 
 export function getFinSightBaseUrl(): string | null {

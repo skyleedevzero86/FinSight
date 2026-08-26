@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import { canManageUsers } from "@/lib/adminUsers"
@@ -8,7 +8,6 @@ import {
   EMAIL_ACTOR_OPTIONS,
   EMAIL_PURPOSE_OPTIONS,
   EMAIL_STATUS_LABEL,
-  fetchAdminEmailLog,
   fetchAdminEmailLogs,
   type AdminEmailLog,
   type EmailActorType,
@@ -31,22 +30,28 @@ function formatDate(value: string | null): string {
   return value.replace("T", " ").slice(0, 19)
 }
 
+function dash(value: string | number | null | undefined): string {
+  if (value == null || value === "") return "-"
+  return String(value)
+}
+
 export default function AdminEmailLogsClient() {
   const router = useRouter()
   const { user, ready } = useAuthSession()
   const [page, setPage] = useState(0)
   const [keyword, setKeyword] = useState("")
+  const [keywordInput, setKeywordInput] = useState("")
   const [status, setStatus] = useState<EmailStatus | "">("")
   const [purpose, setPurpose] = useState<EmailMailPurpose | "">("")
   const [actorType, setActorType] = useState<EmailActorType | "">("")
   const [requestIp, setRequestIp] = useState("")
+  const [requestIpInput, setRequestIpInput] = useState("")
   const [rows, setRows] = useState<AdminEmailLog[]>([])
   const [totalPages, setTotalPages] = useState(1)
   const [totalElements, setTotalElements] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<AdminEmailLog | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
 
   const allowed = Boolean(user && canManageUsers(user.role))
 
@@ -98,15 +103,38 @@ export default function AdminEmailLogsClient() {
     void load()
   }, [ready, allowed, load])
 
-  async function openDetail(row: AdminEmailLog) {
-    setDetailLoading(true)
-    setSelected(row)
-    const result = await fetchAdminEmailLog(row.id)
-    setDetailLoading(false)
-    if (result.ok) {
-      setSelected(result.data)
-    }
-  }
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const nextKeyword = keywordInput.trim()
+      const nextIp = requestIpInput.trim()
+      if (nextKeyword === keyword && nextIp === requestIp) return
+      setPage(0)
+      setKeyword(nextKeyword)
+      setRequestIp(nextIp)
+    }, 350)
+    return () => window.clearTimeout(timer)
+  }, [keywordInput, requestIpInput, keyword, requestIp])
+
+  const detailRows = useMemo(() => {
+    if (!selected) return []
+    return [
+      { label: "상태", value: `${selected.statusLabel} (${selected.status})` },
+      { label: "용도", value: `${selected.purposeLabel} (${selected.purpose})` },
+      { label: "주체", value: `${selected.actorTypeLabel} (${selected.actorType})` },
+      { label: "템플릿", value: dash(selected.templateType) },
+      { label: "발신", value: dash(selected.fromAddress) },
+      { label: "수신", value: dash(selected.recipient) },
+      { label: "제목", value: dash(selected.subject) },
+      { label: "요청 IP", value: dash(selected.requestIp) },
+      { label: "요청 위치", value: dash(selected.requestLocation) },
+      { label: "User-Agent", value: dash(selected.userAgent) },
+      { label: "userId", value: dash(selected.userId) },
+      { label: "actorUserId", value: dash(selected.actorUserId) },
+      { label: "관련 참조", value: dash(selected.relatedRef) },
+      { label: "오류", value: dash(selected.errorMessage) },
+      { label: "발송 시각", value: formatDate(selected.sentAt ?? selected.createdAt) },
+    ]
+  }, [selected])
 
   if (!ready || !allowed) {
     return (
@@ -132,20 +160,14 @@ export default function AdminEmailLogsClient() {
         <input
           className={`${inputClass} min-w-[12rem] flex-1`}
           placeholder="수신·제목·IP·위치 검색"
-          value={keyword}
-          onChange={(e) => {
-            setPage(0)
-            setKeyword(e.target.value)
-          }}
+          value={keywordInput}
+          onChange={(e) => setKeywordInput(e.target.value)}
         />
         <input
           className={`${inputClass} w-40`}
           placeholder="IP 정확 일치"
-          value={requestIp}
-          onChange={(e) => {
-            setPage(0)
-            setRequestIp(e.target.value)
-          }}
+          value={requestIpInput}
+          onChange={(e) => setRequestIpInput(e.target.value)}
         />
         <select
           className={inputClass}
@@ -236,7 +258,7 @@ export default function AdminEmailLogsClient() {
                 <tr
                   key={row.id}
                   className="cursor-pointer border-b border-gray-100 hover:bg-gray-50"
-                  onClick={() => void openDetail(row)}
+                  onClick={() => setSelected(row)}
                 >
                   <td className="whitespace-nowrap px-3 py-3 text-gray-700">
                     {formatDate(row.sentAt ?? row.createdAt)}
@@ -287,11 +309,13 @@ export default function AdminEmailLogsClient() {
 
       {selected ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">메일 발송 상세 #{selected.id}</h2>
-                <p className="mt-1 text-sm text-gray-500">{formatDate(selected.sentAt ?? selected.createdAt)}</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {formatDate(selected.sentAt ?? selected.createdAt)}
+                </p>
               </div>
               <button
                 type="button"
@@ -301,47 +325,38 @@ export default function AdminEmailLogsClient() {
                 닫기
               </button>
             </div>
-            {detailLoading ? (
-              <p className="text-sm text-gray-500">상세 불러오는 중…</p>
-            ) : (
-              <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-                <DetailItem label="상태" value={`${selected.statusLabel} (${selected.status})`} />
-                <DetailItem label="용도" value={`${selected.purposeLabel} (${selected.purpose})`} />
-                <DetailItem label="주체" value={`${selected.actorTypeLabel} (${selected.actorType})`} />
-                <DetailItem label="템플릿" value={selected.templateType || "-"} />
-                <DetailItem label="발신" value={selected.fromAddress || "-"} />
-                <DetailItem label="수신" value={selected.recipient} />
-                <DetailItem label="제목" value={selected.subject} />
-                <DetailItem label="요청 IP" value={selected.requestIp || "-"} />
-                <DetailItem label="요청 위치" value={selected.requestLocation || "-"} />
-                <DetailItem label="User-Agent" value={selected.userAgent || "-"} />
-                <DetailItem label="userId" value={selected.userId != null ? String(selected.userId) : "-"} />
-                <DetailItem
-                  label="actorUserId"
-                  value={selected.actorUserId != null ? String(selected.actorUserId) : "-"}
-                />
-                <DetailItem label="관련 참조" value={selected.relatedRef || "-"} />
-                <DetailItem label="오류" value={selected.errorMessage || "-"} />
-                <div className="sm:col-span-2">
-                  <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">본문 미리보기</dt>
-                  <dd className="mt-1 whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-3 text-gray-800">
-                    {selected.bodyPreview || "-"}
-                  </dd>
-                </div>
-              </dl>
-            )}
+
+            <div className="overflow-hidden rounded border border-gray-200">
+              <table className="w-full table-fixed text-sm">
+                <colgroup>
+                  <col className="w-[8.5rem]" />
+                  <col />
+                </colgroup>
+                <tbody>
+                  {detailRows.map((row) => (
+                    <tr key={row.label} className="border-b border-gray-100 last:border-b-0">
+                      <th className="bg-gray-50 px-3 py-2.5 text-left align-top text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        {row.label}
+                      </th>
+                      <td className="break-all px-3 py-2.5 text-gray-900">{row.value}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <th className="bg-gray-50 px-3 py-2.5 text-left align-top text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      본문 미리보기
+                    </th>
+                    <td className="px-3 py-2.5">
+                      <div className="whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-3 text-gray-800">
+                        {selected.bodyPreview || "-"}
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       ) : null}
-    </div>
-  )
-}
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</dt>
-      <dd className="mt-1 break-all text-gray-900">{value}</dd>
     </div>
   )
 }

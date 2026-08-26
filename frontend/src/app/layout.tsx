@@ -16,6 +16,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "finsight",
   description: "finsight — 뉴스 · 경제 · 실시간 VOD",
+  icons: {
+    icon: [{ url: "/favicon.ico", sizes: "any" }, { url: "/finsight-logo.png", type: "image/png" }],
+    apple: "/finsight-logo.png",
+  },
 };
 
 export default function RootLayout({

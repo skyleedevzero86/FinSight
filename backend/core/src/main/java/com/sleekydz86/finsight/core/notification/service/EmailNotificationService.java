@@ -275,6 +275,7 @@ public class EmailNotificationService {
         return local.substring(0, 2) + "***" + domain;
     }
 
+    @Async("notificationExecutor")
     public void sendPasswordChangeReminder(User user, boolean warningOnly) {
         if (!emailEnabled) {
             log.debug("이메일 알림이 비활성화되어 비밀번호 안내를 건너뜁니다.");

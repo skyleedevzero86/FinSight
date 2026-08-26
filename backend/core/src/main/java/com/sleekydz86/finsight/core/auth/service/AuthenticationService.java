@@ -52,7 +52,14 @@ public class AuthenticationService {
         this.passwordValidationService = passwordValidationService;
     }
 
+    public record LoginSession(JwtToken token, User user) {
+    }
+
     public JwtToken login(LoginRequest request) {
+        return loginWithUser(request).token();
+    }
+
+    public LoginSession loginWithUser(LoginRequest request) {
         try {
             User user = resolveLoginUser(request.getEmail());
             try {
@@ -74,16 +81,18 @@ public class AuthenticationService {
             String accessToken = jwtTokenUtil.generateAccessToken(email, user.getRole());
             String refreshToken = jwtTokenUtil.generateRefreshToken(email);
 
-            updateLastLoginTime(email);
+            user.updateLastLoginAt(LocalDateTime.now());
+            userPersistencePort.save(user);
 
             log.info("로그인 성공: {}, provider={}", email, user.getAuthProvider());
 
-            return JwtToken.builder()
+            JwtToken token = JwtToken.builder()
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
                     .tokenType("Bearer")
                     .expiresIn(LocalDateTime.now().plusSeconds(jwtTokenUtil.getAccessTokenExpiration() / 1000))
                     .build();
+            return new LoginSession(token, user);
 
         } catch (AuthenticationFailedException e) {
             throw e;

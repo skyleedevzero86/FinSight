@@ -15,12 +15,10 @@ import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserRegistrationRequest;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
-import com.sleekydz86.finsight.core.user.service.PasswordExpiryNoticeService;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,20 +34,17 @@ public class AuthController {
     private final OtpAuthenticationService otpAuthenticationService;
     private final SocialAuthService socialAuthService;
     private final UserPersistencePort userPersistencePort;
-    private final PasswordExpiryNoticeService passwordExpiryNoticeService;
 
     public AuthController(AuthenticationService authenticationService,
             UserService userService,
             OtpAuthenticationService otpAuthenticationService,
             SocialAuthService socialAuthService,
-            UserPersistencePort userPersistencePort,
-            PasswordExpiryNoticeService passwordExpiryNoticeService) {
+            UserPersistencePort userPersistencePort) {
         this.authenticationService = authenticationService;
         this.userService = userService;
         this.otpAuthenticationService = otpAuthenticationService;
         this.socialAuthService = socialAuthService;
         this.userPersistencePort = userPersistencePort;
-        this.passwordExpiryNoticeService = passwordExpiryNoticeService;
     }
 
     @Operation(summary = "사용자 로그인", description = "이메일과 비밀번호로 로그인합니다.")
@@ -58,10 +53,8 @@ public class AuthController {
     @PerformanceMonitor(threshold = 2000, metricName = "user_login")
     public ResponseEntity<ApiResponse<LoginResultResponse>> login(@RequestBody @Valid LoginRequest request) {
         try {
-            JwtToken token = authenticationService.login(request);
-            User user = authenticationService.resolveLoginUser(request.getEmail());
-            passwordExpiryNoticeService.notifyIfDue(user);
-            LoginResultResponse result = socialAuthService.toWebLoginResult(user, token);
+            var session = authenticationService.loginWithUser(request);
+            LoginResultResponse result = socialAuthService.toWebLoginResult(session.user(), session.token());
             return ResponseEntity.ok(ApiResponse.success(result, "로그인에 성공했습니다"));
         } catch (BaseException e) {
             throw e;
@@ -268,8 +261,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<AuthenticatedUser>> getCurrentUser(
             @CurrentUser(required = false) AuthenticatedUser currentUser) {
         if (currentUser == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("로그인이 필요합니다", 401));
+            return ResponseEntity.ok(ApiResponse.success(null, "로그인이 필요합니다"));
         }
         return ResponseEntity.ok(ApiResponse.success(currentUser, "현재 사용자 정보를 성공적으로 조회했습니다"));
     }
