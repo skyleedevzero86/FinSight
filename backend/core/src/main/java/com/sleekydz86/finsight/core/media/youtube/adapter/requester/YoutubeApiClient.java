@@ -138,6 +138,45 @@ public class YoutubeApiClient {
         return fetchMoreSectionVideos(category, null);
     }
 
+    public List<FetchedYoutubeVideo> fetchChannelUploads(
+            String handle,
+            String category,
+            int maxResults,
+            int minDurationSeconds) {
+        if (!isConfigured() || handle == null || handle.isBlank()) {
+            return List.of();
+        }
+
+        int limit = maxResults > 0 ? Math.min(maxResults, 50) : resolveMaxResults();
+        ChannelListResponse response = get(
+                "/channels",
+                UriComponentsBuilder.newInstance()
+                        .queryParam("part", "contentDetails,snippet")
+                        .queryParam("forHandle", normalizeHandle(handle))
+                        .queryParam("key", youtubeApiProperties.getApiKey())
+                        .build()
+                        .toUriString(),
+                ChannelListResponse.class);
+
+        ChannelItem item = firstChannel(response);
+        if (item == null
+                || item.contentDetails() == null
+                || item.contentDetails().relatedPlaylists() == null
+                || item.contentDetails().relatedPlaylists().uploads() == null) {
+            return List.of();
+        }
+
+        List<FetchedYoutubeVideo> uploads = fetchByPlaylistId(
+                item.contentDetails().relatedPlaylists().uploads(),
+                category,
+                YoutubeImportSourceType.CHANNEL_HANDLE,
+                handle,
+                Math.min(Math.max(limit * 2, limit), 50));
+        return filterByMinDuration(uploads, minDurationSeconds).stream()
+                .limit(limit)
+                .toList();
+    }
+
     public List<FetchedYoutubeVideo> fetchMoreSectionVideos(
             String category,
             YoutubeApiProperties.MoreChannelSource channel) {
@@ -172,55 +211,7 @@ public class YoutubeApiClient {
                 ? source.getMinDurationSeconds()
                 : youtubeApiProperties.getMoreMinDurationSeconds();
 
-        String searchQuery = source.getSearchQuery();
-        if (searchQuery == null || searchQuery.isBlank()) {
-            searchQuery = youtubeApiProperties.getMoreSearchQuery();
-        }
-
-        ChannelListResponse response = get(
-                "/channels",
-                UriComponentsBuilder.newInstance()
-                        .queryParam("part", "contentDetails,snippet")
-                        .queryParam("forHandle", normalizeHandle(handle))
-                        .queryParam("key", youtubeApiProperties.getApiKey())
-                        .build()
-                        .toUriString(),
-                ChannelListResponse.class);
-
-        ChannelItem item = firstChannel(response);
-        if (item == null) {
-            return List.of();
-        }
-
-        List<FetchedYoutubeVideo> searched = List.of();
-        if (item.id() != null && !item.id().isBlank()) {
-            searched = searchChannelVideos(
-                    item.id(),
-                    searchQuery,
-                    category,
-                    handle,
-                    Math.min(maxResults * 3, 50));
-        }
-
-        List<FetchedYoutubeVideo> candidates = filterByMinDuration(searched, minDurationSeconds);
-        if (candidates.size() < maxResults
-                && item.contentDetails() != null
-                && item.contentDetails().relatedPlaylists() != null
-                && item.contentDetails().relatedPlaylists().uploads() != null) {
-            List<FetchedYoutubeVideo> uploads = fetchByPlaylistId(
-                    item.contentDetails().relatedPlaylists().uploads(),
-                    category,
-                    YoutubeImportSourceType.CHANNEL_HANDLE,
-                    handle,
-                    Math.min(maxResults * 3, 50));
-            candidates = mergeUniqueVideos(candidates, filterByMinDuration(uploads, minDurationSeconds));
-        }
-
-        if (candidates.isEmpty()) {
-            candidates = searched;
-        }
-
-        return candidates.stream().limit(maxResults).toList();
+        return fetchChannelUploads(handle, category, maxResults, minDurationSeconds);
     }
 
     private List<FetchedYoutubeVideo> searchChannelVideos(

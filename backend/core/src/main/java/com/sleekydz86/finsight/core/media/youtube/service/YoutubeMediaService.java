@@ -41,13 +41,17 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -61,6 +65,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
     private static final int TITLE_MAX_LENGTH = 200;
     private static final int CONTENT_MAX_LENGTH = 10000;
     private static final int PREVIEW_MAX_LENGTH = 180;
+    private static final Duration LIVE_VOD_FEED_CACHE_TTL = Duration.ofMinutes(20);
 
     private final YoutubeVideoMetaPersistencePort youtubeVideoMetaPersistencePort;
     private final YoutubeImportSourcePersistencePort youtubeImportSourcePersistencePort;
@@ -68,6 +73,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
     private final YoutubeApiClient youtubeApiClient;
     private final YoutubeAiContentRequester youtubeAiContentRequester;
     private final YoutubeApiProperties youtubeApiProperties;
+    private final ConcurrentHashMap<String, CachedLiveVodFeed> liveVodFeedCache = new ConcurrentHashMap<>();
 
     @Value("${youtube.ai.batch-size:10}")
     private int aiBatchSize;
@@ -106,10 +112,21 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
     @Override
     public LiveVodFeedResponse getLiveVodFeed(String tab) {
         String normalizedTab = normalizeLiveTab(tab);
+        CachedLiveVodFeed cached = liveVodFeedCache.get(normalizedTab);
+        if (cached != null && !cached.isExpired()) {
+            return cached.feed();
+        }
         try {
-            return buildLiveVodFeedForTab(normalizedTab);
+            LiveVodFeedResponse feed = buildLiveVodFeedForTab(normalizedTab);
+            if (hasRenderableLiveFeed(feed)) {
+                liveVodFeedCache.put(normalizedTab, new CachedLiveVodFeed(feed, Instant.now()));
+            }
+            return feed;
         } catch (Exception e) {
             log.error("LIVE/VOD 피드 조회 실패 tab={}", normalizedTab, e);
+            if (cached != null) {
+                return cached.feed();
+            }
             return new LiveVodFeedResponse(
                     resolveFeedTitle(normalizedTab),
                     normalizedTab,
@@ -117,6 +134,24 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                     null,
                     null,
                     List.of());
+        }
+    }
+
+    private boolean hasRenderableLiveFeed(LiveVodFeedResponse feed) {
+        if (feed == null) {
+            return false;
+        }
+        if (feed.featuredVideoId() != null && !feed.featuredVideoId().isBlank()) {
+            return true;
+        }
+        return feed.sections() != null && feed.sections().stream()
+                .anyMatch(section -> section.items() != null && !section.items().isEmpty());
+    }
+
+    private record CachedLiveVodFeed(LiveVodFeedResponse feed, Instant cachedAt) {
+        boolean isExpired() {
+            return cachedAt == null
+                    || Duration.between(cachedAt, Instant.now()).compareTo(LIVE_VOD_FEED_CACHE_TTL) > 0;
         }
     }
 
@@ -139,34 +174,12 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
         return buildTopicOnlyFeed(normalizedTab, category);
     }
 
-    private LiveVodFeedResponse buildAllTabFeed(String category) {
-        Optional<YoutubeApiClient.FetchedYoutubeVideo> featuredLive = fetchFeaturedLiveSafe(category);
-        List<YoutubeApiClient.FetchedYoutubeVideo> fetched = fetchLiveSearchSafe(
-                "ALL", resolveLiveSearchQuery("ALL"));
-
-        if (featuredLive.isPresent()) {
-            YoutubeApiClient.FetchedYoutubeVideo featured = featuredLive.get();
-            List<LiveVodFeedResponse.LiveVodItemResponse> items = fetched.stream()
-                    .filter(v -> v.videoId() != null && !v.videoId().equals(featured.videoId()))
-                    .map(this::toLiveItem)
-                    .toList();
-            return buildLiveVodFeed(
-                    "ALL",
-                    featured.videoId(),
-                    featured.youtubeTitle(),
-                    featured.thumbnailUrl(),
-                    items,
-                    category,
-                    true);
-        }
-
-        return toLiveVodFeedFromFetched("ALL", fetched, category, true);
-    }
-
     private LiveVodFeedResponse buildLiveTabFeed(String category) {
         Optional<YoutubeApiClient.FetchedYoutubeVideo> featuredLive = fetchFeaturedLiveSafe(category);
-        List<YoutubeApiClient.FetchedYoutubeVideo> fetched = fetchLiveSearchSafe(
-                "LIVE", resolveLiveSearchQuery("LIVE"));
+        List<YoutubeApiClient.FetchedYoutubeVideo> fetched = fetchTopicChannelVideos("MARKET", category);
+        if (fetched.isEmpty()) {
+            fetched = fetchLiveSearchSafe("LIVE", resolveLiveSearchQuery("LIVE"));
+        }
 
         if (featuredLive.isPresent()) {
             YoutubeApiClient.FetchedYoutubeVideo featured = featuredLive.get();
@@ -187,6 +200,32 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
         return toLiveVodFeedFromFetched("LIVE", fetched, category, false);
     }
 
+    private LiveVodFeedResponse buildAllTabFeed(String category) {
+        Optional<YoutubeApiClient.FetchedYoutubeVideo> featuredLive = fetchFeaturedLiveSafe(category);
+        List<YoutubeApiClient.FetchedYoutubeVideo> fetched = fetchTopicChannelVideos("MARKET", category);
+        if (fetched.isEmpty()) {
+            fetched = fetchLiveSearchSafe("ALL", resolveLiveSearchQuery("ALL"));
+        }
+
+        if (featuredLive.isPresent()) {
+            YoutubeApiClient.FetchedYoutubeVideo featured = featuredLive.get();
+            List<LiveVodFeedResponse.LiveVodItemResponse> items = fetched.stream()
+                    .filter(v -> v.videoId() != null && !v.videoId().equals(featured.videoId()))
+                    .map(this::toLiveItem)
+                    .toList();
+            return buildLiveVodFeed(
+                    "ALL",
+                    featured.videoId(),
+                    featured.youtubeTitle(),
+                    featured.thumbnailUrl(),
+                    items,
+                    category,
+                    true);
+        }
+
+        return toLiveVodFeedFromFetched("ALL", fetched, category, true);
+    }
+
     private LiveVodFeedResponse buildChannelOnlyFeed(
             String tab,
             String category,
@@ -203,9 +242,34 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
     }
 
     private LiveVodFeedResponse buildTopicOnlyFeed(String tab, String category) {
-        List<YoutubeApiClient.FetchedYoutubeVideo> fetched = fetchLiveSearchSafe(
-                tab, resolveLiveSearchQuery(tab));
+        List<YoutubeApiClient.FetchedYoutubeVideo> fetched = fetchTopicChannelVideos(tab, category);
         return toLiveVodFeedFromFetched(tab, fetched, category, false);
+    }
+
+    private List<YoutubeApiClient.FetchedYoutubeVideo> fetchTopicChannelVideos(
+            String tab,
+            String category) {
+        LinkedHashMap<String, YoutubeApiClient.FetchedYoutubeVideo> merged = new LinkedHashMap<>();
+        for (YoutubeApiProperties.TopicChannelSource source
+                : youtubeApiProperties.resolveTopicChannels(tab)) {
+            try {
+                List<YoutubeApiClient.FetchedYoutubeVideo> videos = youtubeApiClient.fetchChannelUploads(
+                        source.getHandle(),
+                        category,
+                        Math.max(8, source.getMaxResults()),
+                        source.getMinDurationSeconds());
+                for (YoutubeApiClient.FetchedYoutubeVideo video : videos) {
+                    if (video == null || video.videoId() == null || video.videoId().isBlank()) {
+                        continue;
+                    }
+                    merged.putIfAbsent(video.videoId(), video);
+                }
+            } catch (Exception e) {
+                log.warn("주제 채널 업로드 조회 실패 tab={} handle={}: {}",
+                        tab, source.getHandle(), e.getMessage());
+            }
+        }
+        return new ArrayList<>(merged.values());
     }
 
     private Optional<YoutubeApiClient.FetchedYoutubeVideo> fetchFeaturedLiveSafe(String category) {

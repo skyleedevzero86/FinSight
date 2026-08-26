@@ -20,6 +20,7 @@ public class YoutubeApiProperties {
     private int moreMaxResults = 4;
     private int moreMinDurationSeconds = 180;
     private List<MoreChannelSource> moreChannels = new ArrayList<>();
+    private List<TopicChannelSource> topicChannels = new ArrayList<>();
     private String liveSearchQuery = "미국 증시 브리핑";
     private int liveMaxResults = 24;
 
@@ -117,6 +118,60 @@ public class YoutubeApiProperties {
 
     public void setMoreChannels(List<MoreChannelSource> moreChannels) {
         this.moreChannels = moreChannels;
+    }
+
+    public List<TopicChannelSource> getTopicChannels() {
+        return topicChannels;
+    }
+
+    public void setTopicChannels(List<TopicChannelSource> topicChannels) {
+        this.topicChannels = topicChannels;
+    }
+
+    public List<TopicChannelSource> resolveTopicChannels(String tab) {
+        List<TopicChannelSource> configured = topicChannels == null
+                ? List.of()
+                : topicChannels.stream()
+                .filter(channel -> channel != null
+                        && channel.getHandle() != null
+                        && !channel.getHandle().isBlank()
+                        && channel.matchesTab(tab))
+                .toList();
+        if (!configured.isEmpty()) {
+            return configured;
+        }
+        return defaultTopicChannels(tab);
+    }
+
+    private List<TopicChannelSource> defaultTopicChannels(String tab) {
+        if (tab == null || tab.isBlank()) {
+            return List.of();
+        }
+        String normalized = tab.trim().toUpperCase();
+        return switch (normalized) {
+            case "MARKET" -> List.of(
+                    topic("MARKET", "hankyung", 16),
+                    topic("MARKET", "money-multiple", 12),
+                    topic("MARKET", "gomhee", 12));
+            case "THEME" -> List.of(
+                    topic("THEME", "3protv", 16),
+                    topic("THEME", "money-multiple", 12),
+                    topic("THEME", "gomhee", 12));
+            case "MACRO" -> List.of(
+                    topic("MACRO", "syukaworld", 16),
+                    topic("MACRO", "hankyung", 12),
+                    topic("MACRO", "gomhee", 12));
+            default -> List.of();
+        };
+    }
+
+    private static TopicChannelSource topic(String tab, String handle, int maxResults) {
+        TopicChannelSource source = new TopicChannelSource();
+        source.setTab(tab);
+        source.setHandle(handle);
+        source.setMaxResults(maxResults);
+        source.setMinDurationSeconds(180);
+        return source;
     }
 
     public List<MoreChannelSource> resolveMoreChannels() {
@@ -252,6 +307,55 @@ public class YoutubeApiProperties {
                     .filter(value -> value != null && !value.isBlank())
                     .map(value -> value.trim().toUpperCase())
                     .anyMatch(value -> value.equals(normalized));
+        }
+    }
+
+    public static class TopicChannelSource {
+        private String tab = "";
+        private String handle = "";
+        private int maxResults = 16;
+        private int minDurationSeconds = 180;
+
+        public String getTab() {
+            return tab;
+        }
+
+        public void setTab(String tab) {
+            this.tab = tab;
+        }
+
+        public String getHandle() {
+            return handle;
+        }
+
+        public void setHandle(String handle) {
+            this.handle = handle;
+        }
+
+        public int getMaxResults() {
+            return maxResults;
+        }
+
+        public void setMaxResults(int maxResults) {
+            this.maxResults = maxResults;
+        }
+
+        public int getMinDurationSeconds() {
+            return minDurationSeconds;
+        }
+
+        public void setMinDurationSeconds(int minDurationSeconds) {
+            this.minDurationSeconds = minDurationSeconds;
+        }
+
+        public boolean matchesTab(String value) {
+            if (tab == null || tab.isBlank()) {
+                return false;
+            }
+            if (value == null || value.isBlank()) {
+                return false;
+            }
+            return tab.trim().equalsIgnoreCase(value.trim());
         }
     }
 }
