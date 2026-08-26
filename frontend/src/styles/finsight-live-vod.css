@@ -109,3 +109,27 @@
   font-weight: 700;
   color: #1e1e1e;
 }
+
+.finsight-live-vod-page .flv-watch-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.finsight-live-vod-page .flv-back-link {
+  width: fit-content;
+  font-size: 13px;
+  color: #666;
+  text-decoration: none;
+}
+
+.finsight-live-vod-page .flv-back-link:hover {
+  color: #111;
+  text-decoration: underline;
+}
+
+.finsight-live-vod-page .flv-watch-channel {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}

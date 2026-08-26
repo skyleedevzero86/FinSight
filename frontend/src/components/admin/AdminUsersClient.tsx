@@ -161,7 +161,7 @@ export default function AdminUsersClient() {
       <div className="mx-auto w-full max-w-6xl">
         <h1 className="mb-8 text-2xl font-bold text-gray-900">사용자 관리</h1>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm md:p-6">
+        <div className="rounded-lg border border-gray-200 bg-white p-4 md:p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
             <select
               aria-label="상태"
@@ -193,13 +193,18 @@ export default function AdminUsersClient() {
               }}
               placeholder="아이디, 이메일, 닉네임"
             />
-            <div className="flex gap-2">
-              <button type="button" className={buttonClass} disabled={loading} onClick={onSearch}>
-                확인
-              </button>
-              <button type="button" className={buttonClass} disabled={loading} onClick={onResetFilters}>
-                취소
-              </button>
+            <div className="flex flex-col items-end gap-2">
+              <p className="text-sm text-gray-600">
+                총 <span className="font-semibold text-black">{totalElements}</span>명
+              </p>
+              <div className="flex gap-2">
+                <button type="button" className={buttonClass} disabled={loading} onClick={onSearch}>
+                  확인
+                </button>
+                <button type="button" className={buttonClass} disabled={loading} onClick={onResetFilters}>
+                  취소
+                </button>
+              </div>
             </div>
           </div>
 
@@ -420,8 +425,7 @@ export default function AdminUsersClient() {
             </table>
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-            <p>총 {totalElements}명</p>
+          <div className="mt-4 flex items-center justify-end text-sm text-gray-600">
             <div className="flex gap-2">
               <button
                 type="button"
