@@ -89,8 +89,14 @@ function LiveVodBody({ tab }: { tab: string }) {
             <ul>
               {sec.items.map((it, itemIndex) => (
                 <li key={`${it.videoId}-${itemIndex}`}>
-                  <Link href={liveVodWatchHref(it, tab)}>
-                    <img src={it.thumbnailUrl} alt="" />
+                  <Link href={liveVodWatchHref(it, tab)} className="flv-thumb-link">
+                    <div className="flv-thumb-wrap">
+                      <img src={it.thumbnailUrl} alt="" />
+                      <div className="flv-thumb-meta" aria-label="참여 수">
+                        <span title="즐겨찾기">♡ {it.favoriteCount}</span>
+                        <span title="별점">★ {it.ratingCount}</span>
+                      </div>
+                    </div>
                     <div className="flv-vod-title">{it.title}</div>
                   </Link>
                 </li>

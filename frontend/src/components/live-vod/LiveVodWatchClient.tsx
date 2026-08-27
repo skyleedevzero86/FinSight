@@ -4,11 +4,14 @@ import Link from "next/link"
 import { Suspense, useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
+import LiveVodComments from "@/components/live-vod/LiveVodComments"
 import { toPrivacyEmbedUrl, YOUTUBE_EMBED_ALLOW } from "@/lib/liveVod"
+import { toggleLiveVodFavorite } from "@/lib/liveVodFavorites"
 import {
-  isLiveVodFavorite,
-  toggleLiveVodFavorite,
-} from "@/lib/liveVodFavorites"
+  fetchLiveVodEngagement,
+  rateLiveVodApi,
+  toggleLiveVodFavoriteApi,
+} from "@/lib/liveVodEngagement"
 
 function IconPrint({ className }: { className?: string }) {
   return (
@@ -21,14 +24,14 @@ function IconPrint({ className }: { className?: string }) {
   )
 }
 
-function IconStar({ filled, className }: { filled?: boolean; className?: string }) {
+function IconBookmark({ filled, className }: { filled?: boolean; className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" width="20" height="20" aria-hidden>
       <path
         fill={filled ? "currentColor" : "none"}
         stroke="currentColor"
         strokeWidth="1.8"
-        d="M12 3.6 14.7 9l6 .5-4.6 3.9 1.4 5.8L12 16.6 6.5 19.2l1.4-5.8L3.3 9.5l6-.5z"
+        d="M6 4.5h12v16l-6-3.2L6 20.5z"
       />
     </svg>
   )
@@ -62,18 +65,37 @@ function LiveVodWatchBody() {
         : `/live-vod?tab=${encodeURIComponent(tab)}`
   const embedSrc = toPrivacyEmbedUrl(videoId)
   const [favorited, setFavorited] = useState(false)
+  const [favoriteCount, setFavoriteCount] = useState(0)
+  const [ratingCount, setRatingCount] = useState(0)
+  const [avgRating, setAvgRating] = useState(0)
+  const [myStars, setMyStars] = useState(0)
   const [shareHint, setShareHint] = useState<string | null>(null)
 
+  const requireLogin = () => {
+    const returnTo =
+      typeof window !== "undefined"
+        ? `${window.location.pathname}${window.location.search}`
+        : "/live-vod"
+    router.push(`/login?next=${encodeURIComponent(returnTo)}`)
+  }
+
   useEffect(() => {
-    setFavorited(isLiveVodFavorite(videoId))
-    const sync = () => setFavorited(isLiveVodFavorite(videoId))
-    window.addEventListener("finsight:live-vod-favorites-changed", sync)
-    window.addEventListener("storage", sync)
+    if (!videoId) return
+    let cancelled = false
+    void fetchLiveVodEngagement(videoId)
+      .then((eng) => {
+        if (cancelled) return
+        setFavoriteCount(eng.favoriteCount)
+        setRatingCount(eng.ratingCount)
+        setAvgRating(eng.avgRating)
+        setFavorited(Boolean(eng.favorited))
+        setMyStars(eng.myStars ?? 0)
+      })
+      .catch(() => undefined)
     return () => {
-      window.removeEventListener("finsight:live-vod-favorites-changed", sync)
-      window.removeEventListener("storage", sync)
+      cancelled = true
     }
-  }, [videoId])
+  }, [videoId, user?.email])
 
   if (!videoId || !embedSrc) {
     return (
@@ -90,28 +112,47 @@ function LiveVodWatchBody() {
     )
   }
 
-  const onPrint = () => {
-    window.print()
-  }
-
-  const onToggleFavorite = () => {
+  const onToggleFavorite = async () => {
     if (!ready) return
     if (!user) {
-      const returnTo =
-        typeof window !== "undefined"
-          ? `${window.location.pathname}${window.location.search}`
-          : "/my/favorites"
-      router.push(`/login?next=${encodeURIComponent(returnTo)}`)
+      requireLogin()
       return
     }
-    const next = toggleLiveVodFavorite({
-      videoId,
-      title,
-      channelTitle: channel,
-      thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-      tab: tab === "FAVORITES" ? "ALL" : tab,
-    })
-    setFavorited(next)
+    try {
+      const result = await toggleLiveVodFavoriteApi(videoId)
+      setFavorited(result.favorited)
+      setFavoriteCount(result.favoriteCount)
+      const localOn = isStillLocalFavorite(videoId)
+      if (result.favorited !== localOn) {
+        toggleLiveVodFavorite({
+          videoId,
+          title,
+          channelTitle: channel,
+          thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          tab: tab === "FAVORITES" ? "ALL" : tab,
+        })
+      }
+    } catch {
+      setShareHint("즐겨찾기 저장에 실패했습니다")
+      window.setTimeout(() => setShareHint(null), 2000)
+    }
+  }
+
+  const onRate = async (stars: number) => {
+    if (!ready) return
+    if (!user) {
+      requireLogin()
+      return
+    }
+    try {
+      const result = await rateLiveVodApi(videoId, stars)
+      setMyStars(result.myStars)
+      setRatingCount(result.ratingCount)
+      setAvgRating(result.avgRating)
+    } catch {
+      setShareHint("별점 저장에 실패했습니다")
+      window.setTimeout(() => setShareHint(null), 2000)
+    }
   }
 
   const onShare = async () => {
@@ -142,21 +183,38 @@ function LiveVodWatchBody() {
           <div className="flv-watch-heading-row">
             <h1>{title}</h1>
             <div className="flv-watch-actions" role="toolbar" aria-label="영상 도구">
-              <button type="button" className="flv-icon-btn" onClick={onPrint} aria-label="인쇄">
+              <button type="button" className="flv-icon-btn" onClick={() => window.print()} aria-label="인쇄">
                 <IconPrint />
               </button>
               <button
                 type="button"
                 className={`flv-icon-btn${favorited ? " is-on" : ""}`}
-                onClick={onToggleFavorite}
+                onClick={() => void onToggleFavorite()}
                 aria-label={favorited ? "즐겨찾기 해제" : "즐겨찾기"}
                 aria-pressed={favorited}
               >
-                <IconStar filled={favorited} />
+                <IconBookmark filled={favorited} />
               </button>
               <button type="button" className="flv-icon-btn" onClick={() => void onShare()} aria-label="공유">
                 <IconShare />
               </button>
+            </div>
+          </div>
+          <div className="flv-engage-row">
+            <span>♡ 즐겨찾기 {favoriteCount}</span>
+            <span>★ 별점 {ratingCount} · 평균 {avgRating.toFixed(1)}</span>
+            <div className="flv-rate-stars" role="group" aria-label="별점 주기">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className={myStars >= n ? "is-on" : undefined}
+                  onClick={() => void onRate(n)}
+                  aria-label={`${n}점`}
+                >
+                  ★
+                </button>
+              ))}
             </div>
           </div>
           {shareHint ? <p className="flv-share-hint">{shareHint}</p> : null}
@@ -175,9 +233,22 @@ function LiveVodWatchBody() {
             </div>
           </div>
         </div>
+
+        <LiveVodComments videoId={videoId} />
       </div>
     </div>
   )
+}
+
+function isStillLocalFavorite(videoId: string): boolean {
+  try {
+    const raw = window.localStorage.getItem("finsight.liveVod.favorites.v1")
+    if (!raw) return false
+    const parsed = JSON.parse(raw) as Array<{ videoId?: string }>
+    return Array.isArray(parsed) && parsed.some((item) => item.videoId === videoId)
+  } catch {
+    return false
+  }
 }
 
 export default function LiveVodWatchClient() {
