@@ -233,7 +233,84 @@
   color: #666;
 }
 
-.finsight-live-vod-page .flv-favorites li {
+.finsight-live-vod-page .flv-history-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.finsight-live-vod-page .flv-history-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+}
+
+.finsight-live-vod-page .flv-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.finsight-live-vod-page .flv-history-heading h3 {
+  margin: 0;
+  padding-left: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e1e1e;
+}
+
+.finsight-live-vod-page .flv-history-section {
+  margin-top: 28px;
+  padding-top: 20px;
+}
+
+.finsight-live-vod-page .flv-history-section > ul {
+  margin-top: 0;
+}
+
+.finsight-live-vod-page .flv-hist-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #777;
+}
+
+.finsight-live-vod-page .flv-hist-channel {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finsight-live-vod-page .flv-hist-meta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #999;
+}
+
+.finsight-live-vod-page .flv-hist-clear {
+  border: 0;
+  background: transparent;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.finsight-live-vod-page .flv-hist-clear:hover {
+  color: #111;
+}
+
+.finsight-live-vod-page .flv-favorites li,
+.finsight-live-vod-page .flv-history-section li {
   position: relative;
 }
 
@@ -273,26 +350,6 @@
   margin-top: 4px;
   font-size: 13px;
   color: #555;
-}
-
-.finsight-live-vod-page .flv-rate-stars {
-  display: inline-flex;
-  gap: 2px;
-}
-
-.finsight-live-vod-page .flv-rate-stars button {
-  border: 0;
-  background: transparent;
-  color: #ccc;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0 2px;
-}
-
-.finsight-live-vod-page .flv-rate-stars button.is-on,
-.finsight-live-vod-page .flv-rate-stars button:hover {
-  color: #c45c00;
 }
 
 .finsight-live-vod-page .flv-comments {

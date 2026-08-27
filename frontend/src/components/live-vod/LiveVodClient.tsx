@@ -94,7 +94,7 @@ function LiveVodBody({ tab }: { tab: string }) {
                       <img src={it.thumbnailUrl} alt="" />
                       <div className="flv-thumb-meta" aria-label="참여 수">
                         <span title="즐겨찾기">♡ {it.favoriteCount}</span>
-                        <span title="별점">★ {it.ratingCount}</span>
+                        <span title="댓글">💬 {it.commentCount}</span>
                       </div>
                     </div>
                     <div className="flv-vod-title">{it.title}</div>
@@ -120,6 +120,21 @@ function LiveVodWithTab() {
             즐겨찾기는{" "}
             <Link href="/my/favorites" className="underline">
               나의 즐겨찾기
+            </Link>
+            에서 확인할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    )
+  }
+  if (tab === "HISTORY") {
+    return (
+      <div className="finsight-live-vod-page">
+        <div className="mx-auto max-w-[1240px] px-4 py-6 md:px-6 md:py-8">
+          <p className="text-sm text-gray-600">
+            시청 기록은{" "}
+            <Link href="/my/history" className="underline">
+              나의 히스토리
             </Link>
             에서 확인할 수 있습니다.
           </p>

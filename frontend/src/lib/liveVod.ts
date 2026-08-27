@@ -6,8 +6,7 @@ export type LiveVodItem = {
   embedUrl: string
   channelTitle: string | null
   favoriteCount: number
-  ratingCount: number
-  avgRating: number
+  commentCount: number
 }
 
 export type LiveVodSection = {
@@ -87,8 +86,7 @@ function parseItem(raw: unknown): LiveVodItem | null {
         : `https://www.youtube-nocookie.com/embed/${o.videoId}`,
     channelTitle: typeof o.channelTitle === "string" ? o.channelTitle : null,
     favoriteCount: typeof o.favoriteCount === "number" ? o.favoriteCount : Number(o.favoriteCount) || 0,
-    ratingCount: typeof o.ratingCount === "number" ? o.ratingCount : Number(o.ratingCount) || 0,
-    avgRating: typeof o.avgRating === "number" ? o.avgRating : Number(o.avgRating) || 0,
+    commentCount: typeof o.commentCount === "number" ? o.commentCount : Number(o.commentCount) || 0,
   }
 }
 

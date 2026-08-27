@@ -7,9 +7,9 @@ import { useAuthSession } from "@/components/AuthSessionProvider"
 import LiveVodComments from "@/components/live-vod/LiveVodComments"
 import { toPrivacyEmbedUrl, YOUTUBE_EMBED_ALLOW } from "@/lib/liveVod"
 import { toggleLiveVodFavorite } from "@/lib/liveVodFavorites"
+import { recordLiveVodWatch } from "@/lib/liveVodHistory"
 import {
   fetchLiveVodEngagement,
-  rateLiveVodApi,
   toggleLiveVodFavoriteApi,
 } from "@/lib/liveVodEngagement"
 
@@ -60,15 +60,15 @@ function LiveVodWatchBody() {
   const backHref =
     tab === "FAVORITES"
       ? "/my/favorites"
-      : tab === "ALL"
-        ? "/live-vod"
-        : `/live-vod?tab=${encodeURIComponent(tab)}`
+      : tab === "HISTORY"
+        ? "/my/history"
+        : tab === "ALL"
+          ? "/live-vod"
+          : `/live-vod?tab=${encodeURIComponent(tab)}`
   const embedSrc = toPrivacyEmbedUrl(videoId)
   const [favorited, setFavorited] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
-  const [ratingCount, setRatingCount] = useState(0)
-  const [avgRating, setAvgRating] = useState(0)
-  const [myStars, setMyStars] = useState(0)
+  const [commentCount, setCommentCount] = useState(0)
   const [shareHint, setShareHint] = useState<string | null>(null)
 
   const requireLogin = () => {
@@ -81,15 +81,25 @@ function LiveVodWatchBody() {
 
   useEffect(() => {
     if (!videoId) return
+    recordLiveVodWatch({
+      videoId,
+      title,
+      channelTitle: channel,
+      thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      tab: tab === "FAVORITES" || tab === "HISTORY" ? "ALL" : tab,
+      watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    })
+  }, [videoId, title, channel, tab])
+
+  useEffect(() => {
+    if (!videoId) return
     let cancelled = false
     void fetchLiveVodEngagement(videoId)
       .then((eng) => {
         if (cancelled) return
         setFavoriteCount(eng.favoriteCount)
-        setRatingCount(eng.ratingCount)
-        setAvgRating(eng.avgRating)
+        setCommentCount(eng.commentCount)
         setFavorited(Boolean(eng.favorited))
-        setMyStars(eng.myStars ?? 0)
       })
       .catch(() => undefined)
     return () => {
@@ -134,23 +144,6 @@ function LiveVodWatchBody() {
       }
     } catch {
       setShareHint("즐겨찾기 저장에 실패했습니다")
-      window.setTimeout(() => setShareHint(null), 2000)
-    }
-  }
-
-  const onRate = async (stars: number) => {
-    if (!ready) return
-    if (!user) {
-      requireLogin()
-      return
-    }
-    try {
-      const result = await rateLiveVodApi(videoId, stars)
-      setMyStars(result.myStars)
-      setRatingCount(result.ratingCount)
-      setAvgRating(result.avgRating)
-    } catch {
-      setShareHint("별점 저장에 실패했습니다")
       window.setTimeout(() => setShareHint(null), 2000)
     }
   }
@@ -202,20 +195,7 @@ function LiveVodWatchBody() {
           </div>
           <div className="flv-engage-row">
             <span>♡ 즐겨찾기 {favoriteCount}</span>
-            <span>★ 별점 {ratingCount} · 평균 {avgRating.toFixed(1)}</span>
-            <div className="flv-rate-stars" role="group" aria-label="별점 주기">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  className={myStars >= n ? "is-on" : undefined}
-                  onClick={() => void onRate(n)}
-                  aria-label={`${n}점`}
-                >
-                  ★
-                </button>
-              ))}
-            </div>
+            <span>💬 댓글 {commentCount}</span>
           </div>
           {shareHint ? <p className="flv-share-hint">{shareHint}</p> : null}
         </div>
@@ -234,7 +214,7 @@ function LiveVodWatchBody() {
           </div>
         </div>
 
-        <LiveVodComments videoId={videoId} />
+        <LiveVodComments videoId={videoId} onCountChange={setCommentCount} />
       </div>
     </div>
   )

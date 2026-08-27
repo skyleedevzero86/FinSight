@@ -4,13 +4,10 @@ import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodCom
 import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodCommentJpaRepository;
 import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodFavoriteJpaEntity;
 import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodFavoriteJpaRepository;
-import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodRatingJpaEntity;
-import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodRatingJpaRepository;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.CommentCreateRequest;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.CommentResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.EngagementSummary;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.FavoriteToggleResponse;
-import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.RatingResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.LiveVodFeedResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,15 +27,12 @@ import java.util.stream.Collectors;
 public class LiveVodEngagementService {
 
     private final LiveVodFavoriteJpaRepository favoriteRepository;
-    private final LiveVodRatingJpaRepository ratingRepository;
     private final LiveVodCommentJpaRepository commentRepository;
 
     public LiveVodEngagementService(
             LiveVodFavoriteJpaRepository favoriteRepository,
-            LiveVodRatingJpaRepository ratingRepository,
             LiveVodCommentJpaRepository commentRepository) {
         this.favoriteRepository = favoriteRepository;
-        this.ratingRepository = ratingRepository;
         this.commentRepository = commentRepository;
     }
 
@@ -88,21 +82,6 @@ public class LiveVodEngagementService {
             favoriteRepository.save(new LiveVodFavoriteJpaEntity(id, userEmail));
         }
         return new FavoriteToggleResponse(!exists, favoriteRepository.countByVideoId(id));
-    }
-
-    @Transactional
-    public RatingResponse rate(String videoId, String userEmail, int stars) {
-        String id = normalizeVideoId(videoId);
-        requireUser(userEmail);
-        if (stars < 1 || stars > 5) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "별점은 1~5만 가능합니다.");
-        }
-        LiveVodRatingJpaEntity entity = ratingRepository.findByUserEmailAndVideoId(userEmail, id)
-                .orElseGet(() -> new LiveVodRatingJpaEntity(id, userEmail, stars));
-        entity.setStars(stars);
-        ratingRepository.save(entity);
-        Double avg = ratingRepository.averageStarsByVideoId(id);
-        return new RatingResponse(stars, ratingRepository.countByVideoId(id), avg == null ? 0.0 : avg);
     }
 
     @Transactional(readOnly = true)
@@ -192,7 +171,7 @@ public class LiveVodEngagementService {
             Map<String, EngagementSummary> map) {
         EngagementSummary summary = map.getOrDefault(
                 item.videoId(),
-                new EngagementSummary(item.videoId(), 0, 0, 0.0, null, null));
+                new EngagementSummary(item.videoId(), 0, 0, null));
         return new LiveVodFeedResponse.LiveVodItemResponse(
                 item.videoId(),
                 item.title(),
@@ -201,8 +180,7 @@ public class LiveVodEngagementService {
                 item.embedUrl(),
                 item.channelTitle(),
                 summary.favoriteCount(),
-                summary.ratingCount(),
-                summary.avgRating());
+                summary.commentCount());
     }
 
     private Map<String, EngagementSummary> summarizeMany(Set<String> videoIds, String userEmail) {
@@ -211,30 +189,26 @@ public class LiveVodEngagementService {
             return result;
         }
         for (String id : videoIds) {
-            result.put(id, new EngagementSummary(id, 0, 0, 0.0, null, null));
+            result.put(id, new EngagementSummary(id, 0, 0, null));
         }
         for (Object[] row : favoriteRepository.countByVideoIds(videoIds)) {
             String id = (String) row[0];
             long count = ((Number) row[1]).longValue();
             EngagementSummary prev = result.get(id);
-            result.put(id, new EngagementSummary(id, count, prev.ratingCount(), prev.avgRating(), null, null));
+            result.put(id, new EngagementSummary(id, count, prev.commentCount(), null));
         }
-        for (Object[] row : ratingRepository.aggregateByVideoIds(videoIds)) {
+        for (Object[] row : commentRepository.countByVideoIds(videoIds)) {
             String id = (String) row[0];
             long count = ((Number) row[1]).longValue();
-            double avg = row[2] == null ? 0.0 : ((Number) row[2]).doubleValue();
             EngagementSummary prev = result.get(id);
-            result.put(id, new EngagementSummary(id, prev.favoriteCount(), count, avg, null, null));
+            result.put(id, new EngagementSummary(id, prev.favoriteCount(), count, null));
         }
         if (userEmail != null && !userEmail.isBlank()) {
             for (String id : videoIds) {
                 EngagementSummary prev = result.get(id);
                 Boolean favorited = favoriteRepository.existsByUserEmailAndVideoId(userEmail, id);
-                Integer myStars = ratingRepository.findByUserEmailAndVideoId(userEmail, id)
-                        .map(LiveVodRatingJpaEntity::getStars)
-                        .orElse(null);
                 result.put(id, new EngagementSummary(
-                        id, prev.favoriteCount(), prev.ratingCount(), prev.avgRating(), favorited, myStars));
+                        id, prev.favoriteCount(), prev.commentCount(), favorited));
             }
         }
         return result;
@@ -242,23 +216,12 @@ public class LiveVodEngagementService {
 
     private EngagementSummary summarizeOne(String videoId, String userEmail) {
         long favoriteCount = favoriteRepository.countByVideoId(videoId);
-        long ratingCount = ratingRepository.countByVideoId(videoId);
-        Double avg = ratingRepository.averageStarsByVideoId(videoId);
+        long commentCount = commentRepository.countByVideoId(videoId);
         Boolean favorited = null;
-        Integer myStars = null;
         if (userEmail != null && !userEmail.isBlank()) {
             favorited = favoriteRepository.existsByUserEmailAndVideoId(userEmail, videoId);
-            myStars = ratingRepository.findByUserEmailAndVideoId(userEmail, videoId)
-                    .map(LiveVodRatingJpaEntity::getStars)
-                    .orElse(null);
         }
-        return new EngagementSummary(
-                videoId,
-                favoriteCount,
-                ratingCount,
-                avg == null ? 0.0 : avg,
-                favorited,
-                myStars);
+        return new EngagementSummary(videoId, favoriteCount, commentCount, favorited);
     }
 
     private static String normalizeVideoId(String videoId) {

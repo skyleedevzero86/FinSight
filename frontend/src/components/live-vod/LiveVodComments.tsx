@@ -10,7 +10,17 @@ import {
   type LiveVodComment,
 } from "@/lib/liveVodEngagement"
 
-export default function LiveVodComments({ videoId }: { videoId: string }) {
+function countComments(list: LiveVodComment[]): number {
+  return list.reduce((n, c) => n + 1 + c.replies.length, 0)
+}
+
+export default function LiveVodComments({
+  videoId,
+  onCountChange,
+}: {
+  videoId: string
+  onCountChange?: (count: number) => void
+}) {
   const router = useRouter()
   const { user, ready } = useAuthSession()
   const [comments, setComments] = useState<LiveVodComment[]>([])
@@ -26,6 +36,7 @@ export default function LiveVodComments({ videoId }: { videoId: string }) {
     try {
       const list = await fetchLiveVodComments(videoId)
       setComments(list)
+      onCountChange?.(countComments(list))
     } catch (e) {
       setError(e instanceof Error ? e.message : "댓글을 불러오지 못했습니다.")
     } finally {
@@ -62,7 +73,7 @@ export default function LiveVodComments({ videoId }: { videoId: string }) {
 
   return (
     <section className="flv-comments">
-      <h2>댓글 {comments.reduce((n, c) => n + 1 + c.replies.length, 0)}</h2>
+      <h2>댓글 {countComments(comments)}</h2>
 
       <form className="flv-comment-form" onSubmit={(e) => void onSubmit(e)}>
         {replyTo ? (

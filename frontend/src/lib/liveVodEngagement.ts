@@ -3,10 +3,8 @@ import { authHeadersJson } from "@/lib/finsightToken"
 export type LiveVodEngagement = {
   videoId: string
   favoriteCount: number
-  ratingCount: number
-  avgRating: number
+  commentCount: number
   favorited: boolean | null
-  myStars: number | null
 }
 
 export type LiveVodComment = {
@@ -42,10 +40,8 @@ export async function fetchLiveVodEngagement(videoId: string): Promise<LiveVodEn
   return {
     videoId: typeof data.videoId === "string" ? data.videoId : videoId,
     favoriteCount: Number(data.favoriteCount) || 0,
-    ratingCount: Number(data.ratingCount) || 0,
-    avgRating: Number(data.avgRating) || 0,
+    commentCount: Number(data.commentCount) || 0,
     favorited: typeof data.favorited === "boolean" ? data.favorited : null,
-    myStars: typeof data.myStars === "number" ? data.myStars : null,
   }
 }
 
@@ -60,23 +56,6 @@ export async function toggleLiveVodFavoriteApi(
   return {
     favorited: Boolean(data.favorited),
     favoriteCount: Number(data.favoriteCount) || 0,
-  }
-}
-
-export async function rateLiveVodApi(
-  videoId: string,
-  stars: number,
-): Promise<{ myStars: number; ratingCount: number; avgRating: number }> {
-  const res = await fetch(`/api/v1/media/live-vod/${encodeURIComponent(videoId)}/rating`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...authHeadersJson() },
-    body: JSON.stringify({ stars }),
-  })
-  const data = await readApiData<Record<string, unknown>>(res)
-  return {
-    myStars: Number(data.myStars) || stars,
-    ratingCount: Number(data.ratingCount) || 0,
-    avgRating: Number(data.avgRating) || 0,
   }
 }
 

@@ -45,9 +45,14 @@ export default function MyFavoritesClient() {
   return (
     <div className="finsight-live-vod-page">
       <div className="mx-auto max-w-[1240px] px-4 py-6 md:px-6 md:py-8">
-        <div className="flv-toolbar">
-          <h1>나의 즐겨찾기</h1>
-          <p className="flv-fav-desc">저장한 LIVE/VOD 영상 목록입니다.</p>
+        <div className="flv-toolbar flv-history-toolbar">
+          <div>
+            <h1>나의 즐겨찾기</h1>
+            <p className="flv-fav-desc">저장한 LIVE/VOD 영상 목록입니다. 썸네일을 누르면 다시 시청할 수 있습니다.</p>
+          </div>
+          <Link href="/my/history" className="flv-back-link">
+            시청 기록 보기
+          </Link>
         </div>
 
         {items.length === 0 ? (
@@ -68,9 +73,15 @@ export default function MyFavoritesClient() {
                       },
                       "FAVORITES",
                     )}
+                    className="flv-thumb-link"
                   >
-                    <img src={it.thumbnailUrl} alt="" />
+                    <div className="flv-thumb-wrap">
+                      <img src={it.thumbnailUrl} alt="" />
+                    </div>
                     <div className="flv-vod-title">{it.title}</div>
+                    {it.channelTitle ? (
+                      <div className="flv-hist-channel">{it.channelTitle}</div>
+                    ) : null}
                   </Link>
                   <button
                     type="button"

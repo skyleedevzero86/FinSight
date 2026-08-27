@@ -10,26 +10,14 @@ public final class LiveVodEngagementDtos {
     public record EngagementSummary(
             String videoId,
             long favoriteCount,
-            long ratingCount,
-            double avgRating,
-            Boolean favorited,
-            Integer myStars
+            long commentCount,
+            Boolean favorited
     ) {
     }
 
     public record FavoriteToggleResponse(
             boolean favorited,
             long favoriteCount
-    ) {
-    }
-
-    public record RatingRequest(int stars) {
-    }
-
-    public record RatingResponse(
-            int myStars,
-            long ratingCount,
-            double avgRating
     ) {
     }
 

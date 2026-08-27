@@ -7,17 +7,13 @@ import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDt
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.CommentResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.EngagementSummary;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.FavoriteToggleResponse;
-import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.RatingRequest;
-import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.RatingResponse;
 import com.sleekydz86.finsight.core.media.livevod.service.LiveVodEngagementService;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.YoutubeMediaQueryUseCase;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.LiveVodFeedResponse;
-import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -64,17 +60,6 @@ public class LiveVodEngagementController {
         return ResponseEntity.ok(ApiResponse.success(
                 liveVodEngagementService.toggleFavorite(videoId, currentUser.getEmail()),
                 "즐겨찾기를 반영했습니다."));
-    }
-
-    @PutMapping("/live-vod/{videoId}/rating")
-    public ResponseEntity<ApiResponse<RatingResponse>> rate(
-            @PathVariable String videoId,
-            @Valid @RequestBody RatingRequest request,
-            @CurrentUser AuthenticatedUser currentUser) {
-        int stars = request == null ? 0 : request.stars();
-        return ResponseEntity.ok(ApiResponse.success(
-                liveVodEngagementService.rate(videoId, currentUser.getEmail(), stars),
-                "별점을 저장했습니다."));
     }
 
     @GetMapping("/live-vod/{videoId}/comments")
