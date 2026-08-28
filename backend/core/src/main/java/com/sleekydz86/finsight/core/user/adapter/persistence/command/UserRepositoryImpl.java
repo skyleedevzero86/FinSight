@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,12 +33,87 @@ public class UserRepositoryImpl implements UserPersistencePort {
     @Override
     public User save(User user) {
         try {
+            if (user.getId() != null) {
+                Optional<UserJpaEntity> existingOpt = userJpaRepository.findById(user.getId());
+                if (existingOpt.isPresent()) {
+                    UserJpaEntity existing = existingOpt.get();
+                    UserJpaEntity mapped = userJpaMapper.toEntity(user);
+                    copyUpdatableFields(mapped, existing);
+                    UserJpaEntity savedEntity = userJpaRepository.save(existing);
+                    return userJpaMapper.toDomain(savedEntity);
+                }
+            }
             UserJpaEntity entity = userJpaMapper.toEntity(user);
             UserJpaEntity savedEntity = userJpaRepository.save(entity);
             return userJpaMapper.toDomain(savedEntity);
         } catch (Exception e) {
             log.error("사용자 저장 실패", e);
             throw new RuntimeException("사용자 저장에 실패했습니다.", e);
+        }
+    }
+
+    private void copyUpdatableFields(UserJpaEntity source, UserJpaEntity target) {
+        target.setUsername(source.getUsername());
+        target.setPassword(source.getPassword());
+        target.setNickname(source.getNickname());
+        target.setEmail(source.getEmail());
+        target.setApiKey(source.getApiKey());
+        target.setAuthProvider(source.getAuthProvider());
+        target.setNaverId(source.getNaverId());
+        target.setGoogleId(source.getGoogleId());
+        target.setKakaoUserId(source.getKakaoUserId());
+        target.setKakaoAccessToken(source.getKakaoAccessToken());
+        target.setKakaoTokenExpiresAt(source.getKakaoTokenExpiresAt());
+        target.setKakaoRefreshToken(source.getKakaoRefreshToken());
+        target.setKakaoNotificationEnabled(source.getKakaoNotificationEnabled());
+        target.setTelegramUserId(source.getTelegramUserId());
+        target.setTelegramChatId(source.getTelegramChatId());
+        target.setTelegramNotificationEnabled(source.getTelegramNotificationEnabled());
+        target.setSlackUserId(source.getSlackUserId());
+        target.setSlackChannelId(source.getSlackChannelId());
+        target.setSlackNotificationEnabled(source.getSlackNotificationEnabled());
+        target.setDiscordUserId(source.getDiscordUserId());
+        target.setDiscordNotificationEnabled(source.getDiscordNotificationEnabled());
+        target.setLineUserId(source.getLineUserId());
+        target.setLineNotificationEnabled(source.getLineNotificationEnabled());
+        target.setWebhookUrl(source.getWebhookUrl());
+        target.setWebhookNotificationEnabled(source.getWebhookNotificationEnabled());
+        target.setPushNotificationEnabled(source.getPushNotificationEnabled());
+        target.setEmailNotificationEnabled(source.getEmailNotificationEnabled());
+        target.setSmsNotificationEnabled(source.getSmsNotificationEnabled());
+        target.setProfileImageUrl(source.getProfileImageUrl());
+        target.setPhoneNumber(source.getPhoneNumber());
+        target.setStatus(source.getStatus());
+        target.setRole(source.getRole());
+        target.setLastLoginAt(source.getLastLoginAt());
+        target.setLoginFailCount(source.getLoginFailCount());
+        target.setAccountLockedAt(source.getAccountLockedAt());
+        target.setApprovedBy(source.getApprovedBy());
+        target.setApprovedAt(source.getApprovedAt());
+        target.setPasswordChangedAt(source.getPasswordChangedAt());
+        target.setPasswordChangeCount(source.getPasswordChangeCount());
+        target.setLastPasswordChangeDate(source.getLastPasswordChangeDate());
+        target.setPasswordExpiryNotifiedAt(source.getPasswordExpiryNotifiedAt());
+        target.setOtpSecret(source.getOtpSecret());
+        target.setOtpEnabled(source.getOtpEnabled());
+        target.setOtpVerified(source.getOtpVerified());
+
+        if (target.getWatchlist() == null) {
+            target.setWatchlist(new ArrayList<>());
+        } else {
+            target.getWatchlist().clear();
+        }
+        if (source.getWatchlist() != null) {
+            target.getWatchlist().addAll(source.getWatchlist());
+        }
+
+        if (target.getNotificationPreferences() == null) {
+            target.setNotificationPreferences(new ArrayList<>());
+        } else {
+            target.getNotificationPreferences().clear();
+        }
+        if (source.getNotificationPreferences() != null) {
+            target.getNotificationPreferences().addAll(source.getNotificationPreferences());
         }
     }
 
@@ -305,14 +381,22 @@ public class UserRepositoryImpl implements UserPersistencePort {
 
     @Override
     public Page<User> searchUsers(UserStatus status, String keyword, Pageable pageable) {
-        try {
-            String trimmed = keyword == null ? "" : keyword.trim();
-            return userJpaRepository.searchUsers(status, trimmed, pageable)
-                    .map(userJpaMapper::toDomain);
-        } catch (Exception e) {
-            log.error("사용자 검색 실패: status={}, keyword={}, error={}", status, keyword, e.getMessage());
-            return Page.empty();
+        String trimmed = keyword == null ? null : keyword.trim();
+        if (trimmed != null && trimmed.isEmpty()) {
+            trimmed = null;
         }
+
+        Page<UserJpaEntity> page;
+        if (status == null && trimmed == null) {
+            page = userJpaRepository.findAll(pageable);
+        } else if (status != null && trimmed == null) {
+            page = userJpaRepository.findByStatus(status, pageable);
+        } else if (status == null) {
+            page = userJpaRepository.searchByKeyword(trimmed, pageable);
+        } else {
+            page = userJpaRepository.searchByStatusAndKeyword(status, trimmed, pageable);
+        }
+        return page.map(userJpaMapper::toDomain);
     }
 
 }

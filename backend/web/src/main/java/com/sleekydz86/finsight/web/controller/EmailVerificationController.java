@@ -4,11 +4,13 @@ import com.sleekydz86.finsight.core.auth.email.EmailVerificationService;
 import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationChallengeResponse;
 import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationConfirmRequest;
 import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationConfirmResponse;
+import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationDisputeResponse;
 import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationIssueResponse;
 import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationRequestDto;
 import com.sleekydz86.finsight.core.auth.email.dto.EmailVerificationResetPasswordRequest;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.exception.EmailVerificationException;
+import com.sleekydz86.finsight.core.global.exception.InvalidPasswordException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -45,7 +47,7 @@ public class EmailVerificationController {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("인증 메일 발송에 실패했습니다: " + rootMessage(e)));
+                    .body(ApiResponse.error("인증 메일 발송에 실패했습니다. 잠시 후 다시 시도해 주세요."));
         }
     }
 
@@ -83,17 +85,29 @@ public class EmailVerificationController {
             return ResponseEntity.ok(ApiResponse.success(null, "비밀번호가 변경되었습니다."));
         } catch (EmailVerificationException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        } catch (InvalidPasswordException e) {
+            String detail = e.getValidationErrors() == null || e.getValidationErrors().isEmpty()
+                    ? e.getMessage()
+                    : String.join(" ", e.getValidationErrors());
+            return ResponseEntity.badRequest().body(ApiResponse.error(detail));
         } catch (Exception e) {
             return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("비밀번호 변경에 실패했습니다: " + rootMessage(e)));
+                    .body(ApiResponse.error("비밀번호 변경에 실패했습니다. 잠시 후 다시 시도해 주세요."));
         }
     }
 
-    private String rootMessage(Throwable error) {
-        Throwable current = error;
-        while (current.getCause() != null && current.getCause() != current) {
-            current = current.getCause();
+    @Operation(summary = "요청하지 않은 인증 신고 · 계정 정지")
+    @PostMapping("/dispute")
+    public ResponseEntity<ApiResponse<EmailVerificationDisputeResponse>> dispute(
+            @RequestParam("token") String token) {
+        try {
+            EmailVerificationDisputeResponse response = emailVerificationService.dispute(token);
+            return ResponseEntity.ok(ApiResponse.success(response, response.getMessage()));
+        } catch (EmailVerificationException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("요청 처리에 실패했습니다. 잠시 후 다시 시도해 주세요."));
         }
-        return current.getMessage() == null ? "알 수 없는 오류" : current.getMessage();
     }
 }

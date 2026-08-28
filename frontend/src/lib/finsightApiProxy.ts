@@ -1,4 +1,4 @@
-const DEFAULT_PROXY_TIMEOUT_MS = 15_000
+const DEFAULT_PROXY_TIMEOUT_MS = 30_000
 const DEFAULT_API_BASE_URL = "http://localhost:8080"
 
 export function getFinSightBaseUrl(): string | null {
@@ -164,7 +164,7 @@ export async function proxyJsonToFinSight(
 export async function mirrorRequestToFinSight(
   req: Request,
   backendPathAndQuery: string,
-  init?: { body?: BodyInit | null },
+  init?: { body?: BodyInit | null; timeoutMs?: number },
 ): Promise<Response> {
   try {
     const base = getFinSightBaseUrl()
@@ -191,7 +191,7 @@ export async function mirrorRequestToFinSight(
 
     const target = `${base}${backendPathAndQuery.startsWith("/") ? "" : "/"}${backendPathAndQuery}`
     const controller = new AbortController()
-    const timeoutMs = getProxyTimeoutMs()
+    const timeoutMs = init?.timeoutMs ?? getProxyTimeoutMs()
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
     let upstream: Response
@@ -207,6 +207,7 @@ export async function mirrorRequestToFinSight(
         headers,
         body: body === "" ? undefined : body,
         signal: controller.signal,
+        cache: "no-store",
       })
     } catch (err) {
       const aborted = isAbortError(err)
@@ -233,12 +234,15 @@ export async function mirrorRequestToFinSight(
       headers: copyUpstreamHeaders(upstream),
     })
   } catch (err) {
+    if (isAbortError(err)) {
+      return upstreamFailureResponse(err, true)
+    }
     if (process.env.NODE_ENV === "development") {
       console.error("백엔드 요청 처리 중 오류가 발생했습니다.", err)
     }
     return jsonResponse(
-      500,
-      "요청을 처리하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      503,
+      "백엔드 서버에 연결할 수 없습니다. 서버 상태를 확인한 뒤 잠시 후 다시 시도해 주세요.",
     )
   }
 }

@@ -4,12 +4,17 @@ import com.sleekydz86.finsight.core.auth.dto.AccountRecoveryRequest;
 import com.sleekydz86.finsight.core.auth.dto.AccountRecoveryResponse;
 import com.sleekydz86.finsight.core.auth.dto.AccountRecoveryVerifyRequest;
 import com.sleekydz86.finsight.core.auth.dto.PasswordResetRequest;
+import com.sleekydz86.finsight.core.auth.email.ClientRequestMetaResolver;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
 import com.sleekydz86.finsight.core.global.exception.UserNotFoundException;
+import com.sleekydz86.finsight.core.notification.domain.EmailMailPurpose;
+import com.sleekydz86.finsight.core.notification.domain.EmailSendContext;
+import com.sleekydz86.finsight.core.notification.domain.EmailSendContexts;
 import com.sleekydz86.finsight.core.notification.service.EmailNotificationService;
 import com.sleekydz86.finsight.core.notification.service.SmsNotificationService;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -18,8 +23,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -34,6 +37,7 @@ public class AccountRecoveryService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtil jwtTokenUtil;
     private final RedisTemplate<String, String> redisTemplate;
+    private final ClientRequestMetaResolver requestMetaResolver;
 
     @Value("${app.recovery.token.expiration:1800}")
     private long recoveryTokenExpiration;
@@ -45,7 +49,8 @@ public class AccountRecoveryService {
     private static final String RECOVERY_OTP_PREFIX = "recovery:otp:";
 
     @Transactional
-    public AccountRecoveryResponse initiateAccountRecovery(AccountRecoveryRequest request) {
+    public AccountRecoveryResponse initiateAccountRecovery(
+            AccountRecoveryRequest request, HttpServletRequest httpRequest) {
         try {
             User user = userService.findByEmailAndUsername(request.getEmail(), request.getUsername())
                     .orElseThrow(() -> new UserNotFoundException("해당 이메일과 사용자명으로 등록된 계정을 찾을 수 없습니다."));
@@ -55,7 +60,7 @@ public class AccountRecoveryService {
 
             redisTemplate.opsForValue().set(otpKey, otpCode, otpExpiration, TimeUnit.SECONDS);
 
-            sendRecoveryOtp(user, otpCode);
+            sendRecoveryOtp(user, otpCode, buildAnonymousContext(user, httpRequest, EmailMailPurpose.ACCOUNT_RECOVERY_OTP));
 
             log.info("계정 복구 OTP 발송 완료 - 사용자: {}, 이메일: {}", user.getUsername(), user.getEmail());
 
@@ -111,7 +116,7 @@ public class AccountRecoveryService {
     }
 
     @Transactional
-    public AccountRecoveryResponse resetPassword(PasswordResetRequest request) {
+    public AccountRecoveryResponse resetPassword(PasswordResetRequest request, HttpServletRequest httpRequest) {
         try {
             String userInfo = jwtTokenUtil.getUserInfoFromRecoveryToken(request.getRecoveryToken());
             String[] parts = userInfo.split(":");
@@ -135,7 +140,9 @@ public class AccountRecoveryService {
             userService.updatePassword(user.getId(), request.getNewPassword());
             redisTemplate.delete(tokenKey);
 
-            sendPasswordResetConfirmation(user);
+            sendPasswordResetConfirmation(
+                    user,
+                    buildAnonymousContext(user, httpRequest, EmailMailPurpose.PASSWORD_RESET_CONFIRMATION));
 
             log.info("비밀번호 재설정 완료 - 사용자: {}, 이메일: {}", user.getUsername(), user.getEmail());
 
@@ -150,12 +157,12 @@ public class AccountRecoveryService {
         }
     }
 
-    private void sendRecoveryOtp(User user, String otpCode) {
+    private void sendRecoveryOtp(User user, String otpCode, EmailSendContext context) {
         try {
             String emailSubject = "[FinSight] 계정 복구를 위한 OTP 코드";
             String emailContent = createRecoveryOtpEmailContent(user, otpCode);
 
-            emailNotificationService.sendRecoveryOtpEmail(user, emailSubject, emailContent);
+            emailNotificationService.sendRecoveryOtpEmail(user, emailSubject, emailContent, context);
 
             if (user.getPhoneNumber() != null && !user.getPhoneNumber().isEmpty()) {
                 String smsContent = String.format("[FinSight] 계정 복구 OTP: %s (5분간 유효)", otpCode);
@@ -167,12 +174,12 @@ public class AccountRecoveryService {
         }
     }
 
-    private void sendPasswordResetConfirmation(User user) {
+    private void sendPasswordResetConfirmation(User user, EmailSendContext context) {
         try {
             String emailSubject = "[FinSight] 비밀번호 재설정 완료 안내";
             String emailContent = createPasswordResetConfirmationEmailContent(user);
 
-            emailNotificationService.sendPasswordResetConfirmationEmail(user, emailSubject, emailContent);
+            emailNotificationService.sendPasswordResetConfirmationEmail(user, emailSubject, emailContent, context);
 
             if (user.getPhoneNumber() != null && !user.getPhoneNumber().isEmpty()) {
                 String smsContent = "[FinSight] 비밀번호가 성공적으로 재설정되었습니다. 보안을 위해 로그인 후 비밀번호를 변경해주세요.";
@@ -182,6 +189,18 @@ public class AccountRecoveryService {
         } catch (Exception e) {
             log.error("비밀번호 재설정 확인 발송 실패 - 사용자: {}, 오류: {}", user.getUsername(), e.getMessage(), e);
         }
+    }
+
+    private EmailSendContext buildAnonymousContext(User user, HttpServletRequest httpRequest, EmailMailPurpose purpose) {
+        String ip = null;
+        String location = null;
+        String userAgent = null;
+        if (httpRequest != null) {
+            ip = requestMetaResolver.resolveClientIp(httpRequest);
+            location = requestMetaResolver.resolveLocation(ip);
+            userAgent = requestMetaResolver.resolveUserAgent(httpRequest);
+        }
+        return EmailSendContexts.anonymousForUser(purpose, user.getId(), ip, location, userAgent);
     }
 
     private String createRecoveryOtpEmailContent(User user, String otpCode) {

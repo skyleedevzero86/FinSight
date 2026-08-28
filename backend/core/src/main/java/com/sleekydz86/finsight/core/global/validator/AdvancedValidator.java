@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
 public class AdvancedValidator {
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
-    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
     private static final Pattern URL_PATTERN = Pattern.compile("^https?://[\\w\\-]+(\\.[\\w\\-]+)+([\\w\\-\\.,@?^=%&:/~\\+#]*[\\w\\-\\@?^=%&/~\\+#])?$");
 
     public List<String> validateEmail(String email) {
@@ -37,7 +37,7 @@ public class AdvancedValidator {
         } else if (password.length() > 128) {
             errors.add("비밀번호는 128자를 초과할 수 없습니다.");
         } else if (!PASSWORD_PATTERN.matcher(password).matches()) {
-            errors.add("비밀번호는 대문자, 소문자, 숫자, 특수문자를 포함해야 합니다.");
+            errors.add("비밀번호는 영문·숫자·특수문자를 포함해야 합니다.");
         }
 
         return errors;

@@ -33,8 +33,17 @@ export type EmailVerificationConfirm = {
   maskedEmail: string
   email?: string | null
   username?: string | null
+  maskedUsername?: string | null
   redirectTo?: string
   canResetPassword?: boolean
+}
+
+export type EmailVerificationDispute = {
+  disputed: boolean
+  accountSuspended: boolean
+  purpose?: EmailVerificationPurpose
+  purposeLabel?: string
+  message: string
 }
 
 const SIGNUP_DRAFT_KEY = "finsight.signup.draft"
@@ -127,13 +136,12 @@ export async function confirmEmailVerification(
 
 export async function resetPasswordAfterVerification(
   token: string,
-  username: string,
   password: string,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const res = await fetch("/api/v1/auth/email/reset-password", {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({ token, username: username.trim(), password }),
+    body: JSON.stringify({ token, password }),
   })
   const payload = await readJson(res)
   if (!res.ok) {
@@ -143,6 +151,29 @@ export async function resetPasswordAfterVerification(
     }
   }
   return { ok: true }
+}
+
+export async function disputeEmailVerification(
+  token: string,
+): Promise<
+  | { ok: true; data: EmailVerificationDispute }
+  | { ok: false; message: string }
+> {
+  const res = await fetch(
+    `/api/v1/auth/email/dispute?token=${encodeURIComponent(token)}`,
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    },
+  )
+  const payload = (await readJson(res)) as ApiEnvelope<EmailVerificationDispute> | null
+  if (!res.ok || !payload?.data?.disputed) {
+    return {
+      ok: false,
+      message: readMessage(payload) ?? "요청 처리에 실패했습니다.",
+    }
+  }
+  return { ok: true, data: payload.data }
 }
 
 export type SignupDraft = {

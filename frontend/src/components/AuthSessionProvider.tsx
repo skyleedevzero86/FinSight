@@ -14,7 +14,7 @@ import {
   authHeadersJson,
   clearAuthSession,
   FINSIGHT_AUTH_CHANGED_EVENT,
-  readAccessToken,
+  readUsableAccessToken,
 } from "@/lib/finsightToken"
 
 type AuthSessionValue = {
@@ -47,7 +47,7 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
   const [hasToken, setHasToken] = useState(false)
 
   const refresh = useCallback(async () => {
-    const token = readAccessToken()
+    const token = readUsableAccessToken()
     setHasToken(Boolean(token))
     if (!token) {
       setUser(null)
@@ -56,13 +56,13 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
     }
     const next = await fetchCurrentUser()
     setUser(next)
-    setHasToken(Boolean(next) || Boolean(readAccessToken()))
+    setHasToken(Boolean(next) || Boolean(readUsableAccessToken()))
     setReady(true)
   }, [])
 
   const logout = useCallback(async () => {
     try {
-      if (readAccessToken()) {
+      if (readUsableAccessToken()) {
         await fetch("/api/v1/auth/logout", {
           method: "POST",
           headers: { ...authHeadersJson(), "Content-Type": "application/json" },

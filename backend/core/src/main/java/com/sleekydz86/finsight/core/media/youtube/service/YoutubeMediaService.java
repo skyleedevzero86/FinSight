@@ -9,6 +9,7 @@ import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 import com.sleekydz86.finsight.core.global.exception.BoardNotFoundException;
 import com.sleekydz86.finsight.core.media.youtube.adapter.requester.YoutubeAiContentRequester;
 import com.sleekydz86.finsight.core.media.youtube.adapter.requester.YoutubeApiClient;
+import com.sleekydz86.finsight.core.media.youtube.adapter.requester.properties.YoutubeApiProperties;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeGeneratedContent;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportSource;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportSourceType;
@@ -17,6 +18,7 @@ import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeVideoMeta;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.YoutubeMediaAdminUseCase;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.YoutubeMediaImportUseCase;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.YoutubeMediaQueryUseCase;
+import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.LiveVodFeedResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeAdminVideoSearchRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeAiEnrichmentSummaryResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeImportSourceCreateRequest;
@@ -39,13 +41,17 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -59,12 +65,15 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
     private static final int TITLE_MAX_LENGTH = 200;
     private static final int CONTENT_MAX_LENGTH = 10000;
     private static final int PREVIEW_MAX_LENGTH = 180;
+    private static final Duration LIVE_VOD_FEED_CACHE_TTL = Duration.ofMinutes(20);
 
     private final YoutubeVideoMetaPersistencePort youtubeVideoMetaPersistencePort;
     private final YoutubeImportSourcePersistencePort youtubeImportSourcePersistencePort;
     private final BoardPersistencePort boardPersistencePort;
     private final YoutubeApiClient youtubeApiClient;
     private final YoutubeAiContentRequester youtubeAiContentRequester;
+    private final YoutubeApiProperties youtubeApiProperties;
+    private final ConcurrentHashMap<String, CachedLiveVodFeed> liveVodFeedCache = new ConcurrentHashMap<>();
 
     @Value("${youtube.ai.batch-size:10}")
     private int aiBatchSize;
@@ -74,12 +83,14 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
             YoutubeImportSourcePersistencePort youtubeImportSourcePersistencePort,
             BoardPersistencePort boardPersistencePort,
             YoutubeApiClient youtubeApiClient,
-            YoutubeAiContentRequester youtubeAiContentRequester) {
+            YoutubeAiContentRequester youtubeAiContentRequester,
+            YoutubeApiProperties youtubeApiProperties) {
         this.youtubeVideoMetaPersistencePort = youtubeVideoMetaPersistencePort;
         this.youtubeImportSourcePersistencePort = youtubeImportSourcePersistencePort;
         this.boardPersistencePort = boardPersistencePort;
         this.youtubeApiClient = youtubeApiClient;
         this.youtubeAiContentRequester = youtubeAiContentRequester;
+        this.youtubeApiProperties = youtubeApiProperties;
     }
 
     @Override
@@ -96,6 +107,433 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
     @Override
     public YoutubeVideoDetailResponse getPublishedVideoDetail(Long boardId) {
         return getVideoDetail(boardId, true);
+    }
+
+    @Override
+    public LiveVodFeedResponse getLiveVodFeed(String tab) {
+        String normalizedTab = normalizeLiveTab(tab);
+        CachedLiveVodFeed cached = liveVodFeedCache.get(normalizedTab);
+        if (cached != null && !cached.isExpired()) {
+            return cached.feed();
+        }
+        try {
+            LiveVodFeedResponse feed = buildLiveVodFeedForTab(normalizedTab);
+            if (hasRenderableLiveFeed(feed)) {
+                liveVodFeedCache.put(normalizedTab, new CachedLiveVodFeed(feed, Instant.now()));
+            }
+            return feed;
+        } catch (Exception e) {
+            log.error("LIVE/VOD 피드 조회 실패 tab={}", normalizedTab, e);
+            if (cached != null) {
+                return cached.feed();
+            }
+            return new LiveVodFeedResponse(
+                    resolveFeedTitle(normalizedTab),
+                    normalizedTab,
+                    null,
+                    null,
+                    null,
+                    List.of());
+        }
+    }
+
+    private boolean hasRenderableLiveFeed(LiveVodFeedResponse feed) {
+        if (feed == null) {
+            return false;
+        }
+        if (feed.featuredVideoId() != null && !feed.featuredVideoId().isBlank()) {
+            return true;
+        }
+        return feed.sections() != null && feed.sections().stream()
+                .anyMatch(section -> section.items() != null && !section.items().isEmpty());
+    }
+
+    private record CachedLiveVodFeed(LiveVodFeedResponse feed, Instant cachedAt) {
+        boolean isExpired() {
+            return cachedAt == null
+                    || Duration.between(cachedAt, Instant.now()).compareTo(LIVE_VOD_FEED_CACHE_TTL) > 0;
+        }
+    }
+
+    private LiveVodFeedResponse buildLiveVodFeedForTab(String normalizedTab) {
+        String category = "ALL".equals(normalizedTab) ? null : normalizedTab;
+
+        if ("ALL".equals(normalizedTab)) {
+            return buildAllTabFeed(category);
+        }
+        if ("LIVE".equals(normalizedTab)) {
+            return buildLiveTabFeed(category);
+        }
+
+        Optional<YoutubeApiProperties.MoreChannelSource> channelTab =
+                resolveChannelTabSource(normalizedTab);
+        if (channelTab.isPresent()) {
+            return buildChannelOnlyFeed(normalizedTab, category, channelTab.get());
+        }
+
+        return buildTopicOnlyFeed(normalizedTab, category);
+    }
+
+    private LiveVodFeedResponse buildLiveTabFeed(String category) {
+        Optional<YoutubeApiClient.FetchedYoutubeVideo> featuredLive = fetchFeaturedLiveSafe(category);
+        List<YoutubeApiClient.FetchedYoutubeVideo> fetched = fetchTopicChannelVideos("MARKET", category);
+        if (fetched.isEmpty()) {
+            fetched = fetchLiveSearchSafe("LIVE", resolveLiveSearchQuery("LIVE"));
+        }
+
+        if (featuredLive.isPresent()) {
+            YoutubeApiClient.FetchedYoutubeVideo featured = featuredLive.get();
+            List<LiveVodFeedResponse.LiveVodItemResponse> items = fetched.stream()
+                    .filter(v -> v.videoId() != null && !v.videoId().equals(featured.videoId()))
+                    .map(this::toLiveItem)
+                    .toList();
+            return buildLiveVodFeed(
+                    "LIVE",
+                    featured.videoId(),
+                    featured.youtubeTitle(),
+                    featured.thumbnailUrl(),
+                    items,
+                    category,
+                    false);
+        }
+
+        return toLiveVodFeedFromFetched("LIVE", fetched, category, false);
+    }
+
+    private LiveVodFeedResponse buildAllTabFeed(String category) {
+        Optional<YoutubeApiClient.FetchedYoutubeVideo> featuredLive = fetchFeaturedLiveSafe(category);
+        List<YoutubeApiClient.FetchedYoutubeVideo> fetched = fetchTopicChannelVideos("MARKET", category);
+        if (fetched.isEmpty()) {
+            fetched = fetchLiveSearchSafe("ALL", resolveLiveSearchQuery("ALL"));
+        }
+
+        if (featuredLive.isPresent()) {
+            YoutubeApiClient.FetchedYoutubeVideo featured = featuredLive.get();
+            List<LiveVodFeedResponse.LiveVodItemResponse> items = fetched.stream()
+                    .filter(v -> v.videoId() != null && !v.videoId().equals(featured.videoId()))
+                    .map(this::toLiveItem)
+                    .toList();
+            return buildLiveVodFeed(
+                    "ALL",
+                    featured.videoId(),
+                    featured.youtubeTitle(),
+                    featured.thumbnailUrl(),
+                    items,
+                    category,
+                    true);
+        }
+
+        return toLiveVodFeedFromFetched("ALL", fetched, category, true);
+    }
+
+    private LiveVodFeedResponse buildChannelOnlyFeed(
+            String tab,
+            String category,
+            YoutubeApiProperties.MoreChannelSource source) {
+        YoutubeApiProperties.MoreChannelSource enriched = copyChannelSource(source);
+        enriched.setMaxResults(Math.max(16, source.getMaxResults()));
+        List<YoutubeApiClient.FetchedYoutubeVideo> channelVideos = List.of();
+        try {
+            channelVideos = youtubeApiClient.fetchMoreSectionVideos(category, enriched);
+        } catch (Exception e) {
+            log.warn("채널 탭 영상 조회 실패 handle={}: {}", source.getHandle(), e.getMessage());
+        }
+        return toLiveVodFeedFromFetched(tab, channelVideos, category, false);
+    }
+
+    private LiveVodFeedResponse buildTopicOnlyFeed(String tab, String category) {
+        List<YoutubeApiClient.FetchedYoutubeVideo> fetched = fetchTopicChannelVideos(tab, category);
+        return toLiveVodFeedFromFetched(tab, fetched, category, false);
+    }
+
+    private List<YoutubeApiClient.FetchedYoutubeVideo> fetchTopicChannelVideos(
+            String tab,
+            String category) {
+        LinkedHashMap<String, YoutubeApiClient.FetchedYoutubeVideo> merged = new LinkedHashMap<>();
+        for (YoutubeApiProperties.TopicChannelSource source
+                : youtubeApiProperties.resolveTopicChannels(tab)) {
+            try {
+                List<YoutubeApiClient.FetchedYoutubeVideo> videos = youtubeApiClient.fetchChannelUploads(
+                        source.getHandle(),
+                        category,
+                        Math.max(8, source.getMaxResults()),
+                        source.getMinDurationSeconds());
+                for (YoutubeApiClient.FetchedYoutubeVideo video : videos) {
+                    if (video == null || video.videoId() == null || video.videoId().isBlank()) {
+                        continue;
+                    }
+                    merged.putIfAbsent(video.videoId(), video);
+                }
+            } catch (Exception e) {
+                log.warn("주제 채널 업로드 조회 실패 tab={} handle={}: {}",
+                        tab, source.getHandle(), e.getMessage());
+            }
+        }
+        return new ArrayList<>(merged.values());
+    }
+
+    private Optional<YoutubeApiClient.FetchedYoutubeVideo> fetchFeaturedLiveSafe(String category) {
+        try {
+            return youtubeApiClient.fetchFeaturedLiveVideo(category);
+        } catch (Exception e) {
+            log.warn("featured live 조회 실패: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private List<YoutubeApiClient.FetchedYoutubeVideo> fetchLiveSearchSafe(String tab, String query) {
+        try {
+            return youtubeApiClient.fetchLiveVodFeed(tab, query);
+        } catch (Exception e) {
+            log.warn("LIVE 검색 실패 tab={}: {}", tab, e.getMessage());
+            return List.of();
+        }
+    }
+
+    private String normalizeLiveTab(String tab) {
+        if (tab == null || tab.isBlank()) {
+            return "ALL";
+        }
+        return tab.trim().toUpperCase();
+    }
+
+    private Optional<YoutubeApiProperties.MoreChannelSource> resolveChannelTabSource(String tab) {
+        String expectedHandle = switch (tab) {
+            case "GOMHEE" -> "gomhee";
+            case "SYUKA" -> "syukaworld";
+            case "BOOTYFUL" -> "money-multiple";
+            default -> null;
+        };
+        if (expectedHandle == null) {
+            return Optional.empty();
+        }
+        return youtubeApiProperties.resolveMoreChannels().stream()
+                .filter(channel -> channel.getHandle() != null)
+                .filter(channel -> expectedHandle.equalsIgnoreCase(channel.getHandle().trim()))
+                .findFirst();
+    }
+
+    private YoutubeApiProperties.MoreChannelSource copyChannelSource(
+            YoutubeApiProperties.MoreChannelSource source) {
+        YoutubeApiProperties.MoreChannelSource copy = new YoutubeApiProperties.MoreChannelSource();
+        copy.setHandle(source.getHandle());
+        copy.setHeading(source.getHeading());
+        copy.setSearchQuery(source.getSearchQuery());
+        copy.setMaxResults(source.getMaxResults());
+        copy.setMinDurationSeconds(source.getMinDurationSeconds());
+        copy.setTabs(source.getTabs() == null ? List.of() : new ArrayList<>(source.getTabs()));
+        return copy;
+    }
+
+    private String resolveLiveSearchQuery(String tab) {
+        return switch (tab) {
+            case "LIVE" -> "서울경제TV 라이브 증시";
+            case "MARKET" -> "미국 증시 시장 브리핑";
+            case "GOMHEE" -> "박곰희 경제 증시";
+            case "SYUKA" -> "슈카월드 경제 시사";
+            case "BOOTYFUL" -> "부티플 투자 주식";
+            case "THEME" -> "주식 테마 분석 AI 반도체";
+            case "MACRO" -> "글로벌 매크로 경제 환율";
+            case "ALL" -> null;
+            default -> null;
+        };
+    }
+
+    private LiveVodFeedResponse toLiveVodFeedFromPublished(
+            String tab, List<YoutubeVideoListResponse> videos, String category) {
+        YoutubeVideoListResponse featured = videos.get(0);
+        List<LiveVodFeedResponse.LiveVodItemResponse> items = videos.stream()
+                .skip(1)
+                .map(this::toLiveItem)
+                .toList();
+
+        return buildLiveVodFeed(
+                tab,
+                featured.getVideoId(),
+                featured.getTitle(),
+                featured.getThumbnailUrl(),
+                items,
+                category);
+    }
+
+    private LiveVodFeedResponse toLiveVodFeedFromFetched(
+            String tab,
+            List<YoutubeApiClient.FetchedYoutubeVideo> videos,
+            String category) {
+        return toLiveVodFeedFromFetched(tab, videos, category, true);
+    }
+
+    private LiveVodFeedResponse toLiveVodFeedFromFetched(
+            String tab,
+            List<YoutubeApiClient.FetchedYoutubeVideo> videos,
+            String category,
+            boolean includeMoreChannels) {
+        if (videos == null || videos.isEmpty()) {
+            return buildLiveVodFeed(tab, null, null, null, List.of(), category, includeMoreChannels);
+        }
+
+        YoutubeApiClient.FetchedYoutubeVideo featured = videos.get(0);
+        List<LiveVodFeedResponse.LiveVodItemResponse> items = videos.stream()
+                .skip(1)
+                .map(this::toLiveItem)
+                .toList();
+
+        return buildLiveVodFeed(
+                tab,
+                featured.videoId(),
+                featured.youtubeTitle(),
+                featured.thumbnailUrl(),
+                items,
+                category,
+                includeMoreChannels);
+    }
+
+    private LiveVodFeedResponse buildLiveVodFeed(
+            String tab,
+            String featuredVideoId,
+            String featuredTitle,
+            String featuredThumbnailUrl,
+            List<LiveVodFeedResponse.LiveVodItemResponse> mainItems,
+            String category) {
+        return buildLiveVodFeed(
+                tab, featuredVideoId, featuredTitle, featuredThumbnailUrl, mainItems, category, true);
+    }
+
+    private LiveVodFeedResponse buildLiveVodFeed(
+            String tab,
+            String featuredVideoId,
+            String featuredTitle,
+            String featuredThumbnailUrl,
+            List<LiveVodFeedResponse.LiveVodItemResponse> mainItems,
+            String category,
+            boolean includeMoreChannels) {
+        List<LiveVodFeedResponse.LiveVodSectionResponse> sections = chunkMainLiveItems(mainItems, tab);
+        if (includeMoreChannels) {
+            appendMoreSection(sections, category, featuredVideoId, tab);
+        }
+        return new LiveVodFeedResponse(
+                resolveFeedTitle(tab),
+                tab,
+                featuredVideoId,
+                featuredTitle,
+                featuredThumbnailUrl,
+                sections);
+    }
+
+    private String resolveFeedTitle(String tab) {
+        return switch (tab) {
+            case "LIVE" -> "finsight LIVE";
+            case "MARKET" -> "시장 브리핑";
+            case "GOMHEE" -> "박곰희 TV";
+            case "SYUKA" -> "슈카월드";
+            case "BOOTYFUL" -> "부티플";
+            case "THEME" -> "테마 분석";
+            case "MACRO" -> "글로벌 매크로";
+            default -> "finsight LIVE";
+        };
+    }
+
+    private LiveVodFeedResponse.LiveVodItemResponse toLiveItem(YoutubeVideoListResponse v) {
+        return new LiveVodFeedResponse.LiveVodItemResponse(
+                v.getVideoId(),
+                v.getTitle(),
+                v.getThumbnailUrl(),
+                "https://www.youtube.com/watch?v=" + v.getVideoId(),
+                "https://www.youtube.com/embed/" + v.getVideoId(),
+                v.getChannelTitle());
+    }
+
+    private LiveVodFeedResponse.LiveVodItemResponse toLiveItem(YoutubeApiClient.FetchedYoutubeVideo v) {
+        return new LiveVodFeedResponse.LiveVodItemResponse(
+                v.videoId(),
+                v.youtubeTitle(),
+                v.thumbnailUrl(),
+                "https://www.youtube.com/watch?v=" + v.videoId(),
+                v.embedUrl(),
+                v.channelTitle());
+    }
+
+    private List<LiveVodFeedResponse.LiveVodSectionResponse> chunkMainLiveItems(
+            List<LiveVodFeedResponse.LiveVodItemResponse> items,
+            String tab) {
+        if (items == null || items.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        if ("ALL".equals(tab)) {
+            List<LiveVodFeedResponse.LiveVodSectionResponse> sections = new ArrayList<>();
+            int firstSize = Math.min(4, items.size());
+            sections.add(new LiveVodFeedResponse.LiveVodSectionResponse(
+                    "최신 VOD",
+                    new ArrayList<>(items.subList(0, firstSize))));
+            if (items.size() > firstSize) {
+                sections.add(new LiveVodFeedResponse.LiveVodSectionResponse(
+                        "관련 영상",
+                        new ArrayList<>(items.subList(firstSize, items.size()))));
+            }
+            return sections;
+        }
+
+        return List.of(new LiveVodFeedResponse.LiveVodSectionResponse(
+                "",
+                new ArrayList<>(items)));
+    }
+
+    private void appendMoreSection(
+            List<LiveVodFeedResponse.LiveVodSectionResponse> sections,
+            String category,
+            String featuredVideoId,
+            String tab) {
+        Set<String> existingIds = sections.stream()
+                .flatMap(section -> section.items().stream())
+                .map(LiveVodFeedResponse.LiveVodItemResponse::videoId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (featuredVideoId != null && !featuredVideoId.isBlank()) {
+            existingIds.add(featuredVideoId);
+        }
+
+        for (YoutubeApiProperties.MoreChannelSource channel
+                : youtubeApiProperties.resolveMoreChannels()) {
+            if (!channel.matchesTab(tab)) {
+                continue;
+            }
+
+            List<YoutubeApiClient.FetchedYoutubeVideo> moreVideos;
+            try {
+                moreVideos = youtubeApiClient.fetchMoreSectionVideos(category, channel);
+            } catch (Exception e) {
+                log.warn("추가 채널 섹션 조회 실패 handle={}: {}", channel.getHandle(), e.getMessage());
+                continue;
+            }
+            if (moreVideos == null || moreVideos.isEmpty()) {
+                continue;
+            }
+
+            int limit = channel.getMaxResults() > 0
+                    ? channel.getMaxResults()
+                    : Math.max(1, youtubeApiProperties.getMoreMaxResults());
+
+            List<LiveVodFeedResponse.LiveVodItemResponse> moreItems = moreVideos.stream()
+                    .filter(v -> v.videoId() != null && !existingIds.contains(v.videoId()))
+                    .map(this::toLiveItem)
+                    .limit(limit)
+                    .toList();
+            if (moreItems.isEmpty()) {
+                continue;
+            }
+
+            moreItems.stream()
+                    .map(LiveVodFeedResponse.LiveVodItemResponse::videoId)
+                    .filter(Objects::nonNull)
+                    .forEach(existingIds::add);
+
+            String heading = channel.getHeading();
+            if (heading == null || heading.isBlank()) {
+                heading = channel.getHandle();
+            }
+            sections.add(new LiveVodFeedResponse.LiveVodSectionResponse(heading, moreItems));
+        }
     }
 
     @Override
@@ -349,7 +787,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
 
         for (YoutubeApiClient.FetchedYoutubeVideo fetchedVideo : fetchedVideos) {
             try {
-                Optional<YoutubeVideoMeta> existingMeta = youtubeVideoMetaPersistencePort.findByVideoId(fetchedVideo.getVideoId());
+                Optional<YoutubeVideoMeta> existingMeta = youtubeVideoMetaPersistencePort.findByVideoId(fetchedVideo.videoId());
                 if (existingMeta.isPresent()) {
                     YoutubeVideoMeta currentMeta = existingMeta.get();
                     Board currentBoard = loadBoard(currentMeta.getBoardId());
@@ -374,8 +812,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                     summary = summary.merge(YoutubeSyncSummaryResponse.builder().updatedCount(1).build());
                 } else {
                     Board savedBoard = boardPersistencePort.save(Board.builder()
-                            .title(trimToLength(fetchedVideo.getYoutubeTitle(), TITLE_MAX_LENGTH))
-                            .content(trimToLength(defaultContent(fetchedVideo.getYoutubeDescription()), CONTENT_MAX_LENGTH))
+                            .title(trimToLength(fetchedVideo.youtubeTitle(), TITLE_MAX_LENGTH))
+                            .content(trimToLength(defaultContent(fetchedVideo.youtubeDescription()), CONTENT_MAX_LENGTH))
                             .authorEmail(authorEmail)
                             .boardType(BoardType.MEDIA)
                             .status(BoardStatus.DRAFT)
@@ -386,14 +824,14 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                             null,
                             savedBoard.getId(),
                             fetchedVideo,
-                            normalizeText(fetchedVideo.getCategory()),
+                            normalizeText(fetchedVideo.category()),
                             YoutubeImportStatus.DRAFT,
                             null));
 
                     summary = summary.merge(YoutubeSyncSummaryResponse.builder().importedCount(1).build());
                 }
             } catch (Exception e) {
-                log.error("Failed to import YouTube video {}", fetchedVideo.getVideoId(), e);
+                log.error("Failed to import YouTube video {}", fetchedVideo.videoId(), e);
                 summary = summary.merge(YoutubeSyncSummaryResponse.builder().failedCount(1).build());
             }
         }
@@ -549,18 +987,18 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
         return YoutubeVideoMeta.builder()
                 .id(currentMeta != null ? currentMeta.getId() : null)
                 .boardId(boardId)
-                .videoId(fetchedVideo.getVideoId())
-                .channelId(fetchedVideo.getChannelId())
-                .channelTitle(fetchedVideo.getChannelTitle())
-                .sourceType(fetchedVideo.getSourceType())
-                .sourceValue(fetchedVideo.getSourceValue())
+                .videoId(fetchedVideo.videoId())
+                .channelId(fetchedVideo.channelId())
+                .channelTitle(fetchedVideo.channelTitle())
+                .sourceType(fetchedVideo.sourceType())
+                .sourceValue(fetchedVideo.sourceValue())
                 .category(normalizeText(category))
-                .youtubeTitle(trimToLength(fetchedVideo.getYoutubeTitle(), 500))
-                .youtubeDescription(fetchedVideo.getYoutubeDescription())
-                .thumbnailUrl(fetchedVideo.getThumbnailUrl())
-                .publishedAt(fetchedVideo.getPublishedAt())
-                .duration(fetchedVideo.getDuration())
-                .embedUrl(fetchedVideo.getEmbedUrl())
+                .youtubeTitle(trimToLength(fetchedVideo.youtubeTitle(), 500))
+                .youtubeDescription(fetchedVideo.youtubeDescription())
+                .thumbnailUrl(fetchedVideo.thumbnailUrl())
+                .publishedAt(fetchedVideo.publishedAt())
+                .duration(fetchedVideo.duration())
+                .embedUrl(fetchedVideo.embedUrl())
                 .summary(currentMeta != null ? currentMeta.getSummary() : null)
                 .editorComment(currentMeta != null ? currentMeta.getEditorComment() : null)
                 .keyPoints(currentMeta != null ? currentMeta.getKeyPoints() : List.of())

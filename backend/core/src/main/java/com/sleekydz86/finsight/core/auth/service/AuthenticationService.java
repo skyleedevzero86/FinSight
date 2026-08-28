@@ -15,6 +15,7 @@ import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.user.service.PasswordValidationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -39,20 +40,30 @@ public class AuthenticationService {
     private final UserPersistencePort userPersistencePort;
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidationService passwordValidationService;
+    private final boolean autoApproveOnRegister;
 
     public AuthenticationService(AuthenticationManager authenticationManager,
                                  JwtTokenUtil jwtTokenUtil,
                                  UserPersistencePort userPersistencePort,
                                  PasswordEncoder passwordEncoder,
-                                 PasswordValidationService passwordValidationService) {
+                                 PasswordValidationService passwordValidationService,
+                                 @Value("${finsight.auth.auto-approve-on-register:false}") boolean autoApproveOnRegister) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenUtil = jwtTokenUtil;
         this.userPersistencePort = userPersistencePort;
         this.passwordEncoder = passwordEncoder;
         this.passwordValidationService = passwordValidationService;
+        this.autoApproveOnRegister = autoApproveOnRegister;
+    }
+
+    public record LoginSession(JwtToken token, User user) {
     }
 
     public JwtToken login(LoginRequest request) {
+        return loginWithUser(request).token();
+    }
+
+    public LoginSession loginWithUser(LoginRequest request) {
         try {
             User user = resolveLoginUser(request.getEmail());
             try {
@@ -74,16 +85,18 @@ public class AuthenticationService {
             String accessToken = jwtTokenUtil.generateAccessToken(email, user.getRole());
             String refreshToken = jwtTokenUtil.generateRefreshToken(email);
 
-            updateLastLoginTime(email);
+            user.updateLastLoginAt(LocalDateTime.now());
+            userPersistencePort.save(user);
 
             log.info("로그인 성공: {}, provider={}", email, user.getAuthProvider());
 
-            return JwtToken.builder()
+            JwtToken token = JwtToken.builder()
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
                     .tokenType("Bearer")
                     .expiresIn(LocalDateTime.now().plusSeconds(jwtTokenUtil.getAccessTokenExpiration() / 1000))
                     .build();
+            return new LoginSession(token, user);
 
         } catch (AuthenticationFailedException e) {
             throw e;
@@ -152,7 +165,7 @@ public class AuthenticationService {
                 .username(request.getUsername())
                 .nickname(request.getUsername())
                 .role(UserRole.USER)
-                .status(UserStatus.PENDING)
+                .status(autoApproveOnRegister ? UserStatus.APPROVED : UserStatus.PENDING)
                 .passwordChangedAt(LocalDateTime.now())
                 .watchlist(request.getWatchlist() != null && !request.getWatchlist().isEmpty()
                         ? request.getWatchlist()
@@ -162,9 +175,14 @@ public class AuthenticationService {
                 .notificationPreferences(Arrays.asList(NotificationType.EMAIL))
                 .build();
 
+        if (autoApproveOnRegister) {
+            user.approve(null);
+        }
+
         User savedUser = userPersistencePort.save(user);
 
-        log.info("사용자 등록 성공: {} (ID: {})", request.getEmail(), savedUser.getId());
+        log.info("사용자 등록 성공: {} (ID: {}, status={})", request.getEmail(), savedUser.getId(),
+                savedUser.getStatus());
 
         return savedUser;
     }

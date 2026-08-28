@@ -1,15 +1,17 @@
 package com.sleekydz86.finsight.core.user.domain.port.in.dto;
 
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
+import lombok.Setter;
 
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

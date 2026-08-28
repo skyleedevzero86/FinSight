@@ -13,7 +13,7 @@ public class ValidationService {
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     private static final Pattern PASSWORD_PATTERN = Pattern
-            .compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{12,}$");
+            .compile("^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$");
     private static final Pattern USERNAME_PATTERN = Pattern.compile("^[a-zA-Z0-9가-힣_]{2,50}$");
 
     public void validateEmail(String email) {
@@ -32,8 +32,8 @@ public class ValidationService {
         if (password.length() < 8) {
             throw new ValidationException("비밀번호는 최소 8자 이상이어야 합니다", List.of("password"));
         }
-        if (!password.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]")) {
-            throw new ValidationException("비밀번호는 대소문자, 숫자, 특수문자를 포함해야 합니다", List.of("password"));
+        if (!PASSWORD_PATTERN.matcher(password).matches()) {
+            throw new ValidationException("비밀번호는 영문·숫자·특수문자를 포함해야 합니다", List.of("password"));
         }
     }
 

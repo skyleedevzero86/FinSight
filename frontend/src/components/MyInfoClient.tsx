@@ -74,6 +74,7 @@ export default function MyInfoClient() {
   const [showNew, setShowNew] = useState(false)
 
   const [passwordStatus, setPasswordStatus] = useState<PasswordStatus | null>(null)
+  const [saving, setSaving] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [formOk, setFormOk] = useState<string | null>(null)
@@ -142,9 +143,27 @@ export default function MyInfoClient() {
   }
 
   function toggleWatch(value: TargetCategory) {
-    setWatchlist((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value],
-    )
+    const previous = watchlist
+    const next = previous.includes(value)
+      ? previous.filter((v) => v !== value)
+      : [...previous, value]
+    setWatchlist(next)
+    setFormError(null)
+    setFormOk(null)
+    void (async () => {
+      setSaving(true)
+      try {
+        const result = await updateWatchlist(next)
+        if (!result.ok) {
+          setWatchlist(previous)
+          setFormError(result.message)
+          return
+        }
+        setFormOk("관심 카테고리가 저장되었습니다.")
+      } finally {
+        setSaving(false)
+      }
+    })()
   }
 
   function onPickImage(file: File | undefined) {
@@ -198,21 +217,42 @@ export default function MyInfoClient() {
     setFormError(null)
     setFormOk(null)
 
-    if (passwordLocked && (!oldPassword || !newPassword)) {
-      setFormError("비밀번호를 먼저 변경해 주세요.")
-      return
-    }
-
     const emailErr = validateEmail(email)
     if (emailErr) {
       setFormError(emailErr)
       return
     }
 
-    if (oldPassword || newPassword || newPasswordConfirm) {
+    const wantsPasswordChange = Boolean(oldPassword || newPassword || newPasswordConfirm)
+    if (passwordLocked && !wantsPasswordChange) {
+      setSaving(true)
+      try {
+        const watched = await updateWatchlist(watchlist)
+        if (!watched.ok) {
+          setFormError(watched.message)
+          return
+        }
+        const saved = await updateProfile({ email: email.trim() })
+        if (!saved.ok) {
+          setFormError(saved.message)
+          return
+        }
+        await refresh()
+        setFormOk("관심 카테고리와 이메일이 저장되었습니다. 계속 이용하려면 비밀번호도 변경해 주세요.")
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
+    if (wantsPasswordChange || passwordLocked) {
       const pwErr = validatePassword(newPassword)
       if (pwErr) {
         setFormError(pwErr)
+        return
+      }
+      if (!oldPassword) {
+        setFormError("현재 비밀번호를 입력해 주세요.")
         return
       }
       if (newPassword !== newPasswordConfirm) {
@@ -223,7 +263,7 @@ export default function MyInfoClient() {
 
     setSaving(true)
     try {
-      if (oldPassword || newPassword) {
+      if (wantsPasswordChange || passwordLocked) {
         const changed = await changePassword({
           oldPassword,
           newPassword,
@@ -248,14 +288,15 @@ export default function MyInfoClient() {
         }
       }
 
-      const saved = await updateProfile({ email: email.trim() })
-      if (!saved.ok) {
-        setFormError(saved.message)
-        return
-      }
       const watched = await updateWatchlist(watchlist)
       if (!watched.ok) {
         setFormError(watched.message)
+        return
+      }
+
+      const saved = await updateProfile({ email: email.trim() })
+      if (!saved.ok) {
+        setFormError(saved.message)
         return
       }
       await refresh()
@@ -412,6 +453,7 @@ export default function MyInfoClient() {
 
               <section className="space-y-2">
                 <span className="block text-sm font-medium text-gray-800">관심 타깃 카테고리</span>
+                <p className="text-xs text-gray-500">선택하면 바로 저장됩니다.</p>
                 <div className="flex flex-wrap gap-2">
                   {WATCHLIST_CATEGORIES.map(({ value, label }) => {
                     const on = watchlist.includes(value)
@@ -419,9 +461,10 @@ export default function MyInfoClient() {
                       <button
                         key={value}
                         type="button"
+                        disabled={saving}
                         onClick={() => toggleWatch(value)}
                         className={[
-                          "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                          "rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:opacity-60",
                           on
                             ? "border-finsight-secondary bg-finsight-secondary/15 text-finsight-primary"
                             : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300",

@@ -50,6 +50,12 @@
   margin-top: 0;
 }
 
+.finsight-live-vod-page .flv-relate:not(:has(> h3)) {
+  margin-top: 24px;
+  padding-top: 8px;
+  border-top: none;
+}
+
 .finsight-live-vod-page .flv-relate ul {
   list-style: none;
   margin: 0;
@@ -70,6 +76,24 @@
   display: block;
   color: inherit;
   text-decoration: none;
+}
+
+.finsight-live-vod-page .flv-thumb-wrap {
+  position: relative;
+}
+
+.finsight-live-vod-page .flv-thumb-meta {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 30, 0.72);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.2;
 }
 
 .finsight-live-vod-page .flv-relate li img {
@@ -108,4 +132,339 @@
   font-size: clamp(20px, 3vw, 26px);
   font-weight: 700;
   color: #1e1e1e;
+}
+
+.finsight-live-vod-page .flv-watch-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.finsight-live-vod-page .flv-watch-top {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.finsight-live-vod-page .flv-back-link {
+  width: fit-content;
+  font-size: 13px;
+  color: #666;
+  text-decoration: none;
+}
+
+.finsight-live-vod-page .flv-back-link:hover {
+  color: #111;
+  text-decoration: underline;
+}
+
+.finsight-live-vod-page .flv-watch-heading-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  gap: 16px;
+  position: relative;
+}
+
+.finsight-live-vod-page .flv-watch-heading-row h1 {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  margin: 0;
+  text-align: center;
+  padding: 0 120px;
+  min-width: 0;
+}
+
+.finsight-live-vod-page .flv-watch-actions {
+  grid-column: 2;
+  grid-row: 1;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .finsight-live-vod-page .flv-watch-heading-row h1 {
+    padding: 0 0 44px;
+  }
+
+  .finsight-live-vod-page .flv-watch-actions {
+    justify-self: end;
+    margin-top: 4px;
+  }
+}
+
+.finsight-live-vod-page .flv-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background: #fff;
+  color: #444;
+  cursor: pointer;
+}
+
+.finsight-live-vod-page .flv-icon-btn:hover {
+  border-color: #bbb;
+  color: #111;
+  background: #f7f7f7;
+}
+
+.finsight-live-vod-page .flv-icon-btn.is-on {
+  color: #c45c00;
+  border-color: #e0b48a;
+  background: #fff8f0;
+}
+
+.finsight-live-vod-page .flv-share-hint {
+  margin: 0;
+  text-align: right;
+  font-size: 12px;
+  color: #666;
+}
+
+.finsight-live-vod-page .flv-fav-desc {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.finsight-live-vod-page .flv-history-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+
+.finsight-live-vod-page .flv-history-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: center;
+}
+
+.finsight-live-vod-page .flv-history-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.finsight-live-vod-page .flv-history-heading h3 {
+  margin: 0;
+  padding-left: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e1e1e;
+}
+
+.finsight-live-vod-page .flv-history-section {
+  margin-top: 28px;
+  padding-top: 20px;
+}
+
+.finsight-live-vod-page .flv-history-section > ul {
+  margin-top: 0;
+}
+
+.finsight-live-vod-page .flv-hist-empty {
+  margin: 0;
+  font-size: 13px;
+  color: #777;
+}
+
+.finsight-live-vod-page .flv-hist-channel {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.finsight-live-vod-page .flv-hist-meta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #999;
+}
+
+.finsight-live-vod-page .flv-hist-clear {
+  border: 0;
+  background: transparent;
+  color: #666;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.finsight-live-vod-page .flv-hist-clear:hover {
+  color: #111;
+}
+
+.finsight-live-vod-page .flv-favorites li,
+.finsight-live-vod-page .flv-history-section li {
+  position: relative;
+}
+
+.finsight-live-vod-page .flv-fav-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  padding: 4px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+  color: #444;
+  cursor: pointer;
+}
+
+.finsight-live-vod-page .flv-fav-remove:hover {
+  color: #111;
+  background: #fff;
+}
+
+@media print {
+  .finsight-live-vod-page .flv-watch-top,
+  .finsight-live-vod-page .flv-watch-actions,
+  .finsight-live-vod-page .flv-comments,
+  #liveVodNavi {
+    display: none !important;
+  }
+}
+
+.finsight-live-vod-page .flv-engage-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: #555;
+}
+
+.finsight-live-vod-page .flv-comments {
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e5e5;
+}
+
+.finsight-live-vod-page .flv-comments h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.finsight-live-vod-page .flv-comment-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px 12px;
+  resize: vertical;
+  font: inherit;
+}
+
+.finsight-live-vod-page .flv-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.finsight-live-vod-page .flv-comment-actions button {
+  border: 1px solid #1f444b;
+  background: #1f444b;
+  color: #fff;
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.finsight-live-vod-page .flv-comment-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.finsight-live-vod-page .flv-comment-error {
+  color: #b91c1c;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.finsight-live-vod-page .flv-comment-list,
+.finsight-live-vod-page .flv-reply-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.finsight-live-vod-page .flv-comment-item {
+  padding: 14px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.finsight-live-vod-page .flv-comment-head {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 6px;
+}
+
+.finsight-live-vod-page .flv-comment-head time {
+  font-size: 12px;
+  color: #888;
+}
+
+.finsight-live-vod-page .flv-comment-item > p,
+.finsight-live-vod-page .flv-reply-list p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.finsight-live-vod-page .flv-reply-btn {
+  margin-top: 8px;
+  border: 0;
+  background: transparent;
+  color: #1f444b;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.finsight-live-vod-page .flv-reply-list {
+  margin-top: 12px;
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 2px solid #e5e5e5;
+}
+
+.finsight-live-vod-page .flv-reply-list li {
+  padding: 10px 0;
+}
+
+.finsight-live-vod-page .flv-reply-hint {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #555;
+}
+
+.finsight-live-vod-page .flv-reply-hint button {
+  margin-left: 8px;
+  border: 0;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  text-decoration: underline;
 }

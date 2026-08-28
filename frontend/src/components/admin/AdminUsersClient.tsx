@@ -6,9 +6,11 @@ import { useAuthSession } from "@/components/AuthSessionProvider"
 import { authProviderLabel } from "@/lib/authSession"
 import { validatePassword } from "@/lib/registration"
 import {
+  approveAdminUser,
   canManageUsers,
   deleteAdminUser,
   fetchAdminUsers,
+  rejectAdminUser,
   resetAdminUserPassword,
   restoreAdminUser,
   suspendAdminUser,
@@ -22,13 +24,8 @@ import {
 const inputClass =
   "rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-finsight-secondary focus:ring-1 focus:ring-finsight-secondary/40"
 
-function statusClass(status: UserStatus): string {
-  if (status === "APPROVED") return "bg-emerald-50 text-emerald-800"
-  if (status === "SUSPENDED") return "bg-amber-50 text-amber-800"
-  if (status === "WITHDRAWN") return "bg-gray-100 text-gray-600"
-  if (status === "REJECTED") return "bg-red-50 text-red-700"
-  return "bg-sky-50 text-sky-800"
-}
+const buttonClass =
+  "rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-50"
 
 function formatDate(value: string | null): string {
   if (!value) return "-"
@@ -40,7 +37,9 @@ export default function AdminUsersClient() {
   const { user, ready } = useAuthSession()
   const [page, setPage] = useState(0)
   const [status, setStatus] = useState<UserStatus | "">("")
+  const [statusInput, setStatusInput] = useState<UserStatus | "">("")
   const [keyword, setKeyword] = useState("")
+  const [keywordInput, setKeywordInput] = useState("")
   const [reveal, setReveal] = useState<RevealField[]>([])
   const [rows, setRows] = useState<AdminUser[]>([])
   const [totalPages, setTotalPages] = useState(1)
@@ -67,6 +66,9 @@ export default function AdminUsersClient() {
     })
     setLoading(false)
     if (!result.ok) {
+      setRows([])
+      setTotalElements(0)
+      setTotalPages(1)
       setError(result.message)
       return
     }
@@ -91,6 +93,20 @@ export default function AdminUsersClient() {
     if (!allowed) return
     void load()
   }, [allowed, load])
+
+  function onSearch() {
+    setPage(0)
+    setStatus(statusInput)
+    setKeyword(keywordInput.trim())
+  }
+
+  function onResetFilters() {
+    setStatusInput("")
+    setKeywordInput("")
+    setPage(0)
+    setStatus("")
+    setKeyword("")
+  }
 
   function toggleReveal(field: RevealField) {
     setPage(0)
@@ -143,43 +159,53 @@ export default function AdminUsersClient() {
   return (
     <section className="w-full px-4 py-12 md:px-8 md:py-16">
       <div className="mx-auto w-full max-w-6xl">
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">사용자 관리</h1>
-        <p className="mb-8 text-sm text-gray-500">
-          민감 정보 컬럼을 선택하면 마스킹이 해제됩니다. 정지·사용자 탈퇴 계정은 복구하면 다시 로그인할 수 있고, 관리자 탈퇴는 DB에서 삭제합니다.
-        </p>
+        <h1 className="mb-8 text-2xl font-bold text-gray-900">사용자 관리</h1>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm md:p-6">
+        <div className="rounded-lg border border-gray-200 bg-white p-4 md:p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
-            <label className="flex-1 text-sm text-gray-700">
-              검색
-              <input
-                className={`${inputClass} mt-1 w-full`}
-                value={keyword}
-                onChange={(e) => {
-                  setPage(0)
-                  setKeyword(e.target.value)
-                }}
-                placeholder="아이디, 이메일, 닉네임"
-              />
-            </label>
-            <label className="text-sm text-gray-700">
-              상태
-              <select
-                className={`${inputClass} mt-1 block min-w-[8rem]`}
-                value={status}
-                onChange={(e) => {
-                  setPage(0)
-                  setStatus(e.target.value as UserStatus | "")
-                }}
-              >
-                <option value="">전체</option>
-                {Object.entries(USER_STATUS_LABEL).map(([value, label]) => (
+            <select
+              aria-label="상태"
+              className={`${inputClass} block min-w-[8rem]`}
+              value={statusInput}
+              onChange={(e) => setStatusInput(e.target.value as UserStatus | "")}
+            >
+              <option value="">전체</option>
+              {(
+                Object.entries(USER_STATUS_LABEL) as [UserStatus, string][]
+              )
+                .filter(([value]) => value !== "PENDING" && value !== "REJECTED")
+                .map(([value, label]) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
                 ))}
-              </select>
-            </label>
+            </select>
+            <input
+              aria-label="검색"
+              className={`${inputClass} w-full flex-1`}
+              value={keywordInput}
+              onChange={(e) => setKeywordInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault()
+                  onSearch()
+                }
+              }}
+              placeholder="아이디, 이메일, 닉네임"
+            />
+            <div className="flex flex-col items-end gap-2">
+              <p className="text-sm text-gray-600">
+                총 <span className="font-semibold text-black">{totalElements}</span>명
+              </p>
+              <div className="flex gap-2">
+                <button type="button" className={buttonClass} disabled={loading} onClick={onSearch}>
+                  확인
+                </button>
+                <button type="button" className={buttonClass} disabled={loading} onClick={onResetFilters}>
+                  취소
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-4 border-t border-gray-100 pt-4 text-sm text-gray-700">
@@ -261,16 +287,49 @@ export default function AdminUsersClient() {
                       <td className="px-2 py-3 text-gray-500">
                         {authProviderLabel(row.authProvider)}
                       </td>
-                      <td className="px-2 py-3">
-                        <span className={`rounded-full px-2 py-0.5 text-xs ${statusClass(row.status)}`}>
-                          {USER_STATUS_LABEL[row.status]}
-                        </span>
+                      <td className="px-2 py-3 text-sm text-gray-800">
+                        {USER_STATUS_LABEL[row.status]}
                       </td>
                       <td className="px-2 py-3 text-gray-700">{USER_ROLE_LABEL[row.role]}</td>
                       <td className="px-2 py-3 text-gray-500">{formatDate(row.lastLoginAt)}</td>
                       <td className="px-2 py-3">
                         <div className="flex flex-wrap gap-1">
-                          {row.status === "SUSPENDED" ? (
+                          {row.status === "PENDING" || row.status === "REJECTED" ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled={saving}
+                                className="rounded border border-emerald-200 px-2 py-1 text-xs text-emerald-800 hover:bg-emerald-50 disabled:opacity-50"
+                                onClick={() => {
+                                  if (!window.confirm(`${row.nickname} 계정을 승인할까요? 승인 후 로그인할 수 있습니다.`)) {
+                                    return
+                                  }
+                                  void runAction(
+                                    () => approveAdminUser(row.id),
+                                    "사용자를 승인했습니다. 이제 로그인할 수 있습니다.",
+                                  )
+                                }}
+                              >
+                                승인
+                              </button>
+                              {row.status === "PENDING" ? (
+                                <button
+                                  type="button"
+                                  disabled={saving}
+                                  className="rounded border border-red-200 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+                                  onClick={() => {
+                                    if (!window.confirm(`${row.nickname} 계정을 거부할까요?`)) return
+                                    void runAction(
+                                      () => rejectAdminUser(row.id),
+                                      "사용자를 거부했습니다.",
+                                    )
+                                  }}
+                                >
+                                  거부
+                                </button>
+                              ) : null}
+                            </>
+                          ) : row.status === "SUSPENDED" ? (
                             <button
                               type="button"
                               disabled={saving}
@@ -366,8 +425,7 @@ export default function AdminUsersClient() {
             </table>
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-            <p>총 {totalElements}명</p>
+          <div className="mt-4 flex items-center justify-end text-sm text-gray-600">
             <div className="flex gap-2">
               <button
                 type="button"

@@ -17,6 +17,7 @@ public class EmailVerificationConfirmResponse {
     private String purposeLabel;
     private String maskedEmail;
     private String username;
+    private String maskedUsername;
     private String redirectTo;
     private boolean canResetPassword;
     private String email;

@@ -30,6 +30,31 @@ export function readAccessToken(): string | null {
   }
 }
 
+export function isAccessTokenUsable(token: string | null | undefined): boolean {
+  if (!token) return false
+  const parts = token.split(".")
+  if (parts.length < 2) return false
+  try {
+    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/")
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4)
+    const payload = JSON.parse(atob(padded)) as { exp?: unknown }
+    if (typeof payload.exp !== "number") return true
+    return payload.exp * 1000 > Date.now() - 5_000
+  } catch {
+    return false
+  }
+}
+
+export function readUsableAccessToken(): string | null {
+  const token = readAccessToken()
+  if (!token) return null
+  if (!isAccessTokenUsable(token)) {
+    clearAuthSession({ emit: false })
+    return null
+  }
+  return token
+}
+
 export function readAuthProvider(): AuthProvider | null {
   if (typeof window === "undefined") return null
   try {
@@ -80,13 +105,13 @@ export function clearAuthSession(options?: { emit?: boolean }) {
 }
 
 export function authHeadersJson(): HeadersInit {
-  const t = readAccessToken()
+  const t = readUsableAccessToken()
   if (!t) return { Accept: "application/json" }
   return { Accept: "application/json", Authorization: `Bearer ${t}` }
 }
 
 export function authHeaders(): HeadersInit {
-  const t = readAccessToken()
+  const t = readUsableAccessToken()
   if (!t) return {}
   return { Authorization: `Bearer ${t}` }
 }

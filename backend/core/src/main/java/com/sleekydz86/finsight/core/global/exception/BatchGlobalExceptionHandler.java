@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -34,7 +35,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INTERNAL_SERVER_ERROR");
-        response.put("message", getLocalizedMessage("error.generic", locale));
+        response.put("message", getLocalizedMessage("user.message.server.error", locale));
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
 
@@ -48,7 +49,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "AI_ANALYSIS_FAILED");
-        response.put("message", getLocalizedMessage("error.ai.analysis.failed", locale, ex.getModelName(), ex.getMessage()));
+        response.put("message", getLocalizedMessage("user.message.ai.analysis.failed", locale));
         response.put("model", ex.getModelName());
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
@@ -63,7 +64,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "NEWS_SCRAPING_FAILED");
-        response.put("message", getLocalizedMessage("error.news.scraping.failed", locale, ex.getProvider(), ex.getMessage()));
+        response.put("message", getLocalizedMessage("user.message.news.scraping.failed", locale));
         response.put("provider", ex.getProvider());
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
@@ -78,7 +79,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "DATABASE_CONNECTION_FAILED");
-        response.put("message", getLocalizedMessage("error.database.connection.failed", locale, ex.getDatabaseType(), ex.getMessage()));
+        response.put("message", getLocalizedMessage("user.message.database.error", locale));
         response.put("databaseType", ex.getDatabaseType());
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
@@ -93,7 +94,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "EXTERNAL_SERVICE_FAILED");
-        response.put("message", getLocalizedMessage("error.external.service.failed", locale, ex.getServiceName(), ex.getMessage()));
+        response.put("message", getLocalizedMessage("user.message.external.service.error", locale));
         response.put("serviceName", ex.getServiceName());
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
@@ -106,10 +107,17 @@ public class BatchGlobalExceptionHandler {
         Locale locale = getLocale(request);
         log.error("유효하지 않은 비밀번호입니다", ex);
 
+        List<String> validationErrors = ex.getValidationErrors() != null
+                ? ex.getValidationErrors()
+                : List.of();
+        String message = !validationErrors.isEmpty()
+                ? String.join(" ", validationErrors)
+                : getLocalizedMessage("user.message.password.invalid", locale);
+
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INVALID_PASSWORD");
-        response.put("message", getLocalizedMessage("error.invalid.password", locale));
-        response.put("errors", ex.getValidationErrors()); 
+        response.put("message", message);
+        response.put("errors", validationErrors);
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
 
@@ -123,7 +131,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "USER_NOT_FOUND");
-        response.put("message", getLocalizedMessage("error.user.not.found", locale));
+        response.put("message", getLocalizedMessage("user.message.user.not.found", locale));
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
 
@@ -137,7 +145,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "USER_ALREADY_EXISTS");
-        response.put("message", getLocalizedMessage("error.user.already.exists", locale));
+        response.put("message", getLocalizedMessage("user.message.user.already.exists", locale));
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
 
@@ -151,7 +159,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "AUTHENTICATION_FAILED");
-        response.put("message", getLocalizedMessage("error.authentication.failed", locale));
+        response.put("message", getLocalizedMessage("user.message.authentication.failed", locale));
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
 
@@ -165,7 +173,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "TOKEN_EXPIRED");
-        response.put("message", getLocalizedMessage("error.token.expired", locale, ex.getTokenType()));
+        response.put("message", getLocalizedMessage("user.message.token.expired", locale));
         response.put("tokenType", ex.getTokenType());
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
@@ -180,7 +188,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INVALID_TOKEN");
-        response.put("message", getLocalizedMessage("error.invalid.token", locale));
+        response.put("message", getLocalizedMessage("user.message.token.invalid", locale));
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
 
@@ -194,7 +202,7 @@ public class BatchGlobalExceptionHandler {
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "INSUFFICIENT_PERMISSION");
-        response.put("message", getLocalizedMessage("error.insufficient.permission", locale, ex.getRequiredPermission()));
+        response.put("message", getLocalizedMessage("user.message.insufficient.permission", locale));
         response.put("requiredPermission", ex.getRequiredPermission());
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());

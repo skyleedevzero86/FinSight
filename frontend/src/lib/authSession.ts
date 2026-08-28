@@ -1,7 +1,7 @@
 import {
   authHeadersJson,
   clearAuthSession,
-  readAccessToken,
+  readUsableAccessToken,
   type AuthProvider,
 } from "@/lib/finsightToken"
 
@@ -29,7 +29,8 @@ function parseAuthProvider(value: unknown): AuthProvider {
 export function parseAuthUser(payload: unknown): AuthUser | null {
   const root = asRecord(payload)
   if (!root) return null
-  const data = asRecord(root.data) ?? root
+  const data = asRecord(root.data)
+  if (!data) return null
   const email = typeof data.email === "string" ? data.email : ""
   const nicknameRaw = typeof data.nickname === "string" ? data.nickname.trim() : ""
   const idRaw = data.id
@@ -56,7 +57,7 @@ export function authProviderLabel(provider: AuthProvider): string {
 }
 
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
-  if (!readAccessToken()) return null
+  if (!readUsableAccessToken()) return null
   try {
     const res = await fetch("/api/v1/auth/me", {
       headers: authHeadersJson(),
@@ -66,9 +67,23 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
       clearAuthSession({ emit: false })
       return null
     }
+    if (res.status === 502 || res.status === 503 || res.status === 504) {
+      return null
+    }
     if (!res.ok) return null
+
     const payload: unknown = await res.json().catch(() => null)
-    return parseAuthUser(payload)
+    const root = asRecord(payload)
+    if (root?.unavailable === true) {
+      return null
+    }
+
+    const user = parseAuthUser(payload)
+    if (!user) {
+      clearAuthSession({ emit: false })
+      return null
+    }
+    return user
   } catch {
     return null
   }

@@ -7,7 +7,7 @@ public class InvalidPasswordException extends BaseException {
 
     public InvalidPasswordException(List<String> validationErrors) {
         super("비밀번호가 보안 요구사항을 충족하지 않습니다",
-                "USER_004", "Invalid Password", 400);
+                "USER_004", "잘못된 비밀번호", 400);
         this.validationErrors = validationErrors;
     }
 

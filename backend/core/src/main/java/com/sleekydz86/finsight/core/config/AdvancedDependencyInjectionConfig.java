@@ -28,6 +28,8 @@ import com.sleekydz86.finsight.core.health.service.HealthQueryService;
 import com.sleekydz86.finsight.core.health.service.HealthCommandService;
 import com.sleekydz86.finsight.core.notification.domain.port.out.NotificationSenderPort;
 import com.sleekydz86.finsight.core.notification.service.NotificationService;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -132,14 +134,24 @@ public class AdvancedDependencyInjectionConfig {
     }
 
     @Bean
-    public UserService userService(PasswordEncoder passwordEncoder, EmailVerificationService emailVerificationService) {
-        return new UserService(userPersistencePort, passwordEncoder, passwordValidationService, emailVerificationService);
+    public UserService userService(
+            PasswordEncoder passwordEncoder,
+            EmailVerificationService emailVerificationService,
+            ApplicationEventPublisher eventPublisher) {
+        return new UserService(
+                userPersistencePort,
+                passwordEncoder,
+                passwordValidationService,
+                emailVerificationService,
+                eventPublisher);
     }
 
     @Bean
-    public AuthenticationService authenticationService(PasswordEncoder passwordEncoder) {
+    public AuthenticationService authenticationService(
+            PasswordEncoder passwordEncoder,
+            @Value("${finsight.auth.auto-approve-on-register:false}") boolean autoApproveOnRegister) {
         return new AuthenticationService(authenticationManager, jwtTokenUtil, userPersistencePort, passwordEncoder,
-                passwordValidationService);
+                passwordValidationService, autoApproveOnRegister);
     }
 
     @Bean

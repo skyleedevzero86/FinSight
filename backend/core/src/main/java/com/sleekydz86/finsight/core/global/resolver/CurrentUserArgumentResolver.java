@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.MethodParameter;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -44,7 +45,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
         }
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
+        if (!isAuthenticatedPrincipal(authentication)) {
             if (currentUserAnnotation.required()) {
                 throw new IllegalStateException("No authenticated user found");
             }
@@ -52,7 +53,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
         }
 
         String email = authentication.getName();
-        if (email == null || email.trim().isEmpty()) {
+        if (email == null || email.trim().isEmpty() || "anonymousUser".equalsIgnoreCase(email)) {
             if (currentUserAnnotation.required()) {
                 throw new IllegalStateException("No user email found in authentication");
             }
@@ -88,5 +89,12 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             }
             return null;
         }
+    }
+
+    private boolean isAuthenticatedPrincipal(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        return !(authentication instanceof AnonymousAuthenticationToken);
     }
 }

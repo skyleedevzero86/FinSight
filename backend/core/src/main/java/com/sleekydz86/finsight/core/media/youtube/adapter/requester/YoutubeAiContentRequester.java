@@ -6,9 +6,6 @@ import com.sleekydz86.finsight.core.board.domain.Board;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeGeneratedContent;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeVideoMeta;
 import com.sleekydz86.finsight.core.news.adapter.requester.overview.properties.OpenAiProperties;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
@@ -159,12 +156,12 @@ public class YoutubeAiContentRequester {
 
         YoutubeGeneratedContent fallback = createFallbackContent(videoMeta, board);
 
-        String summary = trimToLength(defaultText(response != null ? response.getSummary() : null, fallback.getSummary()), SUMMARY_MAX_LENGTH);
+        String summary = trimToLength(defaultText(response != null ? response.summary() : null, fallback.getSummary()), SUMMARY_MAX_LENGTH);
         String editorComment = trimToLength(
-                defaultText(response != null ? response.getEditorComment() : null, fallback.getEditorComment()),
+                defaultText(response != null ? response.editorComment() : null, fallback.getEditorComment()),
                 EDITOR_COMMENT_MAX_LENGTH);
         List<String> keyPoints = normalizeKeyPoints(
-                response != null ? response.getKeyPoints() : null,
+                response != null ? response.keyPoints() : null,
                 fallback.getKeyPoints());
 
         return YoutubeGeneratedContent.builder()
@@ -316,13 +313,11 @@ public class YoutubeAiContentRequester {
                 .replace("\n", " ");
     }
 
-    @Getter
-    @Setter
-    @NoArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
-    private static class YoutubeAiResponse {
-        private String summary;
-        private String editorComment;
-        private List<String> keyPoints;
+    private record YoutubeAiResponse(
+            String summary,
+            String editorComment,
+            List<String> keyPoints
+    ) {
     }
 }

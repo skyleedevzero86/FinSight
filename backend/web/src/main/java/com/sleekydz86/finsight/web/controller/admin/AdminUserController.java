@@ -46,24 +46,20 @@ public class AdminUserController {
             @RequestParam(required = false) UserStatus status,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String reveal) {
-        try {
-            boolean revealUsername = containsReveal(reveal, "username");
-            boolean revealEmail = containsReveal(reveal, "email");
-            boolean revealPhone = containsReveal(reveal, "phone");
-            PaginationResponse<UserResponse> response = PaginationResponse.from(
-                    userApplicationService.searchAdminUsers(
-                            status,
-                            keyword,
-                            revealUsername,
-                            revealEmail,
-                            revealPhone,
-                            PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
-                                    Sort.by(Sort.Direction.DESC, "id"))));
-            return ResponseEntity.ok(ApiResponse.success(response));
-        } catch (Exception e) {
-            log.error("사용자 목록 조회 실패: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
-        }
+        boolean revealUsername = containsReveal(reveal, "username");
+        boolean revealEmail = containsReveal(reveal, "email");
+        boolean revealPhone = containsReveal(reveal, "phone");
+        log.info("관리자 사용자 목록 조회: page={}, size={}, status={}, keyword={}", page, size, status, keyword);
+        PaginationResponse<UserResponse> response = PaginationResponse.from(
+                userApplicationService.searchAdminUsers(
+                        status,
+                        keyword,
+                        revealUsername,
+                        revealEmail,
+                        revealPhone,
+                        PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
+                                Sort.by(Sort.Direction.DESC, "id"))));
+        return ResponseEntity.ok(ApiResponse.success(response, "사용자 목록을 조회했습니다"));
     }
 
     @GetMapping("/pending")

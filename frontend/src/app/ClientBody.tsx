@@ -8,6 +8,7 @@ import { installNextHmrBfcacheGuard } from "@/lib/nextHmrBfcacheGuard";
 
 if (typeof window !== "undefined") {
   installNextHmrBfcacheGuard();
+  cleanupStaleServiceWorkers();
 }
 
 export default function ClientBody({

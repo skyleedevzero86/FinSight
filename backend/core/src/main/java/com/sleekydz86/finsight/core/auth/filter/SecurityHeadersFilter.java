@@ -31,7 +31,9 @@ public class SecurityHeadersFilter extends OncePerRequestFilter {
         response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
 
         response.setHeader("Permissions-Policy",
-                "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), gyroscope=()");
+                "geolocation=(), microphone=(), camera=(), payment=(), usb=(), magnetometer=(), " +
+                        "gyroscope=(self \"https://www.youtube-nocookie.com\" \"https://www.youtube.com\"), " +
+                        "compute-pressure=(self \"https://www.youtube-nocookie.com\" \"https://www.youtube.com\")");
 
         response.setHeader("Content-Security-Policy",
                 "default-src 'self'; " +

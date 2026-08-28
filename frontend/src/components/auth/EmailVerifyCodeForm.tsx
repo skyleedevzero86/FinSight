@@ -41,7 +41,7 @@ export default function EmailVerifyCodeForm({
   const [foundUsername, setFoundUsername] = useState<string | null>(null)
   const [foundEmail, setFoundEmail] = useState<string | null>(null)
   const [canResetPassword, setCanResetPassword] = useState(false)
-  const [username, setUsername] = useState("")
+  const [maskedUsername, setMaskedUsername] = useState("")
   const [password, setPassword] = useState("")
   const [passwordConfirm, setPasswordConfirm] = useState("")
   const inputs = useRef<Array<HTMLInputElement | null>>([])
@@ -119,15 +119,12 @@ export default function EmailVerifyCodeForm({
     }
     setCanResetPassword(Boolean(result.data.canResetPassword))
     setFoundEmail(result.data.email ?? "")
+    setMaskedUsername(result.data.maskedUsername ?? "***")
   }
 
   async function onResetPassword(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
-    if (!username.trim()) {
-      setFormError("아이디를 입력해 주세요.")
-      return
-    }
     const pwErr = validatePassword(password)
     if (pwErr) {
       setFormError(pwErr)
@@ -138,13 +135,13 @@ export default function EmailVerifyCodeForm({
       return
     }
     setSubmitting(true)
-    const result = await resetPasswordAfterVerification(token, username, password)
+    const result = await resetPasswordAfterVerification(token, password)
     setSubmitting(false)
     if (!result.ok) {
       setFormError(result.message)
       return
     }
-    const loginId = foundEmail || username.trim()
+    const loginId = foundEmail || ""
     router.replace(`/login?reset=1&account=${encodeURIComponent(loginId)}`)
   }
 
@@ -190,20 +187,23 @@ export default function EmailVerifyCodeForm({
         ) : canResetPassword ? (
           <form className="space-y-4" onSubmit={onResetPassword}>
             <p className="text-center text-sm text-gray-600">
-              가입한 아이디와 새 비밀번호를 입력해 주세요.
+              인증된 계정의 새 비밀번호를 입력해 주세요.
             </p>
             {formError && (
               <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
                 {formError}
               </div>
             )}
-            <input
-              autoComplete="username"
-              placeholder="아이디"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className={inputClass}
-            />
+            <div>
+              <label className="mb-1 block text-left text-sm font-medium text-gray-800">아이디</label>
+              <input
+                readOnly
+                autoComplete="username"
+                value={maskedUsername}
+                className={`${inputClass} bg-gray-50 tracking-wide`}
+                aria-label="마스킹된 아이디"
+              />
+            </div>
             <input
               type="password"
               autoComplete="new-password"

@@ -38,9 +38,6 @@ class OtpAuthControllerTest {
     private OtpAuthenticationService otpAuthenticationService;
 
     @MockBean
-    private com.sleekydz86.finsight.core.user.service.PasswordExpiryNoticeService passwordExpiryNoticeService;
-
-    @MockBean
     private com.sleekydz86.finsight.core.auth.service.SocialAuthService socialAuthService;
 
     @MockBean

@@ -15,10 +15,13 @@ import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import com.sleekydz86.finsight.core.auth.email.EmailVerificationService;
+import com.sleekydz86.finsight.core.user.domain.event.UserRegisteredEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,15 +41,18 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidationService passwordValidationService;
     private final EmailVerificationService emailVerificationService;
+    private final ApplicationEventPublisher eventPublisher;
 
     public UserService(UserPersistencePort userPersistencePort,
             PasswordEncoder passwordEncoder,
             PasswordValidationService passwordValidationService,
-            EmailVerificationService emailVerificationService) {
+            EmailVerificationService emailVerificationService,
+            ApplicationEventPublisher eventPublisher) {
         this.userPersistencePort = userPersistencePort;
         this.passwordEncoder = passwordEncoder;
         this.passwordValidationService = passwordValidationService;
         this.emailVerificationService = emailVerificationService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -85,6 +91,10 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
 
         User savedUser = userPersistencePort.save(newUser);
         emailVerificationService.consumeSignupVerification(request.getEmail());
+        LocalDateTime registeredAt = savedUser.getCreatedAt() != null
+                ? savedUser.getCreatedAt()
+                : LocalDateTime.now();
+        eventPublisher.publishEvent(new UserRegisteredEvent(savedUser.getId(), registeredAt));
         log.info("사용자 등록 완료: ID={}", savedUser.getId());
 
         return savedUser;
@@ -137,22 +147,30 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
     }
 
     @Override
-    @CacheEvict(value = { "userCache", "user", "userProfile" }, key = "#userId")
+    @Caching(evict = {
+            @CacheEvict(value = "userCache", key = "'watchlist_' + #userId"),
+            @CacheEvict(value = "userCache", key = "#userId"),
+            @CacheEvict(value = { "user", "userProfile" }, key = "#userId")
+    })
     public void updateWatchlist(Long userId, WatchlistUpdateRequest request) {
         log.info("관심종목 수정: 사용자ID={}", userId);
 
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
 
-        if (request.getCategories() != null) {
-            user.updateWatchlist(request.getCategories());
-            userPersistencePort.save(user);
-            log.info("관심종목 수정 완료: 사용자ID={}", userId);
-        }
+        List<TargetCategory> categories = request.getCategories() != null
+                ? request.getCategories()
+                : List.of();
+        user.updateWatchlist(categories);
+        userPersistencePort.save(user);
+        log.info("관심종목 수정 완료: 사용자ID={}, count={}", userId, categories.size());
     }
 
     @Override
-    @CacheEvict(value = "userCache", key = "#userId")
+    @Caching(evict = {
+            @CacheEvict(value = "userCache", key = "'notifications_' + #userId"),
+            @CacheEvict(value = "userCache", key = "#userId")
+    })
     public void updateNotificationPreferences(Long userId, List<NotificationType> preferences) {
         log.info("알림 설정 수정: 사용자ID={}", userId);
 
