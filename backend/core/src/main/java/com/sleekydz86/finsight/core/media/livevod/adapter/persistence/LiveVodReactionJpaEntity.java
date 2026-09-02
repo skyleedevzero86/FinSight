@@ -41,12 +41,22 @@ public class LiveVodReactionJpaEntity {
     protected LiveVodReactionJpaEntity() {
     }
 
+    /**
+     * Creates a live VOD reaction entity.
+     *
+     * @param videoId      the identifier of the video
+     * @param userEmail    the email address of the reacting user
+     * @param reactionType the type of reaction
+     */
     public LiveVodReactionJpaEntity(String videoId, String userEmail, String reactionType) {
         this.videoId = videoId;
         this.userEmail = userEmail;
         this.reactionType = reactionType;
     }
 
+    /**
+     * Initializes the creation timestamp when absent and updates the modification timestamp before persistence.
+     */
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now();
@@ -56,6 +66,9 @@ public class LiveVodReactionJpaEntity {
         updatedAt = now;
     }
 
+    /**
+     * Refreshes the last-update timestamp before the entity is updated.
+     */
     @PreUpdate
     void onUpdate() {
         updatedAt = LocalDateTime.now();
@@ -65,10 +78,20 @@ public class LiveVodReactionJpaEntity {
         return id;
     }
 
+    /**
+     * Retrieves the identifier of the associated video.
+     *
+     * @return the video identifier
+     */
     public String getVideoId() {
         return videoId;
     }
 
+    /**
+     * Retrieves the email address associated with the reaction.
+     *
+     * @return the user's email address
+     */
     public String getUserEmail() {
         return userEmail;
     }
@@ -77,6 +100,11 @@ public class LiveVodReactionJpaEntity {
         return reactionType;
     }
 
+    /**
+     * Updates the reaction type.
+     *
+     * @param reactionType the new reaction type
+     */
     public void setReactionType(String reactionType) {
         this.reactionType = reactionType;
     }

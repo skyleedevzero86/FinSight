@@ -50,11 +50,24 @@ export type LiveVodReplyPage = {
   hasPrev: boolean
 }
 
+/**
+ * Converts an unknown object value to a string-keyed record.
+ *
+ * @param value - The value to validate and convert
+ * @returns The value as a record, or `null` if it is not a non-null object
+ */
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
   return value as Record<string, unknown>
 }
 
+/**
+ * Parses a successful API response and extracts its data.
+ *
+ * @param res - The API response to parse
+ * @returns The response data
+ * @throws Error if the response status is unsuccessful or the API reports failure
+ */
 async function readApiData<T>(res: Response): Promise<T> {
   const json = (await res.json()) as { success?: boolean; data?: T; message?: string }
   if (!res.ok || json.success === false) {
@@ -63,11 +76,23 @@ async function readApiData<T>(res: Response): Promise<T> {
   return json.data as T
 }
 
+/**
+ * Normalizes a reaction value to a supported reaction type.
+ *
+ * @param value - The value to normalize
+ * @returns `LIKE` or `DISLIKE` when supported, `null` otherwise
+ */
 function parseReaction(value: unknown): "LIKE" | "DISLIKE" | null {
   if (value === "LIKE" || value === "DISLIKE") return value
   return null
 }
 
+/**
+ * Retrieves normalized engagement data for a live VOD.
+ *
+ * @param videoId - The identifier of the live VOD
+ * @returns The VOD's favorite, comment, and reaction engagement data
+ */
 export async function fetchLiveVodEngagement(videoId: string): Promise<LiveVodEngagement> {
   const res = await fetch(`/api/v1/media/live-vod/${encodeURIComponent(videoId)}/engagement`, {
     headers: { Accept: "application/json", ...authHeadersJson() },
@@ -85,6 +110,12 @@ export async function fetchLiveVodEngagement(videoId: string): Promise<LiveVodEn
   }
 }
 
+/**
+ * Toggles the authenticated user's favorite state for a live VOD.
+ *
+ * @param videoId - The live VOD identifier
+ * @returns The updated favorite state and total favorite count
+ */
 export async function toggleLiveVodFavoriteApi(
   videoId: string,
 ): Promise<{ favorited: boolean; favoriteCount: number }> {
@@ -108,6 +139,14 @@ export async function toggleLiveVodFavoriteApi(
   }
 }
 
+/**
+ * Updates the authenticated user's reaction to a live VOD.
+ *
+ * @param videoId - The live VOD identifier
+ * @param reaction - The reaction to apply
+ * @returns The resulting reaction and aggregate like and dislike counts
+ * @throws Error if no usable access token is available
+ */
 export async function toggleLiveVodReactionApi(
   videoId: string,
   reaction: "LIKE" | "DISLIKE",
@@ -133,6 +172,12 @@ export async function toggleLiveVodReactionApi(
   }
 }
 
+/**
+ * Parses raw data into a normalized live VOD comment.
+ *
+ * @param raw - The raw value to parse as a comment
+ * @returns A normalized comment, or `null` when the value lacks a valid identifier
+ */
 function parseComment(raw: unknown): LiveVodComment | null {
   const o = asRecord(raw)
   if (!o) return null
@@ -164,6 +209,14 @@ function parseComment(raw: unknown): LiveVodComment | null {
   }
 }
 
+/**
+ * Fetches a paginated list of root comments for a live VOD.
+ *
+ * @param videoId - The live VOD identifier
+ * @param page - The zero-based page number
+ * @param size - The requested number of comments per page
+ * @returns The parsed comments and pagination metadata
+ */
 export async function fetchLiveVodComments(
   videoId: string,
   page = 0,
@@ -192,6 +245,15 @@ export async function fetchLiveVodComments(
   }
 }
 
+/**
+ * Fetches a paginated list of replies for a live VOD comment.
+ *
+ * @param videoId - The live VOD identifier
+ * @param parentId - The identifier of the comment whose replies are requested
+ * @param page - The zero-based page number
+ * @param size - The maximum number of replies per page
+ * @returns The reply page with normalized comment and pagination data
+ */
 export async function fetchLiveVodReplies(
   videoId: string,
   parentId: number,
@@ -223,6 +285,13 @@ export async function fetchLiveVodReplies(
   }
 }
 
+/**
+ * Creates a comment for a live VOD.
+ *
+ * @param parentId - The identifier of the parent comment when creating a reply.
+ * @returns The created comment.
+ * @throws If the user is not authenticated or the response cannot be parsed as a comment.
+ */
 export async function createLiveVodComment(
   videoId: string,
   content: string,
@@ -247,6 +316,14 @@ export async function createLiveVodComment(
   return parsed
 }
 
+/**
+ * Toggles a like or dislike reaction on a live VOD comment.
+ *
+ * @param videoId - The live VOD identifier
+ * @param commentId - The comment identifier
+ * @param reaction - The reaction to apply
+ * @returns The resulting reaction and like and dislike counts
+ */
 export async function toggleLiveVodCommentReactionApi(
   videoId: string,
   commentId: number,

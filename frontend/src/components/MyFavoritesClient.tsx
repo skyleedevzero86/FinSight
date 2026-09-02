@@ -11,6 +11,14 @@ import {
   type LiveVodFavorite,
 } from "@/lib/liveVodFavorites"
 
+/**
+ * Displays the authenticated user's saved LIVE/VOD videos.
+ *
+ * Unauthenticated users are redirected to the login page. The list stays synchronized
+ * with favorite changes and browser storage updates.
+ *
+ * @returns The favorites page content.
+ */
 export default function MyFavoritesClient() {
   const router = useRouter()
   const { user, ready } = useAuthSession()

@@ -46,6 +46,13 @@ export function toPrivacyEmbedUrl(
 export const YOUTUBE_EMBED_ALLOW =
   "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen; compute-pressure"
 
+/**
+ * Builds the internal watch URL for a LIVE/VOD video.
+ *
+ * @param item - The video whose watch URL should be generated
+ * @param tab - An optional tab name to include when it is not `"ALL"`
+ * @returns The encoded internal watch URL
+ */
 export function liveVodWatchHref(
   item: Pick<LiveVodItem, "videoId">,
   tab?: string,
@@ -66,6 +73,11 @@ export type LiveVodMetaHint = {
   thumbnailUrl: string
 }
 
+/**
+ * Stores video metadata in the browser session for later use.
+ *
+ * @param item - The video metadata to cache; items without a video ID or meaningful title are ignored.
+ */
 export function stashLiveVodMetaHint(
   item: Pick<LiveVodItem, "videoId" | "title" | "channelTitle" | "thumbnailUrl">,
 ): void {
@@ -86,6 +98,12 @@ export function stashLiveVodMetaHint(
   }
 }
 
+/**
+ * Retrieves cached metadata for a LIVE/VOD video.
+ *
+ * @param videoId - The video identifier to match
+ * @returns The normalized cached metadata, or `null` when no valid matching metadata is available
+ */
 export function readLiveVodMetaHint(videoId: string): LiveVodMetaHint | null {
   if (typeof window === "undefined" || !videoId) return null
   try {
@@ -116,6 +134,12 @@ export type LiveVodMeta = {
   watchUrl: string
 }
 
+/**
+ * Retrieves metadata for a LIVE/VOD video.
+ *
+ * @param videoId - The YouTube video identifier
+ * @returns The video metadata, using cached or default values when the request fails or provides invalid fields.
+ */
 export async function fetchLiveVodMeta(videoId: string): Promise<LiveVodMeta> {
   const hint = readLiveVodMetaHint(videoId)
   const fallback: LiveVodMeta = {
@@ -160,6 +184,12 @@ export async function fetchLiveVodMeta(videoId: string): Promise<LiveVodMeta> {
   }
 }
 
+/**
+ * Converts an object value to a string-keyed record.
+ *
+ * @param value - The value to convert
+ * @returns The value as a record, or `null` if it is not an object
+ */
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
   return value as Record<string, unknown>

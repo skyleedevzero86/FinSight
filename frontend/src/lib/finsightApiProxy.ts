@@ -161,6 +161,13 @@ export async function proxyJsonToFinSight(
   }
 }
 
+/**
+ * Proxies an HTTP request to the FinSight backend and forwards its response.
+ *
+ * @param backendPathAndQuery - The backend path and query string to request.
+ * @param init - Optional request body and timeout override.
+ * @returns The backend response, or a localized error response when proxying fails.
+ */
 export async function mirrorRequestToFinSight(
   req: Request,
   backendPathAndQuery: string,
@@ -247,6 +254,12 @@ export async function mirrorRequestToFinSight(
   }
 }
 
+/**
+ * Proxies a request to FinSight and forwards the binary response.
+ *
+ * @param backendPathAndQuery - The backend path and query string to request
+ * @returns A response containing the backend status, binary body, and selected headers
+ */
 export async function mirrorBinaryRequestToFinSight(
   req: Request,
   backendPathAndQuery: string,

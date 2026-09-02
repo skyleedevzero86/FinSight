@@ -28,6 +28,13 @@ public class AdvancedSecurityConfig {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
+    /**
+     * Creates a security configuration with the JWT authentication components.
+     *
+     * @param jwtAuthenticationFilter the filter that processes JWT authentication
+     * @param jwtAuthenticationEntryPoint the handler for unauthenticated access
+     * @param jwtAccessDeniedHandler the handler for authenticated users without sufficient access
+     */
     public AdvancedSecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
             JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
@@ -42,11 +49,24 @@ public class AdvancedSecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Exposes the application authentication manager as a Spring bean.
+     *
+     * @param config the authentication configuration
+     * @return the configured authentication manager
+     * @throws Exception if the authentication manager cannot be obtained
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
+    /**
+     * Disables automatic servlet registration for the JWT authentication filter.
+     *
+     * @param filter the JWT authentication filter managed by the security filter chain
+     * @return the disabled servlet registration for the filter
+     */
     @Bean
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtAuthenticationFilterRegistration(
             JwtAuthenticationFilter filter) {
@@ -55,6 +75,13 @@ public class AdvancedSecurityConfig {
         return registration;
     }
 
+    /**
+     * Configures and builds the stateless Spring Security filter chain.
+     *
+     * @param http the HTTP security configuration
+     * @return the configured security filter chain
+     * @throws Exception if the security configuration cannot be built
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http

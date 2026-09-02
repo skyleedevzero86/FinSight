@@ -97,10 +97,20 @@ public class LiveVodCommentJpaEntity {
         return content;
     }
 
+    /**
+     * Retrieves the parent comment.
+     *
+     * @return the parent comment, or {@code null} if this is a top-level comment
+     */
     public LiveVodCommentJpaEntity getParent() {
         return parent;
     }
 
+    /**
+     * Retrieves the identifier of the parent comment.
+     *
+     * @return the parent comment identifier, or {@code null} when no parent comment exists
+     */
     public Long getParentId() {
         if (parentId != null) {
             return parentId;

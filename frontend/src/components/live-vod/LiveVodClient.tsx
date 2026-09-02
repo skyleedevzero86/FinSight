@@ -12,6 +12,12 @@ import {
   type LiveVodFeed,
 } from "@/lib/liveVod"
 
+/**
+ * Displays the live VOD feed and related videos for the selected tab.
+ *
+ * @param tab - The feed tab used to select the live VOD content
+ * @returns The loading, error, or live VOD feed view
+ */
 function LiveVodBody({ tab }: { tab: string }) {
   const [feed, setFeed] = useState<LiveVodFeed | null>(null)
   const [error, setError] = useState<string | null>(null)

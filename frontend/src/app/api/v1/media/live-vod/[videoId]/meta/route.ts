@@ -13,6 +13,12 @@ type MetaPayload = {
 
 const PLACEHOLDER_TITLE = "VOD 상세"
 
+/**
+ * Creates fallback metadata for a YouTube video.
+ *
+ * @param videoId - The YouTube video identifier
+ * @returns Metadata containing placeholder title and default thumbnail, embed, and watch URLs
+ */
 function fallbackMeta(videoId: string): MetaPayload {
   return {
     videoId,
@@ -24,11 +30,23 @@ function fallbackMeta(videoId: string): MetaPayload {
   }
 }
 
+/**
+ * Determines whether a title contains usable, non-placeholder text.
+ *
+ * @param title - The title to evaluate
+ * @returns `true` if the trimmed title is nonempty and differs from the placeholder title, `false` otherwise.
+ */
 function isUsableTitle(title: string | null | undefined): boolean {
   const trimmed = (title || "").trim()
   return trimmed.length > 0 && trimmed !== PLACEHOLDER_TITLE
 }
 
+/**
+ * Creates a successful JSON response containing video metadata.
+ *
+ * @param data - The video metadata payload
+ * @returns An HTTP 200 response with the metadata and success message
+ */
 function okMeta(data: MetaPayload) {
   return Response.json(
     {
@@ -40,11 +58,22 @@ function okMeta(data: MetaPayload) {
   )
 }
 
+/**
+ * Converts a non-null object value to a string-keyed record.
+ *
+ * @param value - The value to convert
+ * @returns The value as a record, or `null` when it is null, undefined, or not an object
+ */
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
   return value as Record<string, unknown>
 }
 
+/**
+ * Retrieves YouTube oEmbed metadata for a video.
+ *
+ * @returns The video metadata, or `null` if the metadata cannot be retrieved or is invalid.
+ */
 async function fetchOEmbed(videoId: string): Promise<MetaPayload | null> {
   try {
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`
@@ -77,6 +106,13 @@ async function fetchOEmbed(videoId: string): Promise<MetaPayload | null> {
   }
 }
 
+/**
+ * Extracts usable VOD metadata from a backend response payload.
+ *
+ * @param videoId - Fallback video identifier used when the payload omits one
+ * @param payload - Backend response value containing metadata under `data`
+ * @returns Parsed metadata, or `null` when the payload lacks usable metadata
+ */
 function parseBackendMeta(videoId: string, payload: unknown): MetaPayload | null {
   const root = asRecord(payload)
   const data = asRecord(root?.data)
@@ -103,6 +139,12 @@ function parseBackendMeta(videoId: string, payload: unknown): MetaPayload | null
   }
 }
 
+/**
+ * Resolves metadata for a live VOD video and provides fallback metadata when needed.
+ *
+ * @param ctx - Route context containing the requested video ID
+ * @returns A JSON response containing the resolved VOD metadata
+ */
 export async function GET(_req: Request, ctx: Ctx) {
   const { videoId: rawId } = await ctx.params
   const videoId = (rawId || "").trim()

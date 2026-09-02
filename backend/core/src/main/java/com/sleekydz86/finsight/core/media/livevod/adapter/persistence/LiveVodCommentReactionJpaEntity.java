@@ -41,12 +41,22 @@ public class LiveVodCommentReactionJpaEntity {
     protected LiveVodCommentReactionJpaEntity() {
     }
 
+    /**
+     * Creates a reaction entity for a live VOD comment.
+     *
+     * @param commentId    the identifier of the commented live VOD
+     * @param userEmail    the email address of the reacting user
+     * @param reactionType the type of reaction
+     */
     public LiveVodCommentReactionJpaEntity(Long commentId, String userEmail, String reactionType) {
         this.commentId = commentId;
         this.userEmail = userEmail;
         this.reactionType = reactionType;
     }
 
+    /**
+     * Initializes creation and update timestamps when the entity is persisted.
+     */
     @PrePersist
     void onCreate() {
         LocalDateTime now = LocalDateTime.now();
@@ -56,11 +66,19 @@ public class LiveVodCommentReactionJpaEntity {
         updatedAt = now;
     }
 
+    /**
+     * Refreshes the update timestamp before the entity is updated.
+     */
     @PreUpdate
     void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Retrieves the entity's identifier.
+     *
+     * @return the entity ID
+     */
     public Long getId() {
         return id;
     }
@@ -69,14 +87,29 @@ public class LiveVodCommentReactionJpaEntity {
         return commentId;
     }
 
+    /**
+     * Gets the email address of the user associated with the reaction.
+     *
+     * @return the user's email address
+     */
     public String getUserEmail() {
         return userEmail;
     }
 
+    /**
+     * Retrieves the reaction type.
+     *
+     * @return the reaction type
+     */
     public String getReactionType() {
         return reactionType;
     }
 
+    /**
+     * Updates the reaction type.
+     *
+     * @param reactionType the new reaction type
+     */
     public void setReactionType(String reactionType) {
         this.reactionType = reactionType;
     }

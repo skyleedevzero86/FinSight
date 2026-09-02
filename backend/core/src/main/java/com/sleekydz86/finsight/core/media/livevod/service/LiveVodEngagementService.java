@@ -73,6 +73,12 @@ public class LiveVodEngagementService {
         this.restTemplate = restTemplate;
     }
 
+    /**
+     * Adds favorite and comment counts to the videos in a live/VOD feed.
+     *
+     * @param feed the feed whose video items should be enriched
+     * @return the original feed when it is null or has no sections; otherwise, a feed with engagement counts applied
+     */
     @Transactional(readOnly = true)
     public LiveVodFeedResponse enrichFeed(LiveVodFeedResponse feed) {
         if (feed == null || feed.sections() == null || feed.sections().isEmpty()) {
@@ -103,6 +109,13 @@ public class LiveVodEngagementService {
                 sections);
     }
 
+    /**
+     * Retrieves the engagement summary for a video.
+     *
+     * @param videoId   the video identifier
+     * @param userEmail the email address of the user viewing the video
+     * @return the video's engagement summary
+     */
     @Transactional(readOnly = true)
     public EngagementSummary getEngagement(String videoId, String userEmail) {
         return summarizeOne(normalizeVideoId(videoId), userEmail);
@@ -110,6 +123,16 @@ public class LiveVodEngagementService {
 
     private static final String PLACEHOLDER_TITLE = "VOD 상세";
 
+    /**
+     * Resolves metadata for a live or VOD video.
+     *
+     * <p>Uses stored metadata when available, supplements it with YouTube oEmbed
+     * metadata when necessary, and falls back to generated metadata if no usable
+     * title can be obtained. Invalid video IDs also receive fallback metadata.</p>
+     *
+     * @param videoId the YouTube video identifier
+     * @return the resolved video metadata
+     */
     @Transactional(readOnly = true)
     public LiveVodMetaResponse getMeta(String videoId) {
         String id;
@@ -166,6 +189,12 @@ public class LiveVodEngagementService {
         return oembed != null ? oembed : fallbackMeta(id);
     }
 
+    /**
+     * Determines whether a title contains usable, non-placeholder text.
+     *
+     * @param title the title to evaluate
+     * @return {@code true} if the title contains non-empty text other than the placeholder title, {@code false} otherwise
+     */
     private static boolean isUsableTitle(String title) {
         if (title == null) {
             return false;
@@ -174,6 +203,12 @@ public class LiveVodEngagementService {
         return !trimmed.isEmpty() && !PLACEHOLDER_TITLE.equals(trimmed);
     }
 
+    /**
+     * Creates fallback YouTube metadata for a video identifier.
+     *
+     * @param id the video identifier
+     * @return metadata containing placeholder title and default YouTube URLs
+     */
     private static LiveVodMetaResponse fallbackMeta(String id) {
         return new LiveVodMetaResponse(
                 id,
@@ -184,6 +219,15 @@ public class LiveVodEngagementService {
                 "https://www.youtube.com/watch?v=" + id);
     }
 
+    /**
+     * Fetches video metadata from YouTube's oEmbed endpoint.
+     *
+     * @param id           the video identifier
+     * @param watchUrl     the YouTube watch URL used for the metadata request
+     * @param embedUrl     the video's embed URL
+     * @param thumbnailUrl the fallback thumbnail URL
+     * @return the video metadata, or {@code null} if the response is unavailable or the request fails
+     */
     @SuppressWarnings("unchecked")
     private LiveVodMetaResponse fetchOEmbedMeta(
             String id,
@@ -215,6 +259,13 @@ public class LiveVodEngagementService {
         }
     }
 
+    /**
+     * Toggles the authenticated user's favorite status for a video.
+     *
+     * @param videoId   the video identifier
+     * @param userEmail the authenticated user's email address
+     * @return the updated favorite status and total favorite count for the video
+     */
     @Transactional
     public FavoriteToggleResponse toggleFavorite(String videoId, String userEmail) {
         String id = normalizeVideoId(videoId);
@@ -231,6 +282,14 @@ public class LiveVodEngagementService {
         return new FavoriteToggleResponse(favorited, favoriteRepository.countByVideoId(id));
     }
 
+    /**
+     * Toggles the authenticated user's reaction for a video.
+     *
+     * @param videoId     the video identifier
+     * @param userEmail   the authenticated user's email address
+     * @param reactionRaw the requested reaction, either {@code LIKE} or {@code DISLIKE}
+     * @return the user's current reaction and the video's total like and dislike counts
+     */
     @Transactional
     public ReactionToggleResponse toggleReaction(String videoId, String userEmail, String reactionRaw) {
         String id = normalizeVideoId(videoId);
@@ -258,6 +317,15 @@ public class LiveVodEngagementService {
     public static final int ROOT_COMMENT_PAGE_SIZE = 15;
     public static final int REPLY_PAGE_SIZE = 5;
 
+    /**
+     * Retrieves a paginated list of top-level comments for a video, including the first page of replies and reaction details.
+     *
+     * @param videoId     the video identifier
+     * @param page        the zero-based page number
+     * @param size        the requested page size
+     * @param viewerEmail the email of the viewing user, if available
+     * @return the paginated comments, reply metadata, total comment counts, and page status
+     */
     @Transactional(readOnly = true)
     public CommentPageResponse listComments(String videoId, int page, int size, String viewerEmail) {
         String id = normalizeVideoId(videoId);
@@ -311,6 +379,16 @@ public class LiveVodEngagementService {
                 rootPage.hasNext());
     }
 
+    /**
+     * Retrieves a paginated list of replies for a top-level comment.
+     *
+     * @param videoId     the video identifier associated with the parent comment
+     * @param parentId    the identifier of the top-level comment
+     * @param page        the zero-based page number
+     * @param size        the requested page size, limited to 20 replies
+     * @param viewerEmail the viewer's email for resolving the viewer's reactions
+     * @return            the paginated replies and their reaction information
+     */
     @Transactional(readOnly = true)
     public ReplyPageResponse listReplies(String videoId, Long parentId, int page, int size, String viewerEmail) {
         String id = normalizeVideoId(videoId);
@@ -345,6 +423,16 @@ public class LiveVodEngagementService {
                 replyPage.hasPrevious());
     }
 
+    /**
+     * Toggles the authenticated user's reaction on a comment.
+     *
+     * @param commentId   the identifier of the comment
+     * @param userEmail   the authenticated user's email address
+     * @param reactionRaw the requested reaction, either {@code LIKE} or {@code DISLIKE}
+     * @return the user's current reaction and the comment's like and dislike counts
+     * @throws ResponseStatusException if authentication fails, the comment ID is missing,
+     *                                 the comment does not exist, or the reaction is invalid
+     */
     @Transactional
     public ReactionToggleResponse toggleCommentReaction(Long commentId, String userEmail, String reactionRaw) {
         requireUser(userEmail);
@@ -375,6 +463,16 @@ public class LiveVodEngagementService {
         return new ReactionToggleResponse(myReaction, likes, dislikes);
     }
 
+    /**
+     * Creates a comment or reply for a video.
+     *
+     * @param videoId the target video's identifier
+     * @param userEmail the authenticated user's email address
+     * @param nickname the author's display name
+     * @param request the comment content and optional parent comment identifier
+     * @return the created comment
+     * @throws ResponseStatusException if the user, video, comment content, or parent comment is invalid
+     */
     @Transactional
     public CommentResponse createComment(
             String videoId,
@@ -424,6 +522,17 @@ public class LiveVodEngagementService {
         return toComment(saved, List.of(), 0, 0, 0, empty);
     }
 
+    /**
+     * Converts a comment entity and its engagement data into a comment response.
+     *
+     * @param row              the comment entity
+     * @param replies          the comment's replies
+     * @param replyCount       the total number of replies
+     * @param replyPage        the current reply page
+     * @param replyTotalPages  the total number of reply pages
+     * @param reactionView     the comment reaction counts and current user's reactions
+     * @return                the comment response with masked author email and engagement data
+     */
     private CommentResponse toComment(
             LiveVodCommentJpaEntity row,
             List<CommentResponse> replies,
@@ -450,6 +559,13 @@ public class LiveVodEngagementService {
                 mine);
     }
 
+    /**
+     * Loads reaction counts and the viewer's reactions for the specified comments.
+     *
+     * @param commentIds   the comment identifiers to include
+     * @param viewerEmail  the email address of the viewer, or {@code null} to omit viewer-specific reactions
+     * @return             reaction counts and viewer reactions keyed by comment identifier
+     */
     private ReactionView loadCommentReactions(Collection<Long> commentIds, String viewerEmail) {
         if (commentIds == null || commentIds.isEmpty()) {
             return ReactionView.empty();
@@ -495,6 +611,13 @@ public class LiveVodEngagementService {
         }
     }
 
+    /**
+     * Applies engagement counts to a live or VOD feed item.
+     *
+     * @param item the feed item to enrich
+     * @param map  engagement summaries keyed by video ID
+     * @return the feed item with its favorite and comment counts
+     */
     private LiveVodFeedResponse.LiveVodItemResponse withCounts(
             LiveVodFeedResponse.LiveVodItemResponse item,
             Map<String, EngagementSummary> map) {
@@ -512,6 +635,13 @@ public class LiveVodEngagementService {
                 summary.commentCount());
     }
 
+    /**
+     * Builds engagement summaries for multiple videos.
+     *
+     * @param videoIds  the video IDs to summarize
+     * @param userEmail the viewer's email for determining favorite status, or {@code null} to omit it
+     * @return a summary for each requested video ID
+     */
     private Map<String, EngagementSummary> summarizeMany(Set<String> videoIds, String userEmail) {
         Map<String, EngagementSummary> result = new HashMap<>();
         if (videoIds == null || videoIds.isEmpty()) {
@@ -546,6 +676,13 @@ public class LiveVodEngagementService {
         return result;
     }
 
+    /**
+     * Builds an engagement summary for a video, optionally including the user's favorite status and reaction.
+     *
+     * @param videoId   the video identifier
+     * @param userEmail the user's email, or {@code null} or blank when no user context is available
+     * @return the video's favorite, comment, like, dislike, and user-specific engagement details
+     */
     private EngagementSummary summarizeOne(String videoId, String userEmail) {
         long favoriteCount = favoriteRepository.countByVideoId(videoId);
         long commentCount = commentRepository.countByVideoId(videoId);
@@ -567,6 +704,13 @@ public class LiveVodEngagementService {
         }
     }
 
+    /**
+     * Retrieves the user's current reaction for a video.
+     *
+     * @param userEmail the user's email address
+     * @param videoId   the video identifier
+     * @return the user's reaction type, or {@code null} if no reaction exists or the lookup fails
+     */
     private String findMyReactionSafe(String userEmail, String videoId) {
         try {
             return reactionRepository.findByUserEmailAndVideoId(userEmail, videoId)
@@ -577,6 +721,12 @@ public class LiveVodEngagementService {
         }
     }
 
+    /**
+     * Counts the likes and dislikes for a video.
+     *
+     * @param videoId the video identifier
+     * @return an array containing the like count at index 0 and the dislike count at index 1
+     */
     private long[] reactionCounts(String videoId) {
         long likes = 0;
         long dislikes = 0;
@@ -592,10 +742,22 @@ public class LiveVodEngagementService {
         return new long[]{likes, dislikes};
     }
 
+    /**
+     * Creates an empty engagement summary for a video.
+     *
+     * @param videoId the video identifier
+     * @return an engagement summary with zero counts and no user-specific state
+     */
     private static EngagementSummary emptySummary(String videoId) {
         return new EngagementSummary(videoId, 0, 0, null, 0, 0, null);
     }
 
+    /**
+     * Normalizes a reaction value and validates that it is supported.
+     *
+     * @param raw the reaction value to normalize
+     * @return the trimmed, uppercase reaction value
+     */
     private static String normalizeReaction(String raw) {
         if (raw == null || raw.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reaction이 필요합니다.");
@@ -607,6 +769,13 @@ public class LiveVodEngagementService {
         return value;
     }
 
+    /**
+     * Validates and trims a video identifier.
+     *
+     * @param videoId the identifier to validate
+     * @return the trimmed video identifier
+     * @throws ResponseStatusException if the identifier is blank or does not contain 6 to 32 letters, digits, underscores, or hyphens
+     */
     private static String normalizeVideoId(String videoId) {
         if (videoId == null || videoId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "videoId가 필요합니다.");

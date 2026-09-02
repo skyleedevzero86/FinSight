@@ -1,4 +1,3 @@
-
 package com.sleekydz86.finsight.core.auth.filter;
 
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
@@ -108,6 +107,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * Identifies requests that should bypass JWT authentication filtering.
+     *
+     * @return {@code true} if the request targets an excluded public or documentation path,
+     *         {@code false} otherwise
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getRequestURI();

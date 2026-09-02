@@ -38,6 +38,12 @@ public class LiveVodEngagementController {
         this.liveVodEngagementService = liveVodEngagementService;
     }
 
+    /**
+     * Retrieves the live and video-on-demand feed for the selected tab.
+     *
+     * @param tab the feed tab to retrieve
+     * @return the enriched live/VOD feed
+     */
     @GetMapping("/videos/live-vod")
     public ResponseEntity<ApiResponse<LiveVodFeedResponse>> getLiveVodFeed(
             @RequestParam(required = false, defaultValue = "ALL") String tab) {
@@ -46,6 +52,12 @@ public class LiveVodEngagementController {
         return ResponseEntity.ok(ApiResponse.success(enriched, "LIVE/VOD 피드를 성공적으로 조회했습니다."));
     }
 
+    /**
+     * Retrieves metadata for a live or video-on-demand item.
+     *
+     * @param videoId the identifier of the video
+     * @return the video's metadata
+     */
     @GetMapping("/live-vod/{videoId}/meta")
     public ResponseEntity<ApiResponse<LiveVodMetaResponse>> getMeta(@PathVariable String videoId) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -53,6 +65,13 @@ public class LiveVodEngagementController {
                 "영상 정보를 조회했습니다."));
     }
 
+    /**
+     * Retrieves engagement information for a video.
+     *
+     * @param videoId     the identifier of the video
+     * @param currentUser the authenticated user, if available
+     * @return the video's engagement summary
+     */
     @GetMapping("/live-vod/{videoId}/engagement")
     public ResponseEntity<ApiResponse<EngagementSummary>> getEngagement(
             @PathVariable String videoId,
@@ -72,6 +91,13 @@ public class LiveVodEngagementController {
                 "즐겨찾기를 반영했습니다."));
     }
 
+    /**
+     * Toggles the authenticated user's reaction to a video.
+     *
+     * @param videoId the video identifier
+     * @param request the requested reaction, or {@code null} to clear the reaction
+     * @return the updated reaction state
+     */
     @PostMapping("/live-vod/{videoId}/reaction")
     public ResponseEntity<ApiResponse<ReactionToggleResponse>> toggleReaction(
             @PathVariable String videoId,
@@ -83,6 +109,15 @@ public class LiveVodEngagementController {
                 "반응을 반영했습니다."));
     }
 
+    /**
+     * Retrieves a paginated list of comments for a video.
+     *
+     * @param videoId     the identifier of the video
+     * @param page        the zero-based page number
+     * @param size        the number of comments per page
+     * @param currentUser the authenticated user, when available
+     * @return the paginated comments for the specified video
+     */
     @GetMapping("/live-vod/{videoId}/comments")
     public ResponseEntity<ApiResponse<CommentPageResponse>> listComments(
             @PathVariable String videoId,
@@ -95,6 +130,16 @@ public class LiveVodEngagementController {
                 "댓글 목록을 조회했습니다."));
     }
 
+    /**
+     * Retrieves a paginated list of replies for a video comment.
+     *
+     * @param videoId the video identifier
+     * @param parentId the identifier of the parent comment
+     * @param page the zero-based page number
+     * @param size the maximum number of replies per page
+     * @param currentUser the authenticated user, when available
+     * @return the paginated replies for the specified comment
+     */
     @GetMapping("/live-vod/{videoId}/comments/{parentId}/replies")
     public ResponseEntity<ApiResponse<ReplyPageResponse>> listReplies(
             @PathVariable String videoId,
@@ -108,6 +153,14 @@ public class LiveVodEngagementController {
                 "대댓글 목록을 조회했습니다."));
     }
 
+    /**
+     * Toggles the authenticated user's reaction to a comment.
+     *
+     * @param videoId      the identifier of the video containing the comment
+     * @param commentId    the identifier of the comment
+     * @param request      the requested reaction; may be {@code null} to clear the reaction
+     * @return             the updated reaction state
+     */
     @PostMapping("/live-vod/{videoId}/comments/{commentId}/reaction")
     public ResponseEntity<ApiResponse<ReactionToggleResponse>> toggleCommentReaction(
             @PathVariable String videoId,
@@ -120,6 +173,14 @@ public class LiveVodEngagementController {
                 "댓글 반응을 반영했습니다."));
     }
 
+    /**
+     * Creates a comment for a live or video-on-demand item.
+     *
+     * @param videoId     the identifier of the video
+     * @param request     the comment content
+     * @param currentUser the authenticated user creating the comment
+     * @return the created comment
+     */
     @PostMapping("/live-vod/{videoId}/comments")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @PathVariable String videoId,
