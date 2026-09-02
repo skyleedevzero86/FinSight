@@ -48,6 +48,23 @@ function IconShare({ className }: { className?: string }) {
   )
 }
 
+function WatchTitle({ title }: { title: string }) {
+  const parts = title.split(/(#[^\s#]+)/g).filter((part) => part.length > 0)
+  return (
+    <h1 className="flv-watch-title">
+      {parts.map((part, index) =>
+        part.startsWith("#") ? (
+          <span key={`${part}-${index}`} className="flv-watch-hashtag">
+            {part}
+          </span>
+        ) : (
+          <span key={`${part}-${index}`}>{part}</span>
+        ),
+      )}
+    </h1>
+  )
+}
+
 function LiveVodWatchBody() {
   const params = useParams<{ videoId: string }>()
   const searchParams = useSearchParams()
@@ -142,7 +159,12 @@ function LiveVodWatchBody() {
           tab: tab === "FAVORITES" ? "ALL" : tab,
         })
       }
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : ""
+      if (message.includes("로그인")) {
+        requireLogin()
+        return
+      }
       setShareHint("즐겨찾기 저장에 실패했습니다")
       window.setTimeout(() => setShareHint(null), 2000)
     }
@@ -174,7 +196,7 @@ function LiveVodWatchBody() {
             </Link>
           </div>
           <div className="flv-watch-heading-row">
-            <h1>{title}</h1>
+            <WatchTitle title={title} />
             <div className="flv-watch-actions" role="toolbar" aria-label="영상 도구">
               <button type="button" className="flv-icon-btn" onClick={() => window.print()} aria-label="인쇄">
                 <IconPrint />

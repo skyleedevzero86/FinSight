@@ -165,13 +165,30 @@
   position: relative;
 }
 
-.finsight-live-vod-page .flv-watch-heading-row h1 {
+.finsight-live-vod-page .flv-watch-heading-row h1,
+.finsight-live-vod-page .flv-watch-title {
   grid-column: 1 / -1;
   grid-row: 1;
   margin: 0;
   text-align: center;
   padding: 0 120px;
   min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+  max-height: calc(1.35em * 2);
+}
+
+.finsight-live-vod-page .flv-watch-hashtag {
+  font-size: 0.72em;
+  font-weight: 600;
+  color: #666;
+  letter-spacing: -0.01em;
 }
 
 .finsight-live-vod-page .flv-watch-actions {
@@ -185,7 +202,8 @@
 }
 
 @media (max-width: 640px) {
-  .finsight-live-vod-page .flv-watch-heading-row h1 {
+  .finsight-live-vod-page .flv-watch-heading-row h1,
+  .finsight-live-vod-page .flv-watch-title {
     padding: 0 0 44px;
   }
 

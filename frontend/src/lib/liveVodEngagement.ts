@@ -1,4 +1,4 @@
-import { authHeadersJson } from "@/lib/finsightToken"
+import { authHeadersJson, readUsableAccessToken } from "@/lib/finsightToken"
 
 export type LiveVodEngagement = {
   videoId: string
@@ -48,9 +48,18 @@ export async function fetchLiveVodEngagement(videoId: string): Promise<LiveVodEn
 export async function toggleLiveVodFavoriteApi(
   videoId: string,
 ): Promise<{ favorited: boolean; favoriteCount: number }> {
+  if (!readUsableAccessToken()) {
+    throw new Error("로그인이 필요합니다.")
+  }
   const res = await fetch(`/api/v1/media/live-vod/${encodeURIComponent(videoId)}/favorite`, {
     method: "POST",
-    headers: { Accept: "application/json", ...authHeadersJson() },
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...authHeadersJson(),
+    },
+    body: "{}",
+    cache: "no-store",
   })
   const data = await readApiData<Record<string, unknown>>(res)
   return {
@@ -90,10 +99,18 @@ export async function createLiveVodComment(
   content: string,
   parentId?: number | null,
 ): Promise<LiveVodComment> {
+  if (!readUsableAccessToken()) {
+    throw new Error("로그인이 필요합니다.")
+  }
   const res = await fetch(`/api/v1/media/live-vod/${encodeURIComponent(videoId)}/comments`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...authHeadersJson() },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...authHeadersJson(),
+    },
     body: JSON.stringify({ content, parentId: parentId ?? null }),
+    cache: "no-store",
   })
   const data = await readApiData<unknown>(res)
   const parsed = parseComment(data)

@@ -65,7 +65,12 @@ export default function LiveVodComments({
       setReplyTo(null)
       await reload()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "댓글 등록에 실패했습니다.")
+      const message = err instanceof Error ? err.message : ""
+      if (message.includes("로그인")) {
+        router.push(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+        return
+      }
+      setError(message || "댓글 등록에 실패했습니다.")
     } finally {
       setSubmitting(false)
     }

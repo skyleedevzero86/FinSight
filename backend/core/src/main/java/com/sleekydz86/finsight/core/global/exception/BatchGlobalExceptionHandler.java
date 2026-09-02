@@ -155,7 +155,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(AuthenticationFailedException.class)
     public ResponseEntity<Map<String, Object>> handleAuthenticationFailedException(AuthenticationFailedException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("인증에 실패했습니다", ex);
+        log.warn("인증 실패: path={}, message={}", request.getRequestURI(), ex.getMessage());
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "AUTHENTICATION_FAILED");
