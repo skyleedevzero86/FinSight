@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDt
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.CommentResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.EngagementSummary;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.FavoriteToggleResponse;
+import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.LiveVodMetaResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReactionToggleRequest;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReactionToggleResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReplyPageResponse;
@@ -45,6 +46,13 @@ public class LiveVodEngagementController {
         return ResponseEntity.ok(ApiResponse.success(enriched, "LIVE/VOD 피드를 성공적으로 조회했습니다."));
     }
 
+    @GetMapping("/live-vod/{videoId}/meta")
+    public ResponseEntity<ApiResponse<LiveVodMetaResponse>> getMeta(@PathVariable String videoId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                liveVodEngagementService.getMeta(videoId),
+                "영상 정보를 조회했습니다."));
+    }
+
     @GetMapping("/live-vod/{videoId}/engagement")
     public ResponseEntity<ApiResponse<EngagementSummary>> getEngagement(
             @PathVariable String videoId,
@@ -79,9 +87,11 @@ public class LiveVodEngagementController {
     public ResponseEntity<ApiResponse<CommentPageResponse>> listComments(
             @PathVariable String videoId,
             @RequestParam(required = false, defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "15") int size) {
+            @RequestParam(required = false, defaultValue = "15") int size,
+            @CurrentUser(required = false) AuthenticatedUser currentUser) {
+        String email = currentUser == null ? null : currentUser.getEmail();
         return ResponseEntity.ok(ApiResponse.success(
-                liveVodEngagementService.listComments(videoId, page, size),
+                liveVodEngagementService.listComments(videoId, page, size, email),
                 "댓글 목록을 조회했습니다."));
     }
 
@@ -90,10 +100,24 @@ public class LiveVodEngagementController {
             @PathVariable String videoId,
             @PathVariable Long parentId,
             @RequestParam(required = false, defaultValue = "0") int page,
-            @RequestParam(required = false, defaultValue = "5") int size) {
+            @RequestParam(required = false, defaultValue = "5") int size,
+            @CurrentUser(required = false) AuthenticatedUser currentUser) {
+        String email = currentUser == null ? null : currentUser.getEmail();
         return ResponseEntity.ok(ApiResponse.success(
-                liveVodEngagementService.listReplies(videoId, parentId, page, size),
+                liveVodEngagementService.listReplies(videoId, parentId, page, size, email),
                 "대댓글 목록을 조회했습니다."));
+    }
+
+    @PostMapping("/live-vod/{videoId}/comments/{commentId}/reaction")
+    public ResponseEntity<ApiResponse<ReactionToggleResponse>> toggleCommentReaction(
+            @PathVariable String videoId,
+            @PathVariable Long commentId,
+            @RequestBody ReactionToggleRequest request,
+            @CurrentUser AuthenticatedUser currentUser) {
+        String reaction = request == null ? null : request.reaction();
+        return ResponseEntity.ok(ApiResponse.success(
+                liveVodEngagementService.toggleCommentReaction(commentId, currentUser.getEmail(), reaction),
+                "댓글 반응을 반영했습니다."));
     }
 
     @PostMapping("/live-vod/{videoId}/comments")

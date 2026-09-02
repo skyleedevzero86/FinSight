@@ -25,6 +25,9 @@ export type LiveVodComment = {
   replyCount: number
   replyPage: number
   replyTotalPages: number
+  likeCount: number
+  dislikeCount: number
+  myReaction: "LIKE" | "DISLIKE" | null
 }
 
 export type LiveVodCommentPage = {
@@ -155,6 +158,9 @@ function parseComment(raw: unknown): LiveVodComment | null {
     replyCount: Number(o.replyCount) || 0,
     replyPage: Number(o.replyPage) || 0,
     replyTotalPages: Number(o.replyTotalPages) || 0,
+    likeCount: Number(o.likeCount) || 0,
+    dislikeCount: Number(o.dislikeCount) || 0,
+    myReaction: parseReaction(o.myReaction),
   }
 }
 
@@ -170,7 +176,7 @@ export async function fetchLiveVodComments(
   const res = await fetch(
     `/api/v1/media/live-vod/${encodeURIComponent(videoId)}/comments?${qs.toString()}`,
     {
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", ...authHeadersJson() },
       cache: "no-store",
     },
   )
@@ -199,7 +205,7 @@ export async function fetchLiveVodReplies(
   const res = await fetch(
     `/api/v1/media/live-vod/${encodeURIComponent(videoId)}/comments/${parentId}/replies?${qs.toString()}`,
     {
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", ...authHeadersJson() },
       cache: "no-store",
     },
   )
@@ -239,4 +245,33 @@ export async function createLiveVodComment(
   const parsed = parseComment(data)
   if (!parsed) throw new Error("댓글 응답을 해석하지 못했습니다.")
   return parsed
+}
+
+export async function toggleLiveVodCommentReactionApi(
+  videoId: string,
+  commentId: number,
+  reaction: "LIKE" | "DISLIKE",
+): Promise<{ myReaction: "LIKE" | "DISLIKE" | null; likeCount: number; dislikeCount: number }> {
+  if (!readUsableAccessToken()) {
+    throw new Error("로그인이 필요합니다.")
+  }
+  const res = await fetch(
+    `/api/v1/media/live-vod/${encodeURIComponent(videoId)}/comments/${commentId}/reaction`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...authHeadersJson(),
+      },
+      body: JSON.stringify({ reaction }),
+      cache: "no-store",
+    },
+  )
+  const data = await readApiData<Record<string, unknown>>(res)
+  return {
+    myReaction: parseReaction(data.myReaction),
+    likeCount: Number(data.likeCount) || 0,
+    dislikeCount: Number(data.dislikeCount) || 0,
+  }
 }

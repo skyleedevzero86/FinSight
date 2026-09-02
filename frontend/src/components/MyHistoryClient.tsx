@@ -56,10 +56,7 @@ function HistoryGalleryCard({
   return (
     <li>
       <Link
-        href={liveVodWatchHref(
-          { videoId, title, channelTitle },
-          tab,
-        )}
+        href={liveVodWatchHref({ videoId }, tab)}
         className="flv-thumb-link"
       >
         <div className="flv-thumb-wrap">

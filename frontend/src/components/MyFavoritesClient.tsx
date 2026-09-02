@@ -65,14 +65,7 @@ export default function MyFavoritesClient() {
               {items.map((it) => (
                 <li key={it.videoId}>
                   <Link
-                    href={liveVodWatchHref(
-                      {
-                        videoId: it.videoId,
-                        title: it.title,
-                        channelTitle: it.channelTitle,
-                      },
-                      "FAVORITES",
-                    )}
+                    href={liveVodWatchHref({ videoId: it.videoId }, "FAVORITES")}
                     className="flv-thumb-link"
                   >
                     <div className="flv-thumb-wrap">

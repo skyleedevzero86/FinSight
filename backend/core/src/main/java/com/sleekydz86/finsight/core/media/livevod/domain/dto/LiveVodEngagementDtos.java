@@ -36,6 +36,16 @@ public final class LiveVodEngagementDtos {
     ) {
     }
 
+    public record LiveVodMetaResponse(
+            String videoId,
+            String title,
+            String channelTitle,
+            String thumbnailUrl,
+            String embedUrl,
+            String watchUrl
+    ) {
+    }
+
     public record CommentCreateRequest(
             String content,
             Long parentId
@@ -81,7 +91,10 @@ public final class LiveVodEngagementDtos {
             List<CommentResponse> replies,
             long replyCount,
             int replyPage,
-            int replyTotalPages
+            int replyTotalPages,
+            long likeCount,
+            long dislikeCount,
+            String myReaction
     ) {
         public CommentResponse {
             replies = replies == null ? List.of() : List.copyOf(replies);

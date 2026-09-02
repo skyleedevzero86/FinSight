@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import LiveVodComments from "@/components/live-vod/LiveVodComments"
-import { toPrivacyEmbedUrl, YOUTUBE_EMBED_ALLOW } from "@/lib/liveVod"
+import { toPrivacyEmbedUrl, YOUTUBE_EMBED_ALLOW, fetchLiveVodMeta } from "@/lib/liveVod"
 import { toggleLiveVodFavorite } from "@/lib/liveVodFavorites"
 import { recordLiveVodWatch } from "@/lib/liveVodHistory"
 import {
@@ -128,8 +128,8 @@ function LiveVodWatchBody() {
   const router = useRouter()
   const { user, ready } = useAuthSession()
   const videoId = typeof params.videoId === "string" ? params.videoId : ""
-  const title = searchParams.get("title")?.trim() || "VOD 상세"
-  const channel = searchParams.get("channel")?.trim() || null
+  const queryTitle = searchParams.get("title")?.trim() || ""
+  const queryChannel = searchParams.get("channel")?.trim() || null
   const tab = (searchParams.get("tab") || "ALL").trim().toUpperCase() || "ALL"
   const backHref =
     tab === "FAVORITES"
@@ -140,6 +140,11 @@ function LiveVodWatchBody() {
           ? "/live-vod"
           : `/live-vod?tab=${encodeURIComponent(tab)}`
   const embedSrc = toPrivacyEmbedUrl(videoId)
+  const [title, setTitle] = useState(queryTitle || "VOD 상세")
+  const [channel, setChannel] = useState<string | null>(queryChannel)
+  const [thumbnailUrl, setThumbnailUrl] = useState(
+    videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : "",
+  )
   const [favorited, setFavorited] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [commentCount, setCommentCount] = useState(0)
@@ -148,11 +153,36 @@ function LiveVodWatchBody() {
 
   const requireLogin = () => {
     const returnTo =
-      typeof window !== "undefined"
-        ? `${window.location.pathname}${window.location.search}`
-        : "/live-vod"
+      typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "/live-vod"
     router.push(`/login?next=${encodeURIComponent(returnTo)}`)
   }
+
+  useEffect(() => {
+    if (!videoId) return
+    let cancelled = false
+    void fetchLiveVodMeta(videoId)
+      .then((meta) => {
+        if (cancelled) return
+        setTitle(meta.title || queryTitle || "VOD 상세")
+        setChannel(meta.channelTitle ?? queryChannel)
+        setThumbnailUrl(meta.thumbnailUrl)
+        if (typeof window !== "undefined" && (queryTitle || queryChannel)) {
+          const clean = new URL(window.location.href)
+          clean.searchParams.delete("title")
+          clean.searchParams.delete("channel")
+          const next = `${clean.pathname}${clean.search}${clean.hash}`
+          window.history.replaceState(window.history.state, "", next)
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        if (queryTitle) setTitle(queryTitle)
+        if (queryChannel) setChannel(queryChannel)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [videoId, queryTitle, queryChannel])
 
   useEffect(() => {
     if (!videoId) return
@@ -160,11 +190,11 @@ function LiveVodWatchBody() {
       videoId,
       title,
       channelTitle: channel,
-      thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      thumbnailUrl: thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
       tab: tab === "FAVORITES" || tab === "HISTORY" ? "ALL" : tab,
       watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
     })
-  }, [videoId, title, channel, tab])
+  }, [videoId, title, channel, tab, thumbnailUrl])
 
   useEffect(() => {
     if (!videoId) return
@@ -214,7 +244,7 @@ function LiveVodWatchBody() {
           videoId,
           title,
           channelTitle: channel,
-          thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          thumbnailUrl: thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
           tab: tab === "FAVORITES" ? "ALL" : tab,
         })
       }

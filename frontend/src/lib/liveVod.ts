@@ -47,15 +47,58 @@ export const YOUTUBE_EMBED_ALLOW =
   "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen; compute-pressure"
 
 export function liveVodWatchHref(
-  item: Pick<LiveVodItem, "videoId" | "title" | "channelTitle">,
+  item: Pick<LiveVodItem, "videoId">,
   tab?: string,
 ): string {
   const params = new URLSearchParams()
-  if (item.title) params.set("title", item.title)
-  if (item.channelTitle) params.set("channel", item.channelTitle)
   if (tab && tab !== "ALL") params.set("tab", tab)
   const qs = params.toString()
   return `/live-vod/watch/${encodeURIComponent(item.videoId)}${qs ? `?${qs}` : ""}`
+}
+
+export type LiveVodMeta = {
+  videoId: string
+  title: string
+  channelTitle: string | null
+  thumbnailUrl: string
+  embedUrl: string
+  watchUrl: string
+}
+
+export async function fetchLiveVodMeta(videoId: string): Promise<LiveVodMeta> {
+  const fallback: LiveVodMeta = {
+    videoId,
+    title: "VOD 상세",
+    channelTitle: null,
+    thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
+    watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
+  }
+  try {
+    const res = await fetch(`/api/v1/media/live-vod/${encodeURIComponent(videoId)}/meta`, {
+      headers: { Accept: "application/json" },
+      cache: "no-store",
+    })
+    if (!res.ok) return fallback
+    const json = (await res.json()) as { success?: boolean; data?: Record<string, unknown> }
+    const data = json.data
+    if (!data || typeof data !== "object") return fallback
+    return {
+      videoId: typeof data.videoId === "string" ? data.videoId : videoId,
+      title: typeof data.title === "string" && data.title ? data.title : fallback.title,
+      channelTitle: typeof data.channelTitle === "string" ? data.channelTitle : null,
+      thumbnailUrl:
+        typeof data.thumbnailUrl === "string" && data.thumbnailUrl
+          ? data.thumbnailUrl
+          : fallback.thumbnailUrl,
+      embedUrl:
+        typeof data.embedUrl === "string" && data.embedUrl ? data.embedUrl : fallback.embedUrl,
+      watchUrl:
+        typeof data.watchUrl === "string" && data.watchUrl ? data.watchUrl : fallback.watchUrl,
+    }
+  } catch {
+    return fallback
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
