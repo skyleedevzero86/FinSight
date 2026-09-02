@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,6 +45,19 @@ public class BatchGlobalExceptionHandler {
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
         return ResponseEntity.status(status).body(response);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResourceFound(
+            NoResourceFoundException ex, HttpServletRequest request) {
+        log.warn("매핑되지 않은 경로: {} {}", request.getMethod(), request.getRequestURI());
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("error", "NOT_FOUND");
+        response.put("message", "요청한 API를 찾을 수 없습니다.");
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
