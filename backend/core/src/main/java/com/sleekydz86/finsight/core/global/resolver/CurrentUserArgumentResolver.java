@@ -58,13 +58,16 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             return null;
         }
 
+        if (!currentUserAnnotation.required()) {
+            return AuthenticatedUser.builder()
+                    .email(email)
+                    .build();
+        }
+
         try {
             Optional<User> userOpt = userPersistencePort.findByEmail(email);
             if (userOpt.isEmpty()) {
-                if (currentUserAnnotation.required()) {
-                    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-                }
-                return null;
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
             }
 
             User user = userOpt.get();
@@ -82,10 +85,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             throw ex;
         } catch (Exception e) {
             log.error("Error resolving current user for email: {}", email, e);
-            if (currentUserAnnotation.required()) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-            }
-            return null;
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         }
     }
 

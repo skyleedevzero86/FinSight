@@ -48,20 +48,77 @@ function IconShare({ className }: { className?: string }) {
   )
 }
 
-function WatchTitle({ title }: { title: string }) {
-  const parts = title.split(/(#[^\s#]+)/g).filter((part) => part.length > 0)
+function parseWatchTitle(raw: string): {
+  main: string
+  subtitle: string | null
+  meta: string | null
+} {
+  const cleaned = raw.replace(/\s+/g, " ").trim()
+  if (!cleaned) {
+    return { main: "VOD 상세", subtitle: null, meta: null }
+  }
+
+  let body = cleaned
+  let meta: string | null = null
+  const pipeIdx = cleaned.lastIndexOf("|")
+  if (pipeIdx >= 0) {
+    const left = cleaned.slice(0, pipeIdx).trim()
+    const right = cleaned.slice(pipeIdx + 1).trim()
+    if (left && right) {
+      body = left
+      meta = right
+    }
+  }
+
+  const commaIdx = body.indexOf(",")
+  if (commaIdx >= 0) {
+    const main = body.slice(0, commaIdx).trim()
+    const subtitle = body.slice(commaIdx + 1).trim()
+    if (main && subtitle) {
+      return { main, subtitle, meta }
+    }
+  }
+
+  return { main: body, subtitle: null, meta }
+}
+
+function TitleLine({ text, className }: { text: string; className?: string }) {
+  const parts = text.split(/(#[^\s#]+)/g).filter((part) => part.length > 0)
   return (
-    <h1 className="flv-watch-title">
-      {parts.map((part, index) =>
-        part.startsWith("#") ? (
-          <span key={`${part}-${index}`} className="flv-watch-hashtag">
-            {part}
-          </span>
-        ) : (
-          <span key={`${part}-${index}`}>{part}</span>
-        ),
-      )}
-    </h1>
+    <span className={className}>
+      {parts.map((part, index) => {
+        if (part.startsWith("#")) {
+          return (
+            <span key={`${part}-${index}`} className="flv-watch-hashtag">
+              {part}
+            </span>
+          )
+        }
+        const trimmedEnd = part.replace(/\s+$/g, "")
+        return <span key={`${part}-${index}`}>{trimmedEnd}</span>
+      })}
+    </span>
+  )
+}
+
+function WatchTitle({ title }: { title: string }) {
+  const { main, subtitle, meta } = parseWatchTitle(title)
+  return (
+    <div className="flv-watch-title-block">
+      <h1 className="flv-watch-title-main">
+        <TitleLine text={main} />
+      </h1>
+      {subtitle ? (
+        <p className="flv-watch-title-sub">
+          <TitleLine text={subtitle} />
+        </p>
+      ) : null}
+      {meta ? (
+        <p className="flv-watch-title-meta">
+          <TitleLine text={meta} />
+        </p>
+      ) : null}
+    </div>
   )
 }
 
@@ -86,6 +143,7 @@ function LiveVodWatchBody() {
   const [favorited, setFavorited] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [commentCount, setCommentCount] = useState(0)
+  const [favoriteBusy, setFavoriteBusy] = useState(false)
   const [shareHint, setShareHint] = useState<string | null>(null)
 
   const requireLogin = () => {
@@ -140,11 +198,12 @@ function LiveVodWatchBody() {
   }
 
   const onToggleFavorite = async () => {
-    if (!ready) return
+    if (!ready || favoriteBusy) return
     if (!user) {
       requireLogin()
       return
     }
+    setFavoriteBusy(true)
     try {
       const result = await toggleLiveVodFavoriteApi(videoId)
       setFavorited(result.favorited)
@@ -165,8 +224,17 @@ function LiveVodWatchBody() {
         requireLogin()
         return
       }
+      try {
+        const eng = await fetchLiveVodEngagement(videoId)
+        setFavorited(Boolean(eng.favorited))
+        setFavoriteCount(eng.favoriteCount)
+      } catch {
+        /* ignore */
+      }
       setShareHint("즐겨찾기 저장에 실패했습니다")
       window.setTimeout(() => setShareHint(null), 2000)
+    } finally {
+      setFavoriteBusy(false)
     }
   }
 
@@ -191,7 +259,7 @@ function LiveVodWatchBody() {
       <div className="mx-auto max-w-[1240px] px-4 py-6 md:px-6 md:py-8">
         <div className="flv-toolbar flv-watch-toolbar">
           <div className="flv-watch-top">
-            <Link href={backHref} className="flv-back-link">
+            <Link href={backHref} className="flv-back-btn">
               이전으로
             </Link>
           </div>
@@ -205,6 +273,7 @@ function LiveVodWatchBody() {
                 type="button"
                 className={`flv-icon-btn${favorited ? " is-on" : ""}`}
                 onClick={() => void onToggleFavorite()}
+                disabled={favoriteBusy}
                 aria-label={favorited ? "즐겨찾기 해제" : "즐겨찾기"}
                 aria-pressed={favorited}
               >

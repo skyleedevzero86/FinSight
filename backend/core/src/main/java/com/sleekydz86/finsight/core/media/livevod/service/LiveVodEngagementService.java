@@ -4,36 +4,49 @@ import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodCom
 import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodCommentJpaRepository;
 import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodFavoriteJpaEntity;
 import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodFavoriteJpaRepository;
+import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodReactionJpaEntity;
+import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodReactionJpaRepository;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.CommentCreateRequest;
+import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.CommentPageResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.CommentResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.EngagementSummary;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.FavoriteToggleResponse;
+import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReactionToggleResponse;
+import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReplyPageResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.LiveVodFeedResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
 public class LiveVodEngagementService {
 
+    public static final String REACTION_LIKE = "LIKE";
+    public static final String REACTION_DISLIKE = "DISLIKE";
+
     private final LiveVodFavoriteJpaRepository favoriteRepository;
     private final LiveVodCommentJpaRepository commentRepository;
+    private final LiveVodReactionJpaRepository reactionRepository;
 
     public LiveVodEngagementService(
             LiveVodFavoriteJpaRepository favoriteRepository,
-            LiveVodCommentJpaRepository commentRepository) {
+            LiveVodCommentJpaRepository commentRepository,
+            LiveVodReactionJpaRepository reactionRepository) {
         this.favoriteRepository = favoriteRepository;
         this.commentRepository = commentRepository;
+        this.reactionRepository = reactionRepository;
     }
 
     @Transactional(readOnly = true)
@@ -75,54 +88,96 @@ public class LiveVodEngagementService {
     public FavoriteToggleResponse toggleFavorite(String videoId, String userEmail) {
         String id = normalizeVideoId(videoId);
         requireUser(userEmail);
-        boolean exists = favoriteRepository.existsByUserEmailAndVideoId(userEmail, id);
-        if (exists) {
-            favoriteRepository.deleteByUserEmailAndVideoId(userEmail, id);
+        Optional<LiveVodFavoriteJpaEntity> existing = favoriteRepository.findByUserEmailAndVideoId(userEmail, id);
+        boolean favorited;
+        if (existing.isPresent()) {
+            favoriteRepository.delete(existing.get());
+            favorited = false;
         } else {
             favoriteRepository.save(new LiveVodFavoriteJpaEntity(id, userEmail));
+            favorited = true;
         }
-        return new FavoriteToggleResponse(!exists, favoriteRepository.countByVideoId(id));
+        return new FavoriteToggleResponse(favorited, favoriteRepository.countByVideoId(id));
+    }
+
+    @Transactional
+    public ReactionToggleResponse toggleReaction(String videoId, String userEmail, String reactionRaw) {
+        String id = normalizeVideoId(videoId);
+        requireUser(userEmail);
+        String reaction = normalizeReaction(reactionRaw);
+        Optional<LiveVodReactionJpaEntity> existing = reactionRepository.findByUserEmailAndVideoId(userEmail, id);
+        String myReaction = null;
+        if (existing.isPresent()) {
+            LiveVodReactionJpaEntity row = existing.get();
+            if (reaction.equals(row.getReactionType())) {
+                reactionRepository.delete(row);
+            } else {
+                row.setReactionType(reaction);
+                reactionRepository.save(row);
+                myReaction = reaction;
+            }
+        } else {
+            reactionRepository.save(new LiveVodReactionJpaEntity(id, userEmail, reaction));
+            myReaction = reaction;
+        }
+        long[] counts = reactionCounts(id);
+        return new ReactionToggleResponse(myReaction, counts[0], counts[1]);
+    }
+
+    public static final int ROOT_COMMENT_PAGE_SIZE = 15;
+    public static final int REPLY_PAGE_SIZE = 5;
+
+    @Transactional(readOnly = true)
+    public CommentPageResponse listComments(String videoId, int page, int size) {
+        String id = normalizeVideoId(videoId);
+        int safePage = Math.max(page, 0);
+        int safeSize = size <= 0 ? ROOT_COMMENT_PAGE_SIZE : Math.min(size, 50);
+        Page<LiveVodCommentJpaEntity> rootPage = commentRepository
+                .findByVideoIdAndParentIsNullOrderByCreatedAtDesc(id, PageRequest.of(safePage, safeSize));
+
+        List<CommentResponse> items = rootPage.getContent().stream()
+                .map(row -> toRootComment(row, 0, REPLY_PAGE_SIZE))
+                .toList();
+
+        return new CommentPageResponse(
+                items,
+                rootPage.getNumber(),
+                rootPage.getSize(),
+                rootPage.getTotalElements(),
+                commentRepository.countByVideoId(id),
+                rootPage.hasNext());
     }
 
     @Transactional(readOnly = true)
-    public List<CommentResponse> listComments(String videoId) {
+    public ReplyPageResponse listReplies(String videoId, Long parentId, int page, int size) {
         String id = normalizeVideoId(videoId);
-        List<LiveVodCommentJpaEntity> all = commentRepository.findByVideoIdOrderByCreatedAtAsc(id);
-        Map<Long, CommentResponse> byId = new LinkedHashMap<>();
-        Map<Long, List<CommentResponse>> children = new HashMap<>();
-
-        for (LiveVodCommentJpaEntity row : all) {
-            CommentResponse node = new CommentResponse(
-                    row.getId(),
-                    row.getVideoId(),
-                    maskEmail(row.getUserEmail()),
-                    row.getAuthorNickname(),
-                    row.getContent(),
-                    row.getParentId(),
-                    row.getCreatedAt(),
-                    new ArrayList<>());
-            byId.put(row.getId(), node);
-            if (row.getParentId() != null) {
-                children.computeIfAbsent(row.getParentId(), ignored -> new ArrayList<>()).add(node);
-            }
+        if (parentId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "parentId가 필요합니다.");
+        }
+        LiveVodCommentJpaEntity parent = commentRepository.findById(parentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "부모 댓글을 찾을 수 없습니다."));
+        if (!id.equals(parent.getVideoId()) || parent.getParentId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효하지 않은 부모 댓글입니다.");
         }
 
-        List<CommentResponse> roots = new ArrayList<>();
-        for (CommentResponse node : byId.values()) {
-            if (node.parentId() == null) {
-                List<CommentResponse> replies = children.getOrDefault(node.id(), List.of());
-                roots.add(new CommentResponse(
-                        node.id(),
-                        node.videoId(),
-                        node.userEmail(),
-                        node.authorNickname(),
-                        node.content(),
-                        node.parentId(),
-                        node.createdAt(),
-                        replies));
-            }
-        }
-        return roots;
+        int safePage = Math.max(page, 0);
+        int safeSize = size <= 0 ? REPLY_PAGE_SIZE : Math.min(size, 20);
+        Page<LiveVodCommentJpaEntity> replyPage = commentRepository
+                .findByParent_IdOrderByCreatedAtAsc(parentId, PageRequest.of(safePage, safeSize));
+
+        List<CommentResponse> items = replyPage.getContent().stream()
+                .map(this::toLeafComment)
+                .toList();
+
+        return new ReplyPageResponse(
+                parentId,
+                items,
+                replyPage.getNumber(),
+                replyPage.getSize(),
+                replyPage.getTotalElements(),
+                replyPage.getTotalPages(),
+                replyPage.hasNext(),
+                replyPage.hasPrevious());
     }
 
     @Transactional
@@ -155,15 +210,45 @@ public class LiveVodEngagementService {
 
         LiveVodCommentJpaEntity saved = commentRepository.save(
                 new LiveVodCommentJpaEntity(id, userEmail, nickname, content, parent));
+        if (parent == null) {
+            return toRootComment(saved, 0, REPLY_PAGE_SIZE);
+        }
+        return toLeafComment(saved);
+    }
+
+    private CommentResponse toRootComment(LiveVodCommentJpaEntity row, int replyPage, int replySize) {
+        Page<LiveVodCommentJpaEntity> replies = commentRepository
+                .findByParent_IdOrderByCreatedAtAsc(row.getId(), PageRequest.of(Math.max(replyPage, 0), replySize));
+        List<CommentResponse> replyItems = replies.getContent().stream()
+                .map(this::toLeafComment)
+                .toList();
         return new CommentResponse(
-                saved.getId(),
-                saved.getVideoId(),
-                maskEmail(saved.getUserEmail()),
-                saved.getAuthorNickname(),
-                saved.getContent(),
-                saved.getParentId(),
-                saved.getCreatedAt(),
-                List.of());
+                row.getId(),
+                row.getVideoId(),
+                maskEmail(row.getUserEmail()),
+                row.getAuthorNickname(),
+                row.getContent(),
+                row.getParentId(),
+                row.getCreatedAt(),
+                replyItems,
+                replies.getTotalElements(),
+                replies.getNumber(),
+                Math.max(replies.getTotalPages(), 0));
+    }
+
+    private CommentResponse toLeafComment(LiveVodCommentJpaEntity row) {
+        return new CommentResponse(
+                row.getId(),
+                row.getVideoId(),
+                maskEmail(row.getUserEmail()),
+                row.getAuthorNickname(),
+                row.getContent(),
+                row.getParentId(),
+                row.getCreatedAt(),
+                List.of(),
+                0,
+                0,
+                0);
     }
 
     private LiveVodFeedResponse.LiveVodItemResponse withCounts(
@@ -171,7 +256,7 @@ public class LiveVodEngagementService {
             Map<String, EngagementSummary> map) {
         EngagementSummary summary = map.getOrDefault(
                 item.videoId(),
-                new EngagementSummary(item.videoId(), 0, 0, null));
+                emptySummary(item.videoId()));
         return new LiveVodFeedResponse.LiveVodItemResponse(
                 item.videoId(),
                 item.title(),
@@ -189,26 +274,29 @@ public class LiveVodEngagementService {
             return result;
         }
         for (String id : videoIds) {
-            result.put(id, new EngagementSummary(id, 0, 0, null));
+            result.put(id, emptySummary(id));
         }
         for (Object[] row : favoriteRepository.countByVideoIds(videoIds)) {
             String id = (String) row[0];
             long count = ((Number) row[1]).longValue();
             EngagementSummary prev = result.get(id);
-            result.put(id, new EngagementSummary(id, count, prev.commentCount(), null));
+            result.put(id, new EngagementSummary(
+                    id, count, prev.commentCount(), null, prev.likeCount(), prev.dislikeCount(), null));
         }
         for (Object[] row : commentRepository.countByVideoIds(videoIds)) {
             String id = (String) row[0];
             long count = ((Number) row[1]).longValue();
             EngagementSummary prev = result.get(id);
-            result.put(id, new EngagementSummary(id, prev.favoriteCount(), count, null));
+            result.put(id, new EngagementSummary(
+                    id, prev.favoriteCount(), count, null, prev.likeCount(), prev.dislikeCount(), null));
         }
         if (userEmail != null && !userEmail.isBlank()) {
             for (String id : videoIds) {
                 EngagementSummary prev = result.get(id);
                 Boolean favorited = favoriteRepository.existsByUserEmailAndVideoId(userEmail, id);
                 result.put(id, new EngagementSummary(
-                        id, prev.favoriteCount(), prev.commentCount(), favorited));
+                        id, prev.favoriteCount(), prev.commentCount(), favorited,
+                        prev.likeCount(), prev.dislikeCount(), prev.myReaction()));
             }
         }
         return result;
@@ -217,11 +305,62 @@ public class LiveVodEngagementService {
     private EngagementSummary summarizeOne(String videoId, String userEmail) {
         long favoriteCount = favoriteRepository.countByVideoId(videoId);
         long commentCount = commentRepository.countByVideoId(videoId);
+        long[] rx = reactionCountsSafe(videoId);
         Boolean favorited = null;
+        String myReaction = null;
         if (userEmail != null && !userEmail.isBlank()) {
             favorited = favoriteRepository.existsByUserEmailAndVideoId(userEmail, videoId);
+            myReaction = findMyReactionSafe(userEmail, videoId);
         }
-        return new EngagementSummary(videoId, favoriteCount, commentCount, favorited);
+        return new EngagementSummary(videoId, favoriteCount, commentCount, favorited, rx[0], rx[1], myReaction);
+    }
+
+    private long[] reactionCountsSafe(String videoId) {
+        try {
+            return reactionCounts(videoId);
+        } catch (RuntimeException ex) {
+            return new long[]{0, 0};
+        }
+    }
+
+    private String findMyReactionSafe(String userEmail, String videoId) {
+        try {
+            return reactionRepository.findByUserEmailAndVideoId(userEmail, videoId)
+                    .map(LiveVodReactionJpaEntity::getReactionType)
+                    .orElse(null);
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
+    private long[] reactionCounts(String videoId) {
+        long likes = 0;
+        long dislikes = 0;
+        for (Object[] row : reactionRepository.countGroupedByType(videoId)) {
+            String type = (String) row[0];
+            long count = ((Number) row[1]).longValue();
+            if (REACTION_LIKE.equals(type)) {
+                likes = count;
+            } else if (REACTION_DISLIKE.equals(type)) {
+                dislikes = count;
+            }
+        }
+        return new long[]{likes, dislikes};
+    }
+
+    private static EngagementSummary emptySummary(String videoId) {
+        return new EngagementSummary(videoId, 0, 0, null, 0, 0, null);
+    }
+
+    private static String normalizeReaction(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reaction이 필요합니다.");
+        }
+        String value = raw.trim().toUpperCase(Locale.ROOT);
+        if (!REACTION_LIKE.equals(value) && !REACTION_DISLIKE.equals(value)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reaction은 LIKE 또는 DISLIKE 여야 합니다.");
+        }
+        return value;
     }
 
     private static String normalizeVideoId(String videoId) {
