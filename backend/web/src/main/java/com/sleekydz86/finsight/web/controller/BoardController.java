@@ -36,7 +36,6 @@ public class BoardController {
     @GetMapping
     @LogExecution("게시판 목록 조회")
     @PerformanceMonitor(threshold = 2000, operation = "board_list")
-    @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
     public ResponseEntity<ApiResponse<PaginationResponse<BoardListResponse>>> getBoards(
             @Valid BoardSearchRequest request,
             @CurrentUser(required = false) AuthenticatedUser currentUser) {

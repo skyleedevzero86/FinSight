@@ -4,12 +4,6 @@ type Ctx = { params: Promise<{ videoId: string }> }
 
 const MEDIA_PROXY_TIMEOUT_MS = 20_000
 
-/**
- * Proxies a request to FinSight's live-VOD favorite endpoint.
- *
- * @param ctx - Route context containing the video identifier
- * @returns The response from the FinSight endpoint
- */
 export async function POST(req: Request, ctx: Ctx) {
   const { videoId } = await ctx.params
   return mirrorRequestToFinSight(

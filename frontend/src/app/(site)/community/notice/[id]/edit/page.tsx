@@ -25,7 +25,6 @@ export default async function CommunityNoticeEditPage({ params }: Props) {
   const tags = (detail.hashtags ?? []).join(", ")
   return (
     <CommunityBoardLayout
-      active="notice"
       heading="공지사항"
       description="센터 소식과 운영 안내를 전해 드립니다."
     >

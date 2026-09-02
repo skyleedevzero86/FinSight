@@ -178,7 +178,7 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
                 request.getBoardType(), BoardStatus.ACTIVE, request.getKeyword(), pageable);
 
         List<Board> boards = pageResult.getContent().stream()
-                .map(boardJpaMapper::toDomain)
+                .map(boardJpaMapper::toDomainListItem)
                 .toList();
 
         return new Boards(boards, pageResult.getTotalElements());
@@ -189,7 +189,7 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
                 request.getBoardType(), BoardStatus.ACTIVE, request.getHashtag(), pageable);
 
         List<Board> boards = pageResult.getContent().stream()
-                .map(boardJpaMapper::toDomain)
+                .map(boardJpaMapper::toDomainListItem)
                 .toList();
 
         return new Boards(boards, pageResult.getTotalElements());
@@ -201,7 +201,7 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
                 request.getStartDate(), request.getEndDate(), pageable);
 
         List<Board> boards = pageResult.getContent().stream()
-                .map(boardJpaMapper::toDomain)
+                .map(boardJpaMapper::toDomainListItem)
                 .toList();
 
         return new Boards(boards, pageResult.getTotalElements());
@@ -212,7 +212,7 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
                 request.getBoardType(), BoardStatus.ACTIVE, pageable);
 
         List<Board> boards = pageResult.getContent().stream()
-                .map(boardJpaMapper::toDomain)
+                .map(boardJpaMapper::toDomainListItem)
                 .toList();
 
         return new Boards(boards, pageResult.getTotalElements());

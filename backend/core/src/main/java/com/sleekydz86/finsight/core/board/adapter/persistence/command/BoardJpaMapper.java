@@ -41,6 +41,29 @@ public class BoardJpaMapper {
                 .build();
     }
 
+    public Board toDomainListItem(BoardJpaEntity entity) {
+        if (entity == null) {
+            return null;
+        }
+        return Board.builder()
+                .id(entity.getId())
+                .title(entity.getTitle())
+                .content("")
+                .authorEmail(entity.getAuthorEmail())
+                .boardType(entity.getBoardType())
+                .status(entity.getStatus())
+                .viewCount(entity.getViewCount())
+                .likeCount(entity.getLikeCount())
+                .dislikeCount(entity.getDislikeCount())
+                .commentCount(entity.getCommentCount())
+                .reportCount(entity.getReportCount())
+                .hashtags(List.of())
+                .files(List.of())
+                .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
+                .build();
+    }
+
     public BoardJpaEntity toEntity(Board board) {
         if (board == null) {
             return null;

@@ -23,7 +23,6 @@ export default async function CommunityFreeDetailPage({ params }: Props) {
   if (!detail) notFound()
   return (
     <CommunityBoardLayout
-      active="free"
       heading="포트폴리오 공유"
       description="투자·포트폴리오를 공유하고 이야기 나눠 보세요."
     >

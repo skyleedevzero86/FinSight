@@ -1,3 +1,4 @@
+import CommunityBoardShell from "@/components/community/CommunityBoardShell"
 import "@/styles/community-board.css"
 
 export default function CommunityLayout({
@@ -5,5 +6,5 @@ export default function CommunityLayout({
 }: {
   children: React.ReactNode
 }) {
-  return children
+  return <CommunityBoardShell>{children}</CommunityBoardShell>
 }

@@ -37,7 +37,7 @@ export async function fetchBoardListServer(
   try {
     const res = await fetch(`${base}/api/v1/boards?${params.toString()}`, {
       headers: { Accept: "application/json" },
-      next: { revalidate: 0 },
+      next: { revalidate: 30, tags: [`boards:${input.boardType}`] },
     })
     if (!res.ok) {
       console.error(

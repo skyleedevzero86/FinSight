@@ -155,6 +155,43 @@
   line-height: 1.4;
 }
 
+.fcb-loading {
+  min-height: 18rem;
+}
+
+.fcb-skel {
+  background: linear-gradient(90deg, #f0f2f7 25%, #e6e9f0 37%, #f0f2f7 63%);
+  background-size: 400% 100%;
+  animation: fcb-skel-shine 1.2s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+.fcb-skel-title {
+  width: min(12rem, 40%);
+  height: 1.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.fcb-skel-desc {
+  width: min(24rem, 70%);
+  height: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.fcb-skel-table {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.fcb-skel-row {
+  height: 2.5rem;
+}
+
+@keyframes fcb-skel-shine {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
 .fcb-tablist {
   margin: 2rem 0;
 }

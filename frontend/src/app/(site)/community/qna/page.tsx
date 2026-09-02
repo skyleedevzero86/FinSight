@@ -44,7 +44,6 @@ export default async function CommunityQnaPage({ searchParams }: PageProps) {
 
   return (
     <CommunityBoardLayout
-      active="qna"
       heading="Q&A"
       description="서비스 이용 중 궁금한 점을 남겨 주세요."
     >

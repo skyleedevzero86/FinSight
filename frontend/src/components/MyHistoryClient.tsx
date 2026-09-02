@@ -34,14 +34,6 @@ function formatWatchedAt(iso: string): string {
   }
 }
 
-/**
- * Renders a watch-history or favorites gallery card with navigation and removal controls.
- *
- * @param tab - Collection tab used to build the watch URL
- * @param meta - Optional metadata displayed on the card
- * @param onRemove - Called when the removal button is clicked
- * @returns The rendered gallery card
- */
 function HistoryGalleryCard({
   videoId,
   title,

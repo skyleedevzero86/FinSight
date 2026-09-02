@@ -15,24 +15,11 @@ import {
   type LiveVodComment,
 } from "@/lib/liveVodEngagement"
 
-/**
- * Formats a timestamp for display by replacing the date-time separator and limiting precision to minutes.
- *
- * @param value - The timestamp to format, or `null`
- * @returns The formatted timestamp, or `null` when no value is provided
- */
 function formatTime(value: string | null): string | null {
   if (!value) return null
   return value.replace("T", " ").slice(0, 16)
 }
 
-/**
- * Displays comments and replies for a live VOD, including pagination and reactions.
- *
- * @param videoId - The live VOD identifier.
- * @param onCountChange - Optional callback invoked when the total comment count changes.
- * @returns The live VOD comments interface.
- */
 export default function LiveVodComments({
   videoId,
   onCountChange,

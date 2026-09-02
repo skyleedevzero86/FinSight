@@ -23,11 +23,6 @@ const PLACEHOLDER_TITLE = "VOD 상세"
 let engagementRequestSeq = 0
 let favoriteMutationSeq = 0
 
-/**
- * Renders a print icon.
- *
- * @returns The print icon SVG.
- */
 function IconPrint({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" width="20" height="20" aria-hidden>
@@ -52,11 +47,6 @@ function IconBookmark({ filled, className }: { filled?: boolean; className?: str
   )
 }
 
-/**
- * Renders a share icon.
- *
- * @param className - Optional CSS class name for the icon.
- */
 function IconShare({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" width="20" height="20" aria-hidden>
@@ -68,12 +58,6 @@ function IconShare({ className }: { className?: string }) {
   )
 }
 
-/**
- * Parses a VOD title into its main text, subtitle, and trailing metadata.
- *
- * @param raw - The unnormalized VOD title
- * @returns The parsed title parts, using `"VOD 상세"` when the title is empty
- */
 function parseWatchTitle(raw: string): {
   main: string
   subtitle: string | null
@@ -108,12 +92,6 @@ function parseWatchTitle(raw: string): {
   return { main: body, subtitle: null, meta }
 }
 
-/**
- * Renders text with hashtags highlighted as separate inline elements.
- *
- * @param text - The text to render
- * @param className - An optional CSS class for the outer element
- */
 function TitleLine({ text, className }: { text: string; className?: string }) {
   const parts = text.split(/(#[^\s#]+)/g).filter((part) => part.length > 0)
   return (
@@ -133,11 +111,6 @@ function TitleLine({ text, className }: { text: string; className?: string }) {
   )
 }
 
-/**
- * Renders a video title with separate main, subtitle, and metadata sections.
- *
- * @param title - The title text to parse and display
- */
 function WatchTitle({ title }: { title: string }) {
   const { main, subtitle, meta } = parseWatchTitle(title)
   return (
