@@ -100,8 +100,11 @@ public class AuthenticationService {
 
         } catch (AuthenticationFailedException e) {
             throw e;
+        } catch (org.springframework.security.core.AuthenticationException e) {
+            log.warn("로그인 실패(자격 증명): email={}", request.getEmail());
+            throw new AuthenticationFailedException(request.getEmail());
         } catch (Exception e) {
-            log.error("로그인 실패: {}", e.getMessage(), e);
+            log.error("로그인 처리 중 오류: {}", e.getMessage(), e);
             throw new AuthenticationFailedException(request.getEmail());
         }
     }

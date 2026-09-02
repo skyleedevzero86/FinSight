@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
-import { liveVodWatchHref } from "@/lib/liveVod"
+import { liveVodWatchHref, stashLiveVodMetaHint } from "@/lib/liveVod"
 import {
   listLiveVodFavorites,
   removeLiveVodFavorite,
@@ -56,11 +56,16 @@ function HistoryGalleryCard({
   return (
     <li>
       <Link
-        href={liveVodWatchHref(
-          { videoId, title, channelTitle },
-          tab,
-        )}
+        href={liveVodWatchHref({ videoId }, tab)}
         className="flv-thumb-link"
+        onClick={() =>
+          stashLiveVodMetaHint({
+            videoId,
+            title,
+            channelTitle,
+            thumbnailUrl,
+          })
+        }
       >
         <div className="flv-thumb-wrap">
           <img src={thumbnailUrl} alt="" />

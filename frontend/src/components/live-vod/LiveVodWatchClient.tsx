@@ -5,13 +5,23 @@ import { Suspense, useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import LiveVodComments from "@/components/live-vod/LiveVodComments"
-import { toPrivacyEmbedUrl, YOUTUBE_EMBED_ALLOW } from "@/lib/liveVod"
+import {
+  toPrivacyEmbedUrl,
+  YOUTUBE_EMBED_ALLOW,
+  fetchLiveVodMeta,
+  readLiveVodMetaHint,
+} from "@/lib/liveVod"
 import { toggleLiveVodFavorite } from "@/lib/liveVodFavorites"
 import { recordLiveVodWatch } from "@/lib/liveVodHistory"
 import {
   fetchLiveVodEngagement,
   toggleLiveVodFavoriteApi,
 } from "@/lib/liveVodEngagement"
+
+const PLACEHOLDER_TITLE = "VOD 상세"
+
+let engagementRequestSeq = 0
+let favoriteMutationSeq = 0
 
 function IconPrint({ className }: { className?: string }) {
   return (
@@ -48,14 +58,88 @@ function IconShare({ className }: { className?: string }) {
   )
 }
 
+function parseWatchTitle(raw: string): {
+  main: string
+  subtitle: string | null
+  meta: string | null
+} {
+  const cleaned = raw.replace(/\s+/g, " ").trim()
+  if (!cleaned) {
+    return { main: "VOD 상세", subtitle: null, meta: null }
+  }
+
+  let body = cleaned
+  let meta: string | null = null
+  const pipeIdx = cleaned.lastIndexOf("|")
+  if (pipeIdx >= 0) {
+    const left = cleaned.slice(0, pipeIdx).trim()
+    const right = cleaned.slice(pipeIdx + 1).trim()
+    if (left && right) {
+      body = left
+      meta = right
+    }
+  }
+
+  const commaIdx = body.indexOf(",")
+  if (commaIdx >= 0) {
+    const main = body.slice(0, commaIdx).trim()
+    const subtitle = body.slice(commaIdx + 1).trim()
+    if (main && subtitle) {
+      return { main, subtitle, meta }
+    }
+  }
+
+  return { main: body, subtitle: null, meta }
+}
+
+function TitleLine({ text, className }: { text: string; className?: string }) {
+  const parts = text.split(/(#[^\s#]+)/g).filter((part) => part.length > 0)
+  return (
+    <span className={className}>
+      {parts.map((part, index) => {
+        if (part.startsWith("#")) {
+          return (
+            <span key={`${part}-${index}`} className="flv-watch-hashtag">
+              {part}
+            </span>
+          )
+        }
+        const trimmedEnd = part.replace(/\s+$/g, "")
+        return <span key={`${part}-${index}`}>{trimmedEnd}</span>
+      })}
+    </span>
+  )
+}
+
+function WatchTitle({ title }: { title: string }) {
+  const { main, subtitle, meta } = parseWatchTitle(title)
+  return (
+    <div className="flv-watch-title-block">
+      <h1 className="flv-watch-title-main">
+        <TitleLine text={main} />
+      </h1>
+      {subtitle ? (
+        <p className="flv-watch-title-sub">
+          <TitleLine text={subtitle} />
+        </p>
+      ) : null}
+      {meta ? (
+        <p className="flv-watch-title-meta">
+          <TitleLine text={meta} />
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
 function LiveVodWatchBody() {
   const params = useParams<{ videoId: string }>()
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, ready } = useAuthSession()
   const videoId = typeof params.videoId === "string" ? params.videoId : ""
-  const title = searchParams.get("title")?.trim() || "VOD 상세"
-  const channel = searchParams.get("channel")?.trim() || null
+  const queryTitle = searchParams.get("title")?.trim() || ""
+  const queryChannel = searchParams.get("channel")?.trim() || null
   const tab = (searchParams.get("tab") || "ALL").trim().toUpperCase() || "ALL"
   const backHref =
     tab === "FAVORITES"
@@ -66,46 +150,94 @@ function LiveVodWatchBody() {
           ? "/live-vod"
           : `/live-vod?tab=${encodeURIComponent(tab)}`
   const embedSrc = toPrivacyEmbedUrl(videoId)
+  const [title, setTitle] = useState(queryTitle || PLACEHOLDER_TITLE)
+  const [channel, setChannel] = useState<string | null>(queryChannel)
+  const [thumbnailUrl, setThumbnailUrl] = useState(
+    videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : "",
+  )
   const [favorited, setFavorited] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [commentCount, setCommentCount] = useState(0)
+  const [favoriteBusy, setFavoriteBusy] = useState(false)
   const [shareHint, setShareHint] = useState<string | null>(null)
 
   const requireLogin = () => {
     const returnTo =
-      typeof window !== "undefined"
-        ? `${window.location.pathname}${window.location.search}`
-        : "/live-vod"
+      typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "/live-vod"
     router.push(`/login?next=${encodeURIComponent(returnTo)}`)
   }
 
   useEffect(() => {
     if (!videoId) return
+    const cached = readLiveVodMetaHint(videoId)
+    if (cached?.title && cached.title !== PLACEHOLDER_TITLE) {
+      setTitle((prev) => (prev === PLACEHOLDER_TITLE || !prev ? cached.title : prev))
+      if (cached.channelTitle) setChannel((prev) => prev ?? cached.channelTitle)
+      if (cached.thumbnailUrl) setThumbnailUrl(cached.thumbnailUrl)
+    }
+    let cancelled = false
+    void fetchLiveVodMeta(videoId)
+      .then((meta) => {
+        if (cancelled) return
+        const nextTitle =
+          meta.title && meta.title !== PLACEHOLDER_TITLE
+            ? meta.title
+            : queryTitle || cached?.title || PLACEHOLDER_TITLE
+        setTitle(nextTitle)
+        setChannel(meta.channelTitle ?? queryChannel ?? cached?.channelTitle ?? null)
+        setThumbnailUrl(meta.thumbnailUrl || cached?.thumbnailUrl || thumbnailUrl)
+        if (typeof window !== "undefined" && (queryTitle || queryChannel)) {
+          const clean = new URL(window.location.href)
+          clean.searchParams.delete("title")
+          clean.searchParams.delete("channel")
+          const next = `${clean.pathname}${clean.search}${clean.hash}`
+          window.history.replaceState(window.history.state, "", next)
+        }
+      })
+      .catch(() => {
+        if (cancelled) return
+        if (queryTitle) setTitle(queryTitle)
+        else if (cached?.title) setTitle(cached.title)
+        if (queryChannel) setChannel(queryChannel)
+        else if (cached?.channelTitle) setChannel(cached.channelTitle)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [videoId, queryTitle, queryChannel])
+
+  useEffect(() => {
+    if (!videoId || !title || title === PLACEHOLDER_TITLE) return
     recordLiveVodWatch({
       videoId,
       title,
       channelTitle: channel,
-      thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      thumbnailUrl: thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
       tab: tab === "FAVORITES" || tab === "HISTORY" ? "ALL" : tab,
       watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
     })
-  }, [videoId, title, channel, tab])
+  }, [videoId, title, channel, tab, thumbnailUrl])
 
   useEffect(() => {
-    if (!videoId) return
+    if (!videoId || !ready) return
     let cancelled = false
+    const requestId = ++engagementRequestSeq
+    const mutationAtStart = favoriteMutationSeq
     void fetchLiveVodEngagement(videoId)
       .then((eng) => {
-        if (cancelled) return
-        setFavoriteCount(eng.favoriteCount)
+        if (cancelled || requestId !== engagementRequestSeq) return
         setCommentCount(eng.commentCount)
-        setFavorited(Boolean(eng.favorited))
+        if (mutationAtStart !== favoriteMutationSeq) return
+        setFavoriteCount(eng.favoriteCount)
+        if (typeof eng.favorited === "boolean") {
+          setFavorited(eng.favorited)
+        }
       })
       .catch(() => undefined)
     return () => {
       cancelled = true
     }
-  }, [videoId, user?.email])
+  }, [videoId, user?.email, ready])
 
   if (!videoId || !embedSrc) {
     return (
@@ -123,13 +255,22 @@ function LiveVodWatchBody() {
   }
 
   const onToggleFavorite = async () => {
-    if (!ready) return
+    if (!ready || favoriteBusy) return
     if (!user) {
       requireLogin()
       return
     }
+    const prevOn = favorited
+    const prevCount = favoriteCount
+    const nextOn = !prevOn
+    favoriteMutationSeq += 1
+    const mutationId = favoriteMutationSeq
+    setFavorited(nextOn)
+    setFavoriteCount(Math.max(0, prevCount + (nextOn ? 1 : -1)))
+    setFavoriteBusy(true)
     try {
       const result = await toggleLiveVodFavoriteApi(videoId)
+      if (mutationId !== favoriteMutationSeq) return
       setFavorited(result.favorited)
       setFavoriteCount(result.favoriteCount)
       const localOn = isStillLocalFavorite(videoId)
@@ -138,13 +279,26 @@ function LiveVodWatchBody() {
           videoId,
           title,
           channelTitle: channel,
-          thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          thumbnailUrl: thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
           tab: tab === "FAVORITES" ? "ALL" : tab,
         })
       }
-    } catch {
+    } catch (err) {
+      if (mutationId === favoriteMutationSeq) {
+        setFavorited(prevOn)
+        setFavoriteCount(prevCount)
+      }
+      const message = err instanceof Error ? err.message : ""
+      if (message.includes("로그인")) {
+        requireLogin()
+        return
+      }
       setShareHint("즐겨찾기 저장에 실패했습니다")
       window.setTimeout(() => setShareHint(null), 2000)
+    } finally {
+      if (mutationId === favoriteMutationSeq) {
+        setFavoriteBusy(false)
+      }
     }
   }
 
@@ -169,12 +323,12 @@ function LiveVodWatchBody() {
       <div className="mx-auto max-w-[1240px] px-4 py-6 md:px-6 md:py-8">
         <div className="flv-toolbar flv-watch-toolbar">
           <div className="flv-watch-top">
-            <Link href={backHref} className="flv-back-link">
+            <Link href={backHref} className="flv-back-btn">
               이전으로
             </Link>
           </div>
           <div className="flv-watch-heading-row">
-            <h1>{title}</h1>
+            <WatchTitle title={title} />
             <div className="flv-watch-actions" role="toolbar" aria-label="영상 도구">
               <button type="button" className="flv-icon-btn" onClick={() => window.print()} aria-label="인쇄">
                 <IconPrint />
@@ -183,6 +337,7 @@ function LiveVodWatchBody() {
                 type="button"
                 className={`flv-icon-btn${favorited ? " is-on" : ""}`}
                 onClick={() => void onToggleFavorite()}
+                disabled={favoriteBusy}
                 aria-label={favorited ? "즐겨찾기 해제" : "즐겨찾기"}
                 aria-pressed={favorited}
               >

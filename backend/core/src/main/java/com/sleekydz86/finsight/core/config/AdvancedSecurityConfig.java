@@ -3,8 +3,7 @@ package com.sleekydz86.finsight.core.config;
 import com.sleekydz86.finsight.core.auth.filter.JwtAuthenticationFilter;
 import com.sleekydz86.finsight.core.auth.handler.JwtAccessDeniedHandler;
 import com.sleekydz86.finsight.core.auth.handler.JwtAuthenticationEntryPoint;
-import com.sleekydz86.finsight.core.auth.service.CustomUserDetailsService;
-import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -25,17 +24,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity(prePostEnabled = true)
 public class AdvancedSecurityConfig {
 
-    private final JwtTokenUtil jwtTokenUtil;
-    private final CustomUserDetailsService customUserDetailsService;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
-    public AdvancedSecurityConfig(JwtTokenUtil jwtTokenUtil,
-                                  CustomUserDetailsService customUserDetailsService,
-                                  JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-                                  JwtAccessDeniedHandler jwtAccessDeniedHandler) {
-        this.jwtTokenUtil = jwtTokenUtil;
-        this.customUserDetailsService = customUserDetailsService;
+    public AdvancedSecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
+            JwtAccessDeniedHandler jwtAccessDeniedHandler) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.jwtAuthenticationEntryPoint = jwtAuthenticationEntryPoint;
         this.jwtAccessDeniedHandler = jwtAccessDeniedHandler;
     }
@@ -48,6 +45,14 @@ public class AdvancedSecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtAuthenticationFilterRegistration(
+            JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean
@@ -70,16 +75,14 @@ public class AdvancedSecurityConfig {
                                 "/api/v1/boards/*/reaction-status")
                         .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/boards", "/api/v1/boards/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/media/videos", "/api/v1/media/videos/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/media/**").permitAll()
+                        .requestMatchers("/api/v1/media/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
                         .accessDeniedHandler(jwtAccessDeniedHandler)
                 )
-                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenUtil, customUserDetailsService),
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

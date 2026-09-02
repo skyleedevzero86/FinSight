@@ -34,6 +34,9 @@ public class LiveVodCommentJpaEntity {
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    @Column(name = "parent_id", insertable = false, updatable = false)
+    private Long parentId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private LiveVodCommentJpaEntity parent;
@@ -99,6 +102,9 @@ public class LiveVodCommentJpaEntity {
     }
 
     public Long getParentId() {
+        if (parentId != null) {
+            return parentId;
+        }
         return parent == null ? null : parent.getId();
     }
 

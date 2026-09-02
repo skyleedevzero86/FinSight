@@ -7,8 +7,11 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashMap;
@@ -26,6 +29,48 @@ public class BatchGlobalExceptionHandler {
     @Autowired
     public BatchGlobalExceptionHandler(MessageSource messageSource) {
         this.messageSource = messageSource;
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatusException(
+            ResponseStatusException ex, HttpServletRequest request) {
+        Map<String, Object> response = new HashMap<>();
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        if (status == null) {
+            status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        response.put("success", false);
+        response.put("error", status.name());
+        response.put("message", ex.getReason() != null ? ex.getReason() : status.getReasonPhrase());
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("path", request.getRequestURI());
+        return ResponseEntity.status(status).body(response);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoResourceFound(
+            NoResourceFoundException ex, HttpServletRequest request) {
+        log.warn("매핑되지 않은 경로: {} {}", request.getMethod(), request.getRequestURI());
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("error", "NOT_FOUND");
+        response.put("message", "요청한 API를 찾을 수 없습니다.");
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleDataIntegrity(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.warn("데이터 무결성 위반: {} {}", request.getRequestURI(), ex.getMostSpecificCause().getMessage());
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("error", "CONFLICT");
+        response.put("message", "요청이 충돌했습니다. 잠시 후 다시 시도해 주세요.");
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
     @ExceptionHandler(Exception.class)
@@ -155,7 +200,7 @@ public class BatchGlobalExceptionHandler {
     @ExceptionHandler(AuthenticationFailedException.class)
     public ResponseEntity<Map<String, Object>> handleAuthenticationFailedException(AuthenticationFailedException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
-        log.error("인증에 실패했습니다", ex);
+        log.warn("인증 실패: path={}, message={}", request.getRequestURI(), ex.getMessage());
 
         Map<String, Object> response = new HashMap<>();
         response.put("error", "AUTHENTICATION_FAILED");

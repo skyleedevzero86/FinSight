@@ -175,11 +175,11 @@ export async function mirrorRequestToFinSight(
       Accept: req.headers.get("accept") ?? "application/json",
       ...clientForwardHeaders(req),
     }
-    const auth = req.headers.get("authorization")
+    const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
     if (auth) headers.Authorization = auth
-    const cookie = req.headers.get("cookie")
+    const cookie = req.headers.get("cookie") ?? req.headers.get("Cookie")
     if (cookie) headers.Cookie = cookie
-    const contentType = req.headers.get("content-type")
+    const contentType = req.headers.get("content-type") ?? req.headers.get("Content-Type")
     if (
       contentType &&
       method !== "GET" &&
@@ -260,11 +260,11 @@ export async function mirrorBinaryRequestToFinSight(
       Accept: req.headers.get("accept") ?? "*/*",
       ...clientForwardHeaders(req),
     }
-    const auth = req.headers.get("authorization")
+    const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
     if (auth) headers.Authorization = auth
-    const cookie = req.headers.get("cookie")
+    const cookie = req.headers.get("cookie") ?? req.headers.get("Cookie")
     if (cookie) headers.Cookie = cookie
-    const contentType = req.headers.get("content-type")
+    const contentType = req.headers.get("content-type") ?? req.headers.get("Content-Type")
     if (
       contentType &&
       method !== "GET" &&

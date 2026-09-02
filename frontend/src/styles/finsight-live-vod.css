@@ -142,7 +142,7 @@
 
 .finsight-live-vod-page .flv-watch-top {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .finsight-live-vod-page .flv-back-link {
@@ -157,21 +157,86 @@
   text-decoration: underline;
 }
 
+.finsight-live-vod-page .flv-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 7px 14px;
+  border: 1px solid #1f444b;
+  border-radius: 0;
+  background: #fff;
+  color: #1f444b;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.finsight-live-vod-page .flv-back-btn:hover {
+  background: #1f444b;
+  color: #fff;
+}
+
 .finsight-live-vod-page .flv-watch-heading-row {
   display: grid;
   grid-template-columns: 1fr auto;
   align-items: start;
-  gap: 16px;
+  gap: 28px;
   position: relative;
 }
 
-.finsight-live-vod-page .flv-watch-heading-row h1 {
+.finsight-live-vod-page .flv-watch-title-block {
   grid-column: 1 / -1;
   grid-row: 1;
   margin: 0;
   text-align: center;
-  padding: 0 120px;
+  padding: 0 148px 0 24px;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.finsight-live-vod-page .flv-watch-title-main {
+  margin: 0;
+  max-width: 42rem;
+  font-size: clamp(1.05rem, 2.1vw, 1.35rem);
+  font-weight: 700;
+  line-height: 1.4;
+  color: #1a1a1a;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.finsight-live-vod-page .flv-watch-title-sub {
+  margin: 0;
+  max-width: 36rem;
+  font-size: clamp(0.88rem, 1.5vw, 1.02rem);
+  font-weight: 600;
+  line-height: 1.4;
+  color: #333;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.finsight-live-vod-page .flv-watch-title-meta {
+  margin: 2px 0 0;
+  font-size: 0.82rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #6b7280;
+}
+
+.finsight-live-vod-page .flv-watch-hashtag {
+  display: inline;
+  margin-left: 0.45em;
+  font-size: 0.95em;
+  font-weight: 600;
+  color: #555;
+  letter-spacing: -0.01em;
+  vertical-align: baseline;
 }
 
 .finsight-live-vod-page .flv-watch-actions {
@@ -180,13 +245,21 @@
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
+  margin-left: 8px;
 }
 
 @media (max-width: 640px) {
-  .finsight-live-vod-page .flv-watch-heading-row h1 {
+  .finsight-live-vod-page .flv-watch-title-block {
     padding: 0 0 44px;
+    align-items: stretch;
+    text-align: left;
+  }
+
+  .finsight-live-vod-page .flv-watch-title-main,
+  .finsight-live-vod-page .flv-watch-title-sub {
+    max-width: none;
   }
 
   .finsight-live-vod-page .flv-watch-actions {
@@ -346,6 +419,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: 12px 16px;
   margin-top: 4px;
   font-size: 13px;
@@ -358,13 +432,51 @@
   border-top: 1px solid #e5e5e5;
 }
 
+.finsight-live-vod-page .flv-comments-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
 .finsight-live-vod-page .flv-comments h2 {
-  margin: 0 0 16px;
+  margin: 0;
   font-size: 18px;
   font-weight: 700;
 }
 
-.finsight-live-vod-page .flv-comment-form textarea {
+.finsight-live-vod-page .flv-reaction-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.finsight-live-vod-page .flv-reaction-btn {
+  border: 1px solid #cfd8dc;
+  background: #fff;
+  color: #333;
+  border-radius: 0;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.finsight-live-vod-page .flv-reaction-btn.is-on {
+  border-color: #1f444b;
+  background: #1f444b;
+  color: #fff;
+}
+
+.finsight-live-vod-page .flv-reaction-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.finsight-live-vod-page .flv-comment-form textarea,
+.finsight-live-vod-page .flv-inline-reply textarea {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid #ddd;
@@ -372,6 +484,13 @@
   padding: 10px 12px;
   resize: vertical;
   font: inherit;
+}
+
+.finsight-live-vod-page .flv-inline-reply {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f7f9fa;
+  border: 1px solid #e5e5e5;
 }
 
 .finsight-live-vod-page .flv-comment-actions {
@@ -402,6 +521,50 @@
   margin: 8px 0;
 }
 
+.finsight-live-vod-page .flv-login-prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 23, 30, 0.45);
+}
+
+.finsight-live-vod-page .flv-login-prompt-card {
+  width: min(100%, 320px);
+  padding: 28px 24px 20px;
+  border: 2px solid #1f444b;
+  border-radius: 0;
+  background: #fff;
+}
+
+.finsight-live-vod-page .flv-login-prompt-card p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #222;
+  text-align: center;
+}
+
+.finsight-live-vod-page .flv-login-prompt-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.finsight-live-vod-page .flv-login-prompt-ok {
+  min-width: 88px;
+  border: 1px solid #1f444b;
+  border-radius: 0;
+  background: #1f444b;
+  color: #fff;
+  padding: 8px 18px;
+  font: inherit;
+  cursor: pointer;
+}
+
 .finsight-live-vod-page .flv-comment-list,
 .finsight-live-vod-page .flv-reply-list {
   list-style: none;
@@ -417,13 +580,51 @@
 .finsight-live-vod-page .flv-comment-head {
   display: flex;
   gap: 10px;
-  align-items: baseline;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 6px;
+}
+
+.finsight-live-vod-page .flv-comment-head-left {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  min-width: 0;
 }
 
 .finsight-live-vod-page .flv-comment-head time {
   font-size: 12px;
   color: #888;
+}
+
+.finsight-live-vod-page .flv-comment-reactions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.finsight-live-vod-page .flv-cmt-rxn-btn {
+  border: 1px solid #d7dee2;
+  background: #fff;
+  color: #555;
+  border-radius: 0;
+  padding: 3px 8px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.finsight-live-vod-page .flv-cmt-rxn-btn.is-on {
+  border-color: #1f444b;
+  background: #1f444b;
+  color: #fff;
+}
+
+.finsight-live-vod-page .flv-cmt-rxn-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .finsight-live-vod-page .flv-comment-item > p,
@@ -443,15 +644,97 @@
   padding: 0;
 }
 
-.finsight-live-vod-page .flv-reply-list {
+.finsight-live-vod-page .flv-comment-tools {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.finsight-live-vod-page .flv-comment-tools .flv-reply-btn {
+  margin-top: 0;
+}
+
+.finsight-live-vod-page .flv-reply-toggle {
+  border: 0;
+  background: transparent;
+  color: #666;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.finsight-live-vod-page .flv-reply-hint-soft {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #999;
+}
+
+.finsight-live-vod-page .flv-reply-list .flv-reply-btn {
+  margin-top: 6px;
+}
+
+.finsight-live-vod-page .flv-reply-block {
   margin-top: 12px;
   margin-left: 16px;
   padding-left: 12px;
   border-left: 2px solid #e5e5e5;
 }
 
+.finsight-live-vod-page .flv-reply-list {
+  margin-top: 0;
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+
 .finsight-live-vod-page .flv-reply-list li {
   padding: 10px 0;
+}
+
+.finsight-live-vod-page .flv-reply-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  gap: 10px;
+  margin: 8px 0 0;
+  text-align: center;
+}
+
+.finsight-live-vod-page .flv-reply-page-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid #cfd8dc;
+  background: #fff;
+  color: #1f444b;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.finsight-live-vod-page .flv-reply-page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.finsight-live-vod-page .flv-reply-page-indicator {
+  min-width: 48px;
+  text-align: center;
+  font-size: 12px;
+  color: #666;
+}
+
+.finsight-live-vod-page .flv-comment-sentinel {
+  height: 1px;
+}
+
+.finsight-live-vod-page .flv-comment-more {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #888;
+  text-align: center;
 }
 
 .finsight-live-vod-page .flv-reply-hint {
