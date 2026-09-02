@@ -4,7 +4,7 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
-import { liveVodWatchHref } from "@/lib/liveVod"
+import { liveVodWatchHref, stashLiveVodMetaHint } from "@/lib/liveVod"
 import {
   listLiveVodFavorites,
   removeLiveVodFavorite,
@@ -67,6 +67,14 @@ export default function MyFavoritesClient() {
                   <Link
                     href={liveVodWatchHref({ videoId: it.videoId }, "FAVORITES")}
                     className="flv-thumb-link"
+                    onClick={() =>
+                      stashLiveVodMetaHint({
+                        videoId: it.videoId,
+                        title: it.title,
+                        channelTitle: it.channelTitle,
+                        thumbnailUrl: it.thumbnailUrl,
+                      })
+                    }
                   >
                     <div className="flv-thumb-wrap">
                       <img src={it.thumbnailUrl} alt="" />

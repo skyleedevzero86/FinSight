@@ -108,6 +108,8 @@ public class LiveVodEngagementService {
         return summarizeOne(normalizeVideoId(videoId), userEmail);
     }
 
+    private static final String PLACEHOLDER_TITLE = "VOD 상세";
+
     @Transactional(readOnly = true)
     public LiveVodMetaResponse getMeta(String videoId) {
         String id;
@@ -122,13 +124,14 @@ public class LiveVodEngagementService {
         String embedUrl = "https://www.youtube-nocookie.com/embed/" + id;
         String thumbnailUrl = "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
 
+        LiveVodMetaResponse storedMeta = null;
         try {
             Optional<YoutubeVideoMeta> stored = youtubeVideoMetaPersistencePort.findByVideoId(id);
             if (stored.isPresent()) {
                 YoutubeVideoMeta meta = stored.get();
                 String title = meta.getYoutubeTitle() != null && !meta.getYoutubeTitle().isBlank()
-                        ? meta.getYoutubeTitle()
-                        : "VOD 상세";
+                        ? meta.getYoutubeTitle().trim()
+                        : "";
                 String channel = meta.getChannelTitle();
                 String thumb = meta.getThumbnailUrl() != null && !meta.getThumbnailUrl().isBlank()
                         ? meta.getThumbnailUrl()
@@ -138,23 +141,43 @@ public class LiveVodEngagementService {
                         "https://www.youtube.com/embed/",
                         "https://www.youtube-nocookie.com/embed/")
                         : embedUrl;
-                return new LiveVodMetaResponse(id, title, channel, thumb, embed, watchUrl);
+                if (isUsableTitle(title)) {
+                    return new LiveVodMetaResponse(id, title, channel, thumb, embed, watchUrl);
+                }
+                storedMeta = new LiveVodMetaResponse(
+                        id,
+                        title.isBlank() ? PLACEHOLDER_TITLE : title,
+                        channel,
+                        thumb,
+                        embed,
+                        watchUrl);
             }
         } catch (Exception ex) {
             log.warn("LIVE/VOD DB 메타 조회 실패 videoId={}: {}", id, ex.getMessage());
         }
 
         LiveVodMetaResponse oembed = fetchOEmbedMeta(id, watchUrl, embedUrl, thumbnailUrl);
-        if (oembed != null) {
+        if (oembed != null && isUsableTitle(oembed.title())) {
             return oembed;
         }
-        return fallbackMeta(id);
+        if (storedMeta != null && isUsableTitle(storedMeta.title())) {
+            return storedMeta;
+        }
+        return oembed != null ? oembed : fallbackMeta(id);
+    }
+
+    private static boolean isUsableTitle(String title) {
+        if (title == null) {
+            return false;
+        }
+        String trimmed = title.trim();
+        return !trimmed.isEmpty() && !PLACEHOLDER_TITLE.equals(trimmed);
     }
 
     private static LiveVodMetaResponse fallbackMeta(String id) {
         return new LiveVodMetaResponse(
                 id,
-                "VOD 상세",
+                PLACEHOLDER_TITLE,
                 null,
                 "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg",
                 "https://www.youtube-nocookie.com/embed/" + id,
@@ -172,7 +195,8 @@ public class LiveVodEngagementService {
                     .fromUriString("https://www.youtube.com/oembed")
                     .queryParam("format", "json")
                     .queryParam("url", watchUrl)
-                    .build(true)
+                    .encode()
+                    .build()
                     .toUri();
             Map<String, Object> body = restTemplate.getForObject(uri, Map.class);
             if (body == null || body.isEmpty()) {
@@ -181,7 +205,7 @@ public class LiveVodEngagementService {
             Object titleObj = body.get("title");
             Object authorObj = body.get("author_name");
             Object thumbObj = body.get("thumbnail_url");
-            String title = titleObj instanceof String s && !s.isBlank() ? s : "VOD 상세";
+            String title = titleObj instanceof String s && !s.isBlank() ? s.trim() : PLACEHOLDER_TITLE;
             String channel = authorObj instanceof String s && !s.isBlank() ? s : null;
             String thumb = thumbObj instanceof String s && !s.isBlank() ? s : thumbnailUrl;
             return new LiveVodMetaResponse(id, title, channel, thumb, embedUrl, watchUrl);

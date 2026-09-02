@@ -11,15 +11,22 @@ type MetaPayload = {
   watchUrl: string
 }
 
+const PLACEHOLDER_TITLE = "VOD 상세"
+
 function fallbackMeta(videoId: string): MetaPayload {
   return {
     videoId,
-    title: "VOD 상세",
+    title: PLACEHOLDER_TITLE,
     channelTitle: null,
     thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
     embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
     watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
   }
+}
+
+function isUsableTitle(title: string | null | undefined): boolean {
+  const trimmed = (title || "").trim()
+  return trimmed.length > 0 && trimmed !== PLACEHOLDER_TITLE
 }
 
 function okMeta(data: MetaPayload) {
@@ -50,7 +57,7 @@ async function fetchOEmbed(videoId: string): Promise<MetaPayload | null> {
     if (!res.ok) return null
     const data = asRecord(await res.json())
     if (!data) return null
-    const title = typeof data.title === "string" && data.title ? data.title : "VOD 상세"
+    const title = typeof data.title === "string" && data.title ? data.title : PLACEHOLDER_TITLE
     const channelTitle =
       typeof data.author_name === "string" && data.author_name ? data.author_name : null
     const thumbnailUrl =
@@ -76,7 +83,7 @@ function parseBackendMeta(videoId: string, payload: unknown): MetaPayload | null
   if (!data) return null
   const id = typeof data.videoId === "string" && data.videoId ? data.videoId : videoId
   const title = typeof data.title === "string" && data.title ? data.title : ""
-  if (!title) return null
+  if (!isUsableTitle(title)) return null
   return {
     videoId: id,
     title,
@@ -103,11 +110,16 @@ export async function GET(_req: Request, ctx: Ctx) {
     return okMeta(fallbackMeta(videoId || "unknown"))
   }
 
+  const oembed = await fetchOEmbed(videoId)
+  if (oembed && isUsableTitle(oembed.title)) {
+    return okMeta(oembed)
+  }
+
   const base = getFinSightBaseUrl()
   if (base) {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 12_000)
+      const timeoutId = setTimeout(() => controller.abort(), 8_000)
       try {
         const upstream = await fetch(
           `${base}/api/v1/media/live-vod/${encodeURIComponent(videoId)}/meta`,
@@ -126,11 +138,10 @@ export async function GET(_req: Request, ctx: Ctx) {
         clearTimeout(timeoutId)
       }
     } catch {
-      /* fall through */
+      void 0
     }
   }
 
-  const oembed = await fetchOEmbed(videoId)
   if (oembed) return okMeta(oembed)
   return okMeta(fallbackMeta(videoId))
 }

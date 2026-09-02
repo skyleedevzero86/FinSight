@@ -56,6 +56,57 @@ export function liveVodWatchHref(
   return `/live-vod/watch/${encodeURIComponent(item.videoId)}${qs ? `?${qs}` : ""}`
 }
 
+const META_HINT_KEY = "finsight.liveVod.metaHint.v1"
+const PLACEHOLDER_TITLE = "VOD 상세"
+
+export type LiveVodMetaHint = {
+  videoId: string
+  title: string
+  channelTitle: string | null
+  thumbnailUrl: string
+}
+
+export function stashLiveVodMetaHint(
+  item: Pick<LiveVodItem, "videoId" | "title" | "channelTitle" | "thumbnailUrl">,
+): void {
+  if (typeof window === "undefined" || !item.videoId) return
+  const title = (item.title || "").trim()
+  if (!title || title === PLACEHOLDER_TITLE) return
+  try {
+    const payload: LiveVodMetaHint = {
+      videoId: item.videoId,
+      title,
+      channelTitle: item.channelTitle ?? null,
+      thumbnailUrl:
+        item.thumbnailUrl || `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+    }
+    window.sessionStorage.setItem(META_HINT_KEY, JSON.stringify(payload))
+  } catch {
+    void 0
+  }
+}
+
+export function readLiveVodMetaHint(videoId: string): LiveVodMetaHint | null {
+  if (typeof window === "undefined" || !videoId) return null
+  try {
+    const raw = window.sessionStorage.getItem(META_HINT_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as LiveVodMetaHint
+    if (!parsed || parsed.videoId !== videoId) return null
+    const title = (parsed.title || "").trim()
+    if (!title || title === PLACEHOLDER_TITLE) return null
+    return {
+      videoId,
+      title,
+      channelTitle: parsed.channelTitle ?? null,
+      thumbnailUrl:
+        parsed.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    }
+  } catch {
+    return null
+  }
+}
+
 export type LiveVodMeta = {
   videoId: string
   title: string
@@ -66,11 +117,12 @@ export type LiveVodMeta = {
 }
 
 export async function fetchLiveVodMeta(videoId: string): Promise<LiveVodMeta> {
+  const hint = readLiveVodMetaHint(videoId)
   const fallback: LiveVodMeta = {
     videoId,
-    title: "VOD 상세",
-    channelTitle: null,
-    thumbnailUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    title: hint?.title || PLACEHOLDER_TITLE,
+    channelTitle: hint?.channelTitle ?? null,
+    thumbnailUrl: hint?.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
     embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
     watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
   }
@@ -83,10 +135,17 @@ export async function fetchLiveVodMeta(videoId: string): Promise<LiveVodMeta> {
     const json = (await res.json()) as { success?: boolean; data?: Record<string, unknown> }
     const data = json.data
     if (!data || typeof data !== "object") return fallback
+    const title =
+      typeof data.title === "string" && data.title.trim() && data.title.trim() !== PLACEHOLDER_TITLE
+        ? data.title
+        : fallback.title
     return {
       videoId: typeof data.videoId === "string" ? data.videoId : videoId,
-      title: typeof data.title === "string" && data.title ? data.title : fallback.title,
-      channelTitle: typeof data.channelTitle === "string" ? data.channelTitle : null,
+      title,
+      channelTitle:
+        typeof data.channelTitle === "string"
+          ? data.channelTitle
+          : fallback.channelTitle,
       thumbnailUrl:
         typeof data.thumbnailUrl === "string" && data.thumbnailUrl
           ? data.thumbnailUrl

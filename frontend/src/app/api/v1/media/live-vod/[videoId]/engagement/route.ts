@@ -2,7 +2,7 @@ import { mirrorRequestToFinSight } from "@/lib/finsightApiProxy"
 
 type Ctx = { params: Promise<{ videoId: string }> }
 
-const MEDIA_PROXY_TIMEOUT_MS = 90_000
+const MEDIA_PROXY_TIMEOUT_MS = 20_000
 
 export async function GET(req: Request, ctx: Ctx) {
   const { videoId } = await ctx.params

@@ -5,13 +5,23 @@ import { Suspense, useEffect, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import LiveVodComments from "@/components/live-vod/LiveVodComments"
-import { toPrivacyEmbedUrl, YOUTUBE_EMBED_ALLOW, fetchLiveVodMeta } from "@/lib/liveVod"
+import {
+  toPrivacyEmbedUrl,
+  YOUTUBE_EMBED_ALLOW,
+  fetchLiveVodMeta,
+  readLiveVodMetaHint,
+} from "@/lib/liveVod"
 import { toggleLiveVodFavorite } from "@/lib/liveVodFavorites"
 import { recordLiveVodWatch } from "@/lib/liveVodHistory"
 import {
   fetchLiveVodEngagement,
   toggleLiveVodFavoriteApi,
 } from "@/lib/liveVodEngagement"
+
+const PLACEHOLDER_TITLE = "VOD 상세"
+
+let engagementRequestSeq = 0
+let favoriteMutationSeq = 0
 
 function IconPrint({ className }: { className?: string }) {
   return (
@@ -140,7 +150,7 @@ function LiveVodWatchBody() {
           ? "/live-vod"
           : `/live-vod?tab=${encodeURIComponent(tab)}`
   const embedSrc = toPrivacyEmbedUrl(videoId)
-  const [title, setTitle] = useState(queryTitle || "VOD 상세")
+  const [title, setTitle] = useState(queryTitle || PLACEHOLDER_TITLE)
   const [channel, setChannel] = useState<string | null>(queryChannel)
   const [thumbnailUrl, setThumbnailUrl] = useState(
     videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : "",
@@ -159,13 +169,23 @@ function LiveVodWatchBody() {
 
   useEffect(() => {
     if (!videoId) return
+    const cached = readLiveVodMetaHint(videoId)
+    if (cached?.title && cached.title !== PLACEHOLDER_TITLE) {
+      setTitle((prev) => (prev === PLACEHOLDER_TITLE || !prev ? cached.title : prev))
+      if (cached.channelTitle) setChannel((prev) => prev ?? cached.channelTitle)
+      if (cached.thumbnailUrl) setThumbnailUrl(cached.thumbnailUrl)
+    }
     let cancelled = false
     void fetchLiveVodMeta(videoId)
       .then((meta) => {
         if (cancelled) return
-        setTitle(meta.title || queryTitle || "VOD 상세")
-        setChannel(meta.channelTitle ?? queryChannel)
-        setThumbnailUrl(meta.thumbnailUrl)
+        const nextTitle =
+          meta.title && meta.title !== PLACEHOLDER_TITLE
+            ? meta.title
+            : queryTitle || cached?.title || PLACEHOLDER_TITLE
+        setTitle(nextTitle)
+        setChannel(meta.channelTitle ?? queryChannel ?? cached?.channelTitle ?? null)
+        setThumbnailUrl(meta.thumbnailUrl || cached?.thumbnailUrl || thumbnailUrl)
         if (typeof window !== "undefined" && (queryTitle || queryChannel)) {
           const clean = new URL(window.location.href)
           clean.searchParams.delete("title")
@@ -177,7 +197,9 @@ function LiveVodWatchBody() {
       .catch(() => {
         if (cancelled) return
         if (queryTitle) setTitle(queryTitle)
+        else if (cached?.title) setTitle(cached.title)
         if (queryChannel) setChannel(queryChannel)
+        else if (cached?.channelTitle) setChannel(cached.channelTitle)
       })
     return () => {
       cancelled = true
@@ -185,7 +207,7 @@ function LiveVodWatchBody() {
   }, [videoId, queryTitle, queryChannel])
 
   useEffect(() => {
-    if (!videoId) return
+    if (!videoId || !title || title === PLACEHOLDER_TITLE) return
     recordLiveVodWatch({
       videoId,
       title,
@@ -197,20 +219,25 @@ function LiveVodWatchBody() {
   }, [videoId, title, channel, tab, thumbnailUrl])
 
   useEffect(() => {
-    if (!videoId) return
+    if (!videoId || !ready) return
     let cancelled = false
+    const requestId = ++engagementRequestSeq
+    const mutationAtStart = favoriteMutationSeq
     void fetchLiveVodEngagement(videoId)
       .then((eng) => {
-        if (cancelled) return
-        setFavoriteCount(eng.favoriteCount)
+        if (cancelled || requestId !== engagementRequestSeq) return
         setCommentCount(eng.commentCount)
-        setFavorited(Boolean(eng.favorited))
+        if (mutationAtStart !== favoriteMutationSeq) return
+        setFavoriteCount(eng.favoriteCount)
+        if (typeof eng.favorited === "boolean") {
+          setFavorited(eng.favorited)
+        }
       })
       .catch(() => undefined)
     return () => {
       cancelled = true
     }
-  }, [videoId, user?.email])
+  }, [videoId, user?.email, ready])
 
   if (!videoId || !embedSrc) {
     return (
@@ -233,9 +260,17 @@ function LiveVodWatchBody() {
       requireLogin()
       return
     }
+    const prevOn = favorited
+    const prevCount = favoriteCount
+    const nextOn = !prevOn
+    favoriteMutationSeq += 1
+    const mutationId = favoriteMutationSeq
+    setFavorited(nextOn)
+    setFavoriteCount(Math.max(0, prevCount + (nextOn ? 1 : -1)))
     setFavoriteBusy(true)
     try {
       const result = await toggleLiveVodFavoriteApi(videoId)
+      if (mutationId !== favoriteMutationSeq) return
       setFavorited(result.favorited)
       setFavoriteCount(result.favoriteCount)
       const localOn = isStillLocalFavorite(videoId)
@@ -249,22 +284,21 @@ function LiveVodWatchBody() {
         })
       }
     } catch (err) {
+      if (mutationId === favoriteMutationSeq) {
+        setFavorited(prevOn)
+        setFavoriteCount(prevCount)
+      }
       const message = err instanceof Error ? err.message : ""
       if (message.includes("로그인")) {
         requireLogin()
         return
       }
-      try {
-        const eng = await fetchLiveVodEngagement(videoId)
-        setFavorited(Boolean(eng.favorited))
-        setFavoriteCount(eng.favoriteCount)
-      } catch {
-        /* ignore */
-      }
       setShareHint("즐겨찾기 저장에 실패했습니다")
       window.setTimeout(() => setShareHint(null), 2000)
     } finally {
-      setFavoriteBusy(false)
+      if (mutationId === favoriteMutationSeq) {
+        setFavoriteBusy(false)
+      }
     }
   }
 

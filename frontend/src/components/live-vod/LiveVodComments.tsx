@@ -115,7 +115,7 @@ export default function LiveVodComments({
       setTotalComments(eng.commentCount)
       onCountChange?.(eng.commentCount)
     } catch {
-      /* ignore */
+      void 0
     }
   }
 

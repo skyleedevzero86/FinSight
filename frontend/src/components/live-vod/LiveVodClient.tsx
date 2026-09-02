@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import {
   fetchLiveVodFeed,
   liveVodWatchHref,
+  stashLiveVodMetaHint,
   toPrivacyEmbedUrl,
   YOUTUBE_EMBED_ALLOW,
   type LiveVodFeed,
@@ -89,7 +90,11 @@ function LiveVodBody({ tab }: { tab: string }) {
             <ul>
               {sec.items.map((it, itemIndex) => (
                 <li key={`${it.videoId}-${itemIndex}`}>
-                  <Link href={liveVodWatchHref(it, tab)} className="flv-thumb-link">
+                  <Link
+                    href={liveVodWatchHref(it, tab)}
+                    className="flv-thumb-link"
+                    onClick={() => stashLiveVodMetaHint(it)}
+                  >
                     <div className="flv-thumb-wrap">
                       <img src={it.thumbnailUrl} alt="" />
                       <div className="flv-thumb-meta" aria-label="참여 수">
