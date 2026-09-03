@@ -60,6 +60,7 @@ export async function fetchBoardListServer(
 
 export async function fetchBoardDetailServer(
   boardId: number,
+  options?: { silent?: boolean },
 ): Promise<BoardDetail | null> {
   const base = getServerBase()
   if (!base) return null
@@ -69,9 +70,20 @@ export async function fetchBoardDetailServer(
       next: { revalidate: 0 },
     })
     if (!res.ok) {
-      console.error(
-        `게시글 상세를 불러오지 못했습니다. 상태=${res.status} ${res.statusText} (${base})`,
-      )
+      if (!options?.silent) {
+        let bodySnippet = ""
+        try {
+          bodySnippet = await res.clone().text()
+        } catch {
+          bodySnippet = ""
+        }
+        bodySnippet = bodySnippet.trim().slice(0, 400)
+        console.error(
+          `게시글 상세를 불러오지 못했습니다. 상태=${res.status} ${res.statusText} (${base}) boardId=${boardId}${
+            bodySnippet ? ` body=${bodySnippet}` : ""
+          }`,
+        )
+      }
       return null
     }
     let json: unknown
@@ -82,7 +94,9 @@ export async function fetchBoardDetailServer(
     }
     return unwrapApiData<BoardDetail>(json)
   } catch (err) {
-    console.error("게시글 상세 요청 중 오류가 발생했습니다.", err)
+    if (!options?.silent) {
+      console.error("게시글 상세 요청 중 오류가 발생했습니다.", err)
+    }
     return null
   }
 }

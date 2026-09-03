@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const n = parseInt(id, 10)
   if (!Number.isFinite(n)) return { title: "글 수정 | finsight" }
-  const d = await fetchBoardDetailServer(n)
+  const d = await fetchBoardDetailServer(n, { silent: true })
   if (!d) return { title: "글 수정 | finsight" }
   return { title: `${d.title} 수정 | Q&A | finsight` }
 }
@@ -20,7 +20,7 @@ export default async function CommunityQnaEditPage({ params }: Props) {
   const { id } = await params
   const n = parseInt(id, 10)
   if (!Number.isFinite(n)) notFound()
-  const detail = await fetchBoardDetailServer(n)
+  const detail = await fetchBoardDetailServer(n, { silent: true })
   if (!detail) notFound()
   const tags = (detail.hashtags ?? []).join(", ")
   return (

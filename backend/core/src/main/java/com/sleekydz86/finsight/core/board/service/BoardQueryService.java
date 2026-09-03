@@ -78,11 +78,13 @@ public class BoardQueryService implements BoardQueryUseCase {
         }
 
         @Override
+        @Transactional(readOnly = false)
         public BoardDetailResponse getBoardDetail(Long boardId) {
                 return getBoardDetail(boardId, null, false);
         }
 
         @Override
+        @Transactional(readOnly = false)
         public BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer) {
                 log.info("게시판 상세 조회 요청: boardId={}", boardId);
 
@@ -113,6 +115,7 @@ public class BoardQueryService implements BoardQueryUseCase {
         }
 
         @Override
+        @Transactional(readOnly = false)
         public BoardDetailResponse getBoardDetailWithNavigation(Long boardId, BoardType boardType) {
                 log.info("게시판 상세 조회 (네비게이션 포함) 요청: boardId={}, boardType={}", boardId, boardType);
 

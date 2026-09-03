@@ -94,15 +94,19 @@ public class EditorAssetStorageService {
 
     @Transactional
     public StoredMetadata upload(MultipartFile file, boolean allowNonImage) throws IOException {
-        validateUpload(file, allowNonImage);
+        if (file == null || file.isEmpty()) {
+            throw new ValidationException("업로드할 파일을 선택해주세요.", List.of("파일이 필요합니다"));
+        }
+        String contentType = resolveContentType(file, allowNonImage);
+        validateResolvedUpload(file, allowNonImage, contentType);
         if (useMinio()) {
             try {
-                return uploadToMinio(file, allowNonImage);
+                return uploadToMinio(file, allowNonImage, contentType);
             } catch (Exception e) {
                 log.warn("MinIO 업로드 실패, 파일시스템으로 대체합니다: {}", e.getMessage());
             }
         }
-        return uploadToFilesystem(file, allowNonImage);
+        return uploadToFilesystem(file, allowNonImage, contentType);
     }
 
     public LoadedImage load(UUID assetId) throws IOException {
@@ -122,14 +126,14 @@ public class EditorAssetStorageService {
         return editorProperties.getMinio().isEnabled() && minioClientProvider.getIfAvailable() != null;
     }
 
-    private StoredMetadata uploadToMinio(MultipartFile image, boolean allowNonImage) throws IOException {
+    private StoredMetadata uploadToMinio(MultipartFile image, boolean allowNonImage, String contentType)
+            throws IOException {
         MinioClient minioClient = minioClientProvider.getIfAvailable();
         String bucket = editorProperties.getMinio().getBucket();
         ensureBucketExists(minioClient, bucket);
 
         UUID assetId = UUID.randomUUID();
         String objectKey = buildObjectKey(image.getOriginalFilename(), allowNonImage);
-        String contentType = resolveContentType(image, allowNonImage);
         String originalName = Objects.requireNonNullElse(image.getOriginalFilename(), objectKey);
 
         try (InputStream inputStream = image.getInputStream()) {
@@ -218,19 +222,12 @@ public class EditorAssetStorageService {
                 extractExtension(originalFileName));
     }
 
-    private StoredMetadata uploadToFilesystem(MultipartFile file, boolean allowNonImage) throws IOException {
-        if (file == null || file.isEmpty()) {
-            throw new ValidationException("파일이 비어 있습니다", List.of("파일이 필요합니다"));
-        }
-        String contentType = resolveContentType(file, allowNonImage);
-        long max = allowNonImage ? editorProperties.getFileMaxBytes() : editorProperties.getImageMaxBytes();
-        if (file.getSize() > max) {
-            throw new ValidationException("파일 크기가 허용 한도를 초과했습니다", List.of("최대 용량: " + max + "바이트"));
-        }
+    private StoredMetadata uploadToFilesystem(MultipartFile file, boolean allowNonImage, String contentType)
+            throws IOException {
         UUID id = UUID.randomUUID();
         Path dataPath = filesystemRoot.resolve(id + ".bin");
         Path metaPath = filesystemRoot.resolve(id + ".properties");
-        Files.write(dataPath, file.getBytes());
+        file.transferTo(dataPath);
         Properties meta = new Properties();
         meta.setProperty("originalFileName", file.getOriginalFilename() != null ? file.getOriginalFilename() : "file");
         meta.setProperty("contentType", contentType);
@@ -264,11 +261,7 @@ public class EditorAssetStorageService {
         return new LoadedImage(original, contentType, size, stream);
     }
 
-    private void validateUpload(MultipartFile file, boolean allowNonImage) {
-        if (file == null || file.isEmpty()) {
-            throw new ValidationException("업로드할 파일을 선택해주세요.", List.of("파일이 필요합니다"));
-        }
-        String contentType = resolveContentType(file, allowNonImage);
+    private void validateResolvedUpload(MultipartFile file, boolean allowNonImage, String contentType) {
         long max = allowNonImage ? editorProperties.getFileMaxBytes() : editorProperties.getImageMaxBytes();
         if (file.getSize() > max) {
             throw new ValidationException("파일 크기가 허용 한도를 초과했습니다", List.of("최대 용량: " + max + "바이트"));
@@ -294,8 +287,8 @@ public class EditorAssetStorageService {
                 && (ALLOWED_IMAGE_TYPES.contains(declared) || allowNonImage)) {
             return declared;
         }
-        try {
-            byte[] header = file.getBytes();
+        try (InputStream in = file.getInputStream()) {
+            byte[] header = in.readNBytes(16);
             String sniffed = sniffImageContentType(header);
             if (sniffed != null) {
                 return sniffed;

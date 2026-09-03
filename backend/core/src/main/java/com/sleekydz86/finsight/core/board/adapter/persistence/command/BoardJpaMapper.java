@@ -16,6 +16,10 @@ public class BoardJpaMapper {
             return null;
         }
 
+        List<String> hashtags = entity.getHashtags() != null
+                ? List.copyOf(entity.getHashtags())
+                : List.of();
+
         List<BoardFile> files = entity.getFiles() != null ?
                 entity.getFiles().stream()
                         .map(this::toDomainFile)
@@ -34,7 +38,7 @@ public class BoardJpaMapper {
                 .dislikeCount(entity.getDislikeCount())
                 .commentCount(entity.getCommentCount())
                 .reportCount(entity.getReportCount())
-                .hashtags(entity.getHashtags())
+                .hashtags(hashtags)
                 .files(files)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())

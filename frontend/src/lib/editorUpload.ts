@@ -46,6 +46,46 @@ async function postOnce(
   return { res, payload }
 }
 
+export async function prepareImageForUpload(file: File): Promise<File> {
+  if (!file.type.startsWith("image/")) return file
+  if (file.type === "image/gif" || file.type === "image/svg+xml") return file
+  if (file.size <= 700_000) return file
+  if (typeof createImageBitmap !== "function" || typeof document === "undefined") {
+    return file
+  }
+
+  try {
+    const bitmap = await createImageBitmap(file)
+    const maxEdge = 1600
+    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height))
+    const width = Math.max(1, Math.round(bitmap.width * scale))
+    const height = Math.max(1, Math.round(bitmap.height * scale))
+    const canvas = document.createElement("canvas")
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) {
+      bitmap.close()
+      return file
+    }
+    ctx.drawImage(bitmap, 0, 0, width, height)
+    bitmap.close()
+
+    const blob = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, "image/jpeg", 0.82)
+    })
+    if (!blob || blob.size >= file.size) return file
+
+    const base = file.name.replace(/\.[^.]+$/, "") || "paste"
+    return new File([blob], `${base}.jpg`, {
+      type: "image/jpeg",
+      lastModified: Date.now(),
+    })
+  } catch {
+    return file
+  }
+}
+
 export async function uploadEditorAsset(
   file: File,
   options?: { allowFile?: boolean },
@@ -57,7 +97,7 @@ export async function uploadEditorAsset(
   const qs = options?.allowFile ? "?allowFile=true" : ""
   let lastError = "파일 업로드에 실패했습니다."
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const { res, payload } = await postOnce(file, qs)
       if (res.ok) {
@@ -97,7 +137,7 @@ export async function uploadEditorAsset(
         lastError = "업로드에 실패했습니다."
       }
     }
-    await sleep(400 * (attempt + 1))
+    if (attempt < 1) await sleep(250)
   }
 
   throw new Error(lastError)

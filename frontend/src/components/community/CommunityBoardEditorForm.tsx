@@ -4,8 +4,9 @@ import type { ClipboardEvent, FormEvent, KeyboardEvent } from "react"
 import { useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { BoardTypeCode } from "@/lib/boardApi"
-import { authHeadersJson } from "@/lib/finsightToken"
-import { uploadEditorAsset } from "@/lib/editorUpload"
+import { useAuthSession } from "@/components/AuthSessionProvider"
+import { authHeadersJson, readUsableAccessToken } from "@/lib/finsightToken"
+import { prepareImageForUpload, uploadEditorAsset } from "@/lib/editorUpload"
 import {
   applyMarkdownCommand,
   communityToolbarActions,
@@ -44,6 +45,7 @@ export default function CommunityBoardEditorForm({
   enableVisibility = false,
 }: Props) {
   const router = useRouter()
+  const { user, ready, hasToken } = useAuthSession()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const imageInputRef = useRef<HTMLInputElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -100,34 +102,79 @@ export default function CommunityBoardEditorForm({
     const run = async () => {
       setUploading(true)
       setError(null)
+      let previewUrl: string | null = null
       try {
-        const uploaded = await uploadEditorAsset(file, { allowFile: asFile })
-        const selection = currentSelection()
-        const value = contentRef.current
-        const name = uploaded.originalFileName || file.name || "file"
-        const insertion = asFile || !file.type.startsWith("image/")
-          ? `[${name}](${uploaded.url})`
-          : `![${name}](${uploaded.url})`
-        const prefix =
-          value.slice(0, selection.start).endsWith("\n") || selection.start === 0 ? "" : "\n"
-        const suffix = "\n"
-        applyContentResult(
-          insertTextAtSelection(value, selection, `${prefix}${insertion}${suffix}`),
-        )
+        if (!ready) {
+          setError("로그인 상태를 확인하는 중입니다. 잠시 후 다시 시도해 주세요.")
+          return
+        }
+        if (!user || !hasToken || !readUsableAccessToken()) {
+          setError("로그인이 필요합니다. 다시 로그인한 뒤 이미지를 올려 주세요.")
+          return
+        }
+
+        const name = file.name || "file"
+        const showImagePreview = !asFile && file.type.startsWith("image/")
+
+        if (showImagePreview) {
+          previewUrl = URL.createObjectURL(file)
+          const selection = currentSelection()
+          const value = contentRef.current
+          const prefix =
+            value.slice(0, selection.start).endsWith("\n") || selection.start === 0 ? "" : "\n"
+          applyContentResult(
+            insertTextAtSelection(value, selection, `${prefix}![${name}](${previewUrl})\n`),
+          )
+        }
+
+        const uploadFile =
+          asFile || !file.type.startsWith("image/")
+            ? file
+            : await prepareImageForUpload(file)
+        const uploaded = await uploadEditorAsset(uploadFile, { allowFile: asFile })
+        const finalName = uploaded.originalFileName || uploadFile.name || name
+        if (previewUrl) {
+          const next = contentRef.current
+            .split(`![${name}](${previewUrl})`)
+            .join(`![${finalName}](${uploaded.url})`)
+          contentRef.current = next
+          setContent(next)
+        } else {
+          const selection = currentSelection()
+          const value = contentRef.current
+          const insertion = `[${finalName}](${uploaded.url})`
+          const prefix =
+            value.slice(0, selection.start).endsWith("\n") || selection.start === 0 ? "" : "\n"
+          applyContentResult(
+            insertTextAtSelection(value, selection, `${prefix}${insertion}\n`),
+          )
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : "업로드에 실패했습니다.")
-        throw err
+        if (previewUrl) {
+          const pattern = new RegExp(`!?\\[[^\\]]*\\]\\(${escapeRegExp(previewUrl)}\\)\\n?`, "g")
+          const next = contentRef.current.replace(pattern, "")
+          contentRef.current = next
+          setContent(next)
+          URL.revokeObjectURL(previewUrl)
+          previewUrl = null
+        }
+        const message =
+          err instanceof Error && err.message.trim()
+            ? err.message
+            : "업로드에 실패했습니다."
+        setError(message)
       } finally {
+        if (previewUrl) {
+          const toRevoke = previewUrl
+          window.setTimeout(() => URL.revokeObjectURL(toRevoke), 2_000)
+        }
         setUploading(false)
       }
     }
 
-    const next = uploadChainRef.current.then(run, run)
-    uploadChainRef.current = next.then(
-      () => undefined,
-      () => undefined,
-    )
-    return next
+    const next = uploadChainRef.current.catch(() => undefined).then(run)
+    uploadChainRef.current = next.catch(() => undefined)
+    await next
   }
 
   function runCommand(command: string) {
@@ -419,9 +466,15 @@ export default function CommunityBoardEditorForm({
             <button
               type="button"
               className="fcb-md-action fcb-md-action--ghost"
-              onClick={() => router.push(basePath)}
+              onClick={() => {
+                if (typeof window !== "undefined" && window.history?.length > 1) {
+                  window.history.back()
+                } else {
+                  router.push(basePath)
+                }
+              }}
             >
-              취소
+              이전으로 가기
             </button>
             <button type="submit" disabled={loading} className="fcb-md-action fcb-md-action--primary">
               {loading ? "저장 중…" : mode === "create" ? "출간하기" : "수정 완료"}
@@ -443,6 +496,10 @@ export default function CommunityBoardEditorForm({
       </div>
     </form>
   )
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
 function normalizePasteFile(file: File): File {

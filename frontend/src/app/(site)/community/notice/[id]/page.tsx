@@ -10,7 +10,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const n = parseInt(id, 10)
   if (!Number.isFinite(n)) return { title: "게시글 | finsight" }
-  const d = await fetchBoardDetailServer(n)
+  const d = await fetchBoardDetailServer(n, { silent: true })
   if (!d) return { title: "게시글 | finsight" }
   return { title: `${d.title} | 공지사항 | finsight` }
 }
@@ -19,7 +19,7 @@ export default async function CommunityNoticeDetailPage({ params }: Props) {
   const { id } = await params
   const n = parseInt(id, 10)
   if (!Number.isFinite(n)) notFound()
-  const detail = await fetchBoardDetailServer(n)
+  const detail = await fetchBoardDetailServer(n, { silent: true })
   if (!detail) notFound()
   return (
     <CommunityBoardLayout

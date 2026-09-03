@@ -49,7 +49,7 @@ export function readUsableAccessToken(): string | null {
   const token = readAccessToken()
   if (!token) return null
   if (!isAccessTokenUsable(token)) {
-    clearAuthSession({ emit: false })
+    clearAuthSession({ emit: true })
     return null
   }
   return token
