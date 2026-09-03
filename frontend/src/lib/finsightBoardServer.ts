@@ -100,6 +100,7 @@ export function mapListToBoardRows(
     date: formatDateServer(b.createdAt),
     hits: b.viewCount,
     hasFile: false,
+    privatePost: b.status === "PRIVATE",
   }))
 }
 

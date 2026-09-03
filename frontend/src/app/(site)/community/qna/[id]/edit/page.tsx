@@ -36,6 +36,8 @@ export default async function CommunityQnaEditPage({ params }: Props) {
         initialTitle={detail.title}
         initialContent={detail.content}
         initialTags={tags}
+        initialStatus={detail.status === "PRIVATE" ? "PRIVATE" : "ACTIVE"}
+        enableVisibility
       />
     </CommunityBoardLayout>
   )

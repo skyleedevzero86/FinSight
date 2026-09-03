@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import CommunityBoardLayout from "@/components/community/CommunityBoardLayout"
-import CommunityBoardDetail from "@/components/community/CommunityBoardDetail"
+import CommunityBoardDetailGate from "@/components/community/CommunityBoardDetailGate"
 import { fetchBoardDetailServer } from "@/lib/finsightBoardServer"
 
 type Props = { params: Promise<{ id: string }> }
@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const n = parseInt(id, 10)
   if (!Number.isFinite(n)) return { title: "게시글 | finsight" }
   const d = await fetchBoardDetailServer(n)
-  if (!d) return { title: "게시글 | finsight" }
+  if (!d) return { title: "Q&A | finsight" }
   return { title: `${d.title} | Q&A | finsight` }
 }
 
@@ -20,13 +20,17 @@ export default async function CommunityQnaDetailPage({ params }: Props) {
   const n = parseInt(id, 10)
   if (!Number.isFinite(n)) notFound()
   const detail = await fetchBoardDetailServer(n)
-  if (!detail) notFound()
   return (
     <CommunityBoardLayout
       heading="Q&A"
       description="서비스 이용 중 궁금한 점을 남겨 주세요."
     >
-      <CommunityBoardDetail detail={detail} basePath="/community/qna" />
+      <CommunityBoardDetailGate
+        boardId={n}
+        basePath="/community/qna"
+        initialDetail={detail}
+        enableComments
+      />
     </CommunityBoardLayout>
   )
 }

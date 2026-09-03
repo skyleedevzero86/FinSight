@@ -667,7 +667,6 @@
   border-radius: 28px;
   border: 1px solid rgba(15, 50, 70, 0.08);
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 48px rgba(18, 42, 66, 0.08);
   overflow: hidden;
 }
 
@@ -706,7 +705,6 @@
 .fcb-md-tag-input:focus {
   outline: none;
   border-color: rgba(48, 85, 166, 0.65);
-  box-shadow: 0 0 0 4px rgba(48, 85, 166, 0.12);
 }
 
 .fcb-md-field__input--title {
@@ -815,10 +813,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 46px;
+  min-height: 44px;
   padding: 0 18px;
-  border-radius: 16px;
-  font-weight: 800;
+  border-radius: 4px;
+  font-weight: 700;
   text-decoration: none;
   border: 0;
   cursor: pointer;
@@ -830,12 +828,12 @@
 }
 
 .fcb-md-action--primary {
-  background: linear-gradient(135deg, #3055a6 0%, #1e3a7a 100%);
+  background: #3055a6;
   color: #f8fcff;
 }
 
 .fcb-md-action--primary:hover {
-  filter: brightness(1.05);
+  background: #274791;
 }
 
 .fcb-md-action--ghost {
@@ -1038,7 +1036,6 @@
   border-radius: 20px;
   border: 1px solid rgba(59, 93, 118, 0.12);
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 12px 28px rgba(18, 42, 66, 0.06);
 }
 
 .fcb-md-toc__title {
@@ -1077,22 +1074,6 @@
 
 .fcb-md-toc__item--level-4 {
   padding-left: 30px;
-}
-
-.fcb-md-scroll-top {
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-  z-index: 3;
-  min-width: 68px;
-  min-height: 42px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 999px;
-  background: linear-gradient(135deg, #3055a6 0%, #1e3a7a 100%);
-  color: #f8fcff;
-  font-weight: 800;
-  box-shadow: 0 12px 28px rgba(30, 58, 122, 0.28);
 }
 
 .fcb-md-detail {
@@ -1177,5 +1158,192 @@
   .fcb-md-nav {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+.fcb-md-visibility {
+  display: grid;
+  gap: 10px;
+}
+
+.fcb-md-visibility__option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  align-items: start;
+  padding: 12px 14px;
+  border: 1px solid rgba(59, 93, 118, 0.14);
+  border-radius: 16px;
+  background: #fbfdff;
+  cursor: pointer;
+}
+
+.fcb-md-visibility__option input {
+  margin-top: 3px;
+}
+
+.fcb-md-visibility__option span {
+  font-weight: 700;
+  color: #17344c;
+}
+
+.fcb-md-visibility__option em {
+  grid-column: 2;
+  font-style: normal;
+  color: #64748b;
+  font-size: 0.86rem;
+}
+
+.fcb-comments {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(59, 93, 118, 0.12);
+}
+
+.fcb-comments__heading h3 {
+  margin: 0 0 14px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #17344c;
+}
+
+.fcb-comment-form {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.fcb-comment-form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(59, 93, 118, 0.16);
+  border-radius: 14px;
+  resize: vertical;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.fcb-comment-form--reply {
+  margin-top: 12px;
+  margin-left: 12px;
+}
+
+.fcb-comment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fcb-comment-actions button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #3055a6;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.fcb-comment-actions button[type="button"] {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.fcb-comment-error {
+  color: #b91c1c;
+  font-size: 0.9rem;
+  margin: 0 0 12px;
+}
+
+.fcb-comment-list,
+.fcb-comment-replies {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.fcb-comment-replies {
+  margin-top: 12px;
+  margin-left: 16px;
+  padding-left: 14px;
+  border-left: 3px solid #e2e8f0;
+}
+
+.fcb-comment-item {
+  padding: 14px 16px;
+  border: 1px solid rgba(59, 93, 118, 0.1);
+  border-radius: 16px;
+  background: #fbfdff;
+}
+
+.fcb-comment-item--reply {
+  background: #f8fafc;
+}
+
+.fcb-comment-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 6px;
+  color: #64748b;
+  font-size: 0.84rem;
+}
+
+.fcb-comment-meta strong {
+  color: #17344c;
+}
+
+.fcb-comment-body {
+  margin: 0;
+  white-space: pre-wrap;
+  color: #23384d;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.fcb-comment-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.fcb-comment-toolbar button {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+
+.fcb-comment-toolbar button:hover {
+  color: #3055a6;
+}
+
+.fcb-login-prompt {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.fcb-login-prompt__card {
+  width: min(360px, calc(100vw - 32px));
+  padding: 20px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+}
+
+.fcb-login-prompt__card p {
+  margin: 0 0 16px;
+  color: #17344c;
+  font-weight: 600;
 }
 

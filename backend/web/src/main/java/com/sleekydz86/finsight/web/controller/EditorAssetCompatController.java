@@ -35,8 +35,11 @@ public class EditorAssetCompatController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public EditorImageUploadResponse uploadImage(@RequestPart("file") MultipartFile file) throws IOException {
-        StoredMetadata meta = editorAssetStorageService.upload(file);
+    public EditorImageUploadResponse uploadImage(
+            @RequestPart("file") MultipartFile file,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean allowFile)
+            throws IOException {
+        StoredMetadata meta = editorAssetStorageService.upload(file, allowFile);
         return new EditorImageUploadResponse(
                 meta.imageUrl(), meta.originalFileName(), meta.storedFileName(), meta.size());
     }

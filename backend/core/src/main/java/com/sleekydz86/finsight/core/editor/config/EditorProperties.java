@@ -9,6 +9,7 @@ public class EditorProperties {
 
     private String imageStorageDir = "";
     private long imageMaxBytes = 5L * 1024 * 1024;
+    private long fileMaxBytes = 20L * 1024 * 1024;
     private Minio minio = new Minio();
     private WebSocket websocket = new WebSocket();
 
@@ -26,6 +27,14 @@ public class EditorProperties {
 
     public void setImageMaxBytes(long imageMaxBytes) {
         this.imageMaxBytes = imageMaxBytes;
+    }
+
+    public long getFileMaxBytes() {
+        return fileMaxBytes;
+    }
+
+    public void setFileMaxBytes(long fileMaxBytes) {
+        this.fileMaxBytes = fileMaxBytes;
     }
 
     public Minio getMinio() {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import CommunityBoardLayout from "@/components/community/CommunityBoardLayout"
-import CommunityBoardList from "@/components/community/CommunityBoardList"
+import CommunityAuthAwareBoardList from "@/components/community/CommunityAuthAwareBoardList"
 import { COMMUNITY_SECTION_BOARD_TYPE } from "@/data/communityBoardConfig"
 import {
   fetchBoardListServer,
@@ -53,16 +53,18 @@ export default async function CommunityQnaPage({ searchParams }: PageProps) {
           확인해 주세요.
         </p>
       ) : null}
-      <CommunityBoardList
+      <CommunityAuthAwareBoardList
         boardId="bbs_qna"
         caption="Q&A"
         basePath={basePath}
-        totalCount={Number(totalCount)}
+        boardType={COMMUNITY_SECTION_BOARD_TYPE.qna}
+        initialRows={rows}
+        initialTotalCount={Number(totalCount)}
+        initialTotalPages={totalPages}
         currentPage={pageOneBased}
-        totalPages={totalPages}
-        rows={rows}
         initialSearchType={searchType}
         initialSearchValue={searchValue}
+        showWriteButton
       />
     </CommunityBoardLayout>
   )

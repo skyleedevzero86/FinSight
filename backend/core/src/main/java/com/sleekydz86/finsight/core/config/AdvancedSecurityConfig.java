@@ -99,8 +99,10 @@ public class AdvancedSecurityConfig {
                         .requestMatchers(HttpMethod.GET,
                                 "/api/v1/boards/my-boards",
                                 "/api/v1/boards/my-scraps",
+                                "/api/v1/boards/my-reactions",
                                 "/api/v1/boards/*/reaction-status")
                         .authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/editor/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/boards", "/api/v1/boards/**").permitAll()
                         .requestMatchers("/api/v1/media/**").permitAll()
                         .anyRequest().authenticated()

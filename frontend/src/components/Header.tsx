@@ -71,6 +71,10 @@ export default function Header() {
               <Link href="/my/favorites" className="hover:text-finsight-secondary transition">
                 나의 즐겨찾기
               </Link>
+              <span className="text-gray-400">|</span>
+              <Link href="/my/posts" className="hover:text-finsight-secondary transition">
+                나의 게시글
+              </Link>
               {canManageUsers(user.role) ? (
                 <>
                   <span className="text-gray-400">|</span>
@@ -224,6 +228,14 @@ export default function Header() {
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >
                       나의 즐겨찾기
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/my/posts"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      나의 게시글
                     </Link>
                   </li>
                 </>

@@ -1,13 +1,18 @@
 "use client"
 
-import type { MarkdownCommandId, ToolbarAction } from "@/lib/communityMarkdown"
+type Action = { id: string; label: string; title: string }
 
 type Props = {
-  actions: ToolbarAction[]
-  onCommand: (command: MarkdownCommandId) => void
+  actions: Action[]
+  onCommand: (command: string) => void
+  disabled?: boolean
 }
 
-export default function CommunityMarkdownToolbar({ actions, onCommand }: Props) {
+export default function CommunityMarkdownToolbar({
+  actions,
+  onCommand,
+  disabled = false,
+}: Props) {
   return (
     <div className="fcb-md-toolbar">
       <div className="fcb-md-toolbar__group">
@@ -18,6 +23,7 @@ export default function CommunityMarkdownToolbar({ actions, onCommand }: Props) 
             className="fcb-md-toolbar__button"
             onClick={() => onCommand(action.id)}
             title={action.title}
+            disabled={disabled}
           >
             {action.label}
           </button>

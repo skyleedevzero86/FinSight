@@ -1,7 +1,7 @@
 "use client"
 
 import type { ComponentPropsWithoutRef } from "react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef } from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import {
@@ -33,7 +33,6 @@ type MarkdownHeadingProps = ComponentPropsWithoutRef<"h1"> & {
 
 const MAX_TOC_LEVEL = 4
 const SCROLL_OFFSET = 24
-const SCROLL_TRIGGER_RATIO = 0.2
 
 export default function CommunityMarkdownPreview({
   title,
@@ -46,7 +45,6 @@ export default function CommunityMarkdownPreview({
   className = "",
 }: Props) {
   const panelRef = useRef<HTMLElement | null>(null)
-  const [showScrollTopButton, setShowScrollTopButton] = useState(false)
   const headingDefinitions = useMemo(() => createHeadingDefinitions(markdown), [markdown])
   const headingDefinitionByLine = useMemo(
     () => new Map(headingDefinitions.map((heading) => [heading.line, heading])),
@@ -57,36 +55,6 @@ export default function CommunityMarkdownPreview({
     [headingDefinitions]
   )
   const showSideTableOfContents = showTableOfContents && tableOfContents.length > 0
-
-  useEffect(() => {
-    const updateScrollTopVisibility = () => {
-      const panel = panelRef.current
-      if (!panel || !showTableOfContents) {
-        setShowScrollTopButton(false)
-        return
-      }
-
-      const panelScrollable = isPanelScrollable(panel)
-      const scrollTop = panelScrollable ? panel.scrollTop : window.scrollY
-      const maxScrollTop = panelScrollable
-        ? Math.max(0, panel.scrollHeight - panel.clientHeight)
-        : Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
-
-      setShowScrollTopButton(maxScrollTop > 0 && scrollTop / maxScrollTop >= SCROLL_TRIGGER_RATIO)
-    }
-
-    updateScrollTopVisibility()
-    const panel = panelRef.current
-    panel?.addEventListener("scroll", updateScrollTopVisibility, { passive: true })
-    window.addEventListener("scroll", updateScrollTopVisibility, { passive: true })
-    window.addEventListener("resize", updateScrollTopVisibility)
-
-    return () => {
-      panel?.removeEventListener("scroll", updateScrollTopVisibility)
-      window.removeEventListener("scroll", updateScrollTopVisibility)
-      window.removeEventListener("resize", updateScrollTopVisibility)
-    }
-  }, [markdown, showTableOfContents, showSideTableOfContents])
 
   const renderHeading = (tagName: HeadingTag) => {
     return ({ children, node, ...props }: MarkdownHeadingProps) => {
@@ -121,15 +89,6 @@ export default function CommunityMarkdownPreview({
 
     const nextWindowScrollTop = window.scrollY + target.getBoundingClientRect().top - SCROLL_OFFSET
     window.scrollTo({ top: Math.max(0, nextWindowScrollTop), behavior: "smooth" })
-  }
-
-  const handleScrollToTop = () => {
-    const panel = panelRef.current
-    if (panel && isPanelScrollable(panel)) {
-      panel.scrollTo({ top: 0, behavior: "smooth" })
-      return
-    }
-    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   return (
@@ -199,17 +158,6 @@ export default function CommunityMarkdownPreview({
             </div>
           </div>
         </aside>
-      ) : null}
-
-      {showTableOfContents && showScrollTopButton ? (
-        <button
-          type="button"
-          className="fcb-md-scroll-top"
-          onClick={handleScrollToTop}
-          aria-label="맨 위로 이동"
-        >
-          위로
-        </button>
       ) : null}
     </section>
   )

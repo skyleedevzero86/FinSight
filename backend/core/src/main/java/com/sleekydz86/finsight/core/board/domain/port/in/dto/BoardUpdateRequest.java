@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.core.board.domain.port.in.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sleekydz86.finsight.core.board.domain.BoardStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -30,7 +32,12 @@ public class BoardUpdateRequest {
         this(title, content, hashtags, null);
     }
 
-    public BoardUpdateRequest(String title, String content, List<String> hashtags, BoardStatus status) {
+    @JsonCreator
+    public BoardUpdateRequest(
+            @JsonProperty("title") String title,
+            @JsonProperty("content") String content,
+            @JsonProperty("hashtags") List<String> hashtags,
+            @JsonProperty("status") BoardStatus status) {
         this.title = title;
         this.content = content;
         this.hashtags = hashtags != null ? hashtags : List.of();

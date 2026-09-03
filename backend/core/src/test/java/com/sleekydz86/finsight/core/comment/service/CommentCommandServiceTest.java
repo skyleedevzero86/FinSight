@@ -33,6 +33,9 @@ class CommentCommandServiceTest {
     @Mock
     private CommentReportPersistencePort commentReportPersistencePort;
 
+    @Mock
+    private com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort boardPersistencePort;
+
     @InjectMocks
     private CommentCommandService commentCommandService;
 

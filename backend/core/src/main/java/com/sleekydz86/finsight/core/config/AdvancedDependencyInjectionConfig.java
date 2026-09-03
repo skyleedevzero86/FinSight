@@ -12,14 +12,10 @@ import com.sleekydz86.finsight.core.news.service.NewsAiProcessingService;
 import com.sleekydz86.finsight.core.news.service.NewsPersistenceService;
 import com.sleekydz86.finsight.core.news.service.NewsNotificationService;
 import com.sleekydz86.finsight.core.news.service.PersonalizedNewsService;
-import com.sleekydz86.finsight.core.comment.domain.port.out.CommentPersistencePort;
-import com.sleekydz86.finsight.core.comment.domain.port.out.CommentReactionPersistencePort;
-import com.sleekydz86.finsight.core.comment.domain.port.out.CommentReportPersistencePort;
-import com.sleekydz86.finsight.core.comment.service.CommentQueryService;
-import com.sleekydz86.finsight.core.comment.service.CommentCommandService;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import com.sleekydz86.finsight.core.user.service.PasswordValidationService;
+import com.sleekydz86.finsight.core.user.service.PrivilegedAccountService;
 import com.sleekydz86.finsight.core.auth.email.EmailVerificationService;
 import com.sleekydz86.finsight.core.auth.util.JwtTokenUtil;
 import com.sleekydz86.finsight.core.health.domain.port.out.ExternalHealthCheckPort;
@@ -47,9 +43,6 @@ public class AdvancedDependencyInjectionConfig {
     private final NewsAiProcessingService newsAiProcessingService;
     private final NewsPersistenceService newsPersistenceService;
     private final PersonalizedNewsService personalizedNewsService;
-    private final CommentPersistencePort commentPersistencePort;
-    private final CommentReactionPersistencePort commentReactionPersistencePort;
-    private final CommentReportPersistencePort commentReportPersistencePort;
     private final UserPersistencePort userPersistencePort;
     private final PasswordValidationService passwordValidationService;
     private final AuthenticationManager authenticationManager;
@@ -66,9 +59,6 @@ public class AdvancedDependencyInjectionConfig {
             NewsAiProcessingService newsAiProcessingService,
             NewsPersistenceService newsPersistenceService,
             PersonalizedNewsService personalizedNewsService,
-            CommentPersistencePort commentPersistencePort,
-            CommentReactionPersistencePort commentReactionPersistencePort,
-            CommentReportPersistencePort commentReportPersistencePort,
             UserPersistencePort userPersistencePort,
             PasswordValidationService passwordValidationService,
             AuthenticationManager authenticationManager,
@@ -83,9 +73,6 @@ public class AdvancedDependencyInjectionConfig {
         this.newsAiProcessingService = newsAiProcessingService;
         this.newsPersistenceService = newsPersistenceService;
         this.personalizedNewsService = personalizedNewsService;
-        this.commentPersistencePort = commentPersistencePort;
-        this.commentReactionPersistencePort = commentReactionPersistencePort;
-        this.commentReportPersistencePort = commentReportPersistencePort;
         this.userPersistencePort = userPersistencePort;
         this.passwordValidationService = passwordValidationService;
         this.authenticationManager = authenticationManager;
@@ -122,18 +109,6 @@ public class AdvancedDependencyInjectionConfig {
     }
 
     @Bean
-    public CommentQueryService commentQueryService() {
-        return new CommentQueryService(commentPersistencePort, commentReactionPersistencePort,
-                commentReportPersistencePort);
-    }
-
-    @Bean
-    public CommentCommandService commentCommandService() {
-        return new CommentCommandService(commentPersistencePort, commentReactionPersistencePort,
-                commentReportPersistencePort);
-    }
-
-    @Bean
     public UserService userService(
             PasswordEncoder passwordEncoder,
             EmailVerificationService emailVerificationService,
@@ -149,9 +124,10 @@ public class AdvancedDependencyInjectionConfig {
     @Bean
     public AuthenticationService authenticationService(
             PasswordEncoder passwordEncoder,
+            PrivilegedAccountService privilegedAccountService,
             @Value("${finsight.auth.auto-approve-on-register:false}") boolean autoApproveOnRegister) {
         return new AuthenticationService(authenticationManager, jwtTokenUtil, userPersistencePort, passwordEncoder,
-                passwordValidationService, autoApproveOnRegister);
+                passwordValidationService, privilegedAccountService, autoApproveOnRegister);
     }
 
     @Bean

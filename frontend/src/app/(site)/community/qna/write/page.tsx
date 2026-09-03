@@ -18,6 +18,8 @@ export default function CommunityQnaWritePage() {
         mode="create"
         boardType={COMMUNITY_SECTION_BOARD_TYPE.qna}
         basePath="/community/qna"
+        sectionLabel="Q&A"
+        enableVisibility
       />
     </CommunityBoardLayout>
   )

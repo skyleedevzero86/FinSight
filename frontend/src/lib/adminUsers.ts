@@ -231,8 +231,28 @@ export async function withdrawSelf(): Promise<{ ok: true } | { ok: false; messag
   return { ok: true }
 }
 
+export async function changeAdminUserRole(
+  userId: number,
+  role: UserRole,
+): Promise<{ ok: true; data: AdminUser } | { ok: false; message: string }> {
+  const res = await fetch(`/api/v1/admin/users/${userId}/role?role=${encodeURIComponent(role)}`, {
+    method: "POST",
+    headers: { ...authHeadersJson(), "Content-Type": "application/json" },
+  })
+  const payload = await readJson(res)
+  if (!res.ok) return { ok: false, message: readMessage(payload, "역할 변경에 실패했습니다.") }
+  const root = asRecord(payload)
+  const parsed = parseUser(root?.data ?? payload)
+  if (!parsed) return { ok: false, message: "역할은 변경됐지만 응답을 해석하지 못했습니다." }
+  return { ok: true, data: parsed }
+}
+
 export function canManageUsers(role: string | undefined): boolean {
   if (!role) return false
-  const normalized = role.startsWith("ROLE_") ? role.slice(5) : role
-  return normalized === "ADMIN" || normalized === "MANAGER"
+  let normalized = role.trim()
+  if (normalized.toUpperCase().startsWith("ROLE_")) {
+    normalized = normalized.slice(5)
+  }
+  const upper = normalized.toUpperCase()
+  return upper === "ADMIN" || upper === "MANAGER"
 }

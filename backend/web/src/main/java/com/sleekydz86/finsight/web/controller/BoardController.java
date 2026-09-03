@@ -1,6 +1,8 @@
 package com.sleekydz86.finsight.web.controller;
 
 import com.sleekydz86.finsight.core.board.domain.Board;
+import com.sleekydz86.finsight.core.board.domain.BoardStatus;
+import com.sleekydz86.finsight.core.board.domain.BoardType;
 import com.sleekydz86.finsight.core.board.domain.port.BoardQueryUseCase;
 import com.sleekydz86.finsight.core.board.domain.port.in.BoardCommandUseCase;
 import com.sleekydz86.finsight.core.board.domain.port.in.dto.*;
@@ -41,6 +43,7 @@ public class BoardController {
             @CurrentUser(required = false) AuthenticatedUser currentUser) {
         try {
             validateSearchRequest(request);
+            applyViewerContext(request, currentUser);
             PaginationResponse<BoardListResponse> response = boardQueryUseCase.getBoards(request);
             return ResponseEntity.ok(ApiResponse.success(response, "게시판 목록을 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
@@ -61,9 +64,16 @@ public class BoardController {
             if (boardId == null || boardId <= 0) {
                 throw new ValidationException("유효하지 않은 게시판 ID입니다", Arrays.asList("boardId는 1 이상의 양수여야 합니다"));
             }
-            BoardDetailResponse response = boardQueryUseCase.getBoardDetail(boardId);
+            BoardDetailResponse response = boardQueryUseCase.getBoardDetail(
+                    boardId,
+                    currentUser != null ? currentUser.getEmail() : null,
+                    isStaff(currentUser));
             return ResponseEntity.ok(ApiResponse.success(response, "게시판 상세 정보를 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
+            throw e;
+        } catch (com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException e) {
+            throw e;
+        } catch (com.sleekydz86.finsight.core.global.exception.BoardNotFoundException e) {
             throw e;
         } catch (Exception e) {
             throw new SystemException("게시판 상세 조회 중 오류가 발생했습니다", "BOARD_DETAIL_ERROR", e);
@@ -281,6 +291,21 @@ public class BoardController {
         }
     }
 
+    @GetMapping("/my-reactions")
+    @LogExecution("내 게시글 반응 조회")
+    @PerformanceMonitor(threshold = 2000, operation = "my_board_reactions")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMyReactions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @CurrentUser AuthenticatedUser currentUser) {
+        try {
+            List<Map<String, Object>> response = boardQueryUseCase.getMyReactions(currentUser.getEmail(), page, size);
+            return ResponseEntity.ok(ApiResponse.success(response, "내 반응 목록을 성공적으로 조회했습니다"));
+        } catch (Exception e) {
+            throw new SystemException("내 반응 목록 조회 중 오류가 발생했습니다", "MY_REACTIONS_ERROR", e);
+        }
+    }
+
     @GetMapping("/popular")
     @LogExecution("인기 게시판 조회")
     @PerformanceMonitor(threshold = 1000, operation = "board_popular")
@@ -377,6 +402,14 @@ public class BoardController {
         if (request == null) {
             throw new ValidationException("생성 요청이 null입니다", Arrays.asList("생성 요청은 null일 수 없습니다"));
         }
+        if (request.getBoardType() == null) {
+            throw new ValidationException("게시판 타입은 필수입니다", Arrays.asList("boardType은 필수입니다"));
+        }
+        if (request.getBoardType() == BoardType.FREE) {
+            throw new ValidationException(
+                    "포트폴리오 공유는 게시판이 아닙니다. Q&A 게시판에서 글을 작성해 주세요.",
+                    Arrays.asList("boardType=FREE는 허용되지 않습니다"));
+        }
         if (request.getTitle() == null || request.getTitle().trim().isEmpty()) {
             throw new ValidationException("제목은 필수입니다", Arrays.asList("title은 필수입니다"));
         }
@@ -388,6 +421,9 @@ public class BoardController {
         }
         if (request.getContent().length() > 100_000) {
             throw new ValidationException("내용은 100000자를 초과할 수 없습니다", Arrays.asList("content는 100000자를 초과할 수 없습니다"));
+        }
+        if (request.getStatus() == BoardStatus.PRIVATE && request.getBoardType() != BoardType.QNA) {
+            throw new ValidationException("비공개 글은 Q&A에서만 사용할 수 있습니다", Arrays.asList("status는 QNA에서만 PRIVATE일 수 있습니다"));
         }
     }
 
@@ -419,5 +455,26 @@ public class BoardController {
         if (request.getDescription() != null && request.getDescription().length() > 500) {
             throw new ValidationException("신고 설명은 500자를 초과할 수 없습니다", Arrays.asList("description은 500자를 초과할 수 없습니다"));
         }
+    }
+
+    private void applyViewerContext(BoardSearchRequest request, AuthenticatedUser currentUser) {
+        if (currentUser == null || currentUser.getEmail() == null || currentUser.getEmail().isBlank()) {
+            request.setViewerEmail(null);
+            request.setStaffViewer(false);
+            return;
+        }
+        request.setViewerEmail(currentUser.getEmail());
+        request.setStaffViewer(isStaff(currentUser));
+    }
+
+    private boolean isStaff(AuthenticatedUser user) {
+        if (user == null || user.getRole() == null) {
+            return false;
+        }
+        String role = user.getRole();
+        if (role.startsWith("ROLE_")) {
+            role = role.substring(5);
+        }
+        return "ADMIN".equals(role) || "MANAGER".equals(role);
     }
 }

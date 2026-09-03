@@ -16,6 +16,8 @@ public interface BoardQueryUseCase {
 
     BoardDetailResponse getBoardDetail(Long boardId);
 
+    BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer);
+
     BoardDetailResponse getBoardDetailWithNavigation(Long boardId, BoardType boardType);
 
     List<BoardListResponse> getPopularBoards(int limit);
@@ -27,6 +29,8 @@ public interface BoardQueryUseCase {
     List<BoardListResponse> getMyScrappedBoards(String userEmail, int page, int size);
 
     List<BoardListResponse> getMyBoards(String userEmail, int page, int size);
+
+    List<java.util.Map<String, Object>> getMyReactions(String userEmail, int page, int size);
 
     List<BoardListResponse> getReportedBoards();
 

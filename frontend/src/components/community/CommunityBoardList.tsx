@@ -1,4 +1,5 @@
 import Link from "next/link"
+import type { ReactNode } from "react"
 import type { BoardRow } from "@/data/communityBoardData"
 import { boardListHref, pageWindow } from "@/data/communityBoardConfig"
 
@@ -17,6 +18,7 @@ type CommunityBoardListProps = {
   initialSearchType?: string
   initialSearchValue?: string
   showWriteButton?: boolean
+  writeButton?: ReactNode
 }
 
 export default function CommunityBoardList({
@@ -32,6 +34,7 @@ export default function CommunityBoardList({
   initialSearchType = "",
   initialSearchValue = "",
   showWriteButton = true,
+  writeButton,
 }: CommunityBoardListProps) {
   const safeTotalPages = Math.max(1, totalPages)
   const pages = pageWindow(currentPage, safeTotalPages, 7)
@@ -153,7 +156,14 @@ export default function CommunityBoardList({
                       )}
                     </td>
                     <td className="td_subject">
-                      <Link href={row.href}>{row.title}</Link>
+                      <Link href={row.href}>
+                        {row.privatePost ? (
+                          <span className="mr-1.5 inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">
+                            비공개
+                          </span>
+                        ) : null}
+                        {row.title}
+                      </Link>
                     </td>
                     <td className="td_name">{row.author}</td>
                     <td className="td_file">
@@ -232,14 +242,16 @@ export default function CommunityBoardList({
         <div className="bbs_listbtn">
           <div className="left" />
           <div className="right">
-            {showWriteButton ? (
-              <Link
-                href={writeHref}
-                className="inline-flex items-center justify-center rounded border border-finsight-primary bg-finsight-primary px-4 py-2 text-sm font-medium text-white hover:opacity-95"
-              >
-                글쓰기
-              </Link>
-            ) : null}
+            {writeButton != null
+              ? writeButton
+              : showWriteButton ? (
+                  <Link
+                    href={writeHref}
+                    className="inline-flex items-center justify-center rounded border border-finsight-primary bg-finsight-primary px-4 py-2 text-sm font-medium text-white hover:opacity-95"
+                  >
+                    글쓰기
+                  </Link>
+                ) : null}
           </div>
         </div>
       </div>

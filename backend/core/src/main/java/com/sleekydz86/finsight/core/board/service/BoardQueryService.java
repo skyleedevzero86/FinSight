@@ -13,6 +13,7 @@ import com.sleekydz86.finsight.core.board.domain.BoardScrap;
 import com.sleekydz86.finsight.core.comment.domain.ReactionType;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 import com.sleekydz86.finsight.core.global.exception.BoardNotFoundException;
+import com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -78,14 +79,37 @@ public class BoardQueryService implements BoardQueryUseCase {
 
         @Override
         public BoardDetailResponse getBoardDetail(Long boardId) {
+                return getBoardDetail(boardId, null, false);
+        }
+
+        @Override
+        public BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer) {
                 log.info("게시판 상세 조회 요청: boardId={}", boardId);
 
                 Board board = boardPersistencePort.findById(boardId)
                                 .orElseThrow(() -> new BoardNotFoundException(boardId));
 
+                assertReadable(board, viewerEmail, staffViewer);
+
                 boardPersistencePort.incrementViewCount(boardId);
 
                 return BoardDetailResponse.from(board, markdownRenderingService.render(board.getContent()));
+        }
+
+        private void assertReadable(Board board, String viewerEmail, boolean staffViewer) {
+                if (board.getStatus() == BoardStatus.ACTIVE) {
+                        return;
+                }
+                if (board.getStatus() == BoardStatus.PRIVATE) {
+                        if (staffViewer) {
+                                return;
+                        }
+                        if (viewerEmail != null && viewerEmail.equalsIgnoreCase(board.getAuthorEmail())) {
+                                return;
+                        }
+                        throw new InsufficientPermissionException("PRIVATE_BOARD", "비공개 글은 작성자와 관리자만 볼 수 있습니다");
+                }
+                throw new BoardNotFoundException(board.getId());
         }
 
         @Override
@@ -171,6 +195,30 @@ public class BoardQueryService implements BoardQueryUseCase {
                 var boards = boardPersistencePort.findByAuthorEmail(userEmail, page, size);
                 return boards.getBoards().stream()
                                 .map(BoardListResponse::from)
+                                .collect(Collectors.toList());
+        }
+
+        @Override
+        public List<Map<String, Object>> getMyReactions(String userEmail, int page, int size) {
+                return boardReactionPersistencePort.findByUserEmail(userEmail, page, size).stream()
+                                .map(reaction -> {
+                                        Map<String, Object> row = new java.util.LinkedHashMap<>();
+                                        row.put("boardId", reaction.getBoardId());
+                                        row.put("reactionType", reaction.getReactionType() != null
+                                                        ? reaction.getReactionType().name()
+                                                        : null);
+                                        row.put("createdAt", reaction.getCreatedAt());
+                                        boardPersistencePort.findById(reaction.getBoardId()).ifPresentOrElse(board -> {
+                                                row.put("title", board.getTitle());
+                                                row.put("boardType", board.getBoardType() != null
+                                                                ? board.getBoardType().name()
+                                                                : null);
+                                        }, () -> {
+                                                row.put("title", "(삭제된 글)");
+                                                row.put("boardType", null);
+                                        });
+                                        return row;
+                                })
                                 .collect(Collectors.toList());
         }
 

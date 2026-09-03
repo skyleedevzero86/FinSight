@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff, User } from "lucide-react"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import { authProviderLabel } from "@/lib/authSession"
+import { USER_ROLE_LABEL, type UserRole } from "@/lib/adminUsers"
 import {
   changePassword,
   fetchPasswordStatus,
@@ -336,6 +337,9 @@ export default function MyInfoClient() {
               <p className="mt-1 truncate text-sm text-gray-500">{user.email}</p>
               <p className="mt-1 text-xs text-gray-400">
                 {authProviderLabel(user.authProvider)} 로그인
+                {" · "}
+                권한{" "}
+                {USER_ROLE_LABEL[(user.role as UserRole)] ?? user.role}
               </p>
             </div>
           </div>

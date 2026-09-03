@@ -46,6 +46,18 @@ public class EditorAssetStorageService {
             "image/webp",
             "image/svg+xml");
 
+    private static final Set<String> ALLOWED_FILE_TYPES = Set.of(
+            "application/pdf",
+            "application/zip",
+            "application/x-zip-compressed",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "text/plain",
+            "text/csv",
+            "application/json");
+
     private final ObjectProvider<MinioClient> minioClientProvider;
     private final EditorProperties editorProperties;
     private final EditorAssetJpaRepository editorAssetJpaRepository;
@@ -74,15 +86,29 @@ public class EditorAssetStorageService {
 
     @Transactional
     public StoredMetadata upload(MultipartFile file) throws IOException {
+        return upload(file, false);
+    }
+
+    @Transactional
+    public StoredMetadata upload(MultipartFile file, boolean allowNonImage) throws IOException {
+        validateUpload(file, allowNonImage);
         if (useMinio()) {
-            return uploadToMinio(file);
+            try {
+                return uploadToMinio(file, allowNonImage);
+            } catch (Exception e) {
+                // MinIO 장애 시 로컬 저장으로 폴백
+            }
         }
-        return uploadToFilesystem(file);
+        return uploadToFilesystem(file, allowNonImage);
     }
 
     public LoadedImage load(UUID assetId) throws IOException {
         if (useMinio()) {
-            return loadFromMinio(assetId);
+            try {
+                return loadFromMinio(assetId);
+            } catch (Exception e) {
+                // fall through to filesystem
+            }
         }
         return loadFromFilesystem(assetId);
     }
@@ -91,14 +117,13 @@ public class EditorAssetStorageService {
         return editorProperties.getMinio().isEnabled() && minioClientProvider.getIfAvailable() != null;
     }
 
-    private StoredMetadata uploadToMinio(MultipartFile image) throws IOException {
-        validateImage(image);
+    private StoredMetadata uploadToMinio(MultipartFile image, boolean allowNonImage) throws IOException {
         MinioClient minioClient = minioClientProvider.getIfAvailable();
         String bucket = editorProperties.getMinio().getBucket();
         ensureBucketExists(minioClient, bucket);
 
         UUID assetId = UUID.randomUUID();
-        String objectKey = buildObjectKey(image.getOriginalFilename());
+        String objectKey = buildObjectKey(image.getOriginalFilename(), allowNonImage);
         String contentType = Objects.requireNonNullElse(image.getContentType(), "application/octet-stream");
         String originalName = Objects.requireNonNullElse(image.getOriginalFilename(), objectKey);
 
@@ -139,7 +164,7 @@ public class EditorAssetStorageService {
         } catch (IOException e) {
             throw e;
         } catch (Exception e) {
-            throw new IllegalStateException("MinIO 이미지 업로드를 처리하지 못했습니다.", e);
+            throw new IllegalStateException("MinIO 업로드를 처리하지 못했습니다.", e);
         }
     }
 
@@ -173,11 +198,13 @@ public class EditorAssetStorageService {
         }
     }
 
-    private String buildObjectKey(String originalFileName) {
+    private String buildObjectKey(String originalFileName, boolean allowNonImage) {
         LocalDate currentDate = LocalDate.now(clock.withZone(ZoneOffset.UTC));
+        String prefix = allowNonImage ? "editor-files" : "editor-images";
         return String.format(
                 Locale.ROOT,
-                "editor-images/%d/%02d/%02d/%s%s",
+                "%s/%d/%02d/%02d/%s%s",
+                prefix,
                 currentDate.getYear(),
                 currentDate.getMonthValue(),
                 currentDate.getDayOfMonth(),
@@ -185,28 +212,25 @@ public class EditorAssetStorageService {
                 extractExtension(originalFileName));
     }
 
-    private StoredMetadata uploadToFilesystem(MultipartFile file) throws IOException {
+    private StoredMetadata uploadToFilesystem(MultipartFile file, boolean allowNonImage) throws IOException {
         if (file == null || file.isEmpty()) {
-            throw new ValidationException("이미지 파일이 비어 있습니다", List.of("file required"));
+            throw new ValidationException("파일이 비어 있습니다", List.of("file required"));
         }
         String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
-        if (!contentType.toLowerCase(Locale.ROOT).startsWith("image/")) {
-            throw new ValidationException("이미지 파일만 업로드할 수 있습니다", List.of("contentType must be image/*"));
-        }
-        long max = editorProperties.getImageMaxBytes();
+        long max = allowNonImage ? editorProperties.getFileMaxBytes() : editorProperties.getImageMaxBytes();
         if (file.getSize() > max) {
-            throw new ValidationException("이미지 크기가 허용 한도를 초과했습니다", List.of("max bytes: " + max));
+            throw new ValidationException("파일 크기가 허용 한도를 초과했습니다", List.of("max bytes: " + max));
         }
         UUID id = UUID.randomUUID();
         Path dataPath = filesystemRoot.resolve(id + ".bin");
         Path metaPath = filesystemRoot.resolve(id + ".properties");
         Files.write(dataPath, file.getBytes());
         Properties meta = new Properties();
-        meta.setProperty("originalFileName", file.getOriginalFilename() != null ? file.getOriginalFilename() : "image");
+        meta.setProperty("originalFileName", file.getOriginalFilename() != null ? file.getOriginalFilename() : "file");
         meta.setProperty("contentType", contentType);
         meta.setProperty("size", String.valueOf(file.getSize()));
         try (var out = Files.newOutputStream(metaPath)) {
-            meta.store(out, "editor-image");
+            meta.store(out, allowNonImage ? "editor-file" : "editor-image");
         }
         String stored = id + ".bin";
         String imageUrl = "/api/editor/images/" + id;
@@ -221,24 +245,37 @@ public class EditorAssetStorageService {
         Path dataPath = filesystemRoot.resolve(id + ".bin");
         Path metaPath = filesystemRoot.resolve(id + ".properties");
         if (!Files.isRegularFile(dataPath) || !Files.isRegularFile(metaPath)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "image not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "file not found");
         }
         Properties meta = new Properties();
         try (var in = Files.newInputStream(metaPath)) {
             meta.load(in);
         }
-        String original = meta.getProperty("originalFileName", "image");
+        String original = meta.getProperty("originalFileName", "file");
         String contentType = meta.getProperty("contentType", "application/octet-stream");
         long size = Long.parseLong(meta.getProperty("size", "0"));
         InputStream stream = Files.newInputStream(dataPath);
         return new LoadedImage(original, contentType, size, stream);
     }
 
-    private void validateImage(MultipartFile image) {
-        if (image == null || image.isEmpty()) {
-            throw new ValidationException("업로드할 이미지 파일을 선택해주세요.", List.of("file required"));
+    private void validateUpload(MultipartFile file, boolean allowNonImage) {
+        if (file == null || file.isEmpty()) {
+            throw new ValidationException("업로드할 파일을 선택해주세요.", List.of("file required"));
         }
-        String contentType = Objects.requireNonNullElse(image.getContentType(), "").toLowerCase(Locale.ROOT);
+        String contentType = Objects.requireNonNullElse(file.getContentType(), "").toLowerCase(Locale.ROOT);
+        long max = allowNonImage ? editorProperties.getFileMaxBytes() : editorProperties.getImageMaxBytes();
+        if (file.getSize() > max) {
+            throw new ValidationException("파일 크기가 허용 한도를 초과했습니다", List.of("max bytes: " + max));
+        }
+        if (allowNonImage) {
+            boolean ok = contentType.startsWith("image/")
+                    || ALLOWED_FILE_TYPES.contains(contentType)
+                    || contentType.equals("application/octet-stream");
+            if (!ok) {
+                throw new ValidationException("허용되지 않은 파일 형식입니다.", List.of("invalid content type"));
+            }
+            return;
+        }
         if (!ALLOWED_IMAGE_TYPES.contains(contentType)) {
             throw new ValidationException("PNG, JPG, GIF, WEBP, SVG 이미지만 업로드할 수 있습니다.", List.of("invalid content type"));
         }

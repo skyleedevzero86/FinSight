@@ -23,8 +23,15 @@ export const toolbarActions: ToolbarAction[] = [
   { id: "italic", label: "I", title: "기울임" },
   { id: "quote", label: '"', title: "인용문" },
   { id: "link", label: "Link", title: "링크 삽입" },
-  { id: "image", label: "Image", title: "이미지 마크다운" },
+  { id: "image", label: "Image", title: "이미지 업로드" },
   { id: "code", label: "</>", title: "코드 블록" },
+]
+
+export type ExtendedToolbarAction = ToolbarAction | { id: "file"; label: string; title: string }
+
+export const communityToolbarActions: ExtendedToolbarAction[] = [
+  ...toolbarActions,
+  { id: "file", label: "File", title: "파일 업로드" },
 ]
 
 type SelectionRange = {
@@ -76,6 +83,24 @@ export function applyMarkdownCommand(
   selection: SelectionRange
 ): CommandResult {
   return commandRegistry[command](source, selection)
+}
+
+export function insertTextAtSelection(
+  source: string,
+  selection: SelectionRange,
+  insertion: string
+): CommandResult {
+  const safeSelection = {
+    start: Math.max(0, selection.start),
+    end: Math.max(selection.start, selection.end),
+  }
+  const value = `${source.slice(0, safeSelection.start)}${insertion}${source.slice(safeSelection.end)}`
+  const caret = safeSelection.start + insertion.length
+  return {
+    value,
+    selectionStart: caret,
+    selectionEnd: caret,
+  }
 }
 
 export function normalizeTags(tags: string[]): string[] {

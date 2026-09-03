@@ -6,13 +6,15 @@ import { useEffect } from "react"
 import { COMMUNITY_NAV, type CommunityNavKey } from "@/data/communityBoardData"
 
 function activeKeyFromPath(pathname: string | null): CommunityNavKey {
-  if (!pathname) return "free"
+  if (!pathname) return "qna"
   if (pathname.startsWith("/community/notice")) return "notice"
   if (pathname.startsWith("/community/qna")) return "qna"
-  return "free"
+  if (pathname.startsWith("/community/free")) return "free"
+  return "qna"
 }
 
 function heroTitleForActive(active: CommunityNavKey): string {
+  if (active === "free") return "포트폴리오 공유"
   return COMMUNITY_NAV.find((n) => n.key === active)?.label ?? "커뮤니티"
 }
 

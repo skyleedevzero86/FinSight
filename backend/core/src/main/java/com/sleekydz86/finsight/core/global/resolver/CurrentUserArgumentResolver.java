@@ -5,6 +5,7 @@ import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
+import com.sleekydz86.finsight.core.user.service.PrivilegedAccountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.MethodParameter;
@@ -29,16 +30,22 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
     private final UserPersistencePort userPersistencePort;
     private final JwtTokenUtil jwtTokenUtil;
+    private final PrivilegedAccountService privilegedAccountService;
 
     /**
      * Creates a resolver for loading authenticated users from the current request.
      *
-     * @param userPersistencePort the port used to retrieve users by email
-     * @param jwtTokenUtil        the utility used to validate and parse bearer access tokens
+     * @param userPersistencePort      the port used to retrieve users by email
+     * @param jwtTokenUtil             the utility used to validate and parse bearer access tokens
+     * @param privilegedAccountService elevates configured admin emails when needed
      */
-    public CurrentUserArgumentResolver(UserPersistencePort userPersistencePort, JwtTokenUtil jwtTokenUtil) {
+    public CurrentUserArgumentResolver(
+            UserPersistencePort userPersistencePort,
+            JwtTokenUtil jwtTokenUtil,
+            PrivilegedAccountService privilegedAccountService) {
         this.userPersistencePort = userPersistencePort;
         this.jwtTokenUtil = jwtTokenUtil;
+        this.privilegedAccountService = privilegedAccountService;
     }
 
     /**
@@ -80,24 +87,23 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             return null;
         }
 
-        if (!currentUserAnnotation.required()) {
-            return AuthenticatedUser.builder()
-                    .email(email)
-                    .build();
-        }
-
         try {
-            Optional<User> userOpt = userPersistencePort.findByEmail(email);
+            Optional<User> userOpt = userPersistencePort.findByEmail(email)
+                    .or(() -> userPersistencePort.findByUsername(email));
             if (userOpt.isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+                if (currentUserAnnotation.required()) {
+                    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+                }
+                return null;
             }
 
-            User user = userOpt.get();
+            User user = privilegedAccountService.ensurePrivilegedRole(userOpt.get());
+            String role = user.getRole() != null ? user.getRole().name() : "USER";
             return AuthenticatedUser.builder()
                     .id(user.getId())
                     .email(user.getEmail())
                     .nickname(user.getNickname() != null ? user.getNickname() : user.getUsername())
-                    .role(user.getRole().name())
+                    .role(role)
                     .authProvider(user.getAuthProvider() != null
                             ? user.getAuthProvider()
                             : com.sleekydz86.finsight.core.user.domain.AuthProvider.WEB)
@@ -107,7 +113,10 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             throw ex;
         } catch (Exception e) {
             log.error("Error resolving current user for email: {}", email, e);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+            if (currentUserAnnotation.required()) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+            }
+            return null;
         }
     }
 

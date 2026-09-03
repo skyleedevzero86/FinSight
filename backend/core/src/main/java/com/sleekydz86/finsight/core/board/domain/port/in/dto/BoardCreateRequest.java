@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.core.board.domain.port.in.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sleekydz86.finsight.core.board.domain.BoardStatus;
 import com.sleekydz86.finsight.core.board.domain.BoardType;
 import jakarta.validation.constraints.NotBlank;
@@ -36,8 +38,13 @@ public class BoardCreateRequest {
         this(title, content, boardType, hashtags, null);
     }
 
-    public BoardCreateRequest(String title, String content, BoardType boardType, List<String> hashtags,
-            BoardStatus status) {
+    @JsonCreator
+    public BoardCreateRequest(
+            @JsonProperty("title") String title,
+            @JsonProperty("content") String content,
+            @JsonProperty("boardType") BoardType boardType,
+            @JsonProperty("hashtags") List<String> hashtags,
+            @JsonProperty("status") BoardStatus status) {
         this.title = title;
         this.content = content;
         this.boardType = boardType;

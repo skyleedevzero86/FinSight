@@ -1,69 +1,23 @@
 import type { Metadata } from "next"
 import CommunityBoardLayout from "@/components/community/CommunityBoardLayout"
-import CommunityBoardList from "@/components/community/CommunityBoardList"
-import { COMMUNITY_SECTION_BOARD_TYPE } from "@/data/communityBoardConfig"
-import {
-  fetchBoardListServer,
-  mapListToBoardRows,
-} from "@/lib/finsightBoardServer"
 
 export const metadata: Metadata = {
   title: "포트폴리오 공유 | 커뮤니티 | finsight",
-  description: "finsight 포트폴리오 공유",
+  description: "finsight 포트폴리오 공유 (준비 중)",
 }
 
-type PageProps = {
-  searchParams: Promise<{
-    page?: string
-    search_type?: string
-    search_value?: string
-  }>
-}
-
-export default async function CommunityFreePage({ searchParams }: PageProps) {
-  const sp = await searchParams
-  const pageOneBased = Math.max(1, parseInt(sp.page ?? "1", 10) || 1)
-  const pageIndex = pageOneBased - 1
-  const searchValue =
-    typeof sp.search_value === "string" ? sp.search_value : ""
-  const searchType =
-    typeof sp.search_type === "string" ? sp.search_type : ""
-  const pagination = await fetchBoardListServer({
-    boardType: COMMUNITY_SECTION_BOARD_TYPE.free,
-    page: pageIndex,
-    size: 20,
-    keyword: searchValue.trim() || undefined,
-  })
-  const basePath = "/community/free"
-  const rows = pagination
-    ? mapListToBoardRows(pagination.content, basePath)
-    : []
-  const totalCount = pagination?.totalElements ?? 0
-  const totalPages = Math.max(1, pagination?.totalPages ?? 1)
-  const offline = pagination == null
-
+export default function CommunityPortfolioPage() {
   return (
     <CommunityBoardLayout
       heading="포트폴리오 공유"
-      description="투자·포트폴리오를 공유하고 이야기 나눠 보세요."
+      description="투자·포트폴리오를 공유하는 공간입니다. 곧 별도 기능으로 제공됩니다."
     >
-      {offline ? (
-        <p className="mb-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          게시글 목록을 불러오지 못했습니다. 서버 연결(FINSIGHT_API_BASE_URL)을
-          확인해 주세요.
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-10 text-center">
+        <p className="text-base font-semibold text-slate-800">준비 중인 메뉴입니다</p>
+        <p className="mt-2 text-sm text-slate-600">
+          포트폴리오 공유는 게시판이 아닌 전용 화면으로 구성할 예정입니다.
         </p>
-      ) : null}
-      <CommunityBoardList
-        boardId="bbs_free"
-        caption="포트폴리오 공유"
-        basePath={basePath}
-        totalCount={Number(totalCount)}
-        currentPage={pageOneBased}
-        totalPages={totalPages}
-        rows={rows}
-        initialSearchType={searchType}
-        initialSearchValue={searchValue}
-      />
+      </div>
     </CommunityBoardLayout>
   )
 }

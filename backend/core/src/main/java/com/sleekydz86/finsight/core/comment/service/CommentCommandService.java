@@ -1,7 +1,10 @@
 package com.sleekydz86.finsight.core.comment.service;
 
+import com.sleekydz86.finsight.core.board.domain.Board;
+import com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort;
 import com.sleekydz86.finsight.core.comment.domain.Comment;
 import com.sleekydz86.finsight.core.comment.domain.CommentStatus;
+import com.sleekydz86.finsight.core.comment.domain.CommentType;
 import com.sleekydz86.finsight.core.comment.domain.port.in.CommentCommandUseCase;
 import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentCreateRequest;
 import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentUpdateRequest;
@@ -31,13 +34,16 @@ public class CommentCommandService implements CommentCommandUseCase {
     private final CommentPersistencePort commentPersistencePort;
     private final CommentReactionPersistencePort commentReactionPersistencePort;
     private final CommentReportPersistencePort commentReportPersistencePort;
+    private final BoardPersistencePort boardPersistencePort;
 
     public CommentCommandService(CommentPersistencePort commentPersistencePort,
                                  CommentReactionPersistencePort commentReactionPersistencePort,
-                                 CommentReportPersistencePort commentReportPersistencePort) {
+                                 CommentReportPersistencePort commentReportPersistencePort,
+                                 BoardPersistencePort boardPersistencePort) {
         this.commentPersistencePort = commentPersistencePort;
         this.commentReactionPersistencePort = commentReactionPersistencePort;
         this.commentReportPersistencePort = commentReportPersistencePort;
+        this.boardPersistencePort = boardPersistencePort;
     }
 
     @Override
@@ -59,6 +65,12 @@ public class CommentCommandService implements CommentCommandUseCase {
                 .build();
 
         Comment savedComment = commentPersistencePort.save(comment);
+        if (request.getCommentType() == CommentType.BOARD && request.getTargetId() != null) {
+            boardPersistencePort.findById(request.getTargetId()).ifPresent(board -> {
+                Board updated = board.incrementComment();
+                boardPersistencePort.save(updated);
+            });
+        }
         log.info("댓글 생성 완료 - 댓글 ID: {}", savedComment.getId());
 
         return savedComment;
