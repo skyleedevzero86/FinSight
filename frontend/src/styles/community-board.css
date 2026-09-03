@@ -615,3 +615,567 @@
   border: 0;
 }
 
+/* Velog-style markdown workspace */
+.fcb-md-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: none;
+}
+
+.fcb-md-alert {
+  border-radius: 16px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  padding: 12px 16px;
+  font-size: 0.92rem;
+}
+
+.fcb-md-mobile-tabs {
+  display: none;
+  gap: 8px;
+}
+
+.fcb-md-mobile-tab {
+  flex: 1;
+  min-height: 42px;
+  border: 1px solid rgba(59, 93, 118, 0.16);
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+}
+
+.fcb-md-mobile-tab.is-active {
+  background: #17344c;
+  border-color: #17344c;
+  color: #f8fcff;
+}
+
+.fcb-md-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.fcb-md-editor,
+.fcb-md-preview {
+  position: relative;
+  border-radius: 28px;
+  border: 1px solid rgba(15, 50, 70, 0.08);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 48px rgba(18, 42, 66, 0.08);
+  overflow: hidden;
+}
+
+.fcb-md-editor {
+  padding: 24px;
+}
+
+.fcb-md-editor__section {
+  margin-bottom: 18px;
+}
+
+.fcb-md-editor__section--tight {
+  margin-bottom: 14px;
+}
+
+.fcb-md-field__label {
+  display: block;
+  margin-bottom: 8px;
+  color: #4d6073;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.fcb-md-field__input {
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 16px;
+  border: 1px solid rgba(59, 93, 118, 0.16);
+  border-radius: 18px;
+  background: #fbfdff;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.fcb-md-field__input:focus,
+.fcb-md-editor-surface:focus,
+.fcb-md-tag-input:focus {
+  outline: none;
+  border-color: rgba(48, 85, 166, 0.65);
+  box-shadow: 0 0 0 4px rgba(48, 85, 166, 0.12);
+}
+
+.fcb-md-field__input--title {
+  font-size: clamp(1.6rem, 2.4vw, 2.35rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  min-height: 72px;
+}
+
+.fcb-md-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid rgba(59, 93, 118, 0.16);
+  border-radius: 18px;
+  background: #fbfdff;
+}
+
+.fcb-md-chip {
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #3055a6;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.fcb-md-tag-input {
+  flex: 1;
+  min-width: 140px;
+  border: 0;
+  background: transparent;
+  padding: 6px 4px;
+  outline: none;
+}
+
+.fcb-md-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(59, 93, 118, 0.12);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f5f8fb 100%);
+}
+
+.fcb-md-toolbar__group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fcb-md-toolbar__button {
+  min-width: 48px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 14px;
+  background: #f1f5f9;
+  color: #22364b;
+  font-weight: 700;
+}
+
+.fcb-md-toolbar__button:hover {
+  background: #dde9f1;
+}
+
+.fcb-md-editor-surface {
+  width: 100%;
+  min-height: 480px;
+  padding: 20px;
+  resize: vertical;
+  border: 1px solid rgba(59, 93, 118, 0.12);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(247, 251, 253, 0.84), rgba(255, 255, 255, 0.96)),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 34px,
+      rgba(45, 84, 117, 0.04) 35px
+    );
+  color: #17304a;
+  font-size: 1rem;
+  line-height: 1.8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.fcb-md-actions,
+.fcb-md-detail__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.fcb-md-detail__footer {
+  justify-content: space-between;
+  margin-top: 24px;
+}
+
+.fcb-md-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 18px;
+  border-radius: 16px;
+  font-weight: 800;
+  text-decoration: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.fcb-md-action:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.fcb-md-action--primary {
+  background: linear-gradient(135deg, #3055a6 0%, #1e3a7a 100%);
+  color: #f8fcff;
+}
+
+.fcb-md-action--primary:hover {
+  filter: brightness(1.05);
+}
+
+.fcb-md-action--ghost {
+  background: #fff;
+  color: #334155;
+  border: 1px solid rgba(59, 93, 118, 0.18);
+}
+
+.fcb-md-action--ghost:hover {
+  background: #f8fafc;
+}
+
+.fcb-md-preview-wrap {
+  min-height: 100%;
+}
+
+.fcb-md-preview {
+  min-height: 100%;
+  padding: 28px;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.96) 0%, rgba(255, 255, 255, 0.96) 100%),
+    radial-gradient(circle at top right, rgba(48, 85, 166, 0.08), transparent 24%);
+}
+
+.fcb-md-preview--with-toc {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 24px;
+  align-items: start;
+}
+
+.fcb-md-preview::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 72px;
+  width: 5px;
+  height: calc(100% - 144px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #1a2d40 0%, #4c5c70 100%);
+}
+
+.fcb-md-preview__content {
+  min-width: 0;
+}
+
+.fcb-md-preview__header {
+  padding-left: 14px;
+}
+
+.fcb-md-preview__eyebrow {
+  display: inline-block;
+  color: #6a7787;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.fcb-md-preview__title {
+  margin: 10px 0 8px;
+  font-size: clamp(1.75rem, 2.6vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.04em;
+  color: #17344c;
+  font-weight: 800;
+}
+
+.fcb-md-preview__meta {
+  margin: 0;
+  color: #6a7787;
+  font-size: 0.92rem;
+}
+
+.fcb-md-preview__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.fcb-md-preview-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #e8f0ff;
+  color: #3055a6;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.fcb-md-preview-markdown {
+  margin-top: 22px;
+  padding-left: 14px;
+}
+
+.fcb-md-preview-markdown h1,
+.fcb-md-preview-markdown h2,
+.fcb-md-preview-markdown h3,
+.fcb-md-preview-markdown h4,
+.fcb-md-preview-markdown h5,
+.fcb-md-preview-markdown h6 {
+  scroll-margin-top: 28px;
+  color: #17344c;
+}
+
+.fcb-md-preview-markdown > *:first-child {
+  margin-top: 0;
+}
+
+.fcb-md-preview-markdown h1,
+.fcb-md-preview-markdown h2,
+.fcb-md-preview-markdown h3 {
+  margin-top: 1.45em;
+  margin-bottom: 0.45em;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  font-weight: 800;
+}
+
+.fcb-md-preview-markdown p,
+.fcb-md-preview-markdown li,
+.fcb-md-preview-markdown blockquote {
+  color: #23384d;
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+
+.fcb-md-preview-markdown ul,
+.fcb-md-preview-markdown ol {
+  padding-left: 1.25rem;
+}
+
+.fcb-md-preview-markdown img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  margin: 24px 0;
+  border-radius: 20px;
+  border: 1px solid rgba(24, 58, 92, 0.12);
+}
+
+.fcb-md-preview-markdown a {
+  color: #3055a6;
+}
+
+.fcb-md-preview-markdown blockquote {
+  margin: 20px 0;
+  padding: 12px 18px;
+  border-left: 4px solid #3055a6;
+  border-radius: 0 16px 16px 0;
+  background: rgba(48, 85, 166, 0.08);
+}
+
+.fcb-md-preview-markdown pre {
+  overflow-x: auto;
+  padding: 16px;
+  border-radius: 18px;
+  background: #102336;
+  color: #dfefff;
+}
+
+.fcb-md-preview-markdown code {
+  padding: 0.12rem 0.36rem;
+  border-radius: 8px;
+  background: rgba(17, 49, 77, 0.08);
+  font-size: 0.92em;
+}
+
+.fcb-md-preview-markdown pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.fcb-md-preview-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 0.92rem;
+}
+
+.fcb-md-preview-markdown th,
+.fcb-md-preview-markdown td {
+  border: 1px solid rgba(59, 93, 118, 0.16);
+  padding: 8px 10px;
+}
+
+.fcb-md-toc {
+  position: sticky;
+  top: 88px;
+  align-self: start;
+}
+
+.fcb-md-toc__card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(59, 93, 118, 0.12);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 28px rgba(18, 42, 66, 0.06);
+}
+
+.fcb-md-toc__title {
+  color: #17344c;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.fcb-md-toc__items {
+  display: grid;
+  gap: 6px;
+}
+
+.fcb-md-toc__item {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #60717f;
+  text-align: left;
+  line-height: 1.55;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.fcb-md-toc__item:hover {
+  color: #3055a6;
+}
+
+.fcb-md-toc__item--level-2 {
+  padding-left: 10px;
+}
+
+.fcb-md-toc__item--level-3 {
+  padding-left: 20px;
+}
+
+.fcb-md-toc__item--level-4 {
+  padding-left: 30px;
+}
+
+.fcb-md-scroll-top {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 3;
+  min-width: 68px;
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #3055a6 0%, #1e3a7a 100%);
+  color: #f8fcff;
+  font-weight: 800;
+  box-shadow: 0 12px 28px rgba(30, 58, 122, 0.28);
+}
+
+.fcb-md-detail {
+  width: 100%;
+}
+
+.fcb-md-detail__preview {
+  margin-bottom: 0;
+}
+
+.fcb-md-detail__preview.fcb-md-preview {
+  overflow: visible;
+}
+
+.fcb-md-detail__preview.fcb-md-preview::before {
+  display: none;
+}
+
+.fcb-md-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.fcb-md-nav__card {
+  display: grid;
+  gap: 6px;
+  padding: 16px 18px;
+  border: 1px solid rgba(59, 93, 118, 0.12);
+  border-radius: 18px;
+  background: #fbfdff;
+  text-decoration: none;
+  color: #203447;
+}
+
+.fcb-md-nav__card:hover {
+  border-color: rgba(48, 85, 166, 0.35);
+}
+
+.fcb-md-nav__card--empty {
+  color: #94a3b8;
+  place-content: center;
+  min-height: 78px;
+}
+
+.fcb-md-nav__label {
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.fcb-md-nav__title {
+  font-size: 0.98rem;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+  .fcb-md-preview--with-toc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fcb-md-toc {
+    position: static;
+  }
+}
+
+@media (max-width: 900px) {
+  .fcb-md-mobile-tabs {
+    display: flex;
+  }
+
+  .fcb-md-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fcb-md-pane--hidden-mobile {
+    display: none;
+  }
+
+  .fcb-md-nav {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+

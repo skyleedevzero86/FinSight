@@ -386,8 +386,8 @@ public class BoardController {
         if (request.getTitle().length() > 200) {
             throw new ValidationException("제목은 200자를 초과할 수 없습니다", Arrays.asList("title은 200자를 초과할 수 없습니다"));
         }
-        if (request.getContent().length() > 10000) {
-            throw new ValidationException("내용은 10000자를 초과할 수 없습니다", Arrays.asList("content는 10000자를 초과할 수 없습니다"));
+        if (request.getContent().length() > 100_000) {
+            throw new ValidationException("내용은 100000자를 초과할 수 없습니다", Arrays.asList("content는 100000자를 초과할 수 없습니다"));
         }
     }
 
@@ -404,8 +404,8 @@ public class BoardController {
         if (request.getTitle().length() > 200) {
             throw new ValidationException("제목은 200자를 초과할 수 없습니다", Arrays.asList("title은 200자를 초과할 수 없습니다"));
         }
-        if (request.getContent().length() > 10000) {
-            throw new ValidationException("내용은 10000자를 초과할 수 없습니다", Arrays.asList("content는 10000자를 초과할 수 없습니다"));
+        if (request.getContent().length() > 100_000) {
+            throw new ValidationException("내용은 100000자를 초과할 수 없습니다", Arrays.asList("content는 100000자를 초과할 수 없습니다"));
         }
     }
 
