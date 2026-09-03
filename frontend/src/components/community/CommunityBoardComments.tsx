@@ -8,6 +8,7 @@ import {
   createBoardComment,
   dislikeBoardComment,
   fetchBoardComments,
+  deleteBoardComment,
   likeBoardComment,
   type BoardComment,
 } from "@/lib/boardComments"
@@ -36,6 +37,7 @@ export default function CommunityBoardComments({
   const [submitting, setSubmitting] = useState(false)
   const [loginPromptOpen, setLoginPromptOpen] = useState(false)
   const [reactionBusyId, setReactionBusyId] = useState<number | null>(null)
+  const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null)
   const replyTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const loginNext = () => {
@@ -147,6 +149,36 @@ export default function CommunityBoardComments({
 
   const total = comments.reduce((sum, c) => sum + 1 + (c.replies?.length ?? 0), 0)
 
+  const canDeleteComment = (c: BoardComment) => {
+    if (!user) return false
+    const role = (user.role ?? "").toUpperCase()
+    const isAdminOrManager = role === "ADMIN" || role === "MANAGER"
+    const isAuthor = c.authorEmail?.toLowerCase() === user.email?.toLowerCase()
+    return isAdminOrManager || isAuthor
+  }
+
+  const onDeleteComment = async (commentId: number) => {
+    if (!ready) return
+    if (!user) {
+      setLoginPromptOpen(true)
+      return
+    }
+
+    setDeletingCommentId(commentId)
+    setError(null)
+
+    try {
+      await deleteBoardComment(commentId)
+      await load()
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "댓글 삭제에 실패했습니다."
+      setError(message)
+    } finally {
+      setDeletingCommentId(null)
+    }
+  }
+
   return (
     <section className="fcb-comments">
       <div className="fcb-comments__heading">
@@ -183,6 +215,7 @@ export default function CommunityBoardComments({
               <button type="button" onClick={() => setReplyTo(comment)}>
                 답글
               </button>
+              <div className="fcb-comment-toolbar__reactions">
               <button
                 type="button"
                 disabled={reactionBusyId === comment.id}
@@ -197,6 +230,18 @@ export default function CommunityBoardComments({
               >
                 싫어요 {comment.dislikeCount}
               </button>
+              </div>
+
+              {canDeleteComment(comment) ? (
+                <button
+                  type="button"
+                  className="fcb-comment-delete"
+                  disabled={deletingCommentId === comment.id}
+                  onClick={() => void onDeleteComment(comment.id)}
+                >
+                  삭제
+                </button>
+              ) : null}
             </div>
 
             {replyTo?.id === comment.id ? (
@@ -230,6 +275,7 @@ export default function CommunityBoardComments({
                     </div>
                     <p className="fcb-comment-body">{reply.content}</p>
                     <div className="fcb-comment-toolbar">
+                      <div className="fcb-comment-toolbar__reactions">
                       <button
                         type="button"
                         disabled={reactionBusyId === reply.id}
@@ -244,6 +290,18 @@ export default function CommunityBoardComments({
                       >
                         싫어요 {reply.dislikeCount}
                       </button>
+                      </div>
+
+                      {canDeleteComment(reply) ? (
+                        <button
+                          type="button"
+                          className="fcb-comment-delete"
+                          disabled={deletingCommentId === reply.id}
+                          onClick={() => void onDeleteComment(reply.id)}
+                        >
+                          삭제
+                        </button>
+                      ) : null}
                     </div>
                   </li>
                 ))}

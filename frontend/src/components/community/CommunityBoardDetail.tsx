@@ -32,7 +32,7 @@ export default function CommunityBoardDetail({
     let cancelled = false
     const run = async () => {
       try {
-        const res = await fetch(`/api/v1/boards/${initialDetail.id}`, {
+        const res = await fetch(`/api/v1/boards/${initialDetail.id}?trackView=false`, {
           headers: { Accept: "application/json", ...authHeadersJson() },
           cache: "no-store",
         })
@@ -50,7 +50,6 @@ export default function CommunityBoardDetail({
           setAccessError(null)
         }
       } catch {
-        /* keep SSR detail */
       }
     }
     void run()

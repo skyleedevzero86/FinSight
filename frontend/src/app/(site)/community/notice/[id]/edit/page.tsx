@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const n = parseInt(id, 10)
   if (!Number.isFinite(n)) return { title: "글 수정 | finsight" }
-  const d = await fetchBoardDetailServer(n, { silent: true })
+  const d = await fetchBoardDetailServer(n, { silent: true, trackView: false })
   if (!d) return { title: "글 수정 | finsight" }
   return { title: `${d.title} 수정 | 공지사항 | finsight` }
 }

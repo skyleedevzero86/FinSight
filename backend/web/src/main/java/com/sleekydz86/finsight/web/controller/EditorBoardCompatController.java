@@ -112,7 +112,7 @@ public class EditorBoardCompatController {
 
     @GetMapping("/documents/{documentId}")
     public EditorDraftResponse loadDocument(@PathVariable long documentId) {
-        BoardDetailResponse d = boardQueryUseCase.getBoardDetailWithNavigation(documentId, BoardType.COMMUNITY);
+        BoardDetailResponse d = boardQueryUseCase.getBoardDetailWithNavigation(documentId, BoardType.COMMUNITY, false);
         return toDraft(d);
     }
 
@@ -133,14 +133,14 @@ public class EditorBoardCompatController {
                     request.title(), request.markdown(), BoardType.COMMUNITY, tagList, targetStatus);
             Board saved = boardCommandUseCase.createBoard(currentUser.getEmail(), createReq);
             BoardDetailResponse detail =
-                    boardQueryUseCase.getBoardDetailWithNavigation(saved.getId(), BoardType.COMMUNITY);
+                    boardQueryUseCase.getBoardDetailWithNavigation(saved.getId(), BoardType.COMMUNITY, false);
             return mergeClientDraftFields(request, toDraft(detail));
         }
         long id = parseDocumentId(request.documentId());
         BoardUpdateRequest updateReq = new BoardUpdateRequest(
                 request.title(), request.markdown(), tagList, targetStatus);
         boardCommandUseCase.updateBoard(currentUser.getEmail(), id, updateReq);
-        BoardDetailResponse detail = boardQueryUseCase.getBoardDetailWithNavigation(id, BoardType.COMMUNITY);
+        BoardDetailResponse detail = boardQueryUseCase.getBoardDetailWithNavigation(id, BoardType.COMMUNITY, false);
         return mergeClientDraftFields(request, toDraft(detail));
     }
 

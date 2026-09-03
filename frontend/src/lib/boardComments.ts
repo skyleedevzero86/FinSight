@@ -47,9 +47,7 @@ async function readMessage(res: Response, fallback: string): Promise<string> {
     const payload = await res.json()
     const root = asRecord(payload)
     if (root && typeof root.message === "string" && root.message) return root.message
-  } catch {
-    /* ignore */
-  }
+  } catch {}
   return fallback
 }
 
@@ -130,4 +128,14 @@ export async function dislikeBoardComment(commentId: number): Promise<void> {
     cache: "no-store",
   })
   if (!res.ok) throw new Error(await readMessage(res, "싫어요 처리에 실패했습니다."))
+}
+
+export async function deleteBoardComment(commentId: number): Promise<void> {
+  if (!readUsableAccessToken()) throw new Error("로그인이 필요합니다.")
+  const res = await fetch(`/api/v1/comments/${commentId}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json", ...authHeadersJson() },
+    cache: "no-store",
+  })
+  if (!res.ok) throw new Error(await readMessage(res, "댓글 삭제에 실패했습니다."))
 }

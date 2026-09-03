@@ -80,12 +80,18 @@ public class BoardQueryService implements BoardQueryUseCase {
         @Override
         @Transactional(readOnly = false)
         public BoardDetailResponse getBoardDetail(Long boardId) {
-                return getBoardDetail(boardId, null, false);
+                return getBoardDetail(boardId, null, false, true);
         }
 
         @Override
         @Transactional(readOnly = false)
         public BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer) {
+                return getBoardDetail(boardId, viewerEmail, staffViewer, true);
+        }
+
+        @Override
+        @Transactional(readOnly = false)
+        public BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer, boolean incrementViewCount) {
                 log.info("게시판 상세 조회 요청: boardId={}", boardId);
 
                 Board board = boardPersistencePort.findById(boardId)
@@ -93,7 +99,9 @@ public class BoardQueryService implements BoardQueryUseCase {
 
                 assertReadable(board, viewerEmail, staffViewer);
 
-                boardPersistencePort.incrementViewCount(boardId);
+                if (incrementViewCount) {
+                        boardPersistencePort.incrementViewCount(boardId);
+                }
 
                 return BoardDetailResponse.from(board, markdownRenderingService.render(board.getContent()));
         }
@@ -117,6 +125,12 @@ public class BoardQueryService implements BoardQueryUseCase {
         @Override
         @Transactional(readOnly = false)
         public BoardDetailResponse getBoardDetailWithNavigation(Long boardId, BoardType boardType) {
+                return getBoardDetailWithNavigation(boardId, boardType, true);
+        }
+
+        @Override
+        @Transactional(readOnly = false)
+        public BoardDetailResponse getBoardDetailWithNavigation(Long boardId, BoardType boardType, boolean incrementViewCount) {
                 log.info("게시판 상세 조회 (네비게이션 포함) 요청: boardId={}, boardType={}", boardId, boardType);
 
                 Board board = boardPersistencePort.findById(boardId)
@@ -141,7 +155,9 @@ public class BoardQueryService implements BoardQueryUseCase {
                                                         next.getCreatedAt().toString()));
                 }
 
-                boardPersistencePort.incrementViewCount(boardId);
+                if (incrementViewCount) {
+                        boardPersistencePort.incrementViewCount(boardId);
+                }
 
                 return BoardDetailResponse.from(board, navigation, markdownRenderingService.render(board.getContent()));
         }

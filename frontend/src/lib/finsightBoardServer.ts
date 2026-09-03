@@ -60,12 +60,16 @@ export async function fetchBoardListServer(
 
 export async function fetchBoardDetailServer(
   boardId: number,
-  options?: { silent?: boolean },
+  options?: { silent?: boolean; trackView?: boolean },
 ): Promise<BoardDetail | null> {
   const base = getServerBase()
   if (!base) return null
   try {
-    const res = await fetch(`${base}/api/v1/boards/${boardId}`, {
+    const trackView = options?.trackView ?? true
+    const url = new URL(`${base}/api/v1/boards/${boardId}`)
+    if (!trackView) url.searchParams.set("trackView", "false")
+
+    const res = await fetch(url.toString(), {
       headers: { Accept: "application/json" },
       next: { revalidate: 0 },
     })

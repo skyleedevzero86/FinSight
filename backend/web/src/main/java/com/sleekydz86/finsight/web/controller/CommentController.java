@@ -138,7 +138,7 @@ public class CommentController {
             if (commentId == null || commentId <= 0) {
                 throw new ValidationException("유효하지 않은 댓글 ID입니다", List.of("INVALID_COMMENT_ID"));
             }
-            commentCommandUseCase.deleteComment(currentUser.getEmail(), commentId);
+            commentCommandUseCase.deleteComment(currentUser.getEmail(), currentUser.getRole(), commentId);
             return ResponseEntity.ok(ApiResponse.success(null, "댓글이 성공적으로 삭제되었습니다"));
         } catch (ValidationException e) {
             throw e;

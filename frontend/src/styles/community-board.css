@@ -804,6 +804,17 @@
   margin-top: 8px;
 }
 
+.fcb-md-actions {
+  justify-content: space-between;
+}
+
+.fcb-md-actions__save-group {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .fcb-md-detail__footer {
   justify-content: space-between;
   margin-top: 24px;
@@ -1237,7 +1248,7 @@
   min-height: 38px;
   padding: 0 14px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 0;
   background: #3055a6;
   color: #fff;
   font-weight: 700;
@@ -1310,6 +1321,13 @@
   margin-top: 10px;
 }
 
+.fcb-comment-toolbar__reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
 .fcb-comment-toolbar button {
   border: 0;
   background: transparent;
@@ -1322,6 +1340,14 @@
 
 .fcb-comment-toolbar button:hover {
   color: #3055a6;
+}
+
+.fcb-comment-delete {
+  color: #b91c1c;
+}
+
+.fcb-comment-delete:hover {
+  color: #dc2626;
 }
 
 .fcb-login-prompt {

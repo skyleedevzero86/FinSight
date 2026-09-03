@@ -95,13 +95,16 @@ public class CommentCommandService implements CommentCommandUseCase {
     }
 
     @Override
-    public void deleteComment(String userEmail, Long commentId) {
-        log.info("댓글 삭제 요청 - 댓글 ID: {}, 사용자: {}", commentId, userEmail);
+    public void deleteComment(String userEmail, String userRole, Long commentId) {
+        log.info("댓글 삭제 요청 - 댓글 ID: {}, 사용자: {}, 권한: {}", commentId, userEmail, userRole);
 
         Comment comment = commentPersistencePort.findById(commentId)
                 .orElseThrow(() -> new NewsNotFoundException(commentId));
 
-        if (!comment.getAuthorEmail().equals(userEmail)) {
+        boolean isAuthor = comment.getAuthorEmail() != null && comment.getAuthorEmail().equalsIgnoreCase(userEmail);
+        boolean isManager = userRole != null && ("ADMIN".equalsIgnoreCase(userRole) || "MANAGER".equalsIgnoreCase(userRole));
+
+        if (!isAuthor && !isManager) {
             throw new InsufficientPermissionException("댓글 삭제 권한이 없습니다");
         }
 

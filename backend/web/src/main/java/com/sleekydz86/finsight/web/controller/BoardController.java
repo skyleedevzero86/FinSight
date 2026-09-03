@@ -59,6 +59,7 @@ public class BoardController {
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
     public ResponseEntity<ApiResponse<BoardDetailResponse>> getBoardDetail(
             @PathVariable Long boardId,
+            @RequestParam(defaultValue = "true") boolean trackView,
             @CurrentUser(required = false) AuthenticatedUser currentUser) {
         try {
             if (boardId == null || boardId <= 0) {
@@ -67,7 +68,8 @@ public class BoardController {
             BoardDetailResponse response = boardQueryUseCase.getBoardDetail(
                     boardId,
                     currentUser != null ? currentUser.getEmail() : null,
-                    isStaff(currentUser));
+                    isStaff(currentUser),
+                    trackView);
             return ResponseEntity.ok(ApiResponse.success(response, "게시판 상세 정보를 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
             throw e;

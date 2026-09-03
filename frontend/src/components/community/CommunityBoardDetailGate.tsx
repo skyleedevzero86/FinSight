@@ -27,13 +27,30 @@ export default function CommunityBoardDetailGate({
   useEffect(() => {
     let cancelled = false
     const run = async () => {
+      if (initialDetail) {
+        setLoading(false)
+        setError(null)
+        return
+      }
+
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/v1/boards/${boardId}`, {
+        const storageKey = `finsight:viewcount:board:${boardId}`
+        const alreadyCounted =
+          typeof window !== "undefined" &&
+          window.sessionStorage.getItem(storageKey) === "1"
+        if (!alreadyCounted) {
+          window.sessionStorage.setItem(storageKey, "1")
+        }
+
+        const res = await fetch(
+          `/api/v1/boards/${boardId}${alreadyCounted ? "?trackView=false" : ""}`,
+          {
           headers: { Accept: "application/json", ...authHeadersJson() },
           cache: "no-store",
-        })
+          },
+        )
         if (cancelled) return
         if (res.status === 403) {
           setDetail(null)

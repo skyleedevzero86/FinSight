@@ -254,6 +254,9 @@ export default function CommunityBoardEditorForm({
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    const submitter = (e.nativeEvent as SubmitEvent).submitter
+    const saveAsDraft =
+      submitter instanceof HTMLButtonElement && submitter.value === "draft"
     const t = title.trim()
     const c = content.trim()
     if (!t || !c) {
@@ -263,7 +266,7 @@ export default function CommunityBoardEditorForm({
     setLoading(true)
     const hashtags = normalizeTags([...tagList, ...splitTagInput(tagInput)])
     const path = mode === "create" ? "/api/v1/boards" : `/api/v1/boards/${boardId ?? ""}`
-    const status = enableVisibility ? visibility : undefined
+    const status = saveAsDraft ? "DRAFT" : enableVisibility ? visibility : undefined
     const body =
       mode === "create"
         ? JSON.stringify({
@@ -304,7 +307,8 @@ export default function CommunityBoardEditorForm({
       const data = (payload as { data?: { id?: number } }).data
       if (data?.id != null) newId = data.id
     }
-    if (newId != null) router.push(`${basePath}/${newId}`)
+    if (saveAsDraft) router.push(basePath)
+    else if (newId != null) router.push(`${basePath}/${newId}`)
     else router.push(basePath)
     router.refresh()
   }
@@ -476,9 +480,26 @@ export default function CommunityBoardEditorForm({
             >
               이전으로 가기
             </button>
-            <button type="submit" disabled={loading} className="fcb-md-action fcb-md-action--primary">
-              {loading ? "저장 중…" : mode === "create" ? "출간하기" : "수정 완료"}
-            </button>
+            <div className="fcb-md-actions__save-group">
+              <button
+                type="submit"
+                name="saveIntent"
+                value="draft"
+                disabled={loading}
+                className="fcb-md-action fcb-md-action--ghost"
+              >
+                {loading ? "저장 중…" : "임시저장"}
+              </button>
+              <button
+                type="submit"
+                name="saveIntent"
+                value="publish"
+                disabled={loading}
+                className="fcb-md-action fcb-md-action--primary"
+              >
+                {loading ? "저장 중…" : mode === "create" ? "저장하기" : "수정하기"}
+              </button>
+            </div>
           </div>
         </section>
 

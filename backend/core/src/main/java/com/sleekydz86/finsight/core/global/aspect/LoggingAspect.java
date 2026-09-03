@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.global.aspect;
 
 import com.sleekydz86.finsight.core.global.annotation.LogExecution;
+import com.sleekydz86.finsight.core.global.exception.BaseException;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -45,11 +46,23 @@ public class LoggingAspect {
 
             return result;
         } catch (Exception e) {
-            logger.error("Method {}.{} failed with exception: {}", className, methodName, e.getMessage(), e);
+            if (isExpectedClientError(e)) {
+                BaseException clientError = (BaseException) e;
+                logger.debug("Method {}.{} rejected request (status={}, code={})",
+                        className, methodName, clientError.getHttpStatus(), clientError.getErrorCode());
+            } else {
+                logger.error("Method {}.{} failed with exception: {}", className, methodName, e.getMessage(), e);
+            }
             throw e;
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;
             logger.info("Method {}.{} execution time: {}ms", className, methodName, executionTime);
         }
+    }
+
+    private boolean isExpectedClientError(Exception exception) {
+        return exception instanceof BaseException baseException
+                && baseException.getHttpStatus() >= 400
+                && baseException.getHttpStatus() < 500;
     }
 }

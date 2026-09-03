@@ -18,7 +18,11 @@ public interface BoardQueryUseCase {
 
     BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer);
 
+    BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer, boolean incrementViewCount);
+
     BoardDetailResponse getBoardDetailWithNavigation(Long boardId, BoardType boardType);
+
+    BoardDetailResponse getBoardDetailWithNavigation(Long boardId, BoardType boardType, boolean incrementViewCount);
 
     List<BoardListResponse> getPopularBoards(int limit);
 
