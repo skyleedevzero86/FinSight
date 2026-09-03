@@ -3,7 +3,6 @@ import CommunityBoardLayout from "@/components/community/CommunityBoardLayout"
 import CommunityBoardList from "@/components/community/CommunityBoardList"
 import CommunityWriteButton from "@/components/community/CommunityWriteButton"
 import { COMMUNITY_SECTION_BOARD_TYPE } from "@/data/communityBoardConfig"
-import { NOTICE_CATEGORY_TABS } from "@/data/communityBoardData"
 import {
   fetchBoardListServer,
   mapListToBoardRows,
@@ -16,7 +15,6 @@ export const metadata: Metadata = {
 
 type PageProps = {
   searchParams: Promise<{
-    cate?: string
     page?: string
     search_type?: string
     search_value?: string
@@ -25,7 +23,6 @@ type PageProps = {
 
 export default async function CommunityNoticePage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const cate = typeof sp.cate === "string" ? sp.cate : undefined
   const pageOneBased = Math.max(1, parseInt(sp.page ?? "1", 10) || 1)
   const pageIndex = pageOneBased - 1
   const searchValue =
@@ -46,20 +43,10 @@ export default async function CommunityNoticePage({ searchParams }: PageProps) {
   const totalPages = Math.max(1, pagination?.totalPages ?? 1)
   const offline = pagination == null
 
-  const categoryTabs = NOTICE_CATEGORY_TABS.map((tab) => {
-    const isAll = tab.href === "/community/notice"
-    const active =
-      (!cate && isAll) ||
-      (cate === "notice" && tab.label === "공지") ||
-      (cate === "hire" && tab.label === "채용") ||
-      (cate === "etc" && tab.label === "기타")
-    return { ...tab, active }
-  })
-
   return (
     <CommunityBoardLayout
       heading="공지사항"
-      description="센터 소식과 운영 안내를 전해 드립니다."
+      description="Finsight 소식과 운영안내를 전해드립니다."
     >
       {offline ? (
         <p className="mb-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -71,11 +58,9 @@ export default async function CommunityNoticePage({ searchParams }: PageProps) {
         boardId="bbs_notice"
         caption="공지사항"
         basePath={basePath}
-        extraSearchParams={cate ? { cate } : {}}
         totalCount={Number(totalCount)}
         currentPage={pageOneBased}
         totalPages={totalPages}
-        categoryTabs={categoryTabs}
         rows={rows}
         initialSearchType={searchType}
         initialSearchValue={searchValue}
