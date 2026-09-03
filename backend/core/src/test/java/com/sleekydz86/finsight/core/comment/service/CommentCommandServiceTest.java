@@ -73,7 +73,7 @@ class CommentCommandServiceTest {
         when(commentPersistencePort.save(any(Comment.class))).thenReturn(comment);
 
         
-        Comment result = commentCommandService.createComment("test@example.com", commentCreateRequest);
+        Comment result = commentCommandService.createComment("test@example.com", "USER", commentCreateRequest);
 
         
         assertThat(result).isNotNull();

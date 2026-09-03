@@ -1266,6 +1266,57 @@
   margin: 0 0 12px;
 }
 
+.fcb-comment-notice {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(48, 85, 166, 0.08);
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.fcb-comment-list-wrap {
+  position: relative;
+}
+
+.fcb-comment-list-wrap--locked .fcb-comment-list {
+  filter: blur(6px);
+  user-select: none;
+  pointer-events: none;
+}
+
+.fcb-comment-list-wrap__overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.fcb-comment-list-wrap__overlay p {
+  margin: 0;
+  color: #17344c;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.fcb-comment-list-wrap__overlay button {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 0;
+  background: #3055a6;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
 .fcb-comment-list,
 .fcb-comment-replies {
   list-style: none;

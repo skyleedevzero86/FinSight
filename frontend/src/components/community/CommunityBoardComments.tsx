@@ -12,6 +12,7 @@ import {
   likeBoardComment,
   type BoardComment,
 } from "@/lib/boardComments"
+import type { BoardTypeCode } from "@/lib/boardApi"
 import { formatAuthor } from "@/lib/boardApi"
 
 function formatTime(value: string | null): string | null {
@@ -21,9 +22,13 @@ function formatTime(value: string | null): string | null {
 
 export default function CommunityBoardComments({
   boardId,
+  boardAuthorEmail,
+  boardType,
   onCountChange,
 }: {
   boardId: number
+  boardAuthorEmail?: string
+  boardType?: BoardTypeCode
   onCountChange?: (count: number) => void
 }) {
   const router = useRouter()
@@ -149,6 +154,18 @@ export default function CommunityBoardComments({
 
   const total = comments.reduce((sum, c) => sum + 1 + (c.replies?.length ?? 0), 0)
 
+  const role = (user?.role ?? "").toUpperCase()
+  const isStaff = role === "ADMIN" || role === "MANAGER"
+  const isBoardAuthor =
+    !!user?.email &&
+    !!boardAuthorEmail &&
+    user.email.toLowerCase() === boardAuthorEmail.toLowerCase()
+  const isQnaBoard = boardType === "QNA"
+  const canWriteComment =
+    !!user && (!isQnaBoard || isBoardAuthor || isStaff)
+  const commentsLocked = !ready || !user
+  const showLoginOverlay = ready && !user
+
   const canDeleteComment = (c: BoardComment) => {
     if (!user) return false
     const role = (user.role ?? "").toUpperCase()
@@ -185,25 +202,45 @@ export default function CommunityBoardComments({
         <h3>댓글 {total}</h3>
       </div>
 
-      <form className="fcb-comment-form" onSubmit={(e) => void onSubmitRoot(e)}>
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="댓글을 입력하세요"
-          rows={3}
-          maxLength={2000}
-        />
-        <div className="fcb-comment-actions">
-          <button type="submit" disabled={submitting || !content.trim()}>
-            댓글 등록
-          </button>
-        </div>
-      </form>
+      {canWriteComment ? (
+        <form className="fcb-comment-form" onSubmit={(e) => void onSubmitRoot(e)}>
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="댓글을 입력하세요"
+            rows={3}
+            maxLength={2000}
+          />
+          <div className="fcb-comment-actions">
+            <button type="submit" disabled={submitting || !content.trim()}>
+              댓글 등록
+            </button>
+          </div>
+        </form>
+      ) : isQnaBoard && user ? (
+        <p className="fcb-comment-notice">Q&amp;A 댓글은 글 작성자와 관리자만 등록할 수 있습니다.</p>
+      ) : null}
 
       {error ? <p className="fcb-comment-error">{error}</p> : null}
       {loading ? <p className="text-sm text-gray-500">댓글 불러오는 중…</p> : null}
 
-      <ul className="fcb-comment-list">
+      <div
+        className={
+          commentsLocked
+            ? "fcb-comment-list-wrap fcb-comment-list-wrap--locked"
+            : "fcb-comment-list-wrap"
+        }
+      >
+        {showLoginOverlay ? (
+          <div className="fcb-comment-list-wrap__overlay">
+            <p>로그인 후 댓글 내용을 확인할 수 있습니다.</p>
+            <button type="button" onClick={() => router.push(loginNext())}>
+              로그인
+            </button>
+          </div>
+        ) : null}
+
+        <ul className="fcb-comment-list">
         {comments.map((comment) => (
           <li key={comment.id} className="fcb-comment-item">
             <div className="fcb-comment-meta">
@@ -212,9 +249,11 @@ export default function CommunityBoardComments({
             </div>
             <p className="fcb-comment-body">{comment.content}</p>
             <div className="fcb-comment-toolbar">
-              <button type="button" onClick={() => setReplyTo(comment)}>
-                답글
-              </button>
+              {canWriteComment ? (
+                <button type="button" onClick={() => setReplyTo(comment)}>
+                  답글
+                </button>
+              ) : null}
               <div className="fcb-comment-toolbar__reactions">
               <button
                 type="button"
@@ -309,7 +348,8 @@ export default function CommunityBoardComments({
             ) : null}
           </li>
         ))}
-      </ul>
+        </ul>
+      </div>
 
       {loginPromptOpen ? (
         <div className="fcb-login-prompt" role="dialog" aria-modal="true">

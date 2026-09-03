@@ -119,7 +119,12 @@ export default function CommunityBoardDetail({
       )}
 
       {enableComments ? (
-        <CommunityBoardComments boardId={detail.id} onCountChange={setCommentCount} />
+        <CommunityBoardComments
+          boardId={detail.id}
+          boardAuthorEmail={detail.authorEmail}
+          boardType={detail.boardType}
+          onCountChange={setCommentCount}
+        />
       ) : null}
 
       <div className="fcb-md-detail__footer">

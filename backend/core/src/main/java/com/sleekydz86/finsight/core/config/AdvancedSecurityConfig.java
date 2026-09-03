@@ -104,6 +104,7 @@ public class AdvancedSecurityConfig {
                         .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/editor/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/boards", "/api/v1/boards/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/comments/board/**").permitAll()
                         .requestMatchers("/api/v1/media/**").permitAll()
                         .anyRequest().authenticated()
                 )

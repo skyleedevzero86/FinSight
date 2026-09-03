@@ -7,7 +7,7 @@ import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentUpdateRequ
 import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentReportRequest;
 
 public interface CommentCommandUseCase {
-    Comment createComment(String userEmail, CommentCreateRequest request);
+    Comment createComment(String userEmail, String userRole, CommentCreateRequest request);
     Comment updateComment(String userEmail, Long commentId, CommentUpdateRequest request);
     void deleteComment(String userEmail, String userRole, Long commentId);
     Comment likeComment(String userEmail, Long commentId);

@@ -95,7 +95,8 @@ public class CommentController {
             @CurrentUser AuthenticatedUser currentUser) {
         try {
             validateCreateRequest(request);
-            Comment comment = commentCommandUseCase.createComment(currentUser.getEmail(), request);
+            Comment comment = commentCommandUseCase.createComment(
+                    currentUser.getEmail(), currentUser.getRole(), request);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(ApiResponse.success(comment, "댓글이 성공적으로 생성되었습니다"));
         } catch (ValidationException e) {

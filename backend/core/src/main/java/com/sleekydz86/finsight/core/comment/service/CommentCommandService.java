@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.comment.service;
 
 import com.sleekydz86.finsight.core.board.domain.Board;
+import com.sleekydz86.finsight.core.board.domain.BoardType;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort;
 import com.sleekydz86.finsight.core.comment.domain.Comment;
 import com.sleekydz86.finsight.core.comment.domain.CommentStatus;
@@ -47,8 +48,16 @@ public class CommentCommandService implements CommentCommandUseCase {
     }
 
     @Override
-    public Comment createComment(String userEmail, CommentCreateRequest request) {
+    public Comment createComment(String userEmail, String userRole, CommentCreateRequest request) {
         log.info("댓글 생성 요청 - 사용자: {}, 대상 ID: {}", userEmail, request.getTargetId());
+
+        if (request.getCommentType() == CommentType.BOARD && request.getTargetId() != null) {
+            boardPersistencePort.findById(request.getTargetId()).ifPresent(board -> {
+                if (board.getBoardType() == BoardType.QNA) {
+                    assertCanCommentOnQna(board, userEmail, userRole);
+                }
+            });
+        }
 
         Comment comment = Comment.builder()
                 .content(request.getContent())
@@ -242,5 +251,15 @@ public class CommentCommandService implements CommentCommandUseCase {
         commentPersistencePort.save(blockedComment);
 
         log.info("댓글 차단 완료 - 댓글 ID: {}", commentId);
+    }
+
+    private void assertCanCommentOnQna(Board board, String userEmail, String userRole) {
+        boolean isAuthor = board.getAuthorEmail() != null
+                && board.getAuthorEmail().equalsIgnoreCase(userEmail);
+        boolean isStaff = userRole != null
+                && ("ADMIN".equalsIgnoreCase(userRole) || "MANAGER".equalsIgnoreCase(userRole));
+        if (!isAuthor && !isStaff) {
+            throw new InsufficientPermissionException("Q&A 댓글은 글 작성자와 관리자만 등록할 수 있습니다");
+        }
     }
 }
