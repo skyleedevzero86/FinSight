@@ -183,6 +183,23 @@ function reloadOnceIfNeeded(shouldReload: boolean): void {
   window.location.reload()
 }
 
+async function unregisterAllSameOrigin(
+  registrations: readonly ServiceWorkerRegistration[],
+): Promise<boolean> {
+  let removed = false
+  for (const registration of registrations) {
+    if (!sameOrigin(registration.scope)) continue
+    await disableNavigationPreload(registration)
+    try {
+      const ok = await registration.unregister()
+      if (ok) removed = true
+    } catch (err) {
+      warnDev(`서비스 워커 해제에 실패했습니다. scope=${registration.scope}`, err)
+    }
+  }
+  return removed
+}
+
 async function runCleanup(): Promise<void> {
   let registrations: readonly ServiceWorkerRegistration[] = []
   try {
@@ -192,6 +209,7 @@ async function runCleanup(): Promise<void> {
     return
   }
 
+  const localDev = process.env.NODE_ENV === "development" || isLocalDevHost()
   const hadForeignController =
     Boolean(navigator.serviceWorker.controller) && !controllerIsSafe()
   const hadAnyRegistration = registrations.length > 0 || hadForeignController
@@ -200,10 +218,23 @@ async function runCleanup(): Promise<void> {
     await disableNavigationPreload(registration)
   }
 
+  if (localDev) {
+    const removed = await unregisterAllSameOrigin(registrations)
+    await deleteStaleCaches()
+    if (!navigator.serviceWorker.controller) {
+      try {
+        sessionStorage.removeItem(RELOAD_FLAG)
+      } catch {
+      }
+    }
+    reloadOnceIfNeeded(removed || hadForeignController || hadAnyRegistration)
+    return
+  }
+
   const removed = await unregisterForeignRegistrations(registrations)
   await deleteStaleCaches()
 
-  if (hadAnyRegistration || process.env.NODE_ENV === "development" || isLocalDevHost()) {
+  if (hadAnyRegistration) {
     await ensureSafeServiceWorker()
   }
 
@@ -271,21 +302,24 @@ export const STALE_SERVICE_WORKER_CLEANUP_SCRIPT = `(function () {
     var hadAny = regs.length > 0 || !!navigator.serviceWorker.controller;
     var tasks = regs.map(function (reg) {
       return disablePreload(reg).then(function () {
-        if (isSafe(reg)) return;
-        if (!isLocal) {
-          var path = pathnameOf(scriptURL(reg));
-          var stale = path === "/sw.js"
-            || path === "/service-worker.js"
-            || path === "/serviceworker.js"
-            || /workbox|serwist|next-pwa|ngsw/i.test(scriptURL(reg));
-          if (!stale) return;
+        if (isLocal) {
+          try { return reg.unregister(); } catch (e) {}
+          return;
         }
+        if (isSafe(reg)) return;
+        var path = pathnameOf(scriptURL(reg));
+        var stale = path === "/sw.js"
+          || path === "/service-worker.js"
+          || path === "/serviceworker.js"
+          || /workbox|serwist|next-pwa|ngsw/i.test(scriptURL(reg));
+        if (!stale) return;
         try { return reg.unregister(); } catch (e) {}
       });
     });
 
     return Promise.all(tasks).then(function () {
-      if (!hadAny && !isLocal) return null;
+      if (isLocal) return null;
+      if (!hadAny) return null;
       return navigator.serviceWorker.register(SAFE_SW_PATH, {
         scope: "/",
         updateViaCache: "none"
@@ -294,11 +328,7 @@ export const STALE_SERVICE_WORKER_CLEANUP_SCRIPT = `(function () {
       }).catch(function () { return null; });
     }).then(function () {
       if (!isLocal) return;
-      if (!hadForeign && controllerSafe()) {
-        try { sessionStorage.removeItem(reloadFlag); } catch (e) {}
-        return;
-      }
-      if (!hadForeign && !hadAny) {
+      if (!hadAny && !hadForeign) {
         try { sessionStorage.removeItem(reloadFlag); } catch (e) {}
         return;
       }

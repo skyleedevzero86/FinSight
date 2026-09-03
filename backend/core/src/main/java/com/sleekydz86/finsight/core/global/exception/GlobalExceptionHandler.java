@@ -15,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,10 +26,33 @@ public class GlobalExceptionHandler {
 
         private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+        @ExceptionHandler(ResponseStatusException.class)
+        public ResponseEntity<ApiResponse<ErrorResponse>> handleResponseStatusException(
+                        ResponseStatusException ex, WebRequest request) {
+                HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+                if (status == null) {
+                        status = HttpStatus.INTERNAL_SERVER_ERROR;
+                }
+                String message = ex.getReason() != null && !ex.getReason().isBlank()
+                                ? ex.getReason()
+                                : "요청을 처리할 수 없습니다.";
+                logger.warn("응답 상태 예외가 발생했습니다: status={}, message={}", status.value(), message);
+
+                ErrorResponse errorResponse = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(status.value())
+                                .errorCode(status.name())
+                                .message(message)
+                                .path(request.getDescription(false).replace("uri=", ""))
+                                .build();
+
+                return ResponseEntity.status(status).body(ApiResponse.error(errorResponse));
+        }
+
         @ExceptionHandler(InvalidPasswordException.class)
         public ResponseEntity<ApiResponse<ValidationErrorResponse>> handleInvalidPasswordException(
                         InvalidPasswordException ex, WebRequest request) {
-                logger.error("InvalidPasswordException occurred: {}", ex.getMessage(), ex);
+                logger.error("비밀번호 오류가 발생했습니다: {}", ex.getMessage(), ex);
 
                 List<String> validationErrors = ex.getValidationErrors() != null
                                 ? ex.getValidationErrors()
@@ -52,7 +76,7 @@ public class GlobalExceptionHandler {
 
         @ExceptionHandler(BaseException.class)
         public ResponseEntity<ApiResponse<ErrorResponse>> handleBaseException(BaseException ex, WebRequest request) {
-                logger.error("BaseException occurred: {}", ex.getMessage(), ex);
+                logger.error("기본 예외가 발생했습니다: {}", ex.getMessage(), ex);
 
                 ErrorResponse errorResponse = ErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())
@@ -69,7 +93,7 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(ValidationException.class)
         public ResponseEntity<ApiResponse<ValidationErrorResponse>> handleValidationException(ValidationException ex,
                         WebRequest request) {
-                logger.error("ValidationException occurred: {}", ex.getMessage(), ex);
+                logger.error("입력값 검증 오류가 발생했습니다: {}", ex.getMessage(), ex);
 
                 ValidationErrorResponse errorResponse = ValidationErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())
@@ -87,7 +111,7 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(SystemException.class)
         public ResponseEntity<ApiResponse<ErrorResponse>> handleSystemException(SystemException ex,
                                                                                 WebRequest request) {
-                logger.error("SystemException occurred: {}", ex.getMessage(), ex);
+                logger.error("시스템 오류가 발생했습니다: {}", ex.getMessage(), ex);
 
                 ErrorResponse errorResponse = ErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())
@@ -104,7 +128,7 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(ExternalServiceException.class)
         public ResponseEntity<ApiResponse<ErrorResponse>> handleExternalServiceException(ExternalServiceException ex,
                         WebRequest request) {
-                logger.error("ExternalServiceException occurred: {}", ex.getMessage(), ex);
+                logger.error("외부 서비스 오류가 발생했습니다: {}", ex.getMessage(), ex);
 
                 ErrorResponse errorResponse = ErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())
@@ -121,7 +145,7 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(AuthenticationException.class)
         public ResponseEntity<ApiResponse<ErrorResponse>> handleAuthenticationException(AuthenticationException ex,
                         WebRequest request) {
-                logger.error("AuthenticationException occurred: {}", ex.getMessage(), ex);
+                logger.error("인증 오류가 발생했습니다: {}", ex.getMessage(), ex);
 
                 ErrorResponse errorResponse = ErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())
@@ -138,7 +162,7 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(AccessDeniedException.class)
         public ResponseEntity<ApiResponse<ErrorResponse>> handleAccessDeniedException(AccessDeniedException ex,
                         WebRequest request) {
-                logger.error("AccessDeniedException occurred: {}", ex.getMessage(), ex);
+                logger.error("접근 권한 오류가 발생했습니다: {}", ex.getMessage(), ex);
 
                 ErrorResponse errorResponse = ErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())
@@ -155,7 +179,7 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(MethodArgumentNotValidException.class)
         public ResponseEntity<ApiResponse<ValidationErrorResponse>> handleMethodArgumentNotValidException(
                         MethodArgumentNotValidException ex, WebRequest request) {
-                logger.error("MethodArgumentNotValidException occurred: {}", ex.getMessage(), ex);
+                logger.error("요청 인자 검증 오류가 발생했습니다: {}", ex.getMessage(), ex);
 
                 List<String> validationErrors = new ArrayList<>();
                 ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -183,7 +207,7 @@ public class GlobalExceptionHandler {
         @ExceptionHandler(BindException.class)
         public ResponseEntity<ApiResponse<ValidationErrorResponse>> handleBindException(BindException ex,
                         WebRequest request) {
-                logger.error("BindException occurred: {}", ex.getMessage(), ex);
+                logger.error("요청 바인딩 오류가 발생했습니다: {}", ex.getMessage(), ex);
 
                 List<String> validationErrors = new ArrayList<>();
                 ex.getBindingResult().getAllErrors().forEach(error -> {
@@ -210,7 +234,7 @@ public class GlobalExceptionHandler {
 
         @ExceptionHandler(Exception.class)
         public ResponseEntity<ApiResponse<ErrorResponse>> handleGenericException(Exception ex, WebRequest request) {
-                logger.error("Unexpected exception occurred: {}", ex.getMessage(), ex);
+                logger.error("예상치 못한 오류가 발생했습니다: {}", ex.getMessage(), ex);
 
                 ErrorResponse errorResponse = ErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())

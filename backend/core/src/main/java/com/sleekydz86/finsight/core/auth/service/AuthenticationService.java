@@ -67,12 +67,6 @@ public class AuthenticationService {
         return loginWithUser(request).token();
     }
 
-    /**
-     * Authenticates a user and creates a login session containing the user and issued tokens.
-     *
-     * @param request the login credentials and email identifier
-     * @return the authenticated user and generated access and refresh tokens
-     */
     public LoginSession loginWithUser(LoginRequest request) {
         try {
             User user = resolveLoginUser(request.getEmail());

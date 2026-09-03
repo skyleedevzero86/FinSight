@@ -625,7 +625,7 @@
 }
 
 .fcb-md-alert {
-  border-radius: 16px;
+  border-radius: 0;
   border: 1px solid #fecaca;
   background: #fef2f2;
   color: #991b1b;
@@ -642,7 +642,7 @@
   flex: 1;
   min-height: 42px;
   border: 1px solid rgba(59, 93, 118, 0.16);
-  border-radius: 14px;
+  border-radius: 0;
   background: #f8fafc;
   color: #334155;
   font-weight: 700;
@@ -664,7 +664,7 @@
 .fcb-md-editor,
 .fcb-md-preview {
   position: relative;
-  border-radius: 28px;
+  border-radius: 0;
   border: 1px solid rgba(15, 50, 70, 0.08);
   background: rgba(255, 255, 255, 0.96);
   overflow: hidden;
@@ -695,7 +695,7 @@
   min-height: 52px;
   padding: 12px 16px;
   border: 1px solid rgba(59, 93, 118, 0.16);
-  border-radius: 18px;
+  border-radius: 0;
   background: #fbfdff;
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
@@ -722,14 +722,14 @@
   min-height: 48px;
   padding: 8px 12px;
   border: 1px solid rgba(59, 93, 118, 0.16);
-  border-radius: 18px;
+  border-radius: 0;
   background: #fbfdff;
 }
 
 .fcb-md-chip {
   padding: 7px 12px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 0;
   background: #e8f0ff;
   color: #3055a6;
   font-size: 0.88rem;
@@ -750,7 +750,7 @@
   align-items: center;
   padding: 12px 14px;
   border: 1px solid rgba(59, 93, 118, 0.12);
-  border-radius: 20px;
+  border-radius: 0;
   background: linear-gradient(180deg, #ffffff 0%, #f5f8fb 100%);
 }
 
@@ -764,7 +764,7 @@
   min-width: 48px;
   min-height: 40px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 0;
   background: #f1f5f9;
   color: #22364b;
   font-weight: 700;
@@ -780,7 +780,7 @@
   padding: 20px;
   resize: vertical;
   border: 1px solid rgba(59, 93, 118, 0.12);
-  border-radius: 22px;
+  border-radius: 0;
   background:
     linear-gradient(180deg, rgba(247, 251, 253, 0.84), rgba(255, 255, 255, 0.96)),
     repeating-linear-gradient(
@@ -815,7 +815,7 @@
   justify-content: center;
   min-height: 44px;
   padding: 0 18px;
-  border-radius: 4px;
+  border-radius: 0;
   font-weight: 700;
   text-decoration: none;
   border: 0;
@@ -872,7 +872,7 @@
   top: 72px;
   width: 5px;
   height: calc(100% - 144px);
-  border-radius: 999px;
+  border-radius: 0;
   background: linear-gradient(180deg, #1a2d40 0%, #4c5c70 100%);
 }
 
@@ -920,7 +920,7 @@
   align-items: center;
   min-height: 32px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: 0;
   background: #e8f0ff;
   color: #3055a6;
   font-size: 0.86rem;
@@ -974,7 +974,7 @@
   width: 100%;
   max-width: 100%;
   margin: 24px 0;
-  border-radius: 20px;
+  border-radius: 0;
   border: 1px solid rgba(24, 58, 92, 0.12);
 }
 
@@ -986,21 +986,21 @@
   margin: 20px 0;
   padding: 12px 18px;
   border-left: 4px solid #3055a6;
-  border-radius: 0 16px 16px 0;
+  border-radius: 0;
   background: rgba(48, 85, 166, 0.08);
 }
 
 .fcb-md-preview-markdown pre {
   overflow-x: auto;
   padding: 16px;
-  border-radius: 18px;
+  border-radius: 0;
   background: #102336;
   color: #dfefff;
 }
 
 .fcb-md-preview-markdown code {
   padding: 0.12rem 0.36rem;
-  border-radius: 8px;
+  border-radius: 0;
   background: rgba(17, 49, 77, 0.08);
   font-size: 0.92em;
 }
@@ -1033,7 +1033,7 @@
   display: grid;
   gap: 12px;
   padding: 16px;
-  border-radius: 20px;
+  border-radius: 0;
   border: 1px solid rgba(59, 93, 118, 0.12);
   background: rgba(255, 255, 255, 0.96);
 }
@@ -1172,7 +1172,7 @@
   align-items: start;
   padding: 12px 14px;
   border: 1px solid rgba(59, 93, 118, 0.14);
-  border-radius: 16px;
+  border-radius: 0;
   background: #fbfdff;
   cursor: pointer;
 }

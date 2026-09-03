@@ -25,22 +25,10 @@ public class BatchGlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(BatchGlobalExceptionHandler.class);
 
     private final MessageSource messageSource;
-
-    /**
-     * Creates a global exception handler using the specified message source.
-     */
     @Autowired
     public BatchGlobalExceptionHandler(MessageSource messageSource) {
         this.messageSource = messageSource;
     }
-
-    /**
-     * Handles response status exceptions by creating a structured error response.
-     *
-     * @param ex      the response status exception
-     * @param request the current HTTP request
-     * @return        an error response using the exception status, or 500 if the status is invalid
-     */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatusException(
             ResponseStatusException ex, HttpServletRequest request) {
@@ -51,19 +39,13 @@ public class BatchGlobalExceptionHandler {
         }
         response.put("success", false);
         response.put("error", status.name());
-        response.put("message", ex.getReason() != null ? ex.getReason() : status.getReasonPhrase());
+        response.put("message", ex.getReason() != null && !ex.getReason().isBlank()
+                ? ex.getReason()
+                : "요청을 처리할 수 없습니다.");
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
         return ResponseEntity.status(status).body(response);
     }
-
-    /**
-     * Handles requests for resources that are not mapped to an endpoint.
-     *
-     * @param ex      the resource lookup exception
-     * @param request the current HTTP request
-     * @return a 404 response containing the error details
-     */
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNoResourceFound(
             NoResourceFoundException ex, HttpServletRequest request) {
@@ -76,14 +58,6 @@ public class BatchGlobalExceptionHandler {
         response.put("path", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
-
-    /**
-     * Handles data integrity violations by returning a conflict response containing the request path and timestamp.
-     *
-     * @param ex      the data integrity violation
-     * @param request the current HTTP request
-     * @return a conflict response describing the request error
-     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(
             DataIntegrityViolationException ex, HttpServletRequest request) {
@@ -96,12 +70,6 @@ public class BatchGlobalExceptionHandler {
         response.put("path", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
-
-    /**
-     * Handles unexpected exceptions with a localized internal server error response.
-     *
-     * @return a response containing the error code, localized message, timestamp, and request path
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
@@ -225,14 +193,6 @@ public class BatchGlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
-
-    /**
-     * Handles authentication failures by returning a localized unauthorized response.
-     *
-     * @param ex      the authentication failure exception
-     * @param request the current HTTP request
-     * @return an unauthorized response containing the error code, localized message, timestamp, and request path
-     */
     @ExceptionHandler(AuthenticationFailedException.class)
     public ResponseEntity<Map<String, Object>> handleAuthenticationFailedException(AuthenticationFailedException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);

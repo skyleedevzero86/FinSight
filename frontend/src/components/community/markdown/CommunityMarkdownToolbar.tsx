@@ -23,6 +23,7 @@ export default function CommunityMarkdownToolbar({
             className="fcb-md-toolbar__button"
             onClick={() => onCommand(action.id)}
             title={action.title}
+            aria-label={action.title}
             disabled={disabled}
           >
             {action.label}

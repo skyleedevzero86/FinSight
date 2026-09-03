@@ -24,7 +24,6 @@ type Props = {
   boardType: BoardTypeCode
   basePath: string
   boardId?: number
-  sectionLabel?: string
   initialTitle?: string
   initialContent?: string
   initialTags?: string
@@ -38,7 +37,6 @@ export default function CommunityBoardEditorForm({
   boardType,
   basePath,
   boardId,
-  sectionLabel,
   initialTitle = "",
   initialContent = "",
   initialTags = "",
@@ -63,6 +61,10 @@ export default function CommunityBoardEditorForm({
   const [error, setError] = useState<string | null>(null)
   const [mobileTab, setMobileTab] = useState<"write" | "preview">("write")
 
+  const contentRef = useRef(content)
+  contentRef.current = content
+  const uploadChainRef = useRef(Promise.resolve())
+
   useEffect(() => {
     const el = textareaRef.current
     if (!el) return
@@ -75,6 +77,7 @@ export default function CommunityBoardEditorForm({
     selectionStart: number
     selectionEnd: number
   }) {
+    contentRef.current = result.value
     setContent(result.value)
     requestAnimationFrame(() => {
       const target = textareaRef.current
@@ -86,32 +89,45 @@ export default function CommunityBoardEditorForm({
 
   function currentSelection() {
     const el = textareaRef.current
+    const value = contentRef.current
     return {
-      start: el?.selectionStart ?? content.length,
-      end: el?.selectionEnd ?? content.length,
+      start: el?.selectionStart ?? value.length,
+      end: el?.selectionEnd ?? value.length,
     }
   }
 
   async function uploadAndInsert(file: File, asFile: boolean) {
-    setUploading(true)
-    setError(null)
-    try {
-      const uploaded = await uploadEditorAsset(file, { allowFile: asFile })
-      const selection = currentSelection()
-      const name = uploaded.originalFileName || file.name || "file"
-      const insertion = asFile || !file.type.startsWith("image/")
-        ? `[${name}](${uploaded.url})`
-        : `![${name}](${uploaded.url})`
-      const prefix = content.slice(0, selection.start).endsWith("\n") || selection.start === 0 ? "" : "\n"
-      const suffix = "\n"
-      applyContentResult(
-        insertTextAtSelection(content, selection, `${prefix}${insertion}${suffix}`),
-      )
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "업로드에 실패했습니다.")
-    } finally {
-      setUploading(false)
+    const run = async () => {
+      setUploading(true)
+      setError(null)
+      try {
+        const uploaded = await uploadEditorAsset(file, { allowFile: asFile })
+        const selection = currentSelection()
+        const value = contentRef.current
+        const name = uploaded.originalFileName || file.name || "file"
+        const insertion = asFile || !file.type.startsWith("image/")
+          ? `[${name}](${uploaded.url})`
+          : `![${name}](${uploaded.url})`
+        const prefix =
+          value.slice(0, selection.start).endsWith("\n") || selection.start === 0 ? "" : "\n"
+        const suffix = "\n"
+        applyContentResult(
+          insertTextAtSelection(value, selection, `${prefix}${insertion}${suffix}`),
+        )
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "업로드에 실패했습니다.")
+        throw err
+      } finally {
+        setUploading(false)
+      }
     }
+
+    const next = uploadChainRef.current.then(run, run)
+    uploadChainRef.current = next.then(
+      () => undefined,
+      () => undefined,
+    )
+    return next
   }
 
   function runCommand(command: string) {
@@ -128,14 +144,42 @@ export default function CommunityBoardEditorForm({
   }
 
   async function onPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
-    const items = Array.from(e.clipboardData?.items ?? [])
-    const imageItems = items.filter((item) => item.type.startsWith("image/"))
-    if (imageItems.length === 0) return
-    e.preventDefault()
-    for (const item of imageItems) {
+    const clipboard = e.clipboardData
+    if (!clipboard) return
+
+    const imageFiles: File[] = []
+    for (const item of Array.from(clipboard.items ?? [])) {
+      if (!item.type.startsWith("image/")) continue
       const file = item.getAsFile()
-      if (!file) continue
-      await uploadAndInsert(file, false)
+      if (file) imageFiles.push(file)
+    }
+    for (const file of Array.from(clipboard.files ?? [])) {
+      if (file.type.startsWith("image/") && !imageFiles.some((f) => f === file)) {
+        imageFiles.push(file)
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      e.preventDefault()
+      const file = normalizePasteFile(imageFiles[0])
+      void uploadAndInsert(file, false)
+      return
+    }
+
+    const html = clipboard.getData("text/html")
+    if (html) {
+      const remote = extractImageUrlsFromHtml(html)
+      if (remote.length > 0) {
+        e.preventDefault()
+        void (async () => {
+          try {
+            const file = await fetchRemoteImageAsFile(remote[0])
+            await uploadAndInsert(file, false)
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "이미지 붙여넣기에 실패했습니다.")
+          }
+        })()
+      }
     }
   }
 
@@ -204,8 +248,8 @@ export default function CommunityBoardEditorForm({
       const msg =
         payload && typeof payload === "object" && "message" in payload
           ? String((payload as { message?: string }).message)
-          : "저장에 실패했습니다."
-      setError(msg)
+          : ""
+      setError(/[가-힣]/.test(msg) ? msg : "저장에 실패했습니다.")
       return
     }
     let newId = boardId
@@ -220,12 +264,6 @@ export default function CommunityBoardEditorForm({
 
   return (
     <form className="fcb-md-workspace" onSubmit={onSubmit}>
-      {sectionLabel ? (
-        <p className="mb-3 text-sm font-semibold text-slate-700">
-          {mode === "edit" ? `${sectionLabel} 수정` : `${sectionLabel} 글쓰기`}
-          <span className="ml-2 font-normal text-slate-500">({boardType})</span>
-        </p>
-      ) : null}
       {error ? (
         <div role="alert" className="fcb-md-alert">
           {error}
@@ -406,3 +444,52 @@ export default function CommunityBoardEditorForm({
     </form>
   )
 }
+
+function normalizePasteFile(file: File): File {
+  if (file.name && file.name !== "image.png" && file.name !== "blob") return file
+  const ext = mimeToExt(file.type) || "png"
+  return new File([file], `paste-${Date.now()}.${ext}`, {
+    type: file.type || "image/png",
+    lastModified: file.lastModified || Date.now(),
+  })
+}
+
+function mimeToExt(mime: string): string | null {
+  if (mime === "image/png") return "png"
+  if (mime === "image/jpeg" || mime === "image/jpg") return "jpg"
+  if (mime === "image/gif") return "gif"
+  if (mime === "image/webp") return "webp"
+  return null
+}
+
+function extractImageUrlsFromHtml(html: string): string[] {
+  const urls: string[] = []
+  const re = /<img[^>]+src=["']([^"']+)["']/gi
+  let match: RegExpExecArray | null
+  while ((match = re.exec(html)) != null) {
+    const src = match[1]?.trim()
+    if (!src) continue
+    if (!urls.includes(src)) urls.push(src)
+  }
+  return urls.slice(0, 5)
+}
+
+async function fetchRemoteImageAsFile(src: string): Promise<File> {
+  if (src.startsWith("data:image/")) {
+    const res = await fetch(src)
+    const blob = await res.blob()
+    const ext = mimeToExt(blob.type) || "png"
+    return new File([blob], `paste-${Date.now()}.${ext}`, { type: blob.type || "image/png" })
+  }
+  const res = await fetch(src, { mode: "cors", credentials: "omit", cache: "no-store" })
+  if (!res.ok) {
+    throw new Error("사이트 이미지를 가져오지 못했습니다. 이미지 파일을 직접 업로드해 주세요.")
+  }
+  const blob = await res.blob()
+  if (!blob.type.startsWith("image/")) {
+    throw new Error("이미지 형식이 아닙니다.")
+  }
+  const ext = mimeToExt(blob.type) || "png"
+  return new File([blob], `web-${Date.now()}.${ext}`, { type: blob.type })
+}
+

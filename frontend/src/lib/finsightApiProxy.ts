@@ -43,7 +43,7 @@ function copyUpstreamHeaders(upstream: Response): Headers {
 export function finSightUnavailableResponse() {
   return jsonResponse(
     503,
-    "FINSIGHT_API_BASE_URL가 설정되지 않았습니다. .env.local에 백엔드 주소를 넣어 주세요.",
+    "백엔드 주소가 설정되지 않았습니다. 환경 설정을 확인해 주세요.",
   )
 }
 
@@ -168,13 +168,6 @@ export async function proxyJsonToFinSight(
   }
 }
 
-/**
- * Proxies an HTTP request to the FinSight backend and forwards its response.
- *
- * @param backendPathAndQuery - The backend path and query string to request.
- * @param init - Optional request body and timeout override.
- * @returns The backend response, or a localized error response when proxying fails.
- */
 export async function mirrorRequestToFinSight(
   req: Request,
   backendPathAndQuery: string,
@@ -268,12 +261,6 @@ export async function mirrorRequestToFinSight(
   }
 }
 
-/**
- * Proxies a request to FinSight and forwards the binary response.
- *
- * @param backendPathAndQuery - The backend path and query string to request
- * @returns A response containing the backend status, binary body, and selected headers
- */
 export async function mirrorBinaryRequestToFinSight(
   req: Request,
   backendPathAndQuery: string,

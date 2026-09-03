@@ -46,7 +46,7 @@ public class PrivilegedAccountService {
         }
         user.changeRole(UserRole.ADMIN);
         User saved = userPersistencePort.save(user);
-        log.info("Configured admin account elevated to ADMIN: email={}, username={}",
+        log.info("관리자 계정으로 권한이 승격되었습니다: email={}, username={}",
                 saved.getEmail(), saved.getUsername());
         return saved;
     }

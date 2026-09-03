@@ -18,7 +18,6 @@ export default function CommunityNoticeWritePage() {
         mode="create"
         boardType={COMMUNITY_SECTION_BOARD_TYPE.notice}
         basePath="/community/notice"
-        sectionLabel="공지사항"
       />
     </CommunityBoardLayout>
   )

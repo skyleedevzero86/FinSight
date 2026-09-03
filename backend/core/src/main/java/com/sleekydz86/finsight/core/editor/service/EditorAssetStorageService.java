@@ -12,6 +12,8 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
@@ -38,6 +40,7 @@ import java.util.UUID;
 @Service
 public class EditorAssetStorageService {
 
+    private static final Logger log = LoggerFactory.getLogger(EditorAssetStorageService.class);
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
             "image/png",
             "image/jpeg",
@@ -96,7 +99,7 @@ public class EditorAssetStorageService {
             try {
                 return uploadToMinio(file, allowNonImage);
             } catch (Exception e) {
-                // MinIO 장애 시 로컬 저장으로 폴백
+                log.warn("MinIO 업로드 실패, 파일시스템으로 대체합니다: {}", e.getMessage());
             }
         }
         return uploadToFilesystem(file, allowNonImage);
@@ -106,8 +109,10 @@ public class EditorAssetStorageService {
         if (useMinio()) {
             try {
                 return loadFromMinio(assetId);
+            } catch (ResponseStatusException e) {
+                log.debug("MinIO에서 이미지를 찾지 못해 파일시스템을 조회합니다: {}", assetId);
             } catch (Exception e) {
-                // fall through to filesystem
+                log.warn("MinIO 이미지 조회 실패, 파일시스템을 조회합니다: {}", e.getMessage());
             }
         }
         return loadFromFilesystem(assetId);
@@ -124,7 +129,7 @@ public class EditorAssetStorageService {
 
         UUID assetId = UUID.randomUUID();
         String objectKey = buildObjectKey(image.getOriginalFilename(), allowNonImage);
-        String contentType = Objects.requireNonNullElse(image.getContentType(), "application/octet-stream");
+        String contentType = resolveContentType(image, allowNonImage);
         String originalName = Objects.requireNonNullElse(image.getOriginalFilename(), objectKey);
 
         try (InputStream inputStream = image.getInputStream()) {
@@ -151,7 +156,8 @@ public class EditorAssetStorageService {
                             .bucket(bucket)
                             .object(objectKey)
                             .build());
-                } catch (Exception ignored) {
+                } catch (Exception cleanupError) {
+                    log.warn("MinIO 업로드 롤백 중 객체 삭제에 실패했습니다: {}", cleanupError.getMessage());
                 }
                 throw e;
             }
@@ -171,10 +177,10 @@ public class EditorAssetStorageService {
     private LoadedImage loadFromMinio(UUID assetId) {
         EditorAssetJpaEntity asset = editorAssetJpaRepository
                 .findById(assetId.toString())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "image not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "이미지를 찾을 수 없습니다."));
         MinioClient minioClient = minioClientProvider.getIfAvailable();
         if (minioClient == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "image not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "이미지를 찾을 수 없습니다.");
         }
         try {
             GetObjectResponse stream = minioClient.getObject(GetObjectArgs.builder()
@@ -214,12 +220,12 @@ public class EditorAssetStorageService {
 
     private StoredMetadata uploadToFilesystem(MultipartFile file, boolean allowNonImage) throws IOException {
         if (file == null || file.isEmpty()) {
-            throw new ValidationException("파일이 비어 있습니다", List.of("file required"));
+            throw new ValidationException("파일이 비어 있습니다", List.of("파일이 필요합니다"));
         }
-        String contentType = file.getContentType() != null ? file.getContentType() : "application/octet-stream";
+        String contentType = resolveContentType(file, allowNonImage);
         long max = allowNonImage ? editorProperties.getFileMaxBytes() : editorProperties.getImageMaxBytes();
         if (file.getSize() > max) {
-            throw new ValidationException("파일 크기가 허용 한도를 초과했습니다", List.of("max bytes: " + max));
+            throw new ValidationException("파일 크기가 허용 한도를 초과했습니다", List.of("최대 용량: " + max + "바이트"));
         }
         UUID id = UUID.randomUUID();
         Path dataPath = filesystemRoot.resolve(id + ".bin");
@@ -245,7 +251,7 @@ public class EditorAssetStorageService {
         Path dataPath = filesystemRoot.resolve(id + ".bin");
         Path metaPath = filesystemRoot.resolve(id + ".properties");
         if (!Files.isRegularFile(dataPath) || !Files.isRegularFile(metaPath)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "file not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "파일을 찾을 수 없습니다.");
         }
         Properties meta = new Properties();
         try (var in = Files.newInputStream(metaPath)) {
@@ -260,25 +266,84 @@ public class EditorAssetStorageService {
 
     private void validateUpload(MultipartFile file, boolean allowNonImage) {
         if (file == null || file.isEmpty()) {
-            throw new ValidationException("업로드할 파일을 선택해주세요.", List.of("file required"));
+            throw new ValidationException("업로드할 파일을 선택해주세요.", List.of("파일이 필요합니다"));
         }
-        String contentType = Objects.requireNonNullElse(file.getContentType(), "").toLowerCase(Locale.ROOT);
+        String contentType = resolveContentType(file, allowNonImage);
         long max = allowNonImage ? editorProperties.getFileMaxBytes() : editorProperties.getImageMaxBytes();
         if (file.getSize() > max) {
-            throw new ValidationException("파일 크기가 허용 한도를 초과했습니다", List.of("max bytes: " + max));
+            throw new ValidationException("파일 크기가 허용 한도를 초과했습니다", List.of("최대 용량: " + max + "바이트"));
         }
         if (allowNonImage) {
             boolean ok = contentType.startsWith("image/")
                     || ALLOWED_FILE_TYPES.contains(contentType)
                     || contentType.equals("application/octet-stream");
             if (!ok) {
-                throw new ValidationException("허용되지 않은 파일 형식입니다.", List.of("invalid content type"));
+                throw new ValidationException("허용되지 않은 파일 형식입니다.", List.of("지원하지 않는 파일 형식입니다"));
             }
             return;
         }
         if (!ALLOWED_IMAGE_TYPES.contains(contentType)) {
-            throw new ValidationException("PNG, JPG, GIF, WEBP, SVG 이미지만 업로드할 수 있습니다.", List.of("invalid content type"));
+            throw new ValidationException("PNG, JPG, GIF, WEBP, SVG 이미지만 업로드할 수 있습니다.", List.of("지원하지 않는 이미지 형식입니다"));
         }
+    }
+
+    private String resolveContentType(MultipartFile file, boolean allowNonImage) {
+        String declared = Objects.requireNonNullElse(file.getContentType(), "").toLowerCase(Locale.ROOT).trim();
+        if (!declared.isEmpty()
+                && !declared.equals("application/octet-stream")
+                && (ALLOWED_IMAGE_TYPES.contains(declared) || allowNonImage)) {
+            return declared;
+        }
+        try {
+            byte[] header = file.getBytes();
+            String sniffed = sniffImageContentType(header);
+            if (sniffed != null) {
+                return sniffed;
+            }
+        } catch (IOException e) {
+            log.warn("업로드 파일 형식 확인 중 오류가 발생했습니다: {}", e.getMessage());
+        }
+        String name = Objects.requireNonNullElse(file.getOriginalFilename(), "").toLowerCase(Locale.ROOT);
+        if (name.endsWith(".png")) return "image/png";
+        if (name.endsWith(".jpg") || name.endsWith(".jpeg")) return "image/jpeg";
+        if (name.endsWith(".gif")) return "image/gif";
+        if (name.endsWith(".webp")) return "image/webp";
+        if (name.endsWith(".svg")) return "image/svg+xml";
+        return declared.isEmpty() ? "application/octet-stream" : declared;
+    }
+
+    private static String sniffImageContentType(byte[] bytes) {
+        if (bytes == null || bytes.length < 3) {
+            return null;
+        }
+        if (bytes.length >= 8
+                && (bytes[0] & 0xFF) == 0x89
+                && bytes[1] == 0x50
+                && bytes[2] == 0x4E
+                && bytes[3] == 0x47) {
+            return "image/png";
+        }
+        if ((bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xD8 && (bytes[2] & 0xFF) == 0xFF) {
+            return "image/jpeg";
+        }
+        if (bytes.length >= 6
+                && bytes[0] == 'G'
+                && bytes[1] == 'I'
+                && bytes[2] == 'F') {
+            return "image/gif";
+        }
+        if (bytes.length >= 12
+                && bytes[0] == 'R'
+                && bytes[1] == 'I'
+                && bytes[2] == 'F'
+                && bytes[3] == 'F'
+                && bytes[8] == 'W'
+                && bytes[9] == 'E'
+                && bytes[10] == 'B'
+                && bytes[11] == 'P') {
+            return "image/webp";
+        }
+        return null;
     }
 
     private static String extractExtension(String fileName) {

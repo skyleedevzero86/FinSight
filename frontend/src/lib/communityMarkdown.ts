@@ -23,7 +23,7 @@ export const toolbarActions: ToolbarAction[] = [
   { id: "italic", label: "I", title: "기울임" },
   { id: "quote", label: '"', title: "인용문" },
   { id: "link", label: "Link", title: "링크 삽입" },
-  { id: "image", label: "Image", title: "이미지 업로드" },
+  { id: "image", label: "🖼", title: "이미지 업로드" },
   { id: "code", label: "</>", title: "코드 블록" },
 ]
 
@@ -31,7 +31,7 @@ export type ExtendedToolbarAction = ToolbarAction | { id: "file"; label: string;
 
 export const communityToolbarActions: ExtendedToolbarAction[] = [
   ...toolbarActions,
-  { id: "file", label: "File", title: "파일 업로드" },
+  { id: "file", label: "📎", title: "파일 업로드" },
 ]
 
 type SelectionRange = {
