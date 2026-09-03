@@ -74,7 +74,9 @@ export async function fetchBoardComments(
     : Array.isArray(data)
       ? data
       : []
-  return list.map(parseComment).filter((v): v is BoardComment => v != null)
+  return list
+    .map(parseComment)
+    .filter((v): v is BoardComment => v != null && v.parentId == null)
 }
 
 export async function createBoardComment(

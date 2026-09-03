@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import type { BoardDetail } from "@/lib/boardApi"
 import { formatAuthor, formatBoardDate, unwrapApiData } from "@/lib/boardApi"
 import { authHeadersJson } from "@/lib/finsightToken"
+import { useAuthSession } from "@/components/AuthSessionProvider"
 import CommunityMarkdownPreview from "@/components/community/markdown/CommunityMarkdownPreview"
 import CommunityBoardComments from "@/components/community/CommunityBoardComments"
 
@@ -12,16 +13,27 @@ type Props = {
   detail: BoardDetail
   basePath: string
   enableComments?: boolean
+  commentsAuthorOnly?: boolean
 }
 
 export default function CommunityBoardDetail({
   detail: initialDetail,
   basePath,
   enableComments = false,
+  commentsAuthorOnly = false,
 }: Props) {
   const [detail, setDetail] = useState(initialDetail)
   const [accessError, setAccessError] = useState<string | null>(null)
   const [commentCount, setCommentCount] = useState(initialDetail.commentCount)
+  const { user, ready } = useAuthSession()
+
+  const role = (user?.role ?? "").toUpperCase().replace(/^ROLE_/, "")
+  const isStaff = role === "ADMIN" || role === "MANAGER"
+  const isAuthor =
+    !!user?.email &&
+    !!detail.authorEmail &&
+    user.email.toLowerCase() === detail.authorEmail.toLowerCase()
+  const canEdit = ready && !!user && (isAuthor || isStaff)
 
   useEffect(() => {
     setDetail(initialDetail)
@@ -123,6 +135,8 @@ export default function CommunityBoardDetail({
           boardId={detail.id}
           boardAuthorEmail={detail.authorEmail}
           boardType={detail.boardType}
+          commentsAuthorOnly={commentsAuthorOnly || detail.boardType === "QNA"}
+          initialCommentCount={detail.commentCount}
           onCountChange={setCommentCount}
         />
       ) : null}
@@ -131,9 +145,11 @@ export default function CommunityBoardDetail({
         <Link href={basePath} className="fcb-md-action fcb-md-action--ghost">
           목록
         </Link>
-        <Link href={`${basePath}/${detail.id}/edit`} className="fcb-md-action fcb-md-action--ghost">
-          수정
-        </Link>
+        {canEdit ? (
+          <Link href={`${basePath}/${detail.id}/edit`} className="fcb-md-action fcb-md-action--ghost">
+            수정
+          </Link>
+        ) : null}
       </div>
     </div>
   )

@@ -33,6 +33,7 @@ export default async function CommunityNoticeEditPage({ params }: Props) {
         boardType={COMMUNITY_SECTION_BOARD_TYPE.notice}
         basePath="/community/notice"
         boardId={detail.id}
+        authorEmail={detail.authorEmail}
         initialTitle={detail.title}
         initialContent={detail.content}
         initialTags={tags}

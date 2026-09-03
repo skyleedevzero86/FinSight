@@ -14,6 +14,12 @@ import java.util.List;
 @Repository
 public interface CommentJpaRepository extends JpaRepository<CommentJpaEntity, Long> {
 
+    List<CommentJpaEntity> findByTargetIdAndCommentTypeAndStatusAndParentIdIsNullOrderByCreatedAtDesc(
+            Long targetId, CommentType commentType, CommentStatus status);
+
+    Page<CommentJpaEntity> findByTargetIdAndCommentTypeAndStatusAndParentIdIsNullOrderByCreatedAtDesc(
+            Long targetId, CommentType commentType, CommentStatus status, Pageable pageable);
+
     List<CommentJpaEntity> findByTargetIdAndCommentTypeAndStatusOrderByCreatedAtDesc(
             Long targetId, CommentType commentType, CommentStatus status);
 

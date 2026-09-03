@@ -12,6 +12,7 @@ type Props = {
   basePath: string
   initialDetail?: BoardDetail | null
   enableComments?: boolean
+  commentsAuthorOnly?: boolean
 }
 
 export default function CommunityBoardDetailGate({
@@ -19,6 +20,7 @@ export default function CommunityBoardDetailGate({
   basePath,
   initialDetail = null,
   enableComments = false,
+  commentsAuthorOnly = false,
 }: Props) {
   const [detail, setDetail] = useState<BoardDetail | null>(initialDetail)
   const [loading, setLoading] = useState(!initialDetail)
@@ -117,6 +119,7 @@ export default function CommunityBoardDetailGate({
       detail={detail}
       basePath={basePath}
       enableComments={enableComments}
+      commentsAuthorOnly={commentsAuthorOnly}
     />
   )
 }

@@ -10,9 +10,9 @@ import com.sleekydz86.finsight.core.board.domain.port.in.dto.BoardUpdateRequest;
 public interface BoardCommandUseCase {
     Board createBoard(String userEmail, BoardCreateRequest request);
 
-    Board updateBoard(String userEmail, Long boardId, BoardUpdateRequest request);
+    Board updateBoard(String userEmail, String userRole, Long boardId, BoardUpdateRequest request);
 
-    void deleteBoard(String userEmail, Long boardId);
+    void deleteBoard(String userEmail, String userRole, Long boardId);
 
     Board likeBoard(String userEmail, Long boardId);
 

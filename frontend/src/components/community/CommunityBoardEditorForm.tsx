@@ -25,6 +25,7 @@ type Props = {
   boardType: BoardTypeCode
   basePath: string
   boardId?: number
+  authorEmail?: string
   initialTitle?: string
   initialContent?: string
   initialTags?: string
@@ -38,6 +39,7 @@ export default function CommunityBoardEditorForm({
   boardType,
   basePath,
   boardId,
+  authorEmail,
   initialTitle = "",
   initialContent = "",
   initialTags = "",
@@ -67,12 +69,41 @@ export default function CommunityBoardEditorForm({
   contentRef.current = content
   const uploadChainRef = useRef(Promise.resolve())
 
+  const role = (user?.role ?? "").toUpperCase().replace(/^ROLE_/, "")
+  const isStaff = role === "ADMIN" || role === "MANAGER"
+  const isAuthor =
+    !!user?.email &&
+    !!authorEmail &&
+    user.email.toLowerCase() === authorEmail.toLowerCase()
+  const canEditBoard = mode === "create" || (!!user && (isAuthor || isStaff))
+
   useEffect(() => {
     const el = textareaRef.current
     if (!el) return
     el.style.height = "auto"
     el.style.height = `${Math.max(480, el.scrollHeight)}px`
   }, [content])
+
+  if (mode === "edit" && !ready) {
+    return <p className="text-sm text-gray-500">권한을 확인하는 중…</p>
+  }
+
+  if (mode === "edit" && ready && !canEditBoard) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-900">
+        게시글은 작성자와 관리자만 수정할 수 있습니다.
+        <div className="mt-4">
+          <button
+            type="button"
+            className="fcb-md-action fcb-md-action--ghost"
+            onClick={() => router.push(boardId ? `${basePath}/${boardId}` : basePath)}
+          >
+            돌아가기
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   function applyContentResult(result: {
     value: string
@@ -254,6 +285,10 @@ export default function CommunityBoardEditorForm({
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (mode === "edit" && !canEditBoard) {
+      setError("게시글은 작성자와 관리자만 수정할 수 있습니다.")
+      return
+    }
     const submitter = (e.nativeEvent as SubmitEvent).submitter
     const saveAsDraft =
       submitter instanceof HTMLButtonElement && submitter.value === "draft"

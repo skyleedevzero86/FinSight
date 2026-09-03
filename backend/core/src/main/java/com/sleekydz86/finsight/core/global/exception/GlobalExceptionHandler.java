@@ -80,13 +80,13 @@ public class GlobalExceptionHandler {
 
                 ErrorResponse errorResponse = ErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())
-                                .status(HttpStatus.BAD_REQUEST.value())
+                                .status(ex.getHttpStatus())
                                 .errorCode(ex.getErrorCode())
                                 .message(ex.getMessage())
                                 .path(request.getDescription(false).replace("uri=", ""))
                                 .build();
 
-                return ResponseEntity.badRequest()
+                return ResponseEntity.status(ex.getHttpStatus())
                                 .body(ApiResponse.error(errorResponse));
         }
 

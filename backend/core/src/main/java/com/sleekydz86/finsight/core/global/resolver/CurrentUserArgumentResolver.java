@@ -5,7 +5,6 @@ import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
-import com.sleekydz86.finsight.core.user.service.PrivilegedAccountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.MethodParameter;
@@ -30,15 +29,12 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
 
     private final UserPersistencePort userPersistencePort;
     private final JwtTokenUtil jwtTokenUtil;
-    private final PrivilegedAccountService privilegedAccountService;
 
     public CurrentUserArgumentResolver(
             UserPersistencePort userPersistencePort,
-            JwtTokenUtil jwtTokenUtil,
-            PrivilegedAccountService privilegedAccountService) {
+            JwtTokenUtil jwtTokenUtil) {
         this.userPersistencePort = userPersistencePort;
         this.jwtTokenUtil = jwtTokenUtil;
-        this.privilegedAccountService = privilegedAccountService;
     }
 
     @Override
@@ -74,7 +70,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
                 return null;
             }
 
-            User user = privilegedAccountService.ensurePrivilegedRole(userOpt.get());
+            User user = userOpt.get();
             String role = user.getRole() != null ? user.getRole().name() : "USER";
             return AuthenticatedUser.builder()
                     .id(user.getId())

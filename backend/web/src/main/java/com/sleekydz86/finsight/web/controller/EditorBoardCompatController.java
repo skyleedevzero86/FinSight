@@ -139,7 +139,7 @@ public class EditorBoardCompatController {
         long id = parseDocumentId(request.documentId());
         BoardUpdateRequest updateReq = new BoardUpdateRequest(
                 request.title(), request.markdown(), tagList, targetStatus);
-        boardCommandUseCase.updateBoard(currentUser.getEmail(), id, updateReq);
+        boardCommandUseCase.updateBoard(currentUser.getEmail(), currentUser.getRole(), id, updateReq);
         BoardDetailResponse detail = boardQueryUseCase.getBoardDetailWithNavigation(id, BoardType.COMMUNITY, false);
         return mergeClientDraftFields(request, toDraft(detail));
     }
@@ -148,7 +148,7 @@ public class EditorBoardCompatController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteDocument(
             @PathVariable long documentId, @CurrentUser AuthenticatedUser currentUser) {
-        boardCommandUseCase.deleteBoard(currentUser.getEmail(), documentId);
+        boardCommandUseCase.deleteBoard(currentUser.getEmail(), currentUser.getRole(), documentId);
     }
 
     private BoardStatus mapListStatusFilter(String status) {

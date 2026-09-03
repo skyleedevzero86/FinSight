@@ -20,15 +20,38 @@ function formatTime(value: string | null): string | null {
   return value.replace("T", " ").slice(0, 16)
 }
 
+function GuestCommentPlaceholders({ count }: { count: number }) {
+  const n = Math.max(2, Math.min(4, count || 2))
+  return (
+    <ul className="fcb-comment-list fcb-comment-list--placeholders" aria-hidden>
+      {Array.from({ length: n }, (_, i) => (
+        <li key={i} className="fcb-comment-item fcb-comment-item--placeholder">
+          <div className="fcb-comment-meta">
+            <strong>회원{i + 1}</strong>
+            <span>2026-01-01 12:00</span>
+          </div>
+          <p className="fcb-comment-body">
+            로그인 후 확인할 수 있는 댓글 미리보기 텍스트입니다. 실제 내용은 가려져 있습니다.
+          </p>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export default function CommunityBoardComments({
   boardId,
   boardAuthorEmail,
   boardType,
+  commentsAuthorOnly = false,
+  initialCommentCount = 0,
   onCountChange,
 }: {
   boardId: number
   boardAuthorEmail?: string
   boardType?: BoardTypeCode
+  commentsAuthorOnly?: boolean
+  initialCommentCount?: number
   onCountChange?: (count: number) => void
 }) {
   const router = useRouter()
@@ -59,7 +82,11 @@ export default function CommunityBoardComments({
       const total = items.reduce((sum, c) => sum + 1 + (c.replies?.length ?? 0), 0)
       onCountChange?.(total)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "댓글을 불러오지 못했습니다.")
+      const message = e instanceof Error ? e.message : "댓글을 불러오지 못했습니다."
+      const authLike =
+        /인증|로그인|Unauthorized|401/i.test(message)
+      if (!authLike) setError(message)
+      setComments([])
     } finally {
       setLoading(false)
     }
@@ -74,15 +101,22 @@ export default function CommunityBoardComments({
     replyTextareaRef.current?.focus()
   }, [replyTo?.id])
 
+  const role = (user?.role ?? "").toUpperCase().replace(/^ROLE_/, "")
+  const isStaff = role === "ADMIN" || role === "MANAGER"
+  const isBoardAuthor =
+    !!user?.email &&
+    !!boardAuthorEmail &&
+    user.email.toLowerCase() === boardAuthorEmail.toLowerCase()
+  const restrictWrite = commentsAuthorOnly || boardType === "QNA"
+  const canWriteComment = !!user && (!restrictWrite || isBoardAuthor || isStaff)
+  const isGuest = ready && !user
+  const commentsLocked = !ready || !user
+
   const onSubmitRoot = async (e: FormEvent) => {
     e.preventDefault()
-    if (!ready || submitting) return
+    if (!ready || submitting || !canWriteComment) return
     const text = content.trim()
     if (!text) return
-    if (!user) {
-      setLoginPromptOpen(true)
-      return
-    }
     setSubmitting(true)
     setError(null)
     try {
@@ -103,13 +137,9 @@ export default function CommunityBoardComments({
 
   const onSubmitReply = async (e: FormEvent) => {
     e.preventDefault()
-    if (!ready || submitting || !replyTo) return
+    if (!ready || submitting || !replyTo || !canWriteComment) return
     const text = replyContent.trim()
     if (!text) return
-    if (!user) {
-      setLoginPromptOpen(true)
-      return
-    }
     setSubmitting(true)
     setError(null)
     try {
@@ -152,24 +182,13 @@ export default function CommunityBoardComments({
     }
   }
 
-  const total = comments.reduce((sum, c) => sum + 1 + (c.replies?.length ?? 0), 0)
-
-  const role = (user?.role ?? "").toUpperCase()
-  const isStaff = role === "ADMIN" || role === "MANAGER"
-  const isBoardAuthor =
-    !!user?.email &&
-    !!boardAuthorEmail &&
-    user.email.toLowerCase() === boardAuthorEmail.toLowerCase()
-  const isQnaBoard = boardType === "QNA"
-  const canWriteComment =
-    !!user && (!isQnaBoard || isBoardAuthor || isStaff)
-  const commentsLocked = !ready || !user
-  const showLoginOverlay = ready && !user
+  const loadedTotal = comments.reduce((sum, c) => sum + 1 + (c.replies?.length ?? 0), 0)
+  const total = loadedTotal > 0 ? loadedTotal : initialCommentCount
 
   const canDeleteComment = (c: BoardComment) => {
     if (!user) return false
-    const role = (user.role ?? "").toUpperCase()
-    const isAdminOrManager = role === "ADMIN" || role === "MANAGER"
+    const userRole = (user.role ?? "").toUpperCase().replace(/^ROLE_/, "")
+    const isAdminOrManager = userRole === "ADMIN" || userRole === "MANAGER"
     const isAuthor = c.authorEmail?.toLowerCase() === user.email?.toLowerCase()
     return isAdminOrManager || isAuthor
   }
@@ -196,6 +215,9 @@ export default function CommunityBoardComments({
     }
   }
 
+  const showRealComments = comments.length > 0
+  const showPlaceholders = commentsLocked && !showRealComments
+
   return (
     <section className="fcb-comments">
       <div className="fcb-comments__heading">
@@ -217,11 +239,15 @@ export default function CommunityBoardComments({
             </button>
           </div>
         </form>
-      ) : isQnaBoard && user ? (
-        <p className="fcb-comment-notice">Q&amp;A 댓글은 글 작성자와 관리자만 등록할 수 있습니다.</p>
+      ) : restrictWrite && user ? (
+        <p className="fcb-comment-notice">
+          Q&amp;A 댓글·답글은 <strong>게시글 작성자</strong>와 <strong>관리자</strong>만 남길 수 있습니다.
+        </p>
+      ) : isGuest ? (
+        <p className="fcb-comment-notice">로그인 후 댓글을 확인할 수 있습니다.</p>
       ) : null}
 
-      {error ? <p className="fcb-comment-error">{error}</p> : null}
+      {error && !isGuest ? <p className="fcb-comment-error">{error}</p> : null}
       {loading ? <p className="text-sm text-gray-500">댓글 불러오는 중…</p> : null}
 
       <div
@@ -231,124 +257,133 @@ export default function CommunityBoardComments({
             : "fcb-comment-list-wrap"
         }
       >
-        {showLoginOverlay ? (
+        {isGuest ? (
           <div className="fcb-comment-list-wrap__overlay">
-            <p>로그인 후 댓글 내용을 확인할 수 있습니다.</p>
+            <p>로그인하면 댓글 내용을 볼 수 있어요</p>
             <button type="button" onClick={() => router.push(loginNext())}>
               로그인
             </button>
           </div>
         ) : null}
 
-        <ul className="fcb-comment-list">
-        {comments.map((comment) => (
-          <li key={comment.id} className="fcb-comment-item">
-            <div className="fcb-comment-meta">
-              <strong>{formatAuthor(comment.authorEmail)}</strong>
-              <span>{formatTime(comment.createdAt)}</span>
-            </div>
-            <p className="fcb-comment-body">{comment.content}</p>
-            <div className="fcb-comment-toolbar">
-              {canWriteComment ? (
-                <button type="button" onClick={() => setReplyTo(comment)}>
-                  답글
-                </button>
-              ) : null}
-              <div className="fcb-comment-toolbar__reactions">
-              <button
-                type="button"
-                disabled={reactionBusyId === comment.id}
-                onClick={() => void onReaction(comment, "LIKE")}
-              >
-                좋아요 {comment.likeCount}
-              </button>
-              <button
-                type="button"
-                disabled={reactionBusyId === comment.id}
-                onClick={() => void onReaction(comment, "DISLIKE")}
-              >
-                싫어요 {comment.dislikeCount}
-              </button>
-              </div>
-
-              {canDeleteComment(comment) ? (
-                <button
-                  type="button"
-                  className="fcb-comment-delete"
-                  disabled={deletingCommentId === comment.id}
-                  onClick={() => void onDeleteComment(comment.id)}
-                >
-                  삭제
-                </button>
-              ) : null}
-            </div>
-
-            {replyTo?.id === comment.id ? (
-              <form className="fcb-comment-form fcb-comment-form--reply" onSubmit={(e) => void onSubmitReply(e)}>
-                <textarea
-                  ref={replyTextareaRef}
-                  value={replyContent}
-                  onChange={(e) => setReplyContent(e.target.value)}
-                  placeholder="답글을 입력하세요"
-                  rows={2}
-                  maxLength={2000}
-                />
-                <div className="fcb-comment-actions">
-                  <button type="button" onClick={() => setReplyTo(null)}>
-                    취소
-                  </button>
-                  <button type="submit" disabled={submitting || !replyContent.trim()}>
-                    답글 등록
-                  </button>
+        {showPlaceholders ? (
+          <GuestCommentPlaceholders count={initialCommentCount || total} />
+        ) : (
+          <ul className="fcb-comment-list">
+            {comments.map((comment) => (
+              <li key={comment.id} className="fcb-comment-item">
+                <div className="fcb-comment-meta">
+                  <strong>{formatAuthor(comment.authorEmail)}</strong>
+                  <span>{formatTime(comment.createdAt)}</span>
                 </div>
-              </form>
-            ) : null}
-
-            {comment.replies.length > 0 ? (
-              <ul className="fcb-comment-replies">
-                {comment.replies.map((reply) => (
-                  <li key={reply.id} className="fcb-comment-item fcb-comment-item--reply">
-                    <div className="fcb-comment-meta">
-                      <strong>{formatAuthor(reply.authorEmail)}</strong>
-                      <span>{formatTime(reply.createdAt)}</span>
-                    </div>
-                    <p className="fcb-comment-body">{reply.content}</p>
-                    <div className="fcb-comment-toolbar">
-                      <div className="fcb-comment-toolbar__reactions">
+                <p className="fcb-comment-body">{comment.content}</p>
+                <div className="fcb-comment-toolbar">
+                  <div className="fcb-comment-toolbar__left">
+                    {canWriteComment ? (
+                      <button type="button" onClick={() => setReplyTo(comment)}>
+                        답글
+                      </button>
+                    ) : null}
+                    {canDeleteComment(comment) ? (
                       <button
                         type="button"
-                        disabled={reactionBusyId === reply.id}
-                        onClick={() => void onReaction(reply, "LIKE")}
+                        className="fcb-comment-delete"
+                        disabled={deletingCommentId === comment.id}
+                        onClick={() => void onDeleteComment(comment.id)}
                       >
-                        좋아요 {reply.likeCount}
+                        삭제
                       </button>
-                      <button
-                        type="button"
-                        disabled={reactionBusyId === reply.id}
-                        onClick={() => void onReaction(reply, "DISLIKE")}
-                      >
-                        싫어요 {reply.dislikeCount}
-                      </button>
-                      </div>
+                    ) : null}
+                  </div>
+                  <div className="fcb-comment-toolbar__reactions">
+                    <button
+                      type="button"
+                      disabled={reactionBusyId === comment.id}
+                      onClick={() => void onReaction(comment, "LIKE")}
+                    >
+                      좋아요 {comment.likeCount}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={reactionBusyId === comment.id}
+                      onClick={() => void onReaction(comment, "DISLIKE")}
+                    >
+                      싫어요 {comment.dislikeCount}
+                    </button>
+                  </div>
+                </div>
 
-                      {canDeleteComment(reply) ? (
-                        <button
-                          type="button"
-                          className="fcb-comment-delete"
-                          disabled={deletingCommentId === reply.id}
-                          onClick={() => void onDeleteComment(reply.id)}
-                        >
-                          삭제
-                        </button>
-                      ) : null}
+                {replyTo?.id === comment.id ? (
+                  <form
+                    className="fcb-comment-form fcb-comment-form--reply"
+                    onSubmit={(e) => void onSubmitReply(e)}
+                  >
+                    <textarea
+                      ref={replyTextareaRef}
+                      value={replyContent}
+                      onChange={(e) => setReplyContent(e.target.value)}
+                      placeholder="답글을 입력하세요"
+                      rows={2}
+                      maxLength={2000}
+                    />
+                    <div className="fcb-comment-actions">
+                      <button type="button" onClick={() => setReplyTo(null)}>
+                        취소
+                      </button>
+                      <button type="submit" disabled={submitting || !replyContent.trim()}>
+                        답글 등록
+                      </button>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </li>
-        ))}
-        </ul>
+                  </form>
+                ) : null}
+
+                {comment.replies.length > 0 ? (
+                  <ul className="fcb-comment-replies">
+                    {comment.replies.map((reply) => (
+                      <li key={reply.id} className="fcb-comment-item fcb-comment-item--reply">
+                        <div className="fcb-comment-meta">
+                          <strong>{formatAuthor(reply.authorEmail)}</strong>
+                          <span>{formatTime(reply.createdAt)}</span>
+                        </div>
+                        <p className="fcb-comment-body">{reply.content}</p>
+                        <div className="fcb-comment-toolbar">
+                          <div className="fcb-comment-toolbar__left">
+                            {canDeleteComment(reply) ? (
+                              <button
+                                type="button"
+                                className="fcb-comment-delete"
+                                disabled={deletingCommentId === reply.id}
+                                onClick={() => void onDeleteComment(reply.id)}
+                              >
+                                삭제
+                              </button>
+                            ) : null}
+                          </div>
+                          <div className="fcb-comment-toolbar__reactions">
+                            <button
+                              type="button"
+                              disabled={reactionBusyId === reply.id}
+                              onClick={() => void onReaction(reply, "LIKE")}
+                            >
+                              좋아요 {reply.likeCount}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={reactionBusyId === reply.id}
+                              onClick={() => void onReaction(reply, "DISLIKE")}
+                            >
+                              싫어요 {reply.dislikeCount}
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {loginPromptOpen ? (

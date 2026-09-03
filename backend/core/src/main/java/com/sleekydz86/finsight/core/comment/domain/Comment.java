@@ -81,10 +81,22 @@ public class Comment {
                 this.dislikeCount, this.reportCount, this.createdAt, this.updatedAt, this.replies);
     }
 
+    public Comment decrementLike() {
+        return new Comment(this.id, this.content, this.authorEmail, this.commentType,
+                this.targetId, this.parentId, this.status, Math.max(0, this.likeCount - 1),
+                this.dislikeCount, this.reportCount, this.createdAt, this.updatedAt, this.replies);
+    }
+
     public Comment incrementDislike() {
         return new Comment(this.id, this.content, this.authorEmail, this.commentType,
                 this.targetId, this.parentId, this.status, this.likeCount,
                 this.dislikeCount + 1, this.reportCount, this.createdAt, this.updatedAt, this.replies);
+    }
+
+    public Comment decrementDislike() {
+        return new Comment(this.id, this.content, this.authorEmail, this.commentType,
+                this.targetId, this.parentId, this.status, this.likeCount,
+                Math.max(0, this.dislikeCount - 1), this.reportCount, this.createdAt, this.updatedAt, this.replies);
     }
 
     public Comment incrementReport() {

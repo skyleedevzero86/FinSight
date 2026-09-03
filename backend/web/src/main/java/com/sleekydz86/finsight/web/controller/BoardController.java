@@ -13,6 +13,7 @@ import com.sleekydz86.finsight.core.global.annotation.Retryable;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
+import com.sleekydz86.finsight.core.global.exception.BaseException;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
 import jakarta.validation.Valid;
@@ -114,9 +115,12 @@ public class BoardController {
                 throw new ValidationException("유효하지 않은 게시판 ID입니다", Arrays.asList("boardId는 1 이상의 양수여야 합니다"));
             }
             validateUpdateRequest(request);
-            Board board = boardCommandUseCase.updateBoard(currentUser.getEmail(), boardId, request);
+            Board board = boardCommandUseCase.updateBoard(
+                    currentUser.getEmail(), currentUser.getRole(), boardId, request);
             return ResponseEntity.ok(ApiResponse.success(board, "게시판이 성공적으로 수정되었습니다"));
         } catch (ValidationException e) {
+            throw e;
+        } catch (BaseException e) {
             throw e;
         } catch (Exception e) {
             throw new SystemException("게시판 수정 중 오류가 발생했습니다", "BOARD_UPDATE_ERROR", e);
@@ -134,9 +138,11 @@ public class BoardController {
             if (boardId == null || boardId <= 0) {
                 throw new ValidationException("유효하지 않은 게시판 ID입니다", Arrays.asList("boardId는 1 이상의 양수여야 합니다"));
             }
-            boardCommandUseCase.deleteBoard(currentUser.getEmail(), boardId);
+            boardCommandUseCase.deleteBoard(currentUser.getEmail(), currentUser.getRole(), boardId);
             return ResponseEntity.ok(ApiResponse.success(null, "게시판이 성공적으로 삭제되었습니다"));
         } catch (ValidationException e) {
+            throw e;
+        } catch (BaseException e) {
             throw e;
         } catch (Exception e) {
             throw new SystemException("게시판 삭제 중 오류가 발생했습니다", "BOARD_DELETE_ERROR", e);

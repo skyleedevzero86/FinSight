@@ -1227,7 +1227,7 @@
   width: 100%;
   padding: 12px 14px;
   border: 1px solid rgba(59, 93, 118, 0.16);
-  border-radius: 14px;
+  border-radius: 0;
   resize: vertical;
   font-size: 0.95rem;
   line-height: 1.55;
@@ -1277,10 +1277,11 @@
 
 .fcb-comment-list-wrap {
   position: relative;
+  min-height: 180px;
 }
 
 .fcb-comment-list-wrap--locked .fcb-comment-list {
-  filter: blur(6px);
+  filter: blur(7px);
   user-select: none;
   pointer-events: none;
 }
@@ -1296,7 +1297,12 @@
   gap: 12px;
   padding: 24px 16px;
   text-align: center;
-  background: rgba(255, 255, 255, 0.55);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.45) 45%,
+    rgba(255, 255, 255, 0.55) 100%
+  );
 }
 
 .fcb-comment-list-wrap__overlay p {
@@ -1304,6 +1310,7 @@
   color: #17344c;
   font-weight: 700;
   font-size: 0.95rem;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 .fcb-comment-list-wrap__overlay button {
@@ -1315,6 +1322,10 @@
   color: #fff;
   font-weight: 700;
   font-size: 0.88rem;
+}
+
+.fcb-comment-item--placeholder .fcb-comment-body {
+  color: #64748b;
 }
 
 .fcb-comment-list,
@@ -1367,16 +1378,27 @@
 
 .fcb-comment-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-top: 10px;
 }
 
+.fcb-comment-toolbar__left,
 .fcb-comment-toolbar__reactions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
+}
+
+.fcb-comment-toolbar__left {
+  justify-content: flex-start;
+}
+
+.fcb-comment-toolbar__reactions {
   margin-left: auto;
+  justify-content: flex-end;
 }
 
 .fcb-comment-toolbar button {
@@ -1385,12 +1407,18 @@
   color: #64748b;
   font-size: 0.82rem;
   font-weight: 600;
-  padding: 0;
+  padding: 6px 8px;
+  min-height: 32px;
   cursor: pointer;
 }
 
-.fcb-comment-toolbar button:hover {
+.fcb-comment-toolbar button:hover:not(:disabled) {
   color: #3055a6;
+}
+
+.fcb-comment-toolbar button:disabled {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 .fcb-comment-delete {

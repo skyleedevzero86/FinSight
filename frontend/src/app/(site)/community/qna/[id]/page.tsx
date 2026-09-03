@@ -30,6 +30,7 @@ export default async function CommunityQnaDetailPage({ params }: Props) {
         basePath="/community/qna"
         initialDetail={detail}
         enableComments
+        commentsAuthorOnly
       />
     </CommunityBoardLayout>
   )

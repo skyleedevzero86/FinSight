@@ -33,28 +33,6 @@ function normalizeRole(value: unknown): string {
   return role.toUpperCase()
 }
 
-function roleRank(role: string): number {
-  if (role === "ADMIN") return 3
-  if (role === "MANAGER") return 2
-  return 1
-}
-
-function readRoleFromAccessToken(): string | null {
-  const token = readUsableAccessToken()
-  if (!token) return null
-  const parts = token.split(".")
-  if (parts.length < 2) return null
-  try {
-    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/")
-    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4)
-    const payload = JSON.parse(atob(padded)) as { role?: unknown }
-    const role = normalizeRole(payload.role)
-    return role === "USER" && !payload.role ? null : role
-  } catch {
-    return null
-  }
-}
-
 export function parseAuthUser(payload: unknown): AuthUser | null {
   const root = asRecord(payload)
   if (!root) return null
@@ -65,10 +43,7 @@ export function parseAuthUser(payload: unknown): AuthUser | null {
   const idRaw = data.id
   const id = typeof idRaw === "number" ? idRaw : Number(idRaw)
   if (!email && !nicknameRaw) return null
-  const fromApi = normalizeRole(data.role)
-  const fromJwt = readRoleFromAccessToken()
-  const role =
-    fromJwt && roleRank(fromJwt) > roleRank(fromApi) ? fromJwt : fromApi
+  const role = normalizeRole(data.role)
   return {
     id: Number.isFinite(id) ? id : 0,
     email,

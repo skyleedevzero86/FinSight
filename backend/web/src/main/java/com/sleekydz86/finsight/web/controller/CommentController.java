@@ -16,6 +16,7 @@ import com.sleekydz86.finsight.core.global.annotation.Retryable;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
+import com.sleekydz86.finsight.core.global.exception.BaseException;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
 import jakarta.validation.Valid;
@@ -101,6 +102,8 @@ public class CommentController {
                     .body(ApiResponse.success(comment, "댓글이 성공적으로 생성되었습니다"));
         } catch (ValidationException e) {
             throw e;
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             throw new SystemException("댓글 생성 중 오류가 발생했습니다", "COMMENT_CREATE_ERROR", e);
         }
@@ -151,7 +154,6 @@ public class CommentController {
     @PostMapping("/{commentId}/like")
     @LogExecution("댓글 좋아요")
     @PerformanceMonitor(threshold = 1000, operation = "comment_like")
-    @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
     public ResponseEntity<ApiResponse<Comment>> likeComment(
             @PathVariable Long commentId,
             @CurrentUser AuthenticatedUser currentUser) {
@@ -163,6 +165,8 @@ public class CommentController {
             return ResponseEntity.ok(ApiResponse.success(comment, "댓글 좋아요가 성공적으로 처리되었습니다"));
         } catch (ValidationException e) {
             throw e;
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             throw new SystemException("댓글 좋아요 처리 중 오류가 발생했습니다", "COMMENT_LIKE_ERROR", e);
         }
@@ -171,7 +175,6 @@ public class CommentController {
     @PostMapping("/{commentId}/dislike")
     @LogExecution("댓글 싫어요")
     @PerformanceMonitor(threshold = 1000, operation = "comment_dislike")
-    @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
     public ResponseEntity<ApiResponse<Comment>> dislikeComment(
             @PathVariable Long commentId,
             @CurrentUser AuthenticatedUser currentUser) {
@@ -182,6 +185,8 @@ public class CommentController {
             Comment comment = commentCommandUseCase.dislikeComment(currentUser.getEmail(), commentId);
             return ResponseEntity.ok(ApiResponse.success(comment, "댓글 싫어요가 성공적으로 처리되었습니다"));
         } catch (ValidationException e) {
+            throw e;
+        } catch (BaseException e) {
             throw e;
         } catch (Exception e) {
             throw new SystemException("댓글 싫어요 처리 중 오류가 발생했습니다", "COMMENT_DISLIKE_ERROR", e);
