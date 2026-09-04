@@ -72,10 +72,37 @@ export async function fetchWatchlist(): Promise<TargetCategory[]> {
   })
   if (!res.ok) return []
   const payload = await readJson(res)
+  return parseCategoryList(payload)
+}
+
+function parseCategoryList(payload: unknown): TargetCategory[] {
   const root = asRecord(payload)
-  const data = root?.data
-  if (!Array.isArray(data)) return []
-  return data.filter((v) => typeof v === "string") as TargetCategory[]
+  if (!root) return []
+  const candidates = [root.data, root.categories, root]
+  for (const candidate of candidates) {
+    if (!Array.isArray(candidate)) continue
+    return candidate.filter((v): v is TargetCategory => typeof v === "string")
+  }
+  return []
+}
+
+export async function updateWatchlist(
+  categories: TargetCategory[],
+): Promise<
+  | { ok: true; categories: TargetCategory[] }
+  | { ok: false; message: string }
+> {
+  const res = await fetch("/api/v1/users/watchlist", {
+    method: "PUT",
+    headers: { ...authHeadersJson(), "Content-Type": "application/json" },
+    body: JSON.stringify({ categories }),
+  })
+  const payload = await readJson(res)
+  if (!res.ok || (asRecord(payload)?.success === false)) {
+    return { ok: false, message: readMessage(payload, "관심 카테고리를 저장하지 못했습니다.") }
+  }
+  const saved = parseCategoryList(payload)
+  return { ok: true, categories: saved.length ? saved : categories }
 }
 
 export async function fetchPasswordStatus(): Promise<PasswordStatus | null> {
@@ -124,21 +151,6 @@ export async function updateProfile(body: {
         typeof window !== "undefined" && localStorage.getItem("finsight_access_token"),
       ),
     })
-  }
-  return { ok: true }
-}
-
-export async function updateWatchlist(
-  categories: TargetCategory[],
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  const res = await fetch("/api/v1/users/watchlist", {
-    method: "PUT",
-    headers: { ...authHeadersJson(), "Content-Type": "application/json" },
-    body: JSON.stringify({ categories }),
-  })
-  const payload = await readJson(res)
-  if (!res.ok) {
-    return { ok: false, message: readMessage(payload, "관심 카테고리를 저장하지 못했습니다.") }
   }
   return { ok: true }
 }

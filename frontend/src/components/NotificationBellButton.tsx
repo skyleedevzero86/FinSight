@@ -2,21 +2,35 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import NotificationInboxPanel from "@/components/NotificationInboxPanel"
+import { useAuthSession } from "@/components/AuthSessionProvider"
 import { fetchInboxUnreadCount } from "@/lib/inbox"
+import { readUsableAccessToken } from "@/lib/finsightToken"
 
 export default function NotificationBellButton() {
+  const { user } = useAuthSession()
   const [open, setOpen] = useState(false)
   const [unread, setUnread] = useState(0)
   const wrapRef = useRef<HTMLDivElement | null>(null)
+  const failStreakRef = useRef(0)
 
   const refreshUnread = useCallback(async () => {
-    const count = await fetchInboxUnreadCount()
-    setUnread(count)
-  }, [])
+    if (!user || !readUsableAccessToken()) {
+      setUnread(0)
+      return
+    }
+    try {
+      const count = await fetchInboxUnreadCount()
+      setUnread(count)
+      failStreakRef.current = 0
+    } catch {
+      failStreakRef.current += 1
+    }
+  }, [user])
 
   useEffect(() => {
     void refreshUnread()
     const timer = window.setInterval(() => {
+      if (failStreakRef.current >= 5) return
       void refreshUnread()
     }, 30000)
     return () => window.clearInterval(timer)
@@ -49,7 +63,10 @@ export default function NotificationBellButton() {
         aria-label="알림함 보기"
         onClick={() => {
           setOpen((v) => !v)
-          if (!open) void refreshUnread()
+          if (!open) {
+            failStreakRef.current = 0
+            void refreshUnread()
+          }
         }}
       >
         <svg

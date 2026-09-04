@@ -506,8 +506,8 @@ export default function SignupForm({
                     className={[
                       "rounded-full border px-3 py-1.5 text-xs font-medium transition",
                       on
-                        ? "border-finsight-secondary bg-finsight-secondary/15 text-finsight-primary"
-                        : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300",
+                        ? "border-finsight-secondary bg-finsight-secondary text-white shadow-sm ring-2 ring-finsight-secondary/25"
+                        : "border-gray-200 bg-white text-gray-600 hover:border-finsight-secondary/50",
                     ].join(" ")}
                   >
                     {label}

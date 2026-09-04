@@ -479,6 +479,9 @@ public class User extends BaseTimeEntity {
         if (this.status == UserStatus.PENDING) {
             throw new IllegalStateException("승인 대기 중인 계정입니다.");
         }
+        if (isLocked()) {
+            throw new IllegalStateException("로그인 시도 횟수를 초과해 계정이 잠겼습니다. 관리자에게 문의해 주세요.");
+        }
     }
 
     public String getMaskedEmail() {

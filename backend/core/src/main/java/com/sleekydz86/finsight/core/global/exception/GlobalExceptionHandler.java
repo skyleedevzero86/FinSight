@@ -76,7 +76,12 @@ public class GlobalExceptionHandler {
 
         @ExceptionHandler(BaseException.class)
         public ResponseEntity<ApiResponse<ErrorResponse>> handleBaseException(BaseException ex, WebRequest request) {
-                logger.error("기본 예외가 발생했습니다: {}", ex.getMessage(), ex);
+                if (ex.getHttpStatus() >= 500) {
+                        logger.error("기본 예외가 발생했습니다: {}", ex.getMessage(), ex);
+                } else {
+                        logger.warn("요청 처리 실패: status={}, code={}, message={}",
+                                        ex.getHttpStatus(), ex.getErrorCode(), ex.getMessage());
+                }
 
                 ErrorResponse errorResponse = ErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())

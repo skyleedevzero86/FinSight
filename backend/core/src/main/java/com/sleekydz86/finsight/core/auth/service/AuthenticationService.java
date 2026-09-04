@@ -67,15 +67,23 @@ public class AuthenticationService {
         return loginWithUser(request).token();
     }
 
+    @Transactional(noRollbackFor = AuthenticationFailedException.class)
     public LoginSession loginWithUser(LoginRequest request) {
+        User user;
         try {
-            User user = resolveLoginUser(request.getEmail());
-            try {
-                user.assertCanLogin();
-            } catch (IllegalStateException ex) {
-                throw new AuthenticationFailedException(user.getEmail(), ex.getMessage());
-            }
+            user = resolveLoginUser(request.getEmail());
+        } catch (UserNotFoundException e) {
+            log.warn("로그인 실패(사용자 없음): email={}", request.getEmail());
+            throw new AuthenticationFailedException(request.getEmail());
+        }
 
+        try {
+            user.assertCanLogin();
+        } catch (IllegalStateException ex) {
+            throw new AuthenticationFailedException(user.getEmail(), ex.getMessage());
+        }
+
+        try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(user.getEmail(), request.getPassword()));
 
@@ -91,6 +99,7 @@ public class AuthenticationService {
             String accessToken = jwtTokenUtil.generateAccessToken(email, user.getRole());
             String refreshToken = jwtTokenUtil.generateRefreshToken(email);
 
+            user.resetLoginFailCount();
             user.updateLastLoginAt(LocalDateTime.now());
             userPersistencePort.save(user);
 
@@ -107,7 +116,20 @@ public class AuthenticationService {
         } catch (AuthenticationFailedException e) {
             throw e;
         } catch (org.springframework.security.core.AuthenticationException e) {
-            log.warn("로그인 실패(자격 증명): email={}", request.getEmail());
+            user.increaseLoginFailCount();
+            userPersistencePort.save(user);
+            log.warn("로그인 실패(자격 증명): email={}, failCount={}",
+                    request.getEmail(), user.getLoginFailCount());
+            if (user.isLocked()) {
+                throw new AuthenticationFailedException(
+                        user.getEmail(),
+                        "로그인 시도 횟수를 초과해 계정이 잠겼습니다. 관리자에게 문의해 주세요.");
+            }
+            if (isSocialOnlyAccount(user)) {
+                throw new AuthenticationFailedException(
+                        user.getEmail(),
+                        "소셜 로그인으로 가입된 계정입니다. 카카오·네이버·구글 로그인을 이용해 주세요.");
+            }
             throw new AuthenticationFailedException(request.getEmail());
         } catch (Exception e) {
             log.error("로그인 처리 중 오류: {}", e.getMessage(), e);
@@ -215,6 +237,23 @@ public class AuthenticationService {
                 .or(() -> userPersistencePort.findByEmail(trimmed.toLowerCase(java.util.Locale.ROOT)))
                 .or(() -> userPersistencePort.findByUsername(trimmed))
                 .orElseThrow(() -> new UserNotFoundException(trimmed));
+    }
+
+    private boolean isSocialOnlyAccount(User user) {
+        if (user.isWebAccount()) {
+            return false;
+        }
+        String email = user.getEmail();
+        if (email != null && email.endsWith("@oauth.finsight.local")) {
+            return true;
+        }
+        String username = user.getUsername();
+        if (username == null || username.isBlank()) {
+            return false;
+        }
+        return username.startsWith("kakao_")
+                || username.startsWith("naver_")
+                || username.startsWith("google_");
     }
 
     private void updateLastLoginTime(String email) {

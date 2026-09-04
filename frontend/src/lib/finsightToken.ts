@@ -106,8 +106,17 @@ export function clearAuthSession(options?: { emit?: boolean }) {
 
 export function authHeadersJson(): HeadersInit {
   const t = readUsableAccessToken()
-  if (!t) return { Accept: "application/json" }
-  return { Accept: "application/json", Authorization: `Bearer ${t}` }
+  if (!t) {
+    return {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    }
+  }
+  return {
+    Accept: "application/json",
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${t}`,
+  }
 }
 
 export function authHeaders(): HeadersInit {

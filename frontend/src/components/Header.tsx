@@ -8,6 +8,7 @@ import HeaderSearchOverlay from "@/components/HeaderSearchOverlay"
 import BrandLogo from "@/components/BrandLogo"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import NotificationBellButton from "@/components/NotificationBellButton"
+import { canManageUsers } from "@/lib/adminUsers"
 
 function HeaderAvatar({ src }: { src: string | null }) {
   const [broken, setBroken] = useState(false)

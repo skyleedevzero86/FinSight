@@ -104,40 +104,47 @@ export default function LoginForm() {
       return
     }
     setLoading(true)
-    const result = await postLogin({
-      email: em,
-      password,
-    })
-    setLoading(false)
-
-    if (!result.ok) {
-      setFormError(result.message)
-      return
-    }
-
-    const token = extractToken(result.data)
-    const provider = extractProvider(result.data)
-    const passwordRequired = extractPasswordChangeRequired(result.data)
     try {
-      if (token) {
+      const result = await postLogin({
+        email: em,
+        password,
+      })
+
+      if (!result.ok) {
+        setFormError(result.message)
+        return
+      }
+
+      const token = extractToken(result.data)
+      const provider = extractProvider(result.data)
+      const passwordRequired = extractPasswordChangeRequired(result.data)
+      if (!token) {
+        setFormError(
+          "로그인 응답이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.",
+        )
+        return
+      }
+      try {
         storeAuthSession({
           accessToken: token,
           authProvider: provider,
           remember,
         })
+        if (passwordRequired && provider === "WEB") {
+          sessionStorage.setItem(FINSIGHT_FORCE_PASSWORD_KEY, "1")
+        }
+      } catch {
+        void 0
       }
-      if (passwordRequired && provider === "WEB") {
-        sessionStorage.setItem(FINSIGHT_FORCE_PASSWORD_KEY, "1")
-      }
-    } catch {
-      void 0
+      router.push(
+        passwordRequired && provider === "WEB"
+          ? "/myinfo?password=required"
+          : nextPath || "/",
+      )
+      router.refresh()
+    } finally {
+      setLoading(false)
     }
-    router.push(
-      passwordRequired && provider === "WEB"
-        ? "/myinfo?password=required"
-        : nextPath || "/",
-    )
-    router.refresh()
   }
 
   return (

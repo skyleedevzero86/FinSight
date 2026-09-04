@@ -37,7 +37,7 @@ public class HealthJpaMapper {
             entity.setSystemMetricsJson(objectMapper.writeValueAsString(
                     nullToEmpty(health.getMetrics() != null ? health.getMetrics().getSystemMetrics() : null)));
             entity.setComponentStatusesJson(objectMapper.writeValueAsString(
-                    nullToEmpty(health.getComponentStatuses())));
+                    toComponentStatusPayload(health.getComponentStatuses())));
         } catch (JsonProcessingException e) {
             throw new RuntimeException("헬스 데이터 직렬화에 실패했습니다", e);
         }
@@ -81,6 +81,28 @@ public class HealthJpaMapper {
             result.put(entry.getKey(), toHealthStatus(entry.getValue()));
         }
         return result;
+    }
+
+    private Map<String, Object> toComponentStatusPayload(Map<String, HealthStatus> statuses) {
+        if (statuses == null || statuses.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        Map<String, Object> payload = new LinkedHashMap<>();
+        for (Map.Entry<String, HealthStatus> entry : statuses.entrySet()) {
+            HealthStatus healthStatus = entry.getValue();
+            if (healthStatus == null) {
+                payload.put(entry.getKey(), null);
+                continue;
+            }
+            Map<String, Object> node = new LinkedHashMap<>();
+            node.put("status", healthStatus.getStatus());
+            node.put("message", healthStatus.getMessage());
+            node.put("details", healthStatus.getDetails() != null
+                    ? healthStatus.getDetails()
+                    : Collections.emptyMap());
+            payload.put(entry.getKey(), node);
+        }
+        return payload;
     }
 
     private HealthStatus toHealthStatus(Object value) {

@@ -29,6 +29,11 @@ import { FINSIGHT_FORCE_PASSWORD_KEY } from "@/lib/finsightToken"
 const inputClass =
   "w-full rounded border border-gray-300 bg-white px-3 py-2.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-finsight-secondary focus:ring-1 focus:ring-finsight-secondary/40"
 
+const chipIdleClass =
+  "rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 transition hover:border-finsight-secondary/50 hover:text-finsight-primary disabled:opacity-60"
+const chipActiveClass =
+  "rounded-full border border-finsight-secondary bg-finsight-secondary px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition ring-2 ring-finsight-secondary/25 disabled:opacity-60"
+
 function MyInfoAvatar({ src }: { src: string | null }) {
   const [broken, setBroken] = useState(false)
   const showPhoto = Boolean(src) && !broken
@@ -76,9 +81,12 @@ export default function MyInfoClient() {
 
   const [passwordStatus, setPasswordStatus] = useState<PasswordStatus | null>(null)
   const [saving, setSaving] = useState(false)
+  const [savingWatchlist, setSavingWatchlist] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [formOk, setFormOk] = useState<string | null>(null)
+  const loadGenRef = useRef(0)
+  const watchDirtyRef = useRef(false)
 
   useEffect(() => {
     if (ready && !user) {
@@ -88,21 +96,28 @@ export default function MyInfoClient() {
 
   useEffect(() => {
     if (!user) return
-    setNickname(user.nickname)
-    setEmail(user.email)
-    setPreviewUrl(user.profileImageUrl)
+    const loadId = ++loadGenRef.current
+    watchDirtyRef.current = false
     void (async () => {
       const [profile, list, status] = await Promise.all([
         fetchUserProfile(),
         fetchWatchlist(),
         user.authProvider === "WEB" ? fetchPasswordStatus() : Promise.resolve(null),
       ])
+      if (loadId !== loadGenRef.current) return
       if (profile) {
         setNickname(profile.nickname || user.nickname)
         setEmail(profile.email || user.email)
         setPreviewUrl(profile.profileImageUrl ?? user.profileImageUrl)
+      } else {
+        setNickname(user.nickname)
+        setEmail(user.email)
+        setPreviewUrl(user.profileImageUrl)
       }
-      setWatchlist(list)
+      if (!watchDirtyRef.current) {
+        const fromProfile = profile?.watchlist ?? []
+        setWatchlist(list.length ? list : fromProfile)
+      }
       setPasswordStatus(status)
     })()
   }, [user])
@@ -144,27 +159,67 @@ export default function MyInfoClient() {
   }
 
   function toggleWatch(value: TargetCategory) {
+    watchDirtyRef.current = true
     const previous = watchlist
-    const next = previous.includes(value)
-      ? previous.filter((v) => v !== value)
-      : [...previous, value]
+    let next: TargetCategory[]
+    if (value === "NONE") {
+      next = previous.includes("NONE") ? [] : ["NONE"]
+    } else if (previous.includes(value)) {
+      next = previous.filter((v) => v !== value && v !== "NONE")
+    } else {
+      next = [...previous.filter((v) => v !== "NONE"), value]
+    }
     setWatchlist(next)
     setFormError(null)
     setFormOk(null)
+    const saveId = ++loadGenRef.current
     void (async () => {
-      setSaving(true)
+      setSavingWatchlist(true)
       try {
         const result = await updateWatchlist(next)
+        if (saveId !== loadGenRef.current) return
         if (!result.ok) {
           setWatchlist(previous)
           setFormError(result.message)
           return
         }
+        setWatchlist(result.categories)
         setFormOk("관심 카테고리가 저장되었습니다.")
       } finally {
-        setSaving(false)
+        if (saveId === loadGenRef.current) {
+          setSavingWatchlist(false)
+        }
       }
     })()
+  }
+
+  function renderWatchlistChips() {
+    return (
+      <section className="space-y-2">
+        <span className="block text-sm font-medium text-gray-800">관심 타깃 카테고리</span>
+        <p className="text-xs text-gray-500">
+          선택하면 바로 저장됩니다. 선택된 항목은 청록색으로 표시됩니다.
+          {savingWatchlist ? " 저장 중…" : null}
+        </p>
+        <div className="flex flex-wrap gap-2" role="group" aria-label="관심 타깃 카테고리">
+          {WATCHLIST_CATEGORIES.map(({ value, label }) => {
+            const on = watchlist.includes(value)
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={on}
+                disabled={savingWatchlist}
+                onClick={() => toggleWatch(value)}
+                className={on ? chipActiveClass : chipIdleClass}
+              >
+                {label}
+              </button>
+            )
+          })}
+        </div>
+      </section>
+    )
   }
 
   function onPickImage(file: File | undefined) {
@@ -233,6 +288,7 @@ export default function MyInfoClient() {
           setFormError(watched.message)
           return
         }
+        setWatchlist(watched.categories)
         const saved = await updateProfile({ email: email.trim() })
         if (!saved.ok) {
           setFormError(saved.message)
@@ -294,6 +350,7 @@ export default function MyInfoClient() {
         setFormError(watched.message)
         return
       }
+      setWatchlist(watched.categories)
 
       const saved = await updateProfile({ email: email.trim() })
       if (!saved.ok) {
@@ -383,9 +440,10 @@ export default function MyInfoClient() {
                   className={inputClass}
                 />
               </section>
+              {renderWatchlistChips()}
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || savingWatchlist}
                 className="w-full rounded-md bg-finsight-primary px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
               >
                 {saving ? "저장 중..." : "저장"}
@@ -455,35 +513,11 @@ export default function MyInfoClient() {
                 />
               </section>
 
-              <section className="space-y-2">
-                <span className="block text-sm font-medium text-gray-800">관심 타깃 카테고리</span>
-                <p className="text-xs text-gray-500">선택하면 바로 저장됩니다.</p>
-                <div className="flex flex-wrap gap-2">
-                  {WATCHLIST_CATEGORIES.map(({ value, label }) => {
-                    const on = watchlist.includes(value)
-                    return (
-                      <button
-                        key={value}
-                        type="button"
-                        disabled={saving}
-                        onClick={() => toggleWatch(value)}
-                        className={[
-                          "rounded-full border px-3 py-1.5 text-xs font-medium transition disabled:opacity-60",
-                          on
-                            ? "border-finsight-secondary bg-finsight-secondary/15 text-finsight-primary"
-                            : "border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300",
-                        ].join(" ")}
-                      >
-                        {label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </section>
+              {renderWatchlistChips()}
 
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || savingWatchlist}
                 className="w-full rounded-md bg-finsight-primary px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
               >
                 {saving ? "저장 중..." : "저장"}
