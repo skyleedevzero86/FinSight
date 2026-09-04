@@ -169,12 +169,16 @@ export async function fetchPublicPopupItems(options?: {
   params.set("page", "0")
   params.set("size", String(options?.size ?? 20))
   if (options?.domainId) params.set("domainId", options.domainId)
-  const res = await fetch(`/api/v1/popup/items?${params.toString()}`, { cache: "no-store" })
-  const payload = await readJson(res)
-  if (!res.ok) return { ok: false, message: readMessage(payload, "팝업을 불러오지 못했습니다.") }
-  const page = parsePage(payload)
-  if (!page) return { ok: false, message: "팝업 형식이 올바르지 않습니다." }
-  return { ok: true, data: page.content }
+  try {
+    const res = await fetch(`/api/v1/popup/items?${params.toString()}`, { cache: "no-store" })
+    const payload = await readJson(res)
+    if (!res.ok) return { ok: false, message: readMessage(payload, "팝업을 불러오지 못했습니다.") }
+    const page = parsePage(payload)
+    if (!page) return { ok: false, message: "팝업 형식이 올바르지 않습니다." }
+    return { ok: true, data: page.content }
+  } catch {
+    return { ok: false, message: "팝업을 불러오지 못했습니다." }
+  }
 }
 
 export async function fetchAdminPopupItems(options?: {

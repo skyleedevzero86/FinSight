@@ -115,12 +115,16 @@ export async function fetchPublicUlinkItems(options?: {
   params.set("size", String(options?.size ?? 50))
   if (options?.sectionCode) params.set("sectionCode", options.sectionCode)
   if (options?.domainId) params.set("domainId", options.domainId)
-  const res = await fetch(`/api/v1/ulink/items?${params.toString()}`, { cache: "no-store" })
-  const payload = await readJson(res)
-  if (!res.ok) return { ok: false, message: readMessage(payload, "통합링크를 불러오지 못했습니다.") }
-  const page = parsePage(payload)
-  if (!page) return { ok: false, message: "통합링크 형식이 올바르지 않습니다." }
-  return { ok: true, data: page.content }
+  try {
+    const res = await fetch(`/api/v1/ulink/items?${params.toString()}`, { cache: "no-store" })
+    const payload = await readJson(res)
+    if (!res.ok) return { ok: false, message: readMessage(payload, "통합링크를 불러오지 못했습니다.") }
+    const page = parsePage(payload)
+    if (!page) return { ok: false, message: "통합링크 형식이 올바르지 않습니다." }
+    return { ok: true, data: page.content }
+  } catch {
+    return { ok: false, message: "통합링크를 불러오지 못했습니다." }
+  }
 }
 
 export async function fetchAdminUlinkItems(options?: {
