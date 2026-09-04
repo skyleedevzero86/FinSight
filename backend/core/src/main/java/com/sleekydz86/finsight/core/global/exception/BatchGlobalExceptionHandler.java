@@ -25,12 +25,10 @@ public class BatchGlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(BatchGlobalExceptionHandler.class);
 
     private final MessageSource messageSource;
-
     @Autowired
     public BatchGlobalExceptionHandler(MessageSource messageSource) {
         this.messageSource = messageSource;
     }
-
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, Object>> handleResponseStatusException(
             ResponseStatusException ex, HttpServletRequest request) {
@@ -41,12 +39,13 @@ public class BatchGlobalExceptionHandler {
         }
         response.put("success", false);
         response.put("error", status.name());
-        response.put("message", ex.getReason() != null ? ex.getReason() : status.getReasonPhrase());
+        response.put("message", ex.getReason() != null && !ex.getReason().isBlank()
+                ? ex.getReason()
+                : "요청을 처리할 수 없습니다.");
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
         return ResponseEntity.status(status).body(response);
     }
-
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNoResourceFound(
             NoResourceFoundException ex, HttpServletRequest request) {
@@ -59,7 +58,6 @@ public class BatchGlobalExceptionHandler {
         response.put("path", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
-
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(
             DataIntegrityViolationException ex, HttpServletRequest request) {
@@ -72,7 +70,6 @@ public class BatchGlobalExceptionHandler {
         response.put("path", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
@@ -196,7 +193,6 @@ public class BatchGlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
-
     @ExceptionHandler(AuthenticationFailedException.class)
     public ResponseEntity<Map<String, Object>> handleAuthenticationFailedException(AuthenticationFailedException ex, HttpServletRequest request) {
         Locale locale = getLocale(request);

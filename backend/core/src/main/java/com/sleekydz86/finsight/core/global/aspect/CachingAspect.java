@@ -34,7 +34,7 @@ public class CachingAspect {
         String cacheKey = generateCacheKey(cacheable, className, methodName, args);
 
         if (cacheable.refresh()) {
-            logger.debug("Refreshing cache for {}.{}", className, methodName);
+            logger.debug("{}.{} 캐시 갱신", className, methodName);
             Object result = joinPoint.proceed();
             cacheManager.put(cacheName, cacheKey, result);
             return result;
@@ -42,11 +42,11 @@ public class CachingAspect {
 
         Object cachedResult = cacheManager.get(cacheName, cacheKey, Object.class);
         if (cachedResult != null) {
-            logger.debug("Cache hit for {}.{}", className, methodName);
+            logger.debug("{}.{} 캐시 적중", className, methodName);
             return cachedResult;
         }
 
-        logger.debug("Cache miss for {}.{}", className, methodName);
+        logger.debug("{}.{} 캐시 미적중", className, methodName);
         Object result = joinPoint.proceed();
         cacheManager.put(cacheName, cacheKey, result);
         return result;

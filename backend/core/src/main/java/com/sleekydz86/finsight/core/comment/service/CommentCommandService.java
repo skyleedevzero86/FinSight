@@ -1,7 +1,11 @@
 package com.sleekydz86.finsight.core.comment.service;
 
+import com.sleekydz86.finsight.core.board.domain.Board;
+import com.sleekydz86.finsight.core.board.domain.BoardType;
+import com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort;
 import com.sleekydz86.finsight.core.comment.domain.Comment;
 import com.sleekydz86.finsight.core.comment.domain.CommentStatus;
+import com.sleekydz86.finsight.core.comment.domain.CommentType;
 import com.sleekydz86.finsight.core.comment.domain.port.in.CommentCommandUseCase;
 import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentCreateRequest;
 import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentUpdateRequest;
@@ -12,6 +16,7 @@ import com.sleekydz86.finsight.core.comment.domain.port.out.CommentReportPersist
 import com.sleekydz86.finsight.core.comment.domain.CommentReport;
 import com.sleekydz86.finsight.core.comment.domain.CommentReaction;
 import com.sleekydz86.finsight.core.comment.domain.ReactionType;
+import com.sleekydz86.finsight.core.global.exception.BoardNotFoundException;
 import com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException;
 import com.sleekydz86.finsight.core.global.exception.NewsNotFoundException;
 import org.slf4j.Logger;
@@ -31,18 +36,33 @@ public class CommentCommandService implements CommentCommandUseCase {
     private final CommentPersistencePort commentPersistencePort;
     private final CommentReactionPersistencePort commentReactionPersistencePort;
     private final CommentReportPersistencePort commentReportPersistencePort;
+    private final BoardPersistencePort boardPersistencePort;
 
     public CommentCommandService(CommentPersistencePort commentPersistencePort,
                                  CommentReactionPersistencePort commentReactionPersistencePort,
-                                 CommentReportPersistencePort commentReportPersistencePort) {
+                                 CommentReportPersistencePort commentReportPersistencePort,
+                                 BoardPersistencePort boardPersistencePort) {
         this.commentPersistencePort = commentPersistencePort;
         this.commentReactionPersistencePort = commentReactionPersistencePort;
         this.commentReportPersistencePort = commentReportPersistencePort;
+        this.boardPersistencePort = boardPersistencePort;
     }
 
     @Override
-    public Comment createComment(String userEmail, CommentCreateRequest request) {
+    public Comment createComment(String userEmail, String userRole, CommentCreateRequest request) {
         log.info("댓글 생성 요청 - 사용자: {}, 대상 ID: {}", userEmail, request.getTargetId());
+
+        Board board = null;
+        if (request.getCommentType() == CommentType.BOARD) {
+            if (request.getTargetId() == null) {
+                throw new BoardNotFoundException(null, "댓글 대상 게시글을 찾을 수 없습니다");
+            }
+            board = boardPersistencePort.findById(request.getTargetId())
+                    .orElseThrow(() -> new BoardNotFoundException(request.getTargetId()));
+            if (board.getBoardType() == BoardType.QNA) {
+                assertCanCommentOnQna(board, userEmail, userRole);
+            }
+        }
 
         Comment comment = Comment.builder()
                 .content(request.getContent())
@@ -59,6 +79,10 @@ public class CommentCommandService implements CommentCommandUseCase {
                 .build();
 
         Comment savedComment = commentPersistencePort.save(comment);
+        if (board != null) {
+            Board updated = board.incrementComment();
+            boardPersistencePort.save(updated);
+        }
         log.info("댓글 생성 완료 - 댓글 ID: {}", savedComment.getId());
 
         return savedComment;
@@ -83,13 +107,16 @@ public class CommentCommandService implements CommentCommandUseCase {
     }
 
     @Override
-    public void deleteComment(String userEmail, Long commentId) {
-        log.info("댓글 삭제 요청 - 댓글 ID: {}, 사용자: {}", commentId, userEmail);
+    public void deleteComment(String userEmail, String userRole, Long commentId) {
+        log.info("댓글 삭제 요청 - 댓글 ID: {}, 사용자: {}, 권한: {}", commentId, userEmail, userRole);
 
         Comment comment = commentPersistencePort.findById(commentId)
                 .orElseThrow(() -> new NewsNotFoundException(commentId));
 
-        if (!comment.getAuthorEmail().equals(userEmail)) {
+        boolean isAuthor = comment.getAuthorEmail() != null && comment.getAuthorEmail().equalsIgnoreCase(userEmail);
+        boolean isManager = userRole != null && ("ADMIN".equalsIgnoreCase(userRole) || "MANAGER".equalsIgnoreCase(userRole));
+
+        if (!isAuthor && !isManager) {
             throw new InsufficientPermissionException("댓글 삭제 권한이 없습니다");
         }
 
@@ -113,33 +140,20 @@ public class CommentCommandService implements CommentCommandUseCase {
             CommentReaction reaction = existingReaction.get();
             if (reaction.isLike()) {
                 commentReactionPersistencePort.deleteByCommentIdAndUserEmail(commentId, userEmail);
-                Comment updatedComment = comment.incrementLike().incrementLike();
-                return commentPersistencePort.save(updatedComment);
-            } else {
-                commentReactionPersistencePort.deleteByCommentIdAndUserEmail(commentId, userEmail);
-                CommentReaction newReaction = CommentReaction.builder()
-                        .commentId(commentId)
-                        .userEmail(userEmail)
-                        .reactionType(ReactionType.LIKE)
-                        .createdAt(LocalDateTime.now())
-                        .build();
-                commentReactionPersistencePort.save(newReaction);
-
-                Comment updatedComment = comment.incrementLike().incrementDislike();
-                return commentPersistencePort.save(updatedComment);
+                return commentPersistencePort.save(comment.decrementLike());
             }
-        } else {
-            CommentReaction reaction = CommentReaction.builder()
-                    .commentId(commentId)
-                    .userEmail(userEmail)
-                    .reactionType(ReactionType.LIKE)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            commentReactionPersistencePort.save(reaction);
-
-            Comment updatedComment = comment.incrementLike();
-            return commentPersistencePort.save(updatedComment);
+            commentReactionPersistencePort.save(reaction.withType(ReactionType.LIKE));
+            return commentPersistencePort.save(comment.incrementLike().decrementDislike());
         }
+
+        CommentReaction reaction = CommentReaction.builder()
+                .commentId(commentId)
+                .userEmail(userEmail)
+                .reactionType(ReactionType.LIKE)
+                .createdAt(LocalDateTime.now())
+                .build();
+        commentReactionPersistencePort.save(reaction);
+        return commentPersistencePort.save(comment.incrementLike());
     }
 
     @Override
@@ -156,33 +170,20 @@ public class CommentCommandService implements CommentCommandUseCase {
             CommentReaction reaction = existingReaction.get();
             if (reaction.isDislike()) {
                 commentReactionPersistencePort.deleteByCommentIdAndUserEmail(commentId, userEmail);
-                Comment updatedComment = comment.incrementDislike().incrementDislike();
-                return commentPersistencePort.save(updatedComment);
-            } else {
-                commentReactionPersistencePort.deleteByCommentIdAndUserEmail(commentId, userEmail);
-                CommentReaction newReaction = CommentReaction.builder()
-                        .commentId(commentId)
-                        .userEmail(userEmail)
-                        .reactionType(ReactionType.DISLIKE)
-                        .createdAt(LocalDateTime.now())
-                        .build();
-                commentReactionPersistencePort.save(newReaction);
-
-                Comment updatedComment = comment.incrementDislike().incrementLike(); 
-                return commentPersistencePort.save(updatedComment);
+                return commentPersistencePort.save(comment.decrementDislike());
             }
-        } else {
-            CommentReaction reaction = CommentReaction.builder()
-                    .commentId(commentId)
-                    .userEmail(userEmail)
-                    .reactionType(ReactionType.DISLIKE)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            commentReactionPersistencePort.save(reaction);
-
-            Comment updatedComment = comment.incrementDislike();
-            return commentPersistencePort.save(updatedComment);
+            commentReactionPersistencePort.save(reaction.withType(ReactionType.DISLIKE));
+            return commentPersistencePort.save(comment.incrementDislike().decrementLike());
         }
+
+        CommentReaction reaction = CommentReaction.builder()
+                .commentId(commentId)
+                .userEmail(userEmail)
+                .reactionType(ReactionType.DISLIKE)
+                .createdAt(LocalDateTime.now())
+                .build();
+        commentReactionPersistencePort.save(reaction);
+        return commentPersistencePort.save(comment.incrementDislike());
     }
 
     @Override
@@ -227,5 +228,32 @@ public class CommentCommandService implements CommentCommandUseCase {
         commentPersistencePort.save(blockedComment);
 
         log.info("댓글 차단 완료 - 댓글 ID: {}", commentId);
+    }
+
+    private void assertCanCommentOnQna(Board board, String userEmail, String userRole) {
+        boolean isAuthor = board.getAuthorEmail() != null
+                && userEmail != null
+                && board.getAuthorEmail().equalsIgnoreCase(userEmail.trim());
+        boolean isStaff = isStaffRole(userRole);
+        if (!isAuthor && !isStaff) {
+            log.warn("Q&A 댓글 권한 거부 - 요청자: {}, 역할: {}, 글작성자: {}",
+                    userEmail, userRole, board.getAuthorEmail());
+            throw new InsufficientPermissionException(
+                    "QNA_COMMENT",
+                    "Q&A 댓글은 글 작성자와 관리자만 등록할 수 있습니다");
+        }
+        log.info("Q&A 댓글 권한 허용 - 요청자: {}, 역할: {}, 작성자여부: {}, 관리자여부: {}",
+                userEmail, userRole, isAuthor, isStaff);
+    }
+
+    private boolean isStaffRole(String userRole) {
+        if (userRole == null || userRole.isBlank()) {
+            return false;
+        }
+        String normalized = userRole.trim().toUpperCase();
+        if (normalized.startsWith("ROLE_")) {
+            normalized = normalized.substring(5);
+        }
+        return "ADMIN".equals(normalized) || "MANAGER".equals(normalized);
     }
 }

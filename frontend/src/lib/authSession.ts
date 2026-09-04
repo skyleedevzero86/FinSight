@@ -26,6 +26,13 @@ function parseAuthProvider(value: unknown): AuthProvider {
   return "WEB"
 }
 
+function normalizeRole(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "USER"
+  let role = value.trim()
+  if (role.toUpperCase().startsWith("ROLE_")) role = role.slice(5)
+  return role.toUpperCase()
+}
+
 export function parseAuthUser(payload: unknown): AuthUser | null {
   const root = asRecord(payload)
   if (!root) return null
@@ -36,11 +43,12 @@ export function parseAuthUser(payload: unknown): AuthUser | null {
   const idRaw = data.id
   const id = typeof idRaw === "number" ? idRaw : Number(idRaw)
   if (!email && !nicknameRaw) return null
+  const role = normalizeRole(data.role)
   return {
     id: Number.isFinite(id) ? id : 0,
     email,
     nickname: nicknameRaw || email.split("@")[0] || "회원",
-    role: typeof data.role === "string" ? data.role : "USER",
+    role,
     authProvider: parseAuthProvider(data.authProvider),
     profileImageUrl:
       typeof data.profileImageUrl === "string" && data.profileImageUrl

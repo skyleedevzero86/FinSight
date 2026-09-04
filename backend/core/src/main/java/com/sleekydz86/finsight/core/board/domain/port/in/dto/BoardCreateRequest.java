@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.core.board.domain.port.in.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sleekydz86.finsight.core.board.domain.BoardStatus;
 import com.sleekydz86.finsight.core.board.domain.BoardType;
 import jakarta.validation.constraints.NotBlank;
@@ -14,7 +16,7 @@ public class BoardCreateRequest {
     private final String title;
 
     @NotBlank(message = "내용은 필수입니다")
-    @Size(max = 10000, message = "내용은 10000자를 초과할 수 없습니다")
+    @Size(max = 100_000, message = "내용은 100000자를 초과할 수 없습니다")
     private final String content;
 
     @NotNull(message = "게시판 타입은 필수입니다")
@@ -36,8 +38,13 @@ public class BoardCreateRequest {
         this(title, content, boardType, hashtags, null);
     }
 
-    public BoardCreateRequest(String title, String content, BoardType boardType, List<String> hashtags,
-            BoardStatus status) {
+    @JsonCreator
+    public BoardCreateRequest(
+            @JsonProperty("title") String title,
+            @JsonProperty("content") String content,
+            @JsonProperty("boardType") BoardType boardType,
+            @JsonProperty("hashtags") List<String> hashtags,
+            @JsonProperty("status") BoardStatus status) {
         this.title = title;
         this.content = content;
         this.boardType = boardType;

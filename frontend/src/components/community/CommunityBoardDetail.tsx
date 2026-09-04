@@ -1,85 +1,155 @@
+"use client"
+
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import type { BoardDetail } from "@/lib/boardApi"
-import { formatAuthor, formatBoardDate } from "@/lib/boardApi"
+import { formatAuthor, formatBoardDate, unwrapApiData } from "@/lib/boardApi"
+import { authHeadersJson } from "@/lib/finsightToken"
+import { useAuthSession } from "@/components/AuthSessionProvider"
+import CommunityMarkdownPreview from "@/components/community/markdown/CommunityMarkdownPreview"
+import CommunityBoardComments from "@/components/community/CommunityBoardComments"
 
 type Props = {
   detail: BoardDetail
   basePath: string
+  enableComments?: boolean
+  commentsAuthorOnly?: boolean
 }
 
-export default function CommunityBoardDetail({ detail, basePath }: Props) {
-  const html = detail.renderedHtml?.trim()
+export default function CommunityBoardDetail({
+  detail: initialDetail,
+  basePath,
+  enableComments = false,
+  commentsAuthorOnly = false,
+}: Props) {
+  const [detail, setDetail] = useState(initialDetail)
+  const [accessError, setAccessError] = useState<string | null>(null)
+  const [commentCount, setCommentCount] = useState(initialDetail.commentCount)
+  const { user, ready } = useAuthSession()
+
+  const role = (user?.role ?? "").toUpperCase().replace(/^ROLE_/, "")
+  const isStaff = role === "ADMIN" || role === "MANAGER"
+  const isAuthor =
+    !!user?.email &&
+    !!detail.authorEmail &&
+    user.email.toLowerCase() === detail.authorEmail.toLowerCase()
+  const canEdit = ready && !!user && (isAuthor || isStaff)
+
+  useEffect(() => {
+    setDetail(initialDetail)
+    setCommentCount(initialDetail.commentCount)
+  }, [initialDetail])
+
+  useEffect(() => {
+    let cancelled = false
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/v1/boards/${initialDetail.id}?trackView=false`, {
+          headers: { Accept: "application/json", ...authHeadersJson() },
+          cache: "no-store",
+        })
+        if (cancelled) return
+        if (res.status === 403) {
+          setAccessError("비공개 글은 작성자와 관리자만 볼 수 있습니다.")
+          return
+        }
+        if (!res.ok) return
+        const payload: unknown = await res.json().catch(() => null)
+        const data = unwrapApiData<BoardDetail>(payload)
+        if (data) {
+          setDetail(data)
+          setCommentCount(data.commentCount)
+          setAccessError(null)
+        }
+      } catch {
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [initialDetail.id])
+
+  if (accessError) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-sm text-amber-900">
+        {accessError}
+        <div className="mt-4">
+          <Link href={basePath} className="fcb-md-action fcb-md-action--ghost">
+            목록으로
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   const nav = detail.navigation
   const prev = nav?.previous
   const next = nav?.next
+  const metaLine = [
+    detail.status === "PRIVATE" ? "비공개" : null,
+    formatAuthor(detail.authorEmail),
+    `조회 ${detail.viewCount}`,
+    `추천 ${detail.likeCount}`,
+    `댓글 ${commentCount}`,
+    formatBoardDate(detail.createdAt),
+  ]
+    .filter(Boolean)
+    .join(" · ")
 
   return (
-    <div className="bbs bbs_view bbs_basic">
-      <div className="bbs_view_head">
-        <h3 className="bbs_view_title">{detail.title}</h3>
-        <div className="bbs_view_meta flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-600">
-          <span>{formatAuthor(detail.authorEmail)}</span>
-          <span>조회 {detail.viewCount}</span>
-          <span>추천 {detail.likeCount}</span>
-          <span>댓글 {detail.commentCount}</span>
-          <span>{formatBoardDate(detail.createdAt)}</span>
-        </div>
-        {detail.hashtags && detail.hashtags.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1 text-sm text-finsight-primary">
-            {detail.hashtags.map((t) => (
-              <span key={t}>#{t}</span>
-            ))}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="bbs_view_body mt-6 border-t border-gray-200 pt-6">
-        {html ? (
-          <div
-            className="board-view prose prose-sm max-w-none text-gray-800 [&_a]:text-finsight-primary [&_img]:max-w-full [&_table]:w-full [&_table]:border-collapse [&_table]:text-[14px]"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
-        ) : (
-          <pre className="whitespace-pre-wrap font-sans text-[15px] leading-relaxed text-gray-800">
-            {detail.content}
-          </pre>
-        )}
-      </div>
+    <div className="fcb-md-detail">
+      <CommunityMarkdownPreview
+        title={detail.title}
+        markdown={detail.content || ""}
+        tags={detail.hashtags ?? []}
+        metaLine={metaLine}
+        eyebrow={detail.status === "PRIVATE" ? "비공개 글" : ""}
+        showTableOfContents
+        className="fcb-md-detail__preview"
+      />
 
       {(prev || next) && (
-        <div className="mt-8 grid gap-2 border-t border-gray-100 pt-4 text-sm">
+        <div className="fcb-md-nav">
           {prev ? (
-            <div>
-              <span className="text-gray-500">이전</span>{" "}
-              <Link href={`${basePath}/${prev.id}`} className="text-finsight-primary hover:underline">
-                {prev.title}
-              </Link>
-            </div>
-          ) : null}
+            <Link href={`${basePath}/${prev.id}`} className="fcb-md-nav__card">
+              <span className="fcb-md-nav__label">이전 글</span>
+              <strong className="fcb-md-nav__title">{prev.title}</strong>
+            </Link>
+          ) : (
+            <div className="fcb-md-nav__card fcb-md-nav__card--empty">이전 글이 없습니다</div>
+          )}
           {next ? (
-            <div>
-              <span className="text-gray-500">다음</span>{" "}
-              <Link href={`${basePath}/${next.id}`} className="text-finsight-primary hover:underline">
-                {next.title}
-              </Link>
-            </div>
-          ) : null}
+            <Link href={`${basePath}/${next.id}`} className="fcb-md-nav__card">
+              <span className="fcb-md-nav__label">다음 글</span>
+              <strong className="fcb-md-nav__title">{next.title}</strong>
+            </Link>
+          ) : (
+            <div className="fcb-md-nav__card fcb-md-nav__card--empty">다음 글이 없습니다</div>
+          )}
         </div>
       )}
 
-      <div className="mt-10 flex flex-wrap justify-between gap-3">
-        <Link
-          href={basePath}
-          className="inline-flex items-center rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-        >
+      {enableComments ? (
+        <CommunityBoardComments
+          boardId={detail.id}
+          boardAuthorEmail={detail.authorEmail}
+          boardType={detail.boardType}
+          commentsAuthorOnly={commentsAuthorOnly || detail.boardType === "QNA"}
+          initialCommentCount={detail.commentCount}
+          onCountChange={setCommentCount}
+        />
+      ) : null}
+
+      <div className="fcb-md-detail__footer">
+        <Link href={basePath} className="fcb-md-action fcb-md-action--ghost">
           목록
         </Link>
-        <Link
-          href={`${basePath}/${detail.id}/edit`}
-          className="inline-flex items-center rounded border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-        >
-          수정
-        </Link>
+        {canEdit ? (
+          <Link href={`${basePath}/${detail.id}/edit`} className="fcb-md-action fcb-md-action--ghost">
+            수정
+          </Link>
+        ) : null}
       </div>
     </div>
   )

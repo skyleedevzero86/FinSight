@@ -67,15 +67,13 @@ public class BoardCommandService implements BoardCommandUseCase {
     }
 
     @Override
-    public Board updateBoard(String userEmail, Long boardId, BoardUpdateRequest request) {
-        log.info("게시글 수정 요청 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
+    public Board updateBoard(String userEmail, String userRole, Long boardId, BoardUpdateRequest request) {
+        log.info("게시글 수정 요청 - 게시글 ID: {}, 사용자: {}, 권한: {}", boardId, userEmail, userRole);
 
         Board existingBoard = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
 
-        if (!existingBoard.getAuthorEmail().equals(userEmail)) {
-            throw new InsufficientPermissionException("게시글 수정 권한이 없습니다");
-        }
+        assertCanModifyBoard(existingBoard, userEmail, userRole);
 
         Board updatedBoard = existingBoard.updateContent(
                 request.getTitle(),
@@ -92,15 +90,13 @@ public class BoardCommandService implements BoardCommandUseCase {
     }
 
     @Override
-    public void deleteBoard(String userEmail, Long boardId) {
-        log.info("게시글 삭제 요청 - 게시글 ID: {}, 사용자: {}", boardId, userEmail);
+    public void deleteBoard(String userEmail, String userRole, Long boardId) {
+        log.info("게시글 삭제 요청 - 게시글 ID: {}, 사용자: {}, 권한: {}", boardId, userEmail, userRole);
 
         Board existingBoard = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
 
-        if (!existingBoard.getAuthorEmail().equals(userEmail)) {
-            throw new InsufficientPermissionException("게시글 삭제 권한이 없습니다");
-        }
+        assertCanModifyBoard(existingBoard, userEmail, userRole);
 
         boardPersistencePort.deleteById(boardId);
         log.info("게시글 삭제 완료 - 게시글 ID: {}", boardId);
@@ -267,8 +263,8 @@ public class BoardCommandService implements BoardCommandUseCase {
         Board board = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
 
-        if (!board.getAuthorEmail().equals(userEmail)) {
-            throw new InsufficientPermissionException("파일 업로드 권한이 없습니다");
+        if (!board.getAuthorEmail().equalsIgnoreCase(userEmail)) {
+            throw new InsufficientPermissionException("FILE_UPLOAD", "파일 업로드 권한이 없습니다");
         }
 
         BoardFile file = BoardFile.builder()
@@ -295,11 +291,36 @@ public class BoardCommandService implements BoardCommandUseCase {
         Board board = boardPersistencePort.findById(file.getBoardId())
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
 
-        if (!board.getAuthorEmail().equals(userEmail)) {
-            throw new InsufficientPermissionException("파일 삭제 권한이 없습니다");
+        if (!board.getAuthorEmail().equalsIgnoreCase(userEmail)) {
+            throw new InsufficientPermissionException("FILE_DELETE", "파일 삭제 권한이 없습니다");
         }
 
         boardFilePersistencePort.deleteById(fileId);
         log.info("게시글 파일 삭제 완료 - 파일 ID: {}", fileId);
+    }
+
+    private void assertCanModifyBoard(Board board, String userEmail, String userRole) {
+        boolean isAuthor = board.getAuthorEmail() != null
+                && userEmail != null
+                && board.getAuthorEmail().equalsIgnoreCase(userEmail.trim());
+        boolean isStaff = isStaffRole(userRole);
+        if (!isAuthor && !isStaff) {
+            log.warn("게시글 수정/삭제 권한 거부 - 요청자: {}, 역할: {}, 글작성자: {}",
+                    userEmail, userRole, board.getAuthorEmail());
+            throw new InsufficientPermissionException(
+                    "BOARD_MODIFY",
+                    "게시글은 작성자와 관리자만 수정·삭제할 수 있습니다");
+        }
+    }
+
+    private boolean isStaffRole(String userRole) {
+        if (userRole == null || userRole.isBlank()) {
+            return false;
+        }
+        String normalized = userRole.trim().toUpperCase();
+        if (normalized.startsWith("ROLE_")) {
+            normalized = normalized.substring(5);
+        }
+        return "ADMIN".equals(normalized) || "MANAGER".equals(normalized);
     }
 }

@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const n = parseInt(id, 10)
   if (!Number.isFinite(n)) return { title: "글 수정 | finsight" }
-  const d = await fetchBoardDetailServer(n)
+  const d = await fetchBoardDetailServer(n, { silent: true, trackView: false })
   if (!d) return { title: "글 수정 | finsight" }
   return { title: `${d.title} 수정 | Q&A | finsight` }
 }
@@ -20,12 +20,11 @@ export default async function CommunityQnaEditPage({ params }: Props) {
   const { id } = await params
   const n = parseInt(id, 10)
   if (!Number.isFinite(n)) notFound()
-  const detail = await fetchBoardDetailServer(n)
+  const detail = await fetchBoardDetailServer(n, { silent: true })
   if (!detail) notFound()
   const tags = (detail.hashtags ?? []).join(", ")
   return (
     <CommunityBoardLayout
-      active="qna"
       heading="Q&A"
       description="서비스 이용 중 궁금한 점을 남겨 주세요."
     >
@@ -34,9 +33,12 @@ export default async function CommunityQnaEditPage({ params }: Props) {
         boardType={COMMUNITY_SECTION_BOARD_TYPE.qna}
         basePath="/community/qna"
         boardId={detail.id}
+        authorEmail={detail.authorEmail}
         initialTitle={detail.title}
         initialContent={detail.content}
         initialTags={tags}
+        initialStatus={detail.status === "PRIVATE" ? "PRIVATE" : "ACTIVE"}
+        enableVisibility
       />
     </CommunityBoardLayout>
   )

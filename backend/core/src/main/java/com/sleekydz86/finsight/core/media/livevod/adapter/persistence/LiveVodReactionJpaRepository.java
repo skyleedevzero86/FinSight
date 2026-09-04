@@ -7,9 +7,12 @@ import org.springframework.data.repository.query.Param;
 import java.util.Optional;
 
 public interface LiveVodReactionJpaRepository extends JpaRepository<LiveVodReactionJpaEntity, Long> {
-    Optional<LiveVodReactionJpaEntity> findByUserEmailAndVideoId(String userEmail, String videoId);
 
-    long countByVideoIdAndReactionType(String videoId, String reactionType);
+Optional<LiveVodReactionJpaEntity> findByUserEmailAndVideoId(String userEmail, String videoId);
+
+
+long countByVideoIdAndReactionType(String videoId, String reactionType);
+
 
     @Query("""
             SELECT r.reactionType, COUNT(r)

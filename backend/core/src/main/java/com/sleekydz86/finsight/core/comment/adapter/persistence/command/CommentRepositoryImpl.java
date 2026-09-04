@@ -40,7 +40,7 @@ public class CommentRepositoryImpl implements CommentPersistencePort {
     @Override
     public Comments findByTargetIdAndType(Long targetId, CommentType commentType) {
         List<CommentJpaEntity> entities = commentJpaRepository
-                .findByTargetIdAndCommentTypeAndStatusOrderByCreatedAtDesc(
+                .findByTargetIdAndCommentTypeAndStatusAndParentIdIsNullOrderByCreatedAtDesc(
                         targetId, commentType, CommentStatus.ACTIVE);
         return commentJpaMapper.toDomainList(entities);
     }
@@ -49,7 +49,7 @@ public class CommentRepositoryImpl implements CommentPersistencePort {
     public Comments findByTargetIdAndTypeWithPagination(Long targetId, CommentType commentType, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<CommentJpaEntity> entityPage = commentJpaRepository
-                .findByTargetIdAndCommentTypeAndStatusOrderByCreatedAtDesc(
+                .findByTargetIdAndCommentTypeAndStatusAndParentIdIsNullOrderByCreatedAtDesc(
                         targetId, commentType, CommentStatus.ACTIVE, pageable);
 
         return commentJpaMapper.toDomainList(entityPage.getContent());

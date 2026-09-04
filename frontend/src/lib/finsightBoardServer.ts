@@ -37,7 +37,7 @@ export async function fetchBoardListServer(
   try {
     const res = await fetch(`${base}/api/v1/boards?${params.toString()}`, {
       headers: { Accept: "application/json" },
-      next: { revalidate: 0 },
+      next: { revalidate: 30, tags: [`boards:${input.boardType}`] },
     })
     if (!res.ok) {
       console.error(
@@ -60,18 +60,34 @@ export async function fetchBoardListServer(
 
 export async function fetchBoardDetailServer(
   boardId: number,
+  options?: { silent?: boolean; trackView?: boolean },
 ): Promise<BoardDetail | null> {
   const base = getServerBase()
   if (!base) return null
   try {
-    const res = await fetch(`${base}/api/v1/boards/${boardId}`, {
+    const trackView = options?.trackView ?? true
+    const url = new URL(`${base}/api/v1/boards/${boardId}`)
+    if (!trackView) url.searchParams.set("trackView", "false")
+
+    const res = await fetch(url.toString(), {
       headers: { Accept: "application/json" },
       next: { revalidate: 0 },
     })
     if (!res.ok) {
-      console.error(
-        `게시글 상세를 불러오지 못했습니다. 상태=${res.status} ${res.statusText} (${base})`,
-      )
+      if (!options?.silent) {
+        let bodySnippet = ""
+        try {
+          bodySnippet = await res.clone().text()
+        } catch {
+          bodySnippet = ""
+        }
+        bodySnippet = bodySnippet.trim().slice(0, 400)
+        console.error(
+          `게시글 상세를 불러오지 못했습니다. 상태=${res.status} ${res.statusText} (${base}) boardId=${boardId}${
+            bodySnippet ? ` body=${bodySnippet}` : ""
+          }`,
+        )
+      }
       return null
     }
     let json: unknown
@@ -82,7 +98,9 @@ export async function fetchBoardDetailServer(
     }
     return unwrapApiData<BoardDetail>(json)
   } catch (err) {
-    console.error("게시글 상세 요청 중 오류가 발생했습니다.", err)
+    if (!options?.silent) {
+      console.error("게시글 상세 요청 중 오류가 발생했습니다.", err)
+    }
     return null
   }
 }
@@ -100,6 +118,7 @@ export function mapListToBoardRows(
     date: formatDateServer(b.createdAt),
     hits: b.viewCount,
     hasFile: false,
+    privatePost: b.status === "PRIVATE",
   }))
 }
 

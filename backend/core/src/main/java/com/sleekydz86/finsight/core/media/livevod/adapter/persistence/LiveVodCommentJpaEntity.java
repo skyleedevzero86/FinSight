@@ -97,9 +97,11 @@ public class LiveVodCommentJpaEntity {
         return content;
     }
 
+
     public LiveVodCommentJpaEntity getParent() {
         return parent;
     }
+
 
     public Long getParentId() {
         if (parentId != null) {

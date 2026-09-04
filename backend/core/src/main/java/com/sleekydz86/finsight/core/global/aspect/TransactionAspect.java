@@ -40,18 +40,18 @@ public class TransactionAspect {
         TransactionStatus status = transactionManager.getTransaction(def);
 
         try {
-            logger.debug("Starting transaction for {}.{}", className, methodName);
+            logger.debug("{}.{} 트랜잭션 시작", className, methodName);
             Object result = joinPoint.proceed();
             transactionManager.commit(status);
-            logger.debug("Transaction committed for {}.{}", className, methodName);
+            logger.debug("{}.{} 트랜잭션 커밋", className, methodName);
             return result;
         } catch (Exception e) {
             if (shouldRollback(e, transactional)) {
                 transactionManager.rollback(status);
-                logger.debug("Transaction rolled back for {}.{} due to: {}", className, methodName, e.getMessage());
+                logger.debug("{}.{} 트랜잭션 롤백 (원인: {})", className, methodName, e.getMessage());
             } else {
                 transactionManager.commit(status);
-                logger.debug("Transaction committed for {}.{} despite exception: {}", className, methodName,
+                logger.debug("{}.{} 예외에도 불구하고 트랜잭션 커밋: {}", className, methodName,
                         e.getMessage());
             }
             throw e;
@@ -87,7 +87,7 @@ public class TransactionAspect {
             Class<?> targetClass = Class.forName(className);
             return targetClass.isAssignableFrom(exceptionClass);
         } catch (ClassNotFoundException e) {
-            logger.warn("Class not found: {}", className);
+            logger.warn("클래스를 찾을 수 없음: {}", className);
             return false;
         }
     }

@@ -9,9 +9,12 @@ import java.util.List;
 import java.util.Optional;
 
 public interface LiveVodCommentReactionJpaRepository extends JpaRepository<LiveVodCommentReactionJpaEntity, Long> {
-    Optional<LiveVodCommentReactionJpaEntity> findByUserEmailAndCommentId(String userEmail, Long commentId);
 
-    long countByCommentIdAndReactionType(Long commentId, String reactionType);
+Optional<LiveVodCommentReactionJpaEntity> findByUserEmailAndCommentId(String userEmail, Long commentId);
+
+
+long countByCommentIdAndReactionType(Long commentId, String reactionType);
+
 
     @Query("""
             SELECT r.commentId, r.reactionType, COUNT(r)
@@ -21,5 +24,6 @@ public interface LiveVodCommentReactionJpaRepository extends JpaRepository<LiveV
             """)
     List<Object[]> countGroupedByCommentIds(@Param("commentIds") Collection<Long> commentIds);
 
-    List<LiveVodCommentReactionJpaEntity> findByUserEmailAndCommentIdIn(String userEmail, Collection<Long> commentIds);
+
+List<LiveVodCommentReactionJpaEntity> findByUserEmailAndCommentIdIn(String userEmail, Collection<Long> commentIds);
 }

@@ -19,6 +19,50 @@ public interface BoardJpaRepository extends JpaRepository<BoardJpaEntity, Long> 
         Page<BoardJpaEntity> findByBoardTypeAndStatusOrderByCreatedAtDesc(
                         BoardType boardType, BoardStatus status, Pageable pageable);
 
+        @Query("""
+                        SELECT b FROM BoardJpaEntity b
+                        WHERE b.boardType = :boardType
+                          AND (
+                            b.status = com.sleekydz86.finsight.core.board.domain.BoardStatus.ACTIVE
+                            OR (
+                              b.status = com.sleekydz86.finsight.core.board.domain.BoardStatus.PRIVATE
+                              AND (
+                                :staffViewer = true
+                                OR (:viewerEmail IS NOT NULL AND b.authorEmail = :viewerEmail)
+                              )
+                            )
+                          )
+                        ORDER BY b.createdAt DESC
+                        """)
+        Page<BoardJpaEntity> findVisibleByBoardType(
+                        @Param("boardType") BoardType boardType,
+                        @Param("viewerEmail") String viewerEmail,
+                        @Param("staffViewer") boolean staffViewer,
+                        Pageable pageable);
+
+        @Query("""
+                        SELECT b FROM BoardJpaEntity b
+                        WHERE b.boardType = :boardType
+                          AND (
+                            b.status = com.sleekydz86.finsight.core.board.domain.BoardStatus.ACTIVE
+                            OR (
+                              b.status = com.sleekydz86.finsight.core.board.domain.BoardStatus.PRIVATE
+                              AND (
+                                :staffViewer = true
+                                OR (:viewerEmail IS NOT NULL AND b.authorEmail = :viewerEmail)
+                              )
+                            )
+                          )
+                          AND (b.title LIKE %:keyword% OR b.content LIKE %:keyword%)
+                        ORDER BY b.createdAt DESC
+                        """)
+        Page<BoardJpaEntity> findVisibleByBoardTypeAndKeyword(
+                        @Param("boardType") BoardType boardType,
+                        @Param("keyword") String keyword,
+                        @Param("viewerEmail") String viewerEmail,
+                        @Param("staffViewer") boolean staffViewer,
+                        Pageable pageable);
+
         Page<BoardJpaEntity> findByAuthorEmailAndStatusOrderByCreatedAtDesc(
                         String authorEmail, BoardStatus status, Pageable pageable);
 

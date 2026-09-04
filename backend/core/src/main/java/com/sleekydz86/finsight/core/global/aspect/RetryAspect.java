@@ -35,7 +35,7 @@ public class RetryAspect {
             try {
                 if (attempt > 1) {
                     long currentDelay = Math.min((long) (delay * Math.pow(multiplier, attempt - 2)), maxDelay);
-                    logger.info("Retrying {}.{} (attempt {}/{}) after {}ms delay",
+                    logger.info("{}.{} 재시도 (시도 {}/{}) - {}ms 지연 후",
                             className, methodName, attempt, maxAttempts, currentDelay);
                     Thread.sleep(currentDelay);
                 }
@@ -45,15 +45,15 @@ public class RetryAspect {
                 lastException = e;
 
                 if (shouldRetry(e, retryable)) {
-                    logger.warn("Attempt {}/{} failed for {}.{}: {}",
-                            attempt, maxAttempts, className, methodName, e.getMessage());
+                    logger.warn("{}.{} 시도 {}/{} 실패: {}",
+                            className, methodName, attempt, maxAttempts, e.getMessage());
 
                     if (attempt == maxAttempts) {
-                        logger.error("All {} attempts failed for {}.{}", maxAttempts, className, methodName);
+                        logger.error("{}.{} 총 {}회 시도 모두 실패", className, methodName, maxAttempts);
                         throw e;
                     }
                 } else {
-                    logger.error("Non-retryable exception in {}.{}: {}", className, methodName, e.getMessage());
+                    logger.error("{}.{}에서 재시도 불가 예외: {}", className, methodName, e.getMessage());
                     throw e;
                 }
             }

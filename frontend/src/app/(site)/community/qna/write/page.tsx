@@ -11,7 +11,6 @@ export const metadata: Metadata = {
 export default function CommunityQnaWritePage() {
   return (
     <CommunityBoardLayout
-      active="qna"
       heading="Q&A"
       description="서비스 이용 중 궁금한 점을 남겨 주세요."
     >
@@ -19,6 +18,7 @@ export default function CommunityQnaWritePage() {
         mode="create"
         boardType={COMMUNITY_SECTION_BOARD_TYPE.qna}
         basePath="/community/qna"
+        enableVisibility
       />
     </CommunityBoardLayout>
   )

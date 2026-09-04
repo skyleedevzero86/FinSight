@@ -57,9 +57,9 @@ public class EmailTemplateSeedRunner implements ApplicationRunner {
             }
             template.setUpdatedAt(LocalDateTime.now());
             emailTemplatePersistencePort.save(template);
-            log.info("email_templates {} 완료: {}", created ? "시드" : "갱신", VERIFICATION_CODE);
+            log.info("이메일 템플릿 {} 완료: {}", created ? "시드" : "갱신", VERIFICATION_CODE);
         } catch (Exception e) {
-            log.warn("email_templates 시드 실패: {}", e.getMessage());
+            log.warn("이메일 템플릿 시드 실패: {}", e.getMessage());
         }
     }
 
@@ -82,9 +82,9 @@ public class EmailTemplateSeedRunner implements ApplicationRunner {
             }
             template.setUpdatedAt(LocalDateTime.now());
             emailTemplatePersistencePort.save(template);
-            log.info("email_templates {} 완료: {}", created ? "시드" : "갱신", WELCOME);
+            log.info("이메일 템플릿 {} 완료: {}", created ? "시드" : "갱신", WELCOME);
         } catch (Exception e) {
-            log.warn("email_templates welcome 시드 실패: {}", e.getMessage());
+            log.warn("환영 이메일 템플릿 시드 실패: {}", e.getMessage());
         }
     }
 
@@ -107,9 +107,9 @@ public class EmailTemplateSeedRunner implements ApplicationRunner {
             }
             template.setUpdatedAt(LocalDateTime.now());
             emailTemplatePersistencePort.save(template);
-            log.info("email_templates {} 완료: {}", created ? "시드" : "갱신", ACCOUNT_SUSPENDED_NOTICE);
+            log.info("이메일 템플릿 {} 완료: {}", created ? "시드" : "갱신", ACCOUNT_SUSPENDED_NOTICE);
         } catch (Exception e) {
-            log.warn("email_templates account-suspended-notice 시드 실패: {}", e.getMessage());
+            log.warn("계정 정지 안내 이메일 템플릿 시드 실패: {}", e.getMessage());
         }
     }
 }

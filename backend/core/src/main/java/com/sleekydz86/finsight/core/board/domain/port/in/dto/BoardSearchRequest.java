@@ -17,6 +17,8 @@ public class BoardSearchRequest {
     private int size = 20;
     private String sortBy = "createdAt";
     private String sortDirection = "desc";
+    private String viewerEmail;
+    private boolean staffViewer;
 
     public BoardSearchRequest() {
     }
@@ -186,6 +188,22 @@ public class BoardSearchRequest {
 
     public void setSortDirection(String sortDirection) {
         this.sortDirection = sortDirection;
+    }
+
+    public String getViewerEmail() {
+        return viewerEmail;
+    }
+
+    public void setViewerEmail(String viewerEmail) {
+        this.viewerEmail = viewerEmail;
+    }
+
+    public boolean isStaffViewer() {
+        return staffViewer;
+    }
+
+    public void setStaffViewer(boolean staffViewer) {
+        this.staffViewer = staffViewer;
     }
 
     public enum SearchType {

@@ -259,10 +259,7 @@ public class AuthController {
     @LogExecution("현재 사용자 정보 조회")
     @PerformanceMonitor(threshold = 1000, metricName = "current_user_info")
     public ResponseEntity<ApiResponse<AuthenticatedUser>> getCurrentUser(
-            @CurrentUser(required = false) AuthenticatedUser currentUser) {
-        if (currentUser == null) {
-            return ResponseEntity.ok(ApiResponse.success(null, "로그인이 필요합니다"));
-        }
+            @CurrentUser AuthenticatedUser currentUser) {
         return ResponseEntity.ok(ApiResponse.success(currentUser, "현재 사용자 정보를 성공적으로 조회했습니다"));
     }
 }

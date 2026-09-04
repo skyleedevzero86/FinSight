@@ -21,6 +21,18 @@ public class CommentReactionRepositoryImpl implements CommentReactionPersistence
 
     @Override
     public CommentReaction save(CommentReaction reaction) {
+        if (reaction.getId() != null) {
+            return commentReactionJpaRepository.findById(reaction.getId())
+                    .map(existing -> {
+                        existing.setReactionType(reaction.getReactionType());
+                        return commentReactionJpaMapper.toDomain(commentReactionJpaRepository.save(existing));
+                    })
+                    .orElseGet(() -> persistNew(reaction));
+        }
+        return persistNew(reaction);
+    }
+
+    private CommentReaction persistNew(CommentReaction reaction) {
         CommentReactionJpaEntity entity = commentReactionJpaMapper.toEntity(reaction);
         CommentReactionJpaEntity savedEntity = commentReactionJpaRepository.save(entity);
         return commentReactionJpaMapper.toDomain(savedEntity);

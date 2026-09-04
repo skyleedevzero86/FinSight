@@ -8,6 +8,7 @@ import { validatePassword } from "@/lib/registration"
 import {
   approveAdminUser,
   canManageUsers,
+  changeAdminUserRole,
   deleteAdminUser,
   fetchAdminUsers,
   rejectAdminUser,
@@ -18,6 +19,7 @@ import {
   USER_STATUS_LABEL,
   type AdminUser,
   type RevealField,
+  type UserRole,
   type UserStatus,
 } from "@/lib/adminUsers"
 
@@ -290,7 +292,39 @@ export default function AdminUsersClient() {
                       <td className="px-2 py-3 text-sm text-gray-800">
                         {USER_STATUS_LABEL[row.status]}
                       </td>
-                      <td className="px-2 py-3 text-gray-700">{USER_ROLE_LABEL[row.role]}</td>
+                      <td className="px-2 py-3 text-gray-700">
+                        <select
+                          className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-800 disabled:opacity-50"
+                          value={row.role}
+                          disabled={
+                            saving ||
+                            row.role === "ADMIN" ||
+                            row.id === user?.id ||
+                            !canManageUsers(user?.role)
+                          }
+                          onChange={(e) => {
+                            const next = e.target.value as UserRole
+                            if (next === row.role) return
+                            if (
+                              !window.confirm(
+                                `${row.nickname} 권한을 ${USER_ROLE_LABEL[next]}(으)로 변경할까요?`,
+                              )
+                            ) {
+                              e.target.value = row.role
+                              return
+                            }
+                            void runAction(
+                              () => changeAdminUserRole(row.id, next),
+                              `권한을 ${USER_ROLE_LABEL[next]}(으)로 변경했습니다.`,
+                            )
+                          }}
+                          aria-label={`${row.nickname} 권한`}
+                        >
+                          <option value="USER">{USER_ROLE_LABEL.USER}</option>
+                          <option value="MANAGER">{USER_ROLE_LABEL.MANAGER}</option>
+                          <option value="ADMIN">{USER_ROLE_LABEL.ADMIN}</option>
+                        </select>
+                      </td>
                       <td className="px-2 py-3 text-gray-500">{formatDate(row.lastLoginAt)}</td>
                       <td className="px-2 py-3">
                         <div className="flex flex-wrap gap-1">

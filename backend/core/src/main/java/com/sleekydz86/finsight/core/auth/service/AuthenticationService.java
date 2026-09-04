@@ -13,6 +13,7 @@ import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.UserStatus;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.user.service.PasswordValidationService;
+import com.sleekydz86.finsight.core.user.service.PrivilegedAccountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +41,7 @@ public class AuthenticationService {
     private final UserPersistencePort userPersistencePort;
     private final PasswordEncoder passwordEncoder;
     private final PasswordValidationService passwordValidationService;
+    private final PrivilegedAccountService privilegedAccountService;
     private final boolean autoApproveOnRegister;
 
     public AuthenticationService(AuthenticationManager authenticationManager,
@@ -47,12 +49,14 @@ public class AuthenticationService {
                                  UserPersistencePort userPersistencePort,
                                  PasswordEncoder passwordEncoder,
                                  PasswordValidationService passwordValidationService,
+                                 PrivilegedAccountService privilegedAccountService,
                                  @Value("${finsight.auth.auto-approve-on-register:false}") boolean autoApproveOnRegister) {
         this.authenticationManager = authenticationManager;
         this.jwtTokenUtil = jwtTokenUtil;
         this.userPersistencePort = userPersistencePort;
         this.passwordEncoder = passwordEncoder;
         this.passwordValidationService = passwordValidationService;
+        this.privilegedAccountService = privilegedAccountService;
         this.autoApproveOnRegister = autoApproveOnRegister;
     }
 
@@ -80,6 +84,8 @@ public class AuthenticationService {
             if (user.getAuthProvider() == null) {
                 user.setAuthProvider(AuthProvider.WEB);
             }
+
+            user = privilegedAccountService.ensurePrivilegedRole(user);
 
             String email = user.getEmail();
             String accessToken = jwtTokenUtil.generateAccessToken(email, user.getRole());

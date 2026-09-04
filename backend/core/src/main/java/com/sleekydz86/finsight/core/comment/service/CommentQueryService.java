@@ -48,6 +48,9 @@ public class CommentQueryService implements CommentQueryUseCase {
 
         Comments commentsWithReplies = new Comments();
         for (Comment comment : comments.getComments()) {
+            if (comment.getParentId() != null) {
+                continue;
+            }
             List<Comment> replies = commentPersistencePort.findRepliesByParentId(comment.getId());
             Comment commentWithReplies = comment;
             for (Comment reply : replies) {
@@ -68,6 +71,9 @@ public class CommentQueryService implements CommentQueryUseCase {
 
         Comments commentsWithReplies = new Comments();
         for (Comment comment : comments.getComments()) {
+            if (comment.getParentId() != null) {
+                continue;
+            }
             List<Comment> replies = commentPersistencePort.findRepliesByParentId(comment.getId());
             Comment commentWithReplies = comment;
             for (Comment reply : replies) {

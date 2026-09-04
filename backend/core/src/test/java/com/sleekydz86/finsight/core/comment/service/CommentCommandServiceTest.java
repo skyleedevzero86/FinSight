@@ -33,6 +33,9 @@ class CommentCommandServiceTest {
     @Mock
     private CommentReportPersistencePort commentReportPersistencePort;
 
+    @Mock
+    private com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort boardPersistencePort;
+
     @InjectMocks
     private CommentCommandService commentCommandService;
 
@@ -70,7 +73,7 @@ class CommentCommandServiceTest {
         when(commentPersistencePort.save(any(Comment.class))).thenReturn(comment);
 
         
-        Comment result = commentCommandService.createComment("test@example.com", commentCreateRequest);
+        Comment result = commentCommandService.createComment("test@example.com", "USER", commentCreateRequest);
 
         
         assertThat(result).isNotNull();

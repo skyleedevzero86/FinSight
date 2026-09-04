@@ -174,11 +174,15 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
     }
 
     private Boards searchByKeyword(BoardSearchRequest request, Pageable pageable) {
-        var pageResult = boardJpaRepository.findByBoardTypeAndStatusAndTitleContainingOrContentContaining(
-                request.getBoardType(), BoardStatus.ACTIVE, request.getKeyword(), pageable);
+        var pageResult = boardJpaRepository.findVisibleByBoardTypeAndKeyword(
+                request.getBoardType(),
+                request.getKeyword(),
+                request.getViewerEmail(),
+                request.isStaffViewer(),
+                pageable);
 
         List<Board> boards = pageResult.getContent().stream()
-                .map(boardJpaMapper::toDomain)
+                .map(boardJpaMapper::toDomainListItem)
                 .toList();
 
         return new Boards(boards, pageResult.getTotalElements());
@@ -189,7 +193,8 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
                 request.getBoardType(), BoardStatus.ACTIVE, request.getHashtag(), pageable);
 
         List<Board> boards = pageResult.getContent().stream()
-                .map(boardJpaMapper::toDomain)
+                .map(boardJpaMapper::toDomainListItem)
+                .filter(board -> isVisibleToViewer(board, request))
                 .toList();
 
         return new Boards(boards, pageResult.getTotalElements());
@@ -201,20 +206,38 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
                 request.getStartDate(), request.getEndDate(), pageable);
 
         List<Board> boards = pageResult.getContent().stream()
-                .map(boardJpaMapper::toDomain)
+                .map(boardJpaMapper::toDomainListItem)
+                .filter(board -> isVisibleToViewer(board, request))
                 .toList();
 
         return new Boards(boards, pageResult.getTotalElements());
     }
 
     private Boards searchByBoardType(BoardSearchRequest request, Pageable pageable) {
-        var pageResult = boardJpaRepository.findByBoardTypeAndStatusOrderByCreatedAtDesc(
-                request.getBoardType(), BoardStatus.ACTIVE, pageable);
+        var pageResult = boardJpaRepository.findVisibleByBoardType(
+                request.getBoardType(),
+                request.getViewerEmail(),
+                request.isStaffViewer(),
+                pageable);
 
         List<Board> boards = pageResult.getContent().stream()
-                .map(boardJpaMapper::toDomain)
+                .map(boardJpaMapper::toDomainListItem)
                 .toList();
 
         return new Boards(boards, pageResult.getTotalElements());
+    }
+
+    private boolean isVisibleToViewer(Board board, BoardSearchRequest request) {
+        if (board.getStatus() == BoardStatus.ACTIVE) {
+            return true;
+        }
+        if (board.getStatus() != BoardStatus.PRIVATE) {
+            return false;
+        }
+        if (request.isStaffViewer()) {
+            return true;
+        }
+        String viewer = request.getViewerEmail();
+        return viewer != null && viewer.equalsIgnoreCase(board.getAuthorEmail());
     }
 }

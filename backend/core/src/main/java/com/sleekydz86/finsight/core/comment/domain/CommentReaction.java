@@ -34,6 +34,10 @@ public class CommentReaction {
         return reactionType == ReactionType.DISLIKE;
     }
 
+    public CommentReaction withType(ReactionType newType) {
+        return new CommentReaction(this.id, this.commentId, this.userEmail, newType, this.createdAt);
+    }
+
     public Long getId() { return id; }
     public Long getCommentId() { return commentId; }
     public String getUserEmail() { return userEmail; }

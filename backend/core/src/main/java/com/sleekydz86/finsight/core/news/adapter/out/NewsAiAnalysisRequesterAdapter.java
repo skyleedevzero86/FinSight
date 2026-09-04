@@ -111,17 +111,17 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
         for (AiModel alternativeModel : alternativeModels) {
             if (isModelAvailable(alternativeModel)) {
                 try {
-                    log.debug("Trying alternative model: {}", alternativeModel);
+                    log.debug("대체 모델 시도: {}", alternativeModel);
                     NewsAiRequester requester = aiRequesters.get(alternativeModel);
                     var aiChatRequest = createAiChatRequest(content);
                     var aiChatResponse = requester.request(aiChatRequest);
 
                     if (aiChatResponse != null && !aiChatResponse.getAnalyses().isEmpty()) {
-                        log.info("Alternative model {} succeeded", alternativeModel);
+                        log.info("대체 모델 {} 성공", alternativeModel);
                         return convertToNews(aiChatResponse, content);
                     }
                 } catch (Exception e) {
-                    log.warn("Alternative model {} failed: {}", alternativeModel, e.getMessage());
+                    log.warn("대체 모델 {} 실패: {}", alternativeModel, e.getMessage());
                     continue;
                 }
             }
@@ -131,7 +131,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
     }
 
     private List<News> generateBasicAnalysis(Content content) {
-        log.info("Generating basic analysis for content: {}", content.getTitle());
+        log.info("콘텐츠 기본 분석 생성: {}", content.getTitle());
 
         try {
             String basicOverview = extractBasicOverview(content);
@@ -160,7 +160,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
             return List.of(news);
 
         } catch (Exception e) {
-            log.error("Basic analysis generation failed", e);
+            log.error("기본 분석 생성 실패", e);
             
             var news = News.createWithoutAI(
                     new NewsMeta(NewsProvider.ALL, LocalDateTime.now(), "fallback"),
@@ -255,7 +255,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
 
     @Override
     public List<News> analyseNewsesBatch(AiModel model, List<Content> contents) {
-        log.info("Starting batch AI analysis with model: {} for {} contents", model, contents.size());
+        log.info("배치 AI 분석 시작 - 모델: {}, 콘텐츠 {}건", model, contents.size());
 
         return contents.parallelStream()
                 .map(content -> analyseNewses(model, content))
@@ -278,7 +278,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
             return aiRequesters.get(model);
         }
 
-        log.warn("Requested model {} is not available, selecting alternative", model);
+        log.warn("요청 모델 {} 사용 불가, 대체 모델 선택", model);
         return aiModelSelectionService.selectModelByPriority();
     }
 
@@ -351,12 +351,12 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
 
     private List<News> retryWithFallbackModel(Content content) {
         try {
-            log.info("Retrying AI analysis with fallback model");
+            log.info("폴백 모델로 AI 분석 재시도");
             NewsAiRequester fallbackRequester = aiModelSelectionService.selectModelByPriority();
             AiModel fallbackModel = fallbackRequester.supports();
             return analyseNewses(fallbackModel, content);
         } catch (Exception e) {
-            log.error("Fallback AI analysis also failed", e);
+            log.error("폴백 AI 분석도 실패", e);
             return List.of();
         }
     }

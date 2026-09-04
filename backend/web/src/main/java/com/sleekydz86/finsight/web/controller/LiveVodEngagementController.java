@@ -38,6 +38,7 @@ public class LiveVodEngagementController {
         this.liveVodEngagementService = liveVodEngagementService;
     }
 
+
     @GetMapping("/videos/live-vod")
     public ResponseEntity<ApiResponse<LiveVodFeedResponse>> getLiveVodFeed(
             @RequestParam(required = false, defaultValue = "ALL") String tab) {
@@ -46,12 +47,14 @@ public class LiveVodEngagementController {
         return ResponseEntity.ok(ApiResponse.success(enriched, "LIVE/VOD 피드를 성공적으로 조회했습니다."));
     }
 
+
     @GetMapping("/live-vod/{videoId}/meta")
     public ResponseEntity<ApiResponse<LiveVodMetaResponse>> getMeta(@PathVariable String videoId) {
         return ResponseEntity.ok(ApiResponse.success(
                 liveVodEngagementService.getMeta(videoId),
                 "영상 정보를 조회했습니다."));
     }
+
 
     @GetMapping("/live-vod/{videoId}/engagement")
     public ResponseEntity<ApiResponse<EngagementSummary>> getEngagement(
@@ -72,6 +75,7 @@ public class LiveVodEngagementController {
                 "즐겨찾기를 반영했습니다."));
     }
 
+
     @PostMapping("/live-vod/{videoId}/reaction")
     public ResponseEntity<ApiResponse<ReactionToggleResponse>> toggleReaction(
             @PathVariable String videoId,
@@ -82,6 +86,7 @@ public class LiveVodEngagementController {
                 liveVodEngagementService.toggleReaction(videoId, currentUser.getEmail(), reaction),
                 "반응을 반영했습니다."));
     }
+
 
     @GetMapping("/live-vod/{videoId}/comments")
     public ResponseEntity<ApiResponse<CommentPageResponse>> listComments(
@@ -94,6 +99,7 @@ public class LiveVodEngagementController {
                 liveVodEngagementService.listComments(videoId, page, size, email),
                 "댓글 목록을 조회했습니다."));
     }
+
 
     @GetMapping("/live-vod/{videoId}/comments/{parentId}/replies")
     public ResponseEntity<ApiResponse<ReplyPageResponse>> listReplies(
@@ -108,6 +114,7 @@ public class LiveVodEngagementController {
                 "대댓글 목록을 조회했습니다."));
     }
 
+
     @PostMapping("/live-vod/{videoId}/comments/{commentId}/reaction")
     public ResponseEntity<ApiResponse<ReactionToggleResponse>> toggleCommentReaction(
             @PathVariable String videoId,
@@ -119,6 +126,7 @@ public class LiveVodEngagementController {
                 liveVodEngagementService.toggleCommentReaction(commentId, currentUser.getEmail(), reaction),
                 "댓글 반응을 반영했습니다."));
     }
+
 
     @PostMapping("/live-vod/{videoId}/comments")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(

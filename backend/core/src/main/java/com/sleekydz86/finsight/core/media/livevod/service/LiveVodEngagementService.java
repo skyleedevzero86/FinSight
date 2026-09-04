@@ -73,6 +73,7 @@ public class LiveVodEngagementService {
         this.restTemplate = restTemplate;
     }
 
+
     @Transactional(readOnly = true)
     public LiveVodFeedResponse enrichFeed(LiveVodFeedResponse feed) {
         if (feed == null || feed.sections() == null || feed.sections().isEmpty()) {
@@ -103,12 +104,14 @@ public class LiveVodEngagementService {
                 sections);
     }
 
+
     @Transactional(readOnly = true)
     public EngagementSummary getEngagement(String videoId, String userEmail) {
         return summarizeOne(normalizeVideoId(videoId), userEmail);
     }
 
     private static final String PLACEHOLDER_TITLE = "VOD 상세";
+
 
     @Transactional(readOnly = true)
     public LiveVodMetaResponse getMeta(String videoId) {
@@ -166,6 +169,7 @@ public class LiveVodEngagementService {
         return oembed != null ? oembed : fallbackMeta(id);
     }
 
+
     private static boolean isUsableTitle(String title) {
         if (title == null) {
             return false;
@@ -173,6 +177,7 @@ public class LiveVodEngagementService {
         String trimmed = title.trim();
         return !trimmed.isEmpty() && !PLACEHOLDER_TITLE.equals(trimmed);
     }
+
 
     private static LiveVodMetaResponse fallbackMeta(String id) {
         return new LiveVodMetaResponse(
@@ -183,6 +188,7 @@ public class LiveVodEngagementService {
                 "https://www.youtube-nocookie.com/embed/" + id,
                 "https://www.youtube.com/watch?v=" + id);
     }
+
 
     @SuppressWarnings("unchecked")
     private LiveVodMetaResponse fetchOEmbedMeta(
@@ -215,6 +221,7 @@ public class LiveVodEngagementService {
         }
     }
 
+
     @Transactional
     public FavoriteToggleResponse toggleFavorite(String videoId, String userEmail) {
         String id = normalizeVideoId(videoId);
@@ -230,6 +237,7 @@ public class LiveVodEngagementService {
         }
         return new FavoriteToggleResponse(favorited, favoriteRepository.countByVideoId(id));
     }
+
 
     @Transactional
     public ReactionToggleResponse toggleReaction(String videoId, String userEmail, String reactionRaw) {
@@ -257,6 +265,7 @@ public class LiveVodEngagementService {
 
     public static final int ROOT_COMMENT_PAGE_SIZE = 15;
     public static final int REPLY_PAGE_SIZE = 5;
+
 
     @Transactional(readOnly = true)
     public CommentPageResponse listComments(String videoId, int page, int size, String viewerEmail) {
@@ -311,6 +320,7 @@ public class LiveVodEngagementService {
                 rootPage.hasNext());
     }
 
+
     @Transactional(readOnly = true)
     public ReplyPageResponse listReplies(String videoId, Long parentId, int page, int size, String viewerEmail) {
         String id = normalizeVideoId(videoId);
@@ -345,6 +355,7 @@ public class LiveVodEngagementService {
                 replyPage.hasPrevious());
     }
 
+
     @Transactional
     public ReactionToggleResponse toggleCommentReaction(Long commentId, String userEmail, String reactionRaw) {
         requireUser(userEmail);
@@ -374,6 +385,7 @@ public class LiveVodEngagementService {
         long dislikes = commentReactionRepository.countByCommentIdAndReactionType(comment.getId(), REACTION_DISLIKE);
         return new ReactionToggleResponse(myReaction, likes, dislikes);
     }
+
 
     @Transactional
     public CommentResponse createComment(
@@ -424,6 +436,7 @@ public class LiveVodEngagementService {
         return toComment(saved, List.of(), 0, 0, 0, empty);
     }
 
+
     private CommentResponse toComment(
             LiveVodCommentJpaEntity row,
             List<CommentResponse> replies,
@@ -449,6 +462,7 @@ public class LiveVodEngagementService {
                 counts[1],
                 mine);
     }
+
 
     private ReactionView loadCommentReactions(Collection<Long> commentIds, String viewerEmail) {
         if (commentIds == null || commentIds.isEmpty()) {
@@ -495,6 +509,7 @@ public class LiveVodEngagementService {
         }
     }
 
+
     private LiveVodFeedResponse.LiveVodItemResponse withCounts(
             LiveVodFeedResponse.LiveVodItemResponse item,
             Map<String, EngagementSummary> map) {
@@ -511,6 +526,7 @@ public class LiveVodEngagementService {
                 summary.favoriteCount(),
                 summary.commentCount());
     }
+
 
     private Map<String, EngagementSummary> summarizeMany(Set<String> videoIds, String userEmail) {
         Map<String, EngagementSummary> result = new HashMap<>();
@@ -546,6 +562,7 @@ public class LiveVodEngagementService {
         return result;
     }
 
+
     private EngagementSummary summarizeOne(String videoId, String userEmail) {
         long favoriteCount = favoriteRepository.countByVideoId(videoId);
         long commentCount = commentRepository.countByVideoId(videoId);
@@ -567,6 +584,7 @@ public class LiveVodEngagementService {
         }
     }
 
+
     private String findMyReactionSafe(String userEmail, String videoId) {
         try {
             return reactionRepository.findByUserEmailAndVideoId(userEmail, videoId)
@@ -576,6 +594,7 @@ public class LiveVodEngagementService {
             return null;
         }
     }
+
 
     private long[] reactionCounts(String videoId) {
         long likes = 0;
@@ -592,9 +611,11 @@ public class LiveVodEngagementService {
         return new long[]{likes, dislikes};
     }
 
+
     private static EngagementSummary emptySummary(String videoId) {
         return new EngagementSummary(videoId, 0, 0, null, 0, 0, null);
     }
+
 
     private static String normalizeReaction(String raw) {
         if (raw == null || raw.isBlank()) {
@@ -606,6 +627,7 @@ public class LiveVodEngagementService {
         }
         return value;
     }
+
 
     private static String normalizeVideoId(String videoId) {
         if (videoId == null || videoId.isBlank()) {

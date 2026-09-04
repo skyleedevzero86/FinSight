@@ -48,7 +48,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (bucket.tryConsume(1)) {
             filterChain.doFilter(request, response);
         } else {
-            logger.warn("Rate limit exceeded for path: {}", path);
+            logger.warn("경로 요청 한도 초과: {}", path);
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.getWriter().write("{\"error\":\"Rate limit exceeded\"}");
         }

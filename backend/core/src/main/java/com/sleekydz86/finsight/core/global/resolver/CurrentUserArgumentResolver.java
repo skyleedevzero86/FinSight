@@ -30,7 +30,9 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
     private final UserPersistencePort userPersistencePort;
     private final JwtTokenUtil jwtTokenUtil;
 
-    public CurrentUserArgumentResolver(UserPersistencePort userPersistencePort, JwtTokenUtil jwtTokenUtil) {
+    public CurrentUserArgumentResolver(
+            UserPersistencePort userPersistencePort,
+            JwtTokenUtil jwtTokenUtil) {
         this.userPersistencePort = userPersistencePort;
         this.jwtTokenUtil = jwtTokenUtil;
     }
@@ -58,24 +60,23 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             return null;
         }
 
-        if (!currentUserAnnotation.required()) {
-            return AuthenticatedUser.builder()
-                    .email(email)
-                    .build();
-        }
-
         try {
-            Optional<User> userOpt = userPersistencePort.findByEmail(email);
+            Optional<User> userOpt = userPersistencePort.findByEmail(email)
+                    .or(() -> userPersistencePort.findByUsername(email));
             if (userOpt.isEmpty()) {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+                if (currentUserAnnotation.required()) {
+                    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+                }
+                return null;
             }
 
             User user = userOpt.get();
+            String role = user.getRole() != null ? user.getRole().name() : "USER";
             return AuthenticatedUser.builder()
                     .id(user.getId())
                     .email(user.getEmail())
                     .nickname(user.getNickname() != null ? user.getNickname() : user.getUsername())
-                    .role(user.getRole().name())
+                    .role(role)
                     .authProvider(user.getAuthProvider() != null
                             ? user.getAuthProvider()
                             : com.sleekydz86.finsight.core.user.domain.AuthProvider.WEB)
@@ -84,8 +85,11 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (Exception e) {
-            log.error("Error resolving current user for email: {}", email, e);
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+            log.error("현재 사용자 정보를 확인하지 못했습니다: email={}", email, e);
+            if (currentUserAnnotation.required()) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+            }
+            return null;
         }
     }
 

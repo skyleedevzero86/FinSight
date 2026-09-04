@@ -39,7 +39,7 @@ public class StructuredLogger {
     }
 
     public void logPerformance(String operation, long duration, Map<String, Object> context) {
-        Map<String, Object> logData = createLogData("PERFORMANCE", "Operation completed", context);
+        Map<String, Object> logData = createLogData("PERFORMANCE", "작업 완료", context);
         logData.put("operation", operation);
         logData.put("duration", duration);
         logSafely(logger::info, logData);
@@ -55,7 +55,7 @@ public class StructuredLogger {
             String jsonString = objectMapper.writeValueAsString(logData);
             logFunction.log(jsonString);
         } catch (JsonProcessingException e) {
-            logger.warn("Failed to convert log data to JSON: {}", e.getMessage());
+            logger.warn("로그 데이터를 JSON으로 변환하지 못했습니다: {}", e.getMessage());
             logFunction.log(logData.toString());
         }
     }
@@ -66,7 +66,7 @@ public class StructuredLogger {
             logFunction.log(jsonString, throwable);
         } catch (JsonProcessingException e) {
             
-            logger.warn("Failed to convert log data to JSON: {}", e.getMessage());
+            logger.warn("로그 데이터를 JSON으로 변환하지 못했습니다: {}", e.getMessage());
             logFunction.log(logData.toString(), throwable);
         }
     }

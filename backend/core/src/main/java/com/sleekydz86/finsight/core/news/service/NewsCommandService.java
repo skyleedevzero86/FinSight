@@ -77,7 +77,7 @@ public class NewsCommandService implements NewsCommandUseCase {
     }
 
     public Newses scrapNewsesFallback(Exception e) {
-        log.error("Circuit Breaker 폴백 실행: {}", e.getMessage());
+        log.error("서킷 브레이커 폴백 실행: {}", e.getMessage());
         return new Newses(List.of());
     }
 }

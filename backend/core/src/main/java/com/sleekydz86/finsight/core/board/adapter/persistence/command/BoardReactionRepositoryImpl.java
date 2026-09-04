@@ -3,8 +3,10 @@ package com.sleekydz86.finsight.core.board.adapter.persistence.command;
 import com.sleekydz86.finsight.core.board.domain.BoardReaction;
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardReactionPersistencePort;
 import com.sleekydz86.finsight.core.comment.domain.ReactionType;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 @Component
@@ -40,5 +42,15 @@ public class BoardReactionRepositoryImpl implements BoardReactionPersistencePort
     @Override
     public long countByBoardIdAndReactionType(Long boardId, ReactionType reactionType) {
         return boardReactionJpaRepository.countByBoardIdAndReactionType(boardId, reactionType);
+    }
+
+    @Override
+    public List<BoardReaction> findByUserEmail(String userEmail, int page, int size) {
+        return boardReactionJpaRepository
+                .findByUserEmailOrderByCreatedAtDesc(userEmail, PageRequest.of(page, size))
+                .getContent()
+                .stream()
+                .map(boardReactionJpaMapper::toDomain)
+                .toList();
     }
 }

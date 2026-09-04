@@ -20,6 +20,7 @@ import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.UserStatus;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
+import com.sleekydz86.finsight.core.user.service.PrivilegedAccountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,6 +47,7 @@ public class SocialAuthService {
     private final UserPersistencePort userPersistencePort;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenUtil jwtTokenUtil;
+    private final PrivilegedAccountService privilegedAccountService;
 
     public SocialAuthService(
             NaverOAuthProperties naverOAuthProperties,
@@ -56,7 +58,8 @@ public class SocialAuthService {
             GoogleOAuthClient googleOAuthClient,
             UserPersistencePort userPersistencePort,
             PasswordEncoder passwordEncoder,
-            JwtTokenUtil jwtTokenUtil) {
+            JwtTokenUtil jwtTokenUtil,
+            PrivilegedAccountService privilegedAccountService) {
         this.naverOAuthProperties = naverOAuthProperties;
         this.naverOAuthClient = naverOAuthClient;
         this.kakaoOAuthProperties = kakaoOAuthProperties;
@@ -66,6 +69,7 @@ public class SocialAuthService {
         this.userPersistencePort = userPersistencePort;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenUtil = jwtTokenUtil;
+        this.privilegedAccountService = privilegedAccountService;
     }
 
     public Map<String, String> createNaverAuthorizeUrl() {
@@ -374,8 +378,9 @@ public class SocialAuthService {
     }
 
     private JwtToken issueToken(User user) {
-        String accessToken = jwtTokenUtil.generateAccessToken(user.getEmail(), user.getRole());
-        String refreshToken = jwtTokenUtil.generateRefreshToken(user.getEmail());
+        User privileged = privilegedAccountService.ensurePrivilegedRole(user);
+        String accessToken = jwtTokenUtil.generateAccessToken(privileged.getEmail(), privileged.getRole());
+        String refreshToken = jwtTokenUtil.generateRefreshToken(privileged.getEmail());
         return JwtToken.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)

@@ -27,7 +27,7 @@ public class H2TableConnectionTests {
                 )
                 .getResultList();
 
-        log.info("=== H2 Database Schema 조회 ===");
+        log.info("=== H2 데이터베이스 스키마 조회 ===");
 
         for (String tableName : tables) {
 
@@ -40,10 +40,10 @@ public class H2TableConnectionTests {
                     )
                     .getResultList();
 
-            log.info("Table: {}", tableName);
+            log.info("테이블: {}", tableName);
 
             for (Object[] column : columns) {
-                log.info("  Column: {}, Type: {}, Length: {}, Nullable: {}",
+                log.info("  컬럼: {}, 타입: {}, 길이: {}, NULL 허용: {}",
                         column[0], column[1], column[2], column[3]);
             }
         }

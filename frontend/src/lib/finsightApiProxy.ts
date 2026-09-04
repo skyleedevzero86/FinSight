@@ -43,7 +43,7 @@ function copyUpstreamHeaders(upstream: Response): Headers {
 export function finSightUnavailableResponse() {
   return jsonResponse(
     503,
-    "FINSIGHT_API_BASE_URL가 설정되지 않았습니다. .env.local에 백엔드 주소를 넣어 주세요.",
+    "백엔드 주소가 설정되지 않았습니다. 환경 설정을 확인해 주세요.",
   )
 }
 
@@ -67,12 +67,19 @@ function upstreamFailureResponse(err: unknown, aborted: boolean) {
       "백엔드 응답이 너무 느려 요청이 중단되었습니다. 잠시 후 다시 시도해 주세요.",
     )
   }
+  const message = err instanceof Error ? err.message : String(err ?? "")
+  const connectionClosed =
+    /ECONNRESET|ECONNREFUSED|ERR_CONNECTION_CLOSED|socket hang up|fetch failed/i.test(
+      message,
+    )
   if (process.env.NODE_ENV === "development") {
     console.error("백엔드 서버 연결에 실패했습니다.", err)
   }
   return jsonResponse(
-    503,
-    "백엔드 서버에 연결할 수 없습니다. 서버 상태를 확인한 뒤 잠시 후 다시 시도해 주세요.",
+    connectionClosed ? 503 : 503,
+    connectionClosed
+      ? "백엔드 연결이 끊겼습니다. 서버를 재시작한 뒤 새로고침해 주세요."
+      : "백엔드 서버에 연결할 수 없습니다. 서버 상태를 확인한 뒤 잠시 후 다시 시도해 주세요.",
   )
 }
 
@@ -173,6 +180,7 @@ export async function mirrorRequestToFinSight(
     const method = req.method
     const headers: Record<string, string> = {
       Accept: req.headers.get("accept") ?? "application/json",
+      Connection: "close",
       ...clientForwardHeaders(req),
     }
     const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
@@ -196,16 +204,22 @@ export async function mirrorRequestToFinSight(
 
     let upstream: Response
     try {
-      const body =
-        init?.body !== undefined
-          ? init.body
-          : method !== "GET" && method !== "HEAD"
-            ? await req.text()
-            : undefined
+      let body: BodyInit | undefined
+      if (init?.body !== undefined) {
+        body = init.body ?? undefined
+      } else if (method !== "GET" && method !== "HEAD") {
+        const contentTypeHeader = contentType?.toLowerCase() ?? ""
+        if (contentTypeHeader.includes("multipart/form-data")) {
+          body = await req.arrayBuffer()
+        } else {
+          const text = await req.text()
+          body = text === "" ? undefined : text
+        }
+      }
       upstream = await fetch(target, {
         method,
         headers,
-        body: body === "" ? undefined : body,
+        body,
         signal: controller.signal,
         cache: "no-store",
       })
