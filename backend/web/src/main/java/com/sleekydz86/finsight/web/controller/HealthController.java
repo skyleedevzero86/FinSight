@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
-@Tag(name = "헬스", description = "시스템 헬스·메트릭·외부 서비스 상태 API")
+@Tag(name = "헬스", description = "시스템 헬스·메트릭·외부 서비스 상태 API. 실시간 추이는 관리자 통계(/api/v1/admin/stats)에서 차트·폴링으로 제공합니다.")
 @SecurityRequirement(name = "BearerAuth")
 @RestController
 @RequestMapping("/api/v1/health")
@@ -33,7 +33,9 @@ public class HealthController {
         this.healthCommandUseCase = healthCommandUseCase;
     }
 
-    @Operation(summary = "시스템 상태 조회", description = "전체 시스템 헬스 상태를 조회합니다.")
+    @Operation(
+            summary = "시스템 상태 조회",
+            description = "전체 시스템 헬스 스냅샷을 조회합니다. 시계열·관리자 대시보드는 /api/v1/admin/stats 를 사용하세요.")
     @GetMapping
     @LogExecution("시스템 상태 조회")
     @PerformanceMonitor(threshold = 1000, operation = "health_check")
@@ -47,7 +49,9 @@ public class HealthController {
         }
     }
 
-    @Operation(summary = "시스템 메트릭 조회", description = "JVM·시스템 메트릭을 조회합니다.")
+    @Operation(
+            summary = "시스템 메트릭 조회",
+            description = "JVM·OS 메트릭 실시간 스냅샷. 일별 추이는 관리자 통계 charts/metrics 를 사용하세요.")
     @GetMapping("/metrics")
     @LogExecution("시스템 메트릭 조회")
     @PerformanceMonitor(threshold = 2000, operation = "health_metrics")
@@ -107,7 +111,9 @@ public class HealthController {
         }
     }
 
-    @Operation(summary = "상태 정보 새로고침", description = "헬스 상태를 재수집하고 저장합니다.")
+    @Operation(
+            summary = "상태 정보 새로고침",
+            description = "헬스 상태를 재수집하고 저장합니다. 관리자 UI는 POST /api/v1/admin/stats/health/refresh 를 사용합니다.")
     @PostMapping("/refresh")
     @LogExecution("상태 정보 새로고침")
     @PerformanceMonitor(threshold = 3000, operation = "health_refresh")

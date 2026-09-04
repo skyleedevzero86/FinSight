@@ -42,7 +42,7 @@ public class HealthJpaMapper {
             Map<String, Object> systemMetrics = objectMapper.readValue(entity.getSystemMetricsJson(), Map.class);
             Map<String, String> componentStatuses = objectMapper.readValue(entity.getComponentStatusesJson(), Map.class);
 
-            SystemMetrics metrics = new SystemMetrics();
+            SystemMetrics metrics = new SystemMetrics(jvmMetrics, systemMetrics);
             HealthStatus status = new HealthStatus(entity.getStatus(), entity.getMessage());
 
             Map<String, HealthStatus> componentHealthStatuses = componentStatuses.entrySet().stream()
@@ -51,7 +51,7 @@ public class HealthJpaMapper {
                             entry -> new HealthStatus(entry.getValue(), "")
                     ));
 
-            return new Health(entity.getId(), status, metrics, componentHealthStatuses);
+            return new Health(entity.getId(), status, metrics, componentHealthStatuses, entity.getCheckedAt());
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Failed to deserialize health data", e);
         }

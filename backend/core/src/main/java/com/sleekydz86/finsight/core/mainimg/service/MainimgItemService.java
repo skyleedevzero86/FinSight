@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.mainimg.domain.port.in.dto.MainimgItemCreate
 import com.sleekydz86.finsight.core.mainimg.domain.port.in.dto.MainimgItemResponse;
 import com.sleekydz86.finsight.core.mainimg.domain.port.in.dto.MainimgItemUpdateRequest;
 import com.sleekydz86.finsight.core.mainimg.domain.port.out.MainimgItemPersistencePort;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 public class MainimgItemService {
@@ -26,6 +28,8 @@ public class MainimgItemService {
 
     public PaginationResponse<MainimgItemResponse> list(
             String domainId, boolean reflectOnly, int page, int size) {
+        log.info("메인이미지 목록 서비스 - domainId={}, reflectOnly={}, page={}, size={}",
+                domainId, reflectOnly, page, size);
         var pg = persistencePort.findPage(blankToNull(domainId), reflectOnly, PageRequest.of(page, size));
         List<MainimgItemResponse> content = pg.getContent().stream()
                 .map(MainimgItemResponse::from)
@@ -39,6 +43,7 @@ public class MainimgItemService {
     }
 
     public MainimgItemResponse get(String id) {
+        log.info("메인이미지 상세 서비스 - id={}", id);
         return persistencePort.findById(id)
                 .map(MainimgItemResponse::from)
                 .orElseThrow(() -> new MainimgItemNotFoundException(id));
@@ -49,7 +54,9 @@ public class MainimgItemService {
         MainimgItem d = new MainimgItem();
         d.setId("IMG" + System.currentTimeMillis());
         apply(d, req);
-        return MainimgItemResponse.from(persistencePort.save(d));
+        MainimgItem saved = persistencePort.save(d);
+        log.info("메인이미지 등록 완료 - id={}", saved.getId());
+        return MainimgItemResponse.from(saved);
     }
 
     @Transactional
@@ -57,7 +64,9 @@ public class MainimgItemService {
         MainimgItem existing = persistencePort.findById(id)
                 .orElseThrow(() -> new MainimgItemNotFoundException(id));
         apply(existing, req);
-        return MainimgItemResponse.from(persistencePort.save(existing));
+        MainimgItem saved = persistencePort.save(existing);
+        log.info("메인이미지 수정 완료 - id={}", id);
+        return MainimgItemResponse.from(saved);
     }
 
     @Transactional
@@ -66,6 +75,7 @@ public class MainimgItemService {
             throw new MainimgItemNotFoundException(id);
         }
         persistencePort.deleteById(id);
+        log.info("메인이미지 삭제 완료 - id={}", id);
     }
 
     private static void apply(MainimgItem d, MainimgItemCreateRequest req) {

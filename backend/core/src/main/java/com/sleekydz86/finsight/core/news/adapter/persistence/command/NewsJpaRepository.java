@@ -41,4 +41,13 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.id != :newsId AND n.targetCategories LIKE %:category%")
     List<NewsJpaEntity> findRelatedNews(@Param("newsId") Long newsId, @Param("category") String category);
+
+    @Query(value = """
+            SELECT DATE(created_at) AS d, COUNT(*) AS c
+            FROM news
+            WHERE created_at >= :from AND created_at < :to
+            GROUP BY DATE(created_at)
+            ORDER BY d
+            """, nativeQuery = true)
+    List<Object[]> countCreatedByDay(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

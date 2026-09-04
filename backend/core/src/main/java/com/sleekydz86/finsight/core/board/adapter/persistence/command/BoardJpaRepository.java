@@ -164,4 +164,13 @@ public interface BoardJpaRepository extends JpaRepository<BoardJpaEntity, Long> 
                         @Param("status") BoardStatus status,
                         @Param("kw") String kw,
                         Pageable pageable);
+
+        @Query(value = """
+                        SELECT DATE(created_at) AS d, COUNT(*) AS c
+                        FROM boards
+                        WHERE created_at >= :from AND created_at < :to
+                        GROUP BY DATE(created_at)
+                        ORDER BY d
+                        """, nativeQuery = true)
+        List<Object[]> countCreatedByDay(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

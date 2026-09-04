@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
@@ -43,4 +44,13 @@ public interface CommentJpaRepository extends JpaRepository<CommentJpaEntity, Lo
     long countActiveCommentsByTargetAndType(@Param("targetId") Long targetId,
                                             @Param("commentType") CommentType commentType,
                                             @Param("status") CommentStatus status);
+
+    @Query(value = """
+            SELECT DATE(created_at) AS d, COUNT(*) AS c
+            FROM comments
+            WHERE created_at >= :from AND created_at < :to
+            GROUP BY DATE(created_at)
+            ORDER BY d
+            """, nativeQuery = true)
+    List<Object[]> countCreatedByDay(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

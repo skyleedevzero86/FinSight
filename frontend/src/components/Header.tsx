@@ -78,6 +78,14 @@ export default function Header() {
               {canManageUsers(user.role) ? (
                 <>
                   <span className="text-gray-400">|</span>
+                  <Link href="/admin/stats" className="hover:text-finsight-secondary transition">
+                    통계
+                  </Link>
+                  <span className="text-gray-400">|</span>
+                  <Link href="/admin/mainimg" className="hover:text-finsight-secondary transition">
+                    메인이미지
+                  </Link>
+                  <span className="text-gray-400">|</span>
                   <Link href="/admin/users" className="hover:text-finsight-secondary transition">
                     사용자 관리
                   </Link>
@@ -242,6 +250,22 @@ export default function Header() {
               ) : null}
               {user && canManageUsers(user.role) ? (
                 <>
+                  <li>
+                    <Link
+                      href="/admin/stats"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      통계
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/admin/mainimg"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      메인이미지
+                    </Link>
+                  </li>
                   <li>
                     <Link
                       href="/admin/users"

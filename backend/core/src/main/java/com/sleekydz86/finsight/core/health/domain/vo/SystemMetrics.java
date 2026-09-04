@@ -18,6 +18,12 @@ public class SystemMetrics {
         this.systemMetrics = collectSystemMetrics();
     }
 
+    public SystemMetrics(Map<String, Object> jvmMetrics, Map<String, Object> systemMetrics) {
+        this.timestamp = System.currentTimeMillis();
+        this.jvmMetrics = jvmMetrics != null ? jvmMetrics : Map.of();
+        this.systemMetrics = systemMetrics != null ? systemMetrics : Map.of();
+    }
+
     private Map<String, Object> collectJvmMetrics() {
         Map<String, Object> metrics = new HashMap<>();
 
