@@ -115,4 +115,19 @@ public class RedisConfig {
             throw new RuntimeException("Redis 템플릿 설정 실패", e);
         }
     }
+
+    @Bean(name = "customStringRedisTemplate")
+    public RedisTemplate<String, String> customStringRedisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, String> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+        StringRedisSerializer stringSerializer = new StringRedisSerializer();
+        template.setKeySerializer(stringSerializer);
+        template.setHashKeySerializer(stringSerializer);
+        template.setValueSerializer(stringSerializer);
+        template.setHashValueSerializer(stringSerializer);
+        template.setDefaultSerializer(stringSerializer);
+        template.afterPropertiesSet();
+        logger.info("String Redis 템플릿 생성 완료");
+        return template;
+    }
 }

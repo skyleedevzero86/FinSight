@@ -272,7 +272,7 @@ export default function AdminStatsClient() {
     setError(null)
     const [overviewResult, chartResult] = await Promise.all([
       fetchAdminStatsOverview(),
-      fetchAdminStatsChart(tab, days),
+      fetchAdminStatsChart(tab, { days }),
     ])
     setLoading(false)
     if (!overviewResult.ok) {

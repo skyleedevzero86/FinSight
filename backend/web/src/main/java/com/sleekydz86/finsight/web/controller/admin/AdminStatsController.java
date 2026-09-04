@@ -45,7 +45,7 @@ public class AdminStatsController {
     @GetMapping("/charts/{chartKey}")
     @Operation(
             summary = "시계열/분류 차트",
-            description = "관리자 통계 차트. 기간은 days(1~90, 기본 7).")
+            description = "관리자 통계 차트. days(1~90) 또는 from/to(yyyy-MM-dd)로 기간을 지정합니다.")
     public ResponseEntity<ApiResponse<AdminStatsChartResponse>> chart(
             @Parameter(
                     description = "차트 키",
@@ -56,10 +56,29 @@ public class AdminStatsController {
                     }))
             @PathVariable String chartKey,
             @Parameter(description = "조회 일수 (1~90)", example = "7")
-            @RequestParam(defaultValue = "7") int days) {
-        log.info("관리자 통계 차트 API 호출 - chartKey={}, days={}", chartKey, days);
-        AdminStatsChartResponse response = adminStatsService.chart(chartKey, days);
+            @RequestParam(required = false, defaultValue = "7") Integer days,
+            @Parameter(description = "시작일 (yyyy-MM-dd)", example = "2026-08-01")
+            @RequestParam(required = false) String from,
+            @Parameter(description = "종료일 (yyyy-MM-dd)", example = "2026-09-05")
+            @RequestParam(required = false) String to) {
+        log.info("관리자 통계 차트 API 호출 - chartKey={}, days={}, from={}, to={}", chartKey, days, from, to);
+        AdminStatsChartResponse response = adminStatsService.chart(
+                chartKey,
+                days,
+                parseDate(from),
+                parseDate(to));
         return ResponseEntity.ok(ApiResponse.success(response, "통계 차트를 조회했습니다"));
+    }
+
+    private java.time.LocalDate parseDate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return java.time.LocalDate.parse(value.trim());
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @PostMapping("/health/refresh")

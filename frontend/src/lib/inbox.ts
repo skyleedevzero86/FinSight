@@ -120,6 +120,9 @@ function parseSettings(payload: unknown): InboxSettings {
 
 export async function fetchInboxUnreadCount(): Promise<number> {
   if (!readAccessToken()) return 0
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    throw new Error("offline")
+  }
   const res = await fetch("/api/v1/inbox/unread-count", {
     headers: authHeadersJson(),
     cache: "no-store",

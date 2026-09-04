@@ -68,14 +68,32 @@ public class AdminStatsService {
     }
 
     public AdminStatsChartResponse chart(String chartKey, Integer days) {
-        int resolvedDays = clampDays(days);
+        return chart(chartKey, days, null, null);
+    }
+
+    public AdminStatsChartResponse chart(String chartKey, Integer days, LocalDate fromDate, LocalDate toDate) {
         String key = chartKey == null ? "" : chartKey.trim().toLowerCase(Locale.ROOT);
-        LocalDate to = LocalDate.now();
-        LocalDate from = to.minusDays(resolvedDays - 1L);
+        LocalDate to = toDate != null ? toDate : LocalDate.now();
+        LocalDate from;
+        if (fromDate != null) {
+            from = fromDate;
+        } else {
+            int resolvedDays = clampDays(days);
+            from = to.minusDays(resolvedDays - 1L);
+        }
+        if (from.isAfter(to)) {
+            LocalDate swap = from;
+            from = to;
+            to = swap;
+        }
+        long span = java.time.temporal.ChronoUnit.DAYS.between(from, to) + 1;
+        if (span > MAX_DAYS) {
+            from = to.minusDays(MAX_DAYS - 1L);
+        }
         LocalDateTime fromDateTime = from.atStartOfDay();
         LocalDateTime toExclusive = to.plusDays(1).atStartOfDay();
 
-        log.info("관리자 통계 차트 조회 - key={}, days={}, from={}, to={}", key, resolvedDays, from, to);
+        log.info("관리자 통계 차트 조회 - key={}, from={}, to={}", key, from, to);
 
         return switch (key) {
             case "signups" -> buildDailyChart(

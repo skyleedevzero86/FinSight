@@ -18,6 +18,13 @@ export default function NotificationBellButton() {
       setUnread(0)
       return
     }
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      failStreakRef.current += 1
+      return
+    }
     try {
       const count = await fetchInboxUnreadCount()
       setUnread(count)
@@ -30,10 +37,27 @@ export default function NotificationBellButton() {
   useEffect(() => {
     void refreshUnread()
     const timer = window.setInterval(() => {
-      if (failStreakRef.current >= 5) return
+      if (failStreakRef.current >= 3) return
       void refreshUnread()
     }, 30000)
-    return () => window.clearInterval(timer)
+
+    function onOnline() {
+      failStreakRef.current = 0
+      void refreshUnread()
+    }
+    function onVisible() {
+      if (document.visibilityState !== "visible") return
+      failStreakRef.current = 0
+      void refreshUnread()
+    }
+
+    window.addEventListener("online", onOnline)
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener("online", onOnline)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [refreshUnread])
 
   useEffect(() => {

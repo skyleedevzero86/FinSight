@@ -191,9 +191,16 @@ export async function fetchAdminStatsOverview(): Promise<
 
 export async function fetchAdminStatsChart(
   chartKey: AdminStatsChartKey,
-  days: number,
+  options?: { days?: number; from?: string; to?: string },
 ): Promise<{ ok: true; data: AdminStatsChart } | { ok: false; message: string }> {
-  const res = await fetch(`/api/v1/admin/stats/charts/${chartKey}?days=${days}`, {
+  const qs = new URLSearchParams()
+  if (options?.from && options?.to) {
+    qs.set("from", options.from)
+    qs.set("to", options.to)
+  } else {
+    qs.set("days", String(options?.days ?? 7))
+  }
+  const res = await fetch(`/api/v1/admin/stats/charts/${chartKey}?${qs.toString()}`, {
     headers: authHeadersJson(),
     cache: "no-store",
   })

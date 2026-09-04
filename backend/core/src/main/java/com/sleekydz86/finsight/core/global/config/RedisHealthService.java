@@ -27,11 +27,11 @@ public class RedisHealthService {
         try {
             String testKey = "health:check:" + System.currentTimeMillis();
             redisTemplate.opsForValue().set(testKey, "test", 10, TimeUnit.SECONDS);
-            String value = (String) redisTemplate.opsForValue().get(testKey);
+            Object value = redisTemplate.opsForValue().get(testKey);
             redisTemplate.delete(testKey);
 
             boolean isAvailable = "test".equals(value);
-            logger.info("Redis 연결 상태: {}", isAvailable ? "정상" : "비정상");
+            logger.debug("Redis 연결 상태: {}", isAvailable ? "정상" : "비정상");
             return isAvailable;
 
         } catch (Exception e) {
@@ -39,7 +39,7 @@ public class RedisHealthService {
             while (cause.getCause() != null && cause.getCause() != cause) {
                 cause = cause.getCause();
             }
-            logger.error("Redis 연결 확인 실패: {} ({})", e.getMessage(), cause.getMessage());
+            logger.warn("Redis 연결 확인 실패: {} ({})", e.getMessage(), cause.getMessage());
             return false;
         }
     }

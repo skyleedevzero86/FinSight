@@ -15,8 +15,8 @@ import com.sleekydz86.finsight.core.notification.service.SmsNotificationService;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,7 +27,6 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class AccountRecoveryService {
 
     private final UserService userService;
@@ -47,6 +46,25 @@ public class AccountRecoveryService {
 
     private static final String RECOVERY_TOKEN_PREFIX = "recovery:token:";
     private static final String RECOVERY_OTP_PREFIX = "recovery:otp:";
+
+    public AccountRecoveryService(
+            UserService userService,
+            OtpService otpService,
+            EmailNotificationService emailNotificationService,
+            SmsNotificationService smsNotificationService,
+            PasswordEncoder passwordEncoder,
+            JwtTokenUtil jwtTokenUtil,
+            @Qualifier("customStringRedisTemplate") RedisTemplate<String, String> redisTemplate,
+            ClientRequestMetaResolver requestMetaResolver) {
+        this.userService = userService;
+        this.otpService = otpService;
+        this.emailNotificationService = emailNotificationService;
+        this.smsNotificationService = smsNotificationService;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtTokenUtil = jwtTokenUtil;
+        this.redisTemplate = redisTemplate;
+        this.requestMetaResolver = requestMetaResolver;
+    }
 
     @Transactional
     public AccountRecoveryResponse initiateAccountRecovery(

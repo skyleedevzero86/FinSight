@@ -1,81 +1,218 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import { canManageUsers } from "@/lib/adminUsers"
 import {
-  fetchHealthDatabase,
-  fetchHealthExternal,
-  fetchHealthMetrics,
-  fetchSystemHealth,
-  refreshHealthStatus,
-  type HealthMetricsView,
-  type HealthStatusView,
-  type SystemHealthView,
-} from "@/lib/health"
+  fetchAdminStatsChart,
+  fetchAdminStatsOverview,
+  refreshAdminHealth,
+  type AdminStatsChart,
+  type AdminStatsNamedSeries,
+  type AdminStatsOverview,
+  type HealthStatusSnapshot,
+  type MetricsSnapshot,
+} from "@/lib/adminStats"
 
-const primaryButtonClass =
-  "rounded bg-finsight-primary px-4 py-2 text-sm text-white hover:bg-finsight-primary/90 disabled:opacity-50"
+type PeriodMode = "daily" | "weekly" | "monthly" | "custom"
 
-const buttonClass =
-  "rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-50"
+const SERIES_COLORS = ["#22c55e", "#f59e0b", "#3b82f6", "#ef4444", "#a855f7"]
 
-function statusTone(status: string | undefined): string {
-  const s = (status ?? "").toUpperCase()
-  if (s === "UP" || s === "HEALTHY") return "text-emerald-700 bg-emerald-50 border-emerald-200"
-  if (s === "DOWN" || s === "UNHEALTHY") return "text-red-700 bg-red-50 border-red-200"
-  return "text-amber-800 bg-amber-50 border-amber-200"
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
 }
 
-function StatusCard({
+function daysAgoIso(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - (days - 1))
+  return d.toISOString().slice(0, 10)
+}
+
+function formatDayLabel(iso: string): string {
+  if (iso.length >= 10 && iso.includes("-")) {
+    return iso.slice(5, 10).replace("-", "/")
+  }
+  return iso
+}
+
+function statusRank(status: string | undefined): "critical" | "warning" | "ok" | "info" {
+  const s = (status ?? "").toUpperCase()
+  if (s === "DOWN" || s === "UNHEALTHY") return "critical"
+  if (s === "UNKNOWN" || s === "DEGRADED") return "warning"
+  if (s === "UP" || s === "HEALTHY") return "ok"
+  return "info"
+}
+
+function statusColor(status: string | undefined): string {
+  const rank = statusRank(status)
+  if (rank === "critical") return "border-red-200 bg-red-50 text-red-800"
+  if (rank === "warning") return "border-amber-200 bg-amber-50 text-amber-900"
+  if (rank === "ok") return "border-emerald-200 bg-emerald-50 text-emerald-800"
+  return "border-sky-200 bg-sky-50 text-sky-900"
+}
+
+function Gauge({
+  label,
+  percent,
+  sub,
+}: {
+  label: string
+  percent: number | null
+  sub?: string
+}) {
+  const value = percent == null || !Number.isFinite(percent) ? null : Math.max(0, Math.min(100, percent))
+  const tone =
+    value == null ? "#9ca3af" : value >= 85 ? "#ef4444" : value >= 60 ? "#f59e0b" : "#10b981"
+  const r = 42
+  const semi = Math.PI * r
+  const dash = value == null ? 0 : (semi * value) / 100
+
+  return (
+    <div className="flex flex-col items-center rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <svg viewBox="0 0 120 80" className="h-20 w-28">
+        <path
+          d="M18 70 A42 42 0 0 1 102 70"
+          fill="none"
+          stroke="#e5e7eb"
+          strokeWidth="10"
+          strokeLinecap="round"
+        />
+        <path
+          d="M18 70 A42 42 0 0 1 102 70"
+          fill="none"
+          stroke={tone}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${semi}`}
+        />
+        <text x="60" y="62" textAnchor="middle" fill="#111827" fontSize="18" fontWeight="700">
+          {value == null ? "-" : `${Math.round(value)}%`}
+        </text>
+      </svg>
+      <p className="mt-1 text-sm font-medium text-gray-800">{label}</p>
+      {sub ? <p className="mt-0.5 text-xs text-gray-500">{sub}</p> : null}
+    </div>
+  )
+}
+
+function MiniLineChart({
   title,
-  status,
+  unit,
+  series,
+  rangeLabel,
 }: {
   title: string
-  status: HealthStatusView | null | undefined
+  unit: string
+  series: AdminStatsNamedSeries[]
+  rangeLabel: string
 }) {
-  if (!status) {
-    return (
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <p className="text-sm font-medium text-gray-800">{title}</p>
-        <p className="mt-2 text-sm text-gray-400">데이터 없음</p>
-      </div>
-    )
+  const width = 640
+  const height = 220
+  const padL = 40
+  const padR = 120
+  const padT = 20
+  const padB = 36
+  const plotW = width - padL - padR
+  const plotH = height - padT - padB
+
+  const labels = useMemo(() => series[0]?.points.map((p) => p.date) ?? [], [series])
+  const maxValue = useMemo(() => {
+    let max = 0
+    for (const s of series) {
+      for (const p of s.points) max = Math.max(max, p.value)
+    }
+    return Math.max(1, Math.ceil(max / 5) * 5)
+  }, [series])
+
+  function xAt(index: number): number {
+    const n = Math.max(labels.length, 1)
+    if (n <= 1) return padL + plotW / 2
+    return padL + (plotW * index) / (n - 1)
   }
+
+  function yAt(value: number): number {
+    return padT + plotH - (plotH * value) / maxValue
+  }
+
   return (
-    <div className={`rounded-lg border p-4 ${statusTone(status.status)}`}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium">{title}</p>
-        <span className="text-xs font-semibold tracking-wide">{status.status}</span>
+    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+          <p className="text-xs text-gray-500">{rangeLabel}</p>
+        </div>
+        <span className="text-xs text-gray-400">단위: {unit}</span>
       </div>
-      {status.message ? <p className="mt-2 text-sm opacity-90">{status.message}</p> : null}
+      <div className="overflow-x-auto">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-auto min-w-[480px] w-full">
+          {[0, 0.25, 0.5, 0.75, 1].map((t) => {
+            const y = padT + plotH * (1 - t)
+            const tick = Math.round(maxValue * t)
+            return (
+              <g key={t}>
+                <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="#e5e7eb" strokeWidth="1" />
+                <text x={padL - 8} y={y + 4} textAnchor="end" fill="#9ca3af" fontSize="10">
+                  {tick}
+                </text>
+              </g>
+            )
+          })}
+          {labels.map((label, i) =>
+            i % Math.max(1, Math.floor(labels.length / 6)) === 0 || i === labels.length - 1 ? (
+              <text
+                key={`${label}-${i}`}
+                x={xAt(i)}
+                y={height - 10}
+                textAnchor="middle"
+                fill="#6b7280"
+                fontSize="10"
+              >
+                {formatDayLabel(label)}
+              </text>
+            ) : null,
+          )}
+          {series.map((s, si) => {
+            const color = SERIES_COLORS[si % SERIES_COLORS.length]
+            const pts = s.points.map((p, i) => `${xAt(i)},${yAt(p.value)}`).join(" ")
+            return (
+              <g key={s.name || s.label}>
+                <polyline fill="none" stroke={color} strokeWidth="2" points={pts} />
+              </g>
+            )
+          })}
+          {series.map((s, si) => {
+            const color = SERIES_COLORS[si % SERIES_COLORS.length]
+            const y = padT + 4 + si * 18
+            return (
+              <g key={`lg-${s.name}`}>
+                <rect x={width - padR + 10} y={y} width="10" height="10" fill={color} rx="2" />
+                <text x={width - padR + 26} y={y + 9} fill="#374151" fontSize="11">
+                  {s.label}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
+      </div>
     </div>
   )
 }
 
-function MetricTable({ title, data }: { title: string; data: Record<string, unknown> }) {
-  const entries = Object.entries(data)
-  return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <p className="text-sm font-medium text-gray-900">{title}</p>
-      {entries.length === 0 ? (
-        <p className="mt-3 text-sm text-gray-400">메트릭 없음</p>
-      ) : (
-        <dl className="mt-3 grid gap-2 sm:grid-cols-2">
-          {entries.map(([key, value]) => (
-            <div key={key} className="rounded border border-gray-100 bg-gray-50 px-3 py-2">
-              <dt className="text-xs text-gray-500">{key}</dt>
-              <dd className="mt-0.5 break-all text-sm font-medium text-gray-900">
-                {typeof value === "object" ? JSON.stringify(value) : String(value)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      )}
-    </div>
-  )
+function collectStatuses(overview: AdminStatsOverview | null): { name: string; snap: HealthStatusSnapshot }[] {
+  if (!overview) return []
+  const hs = overview.healthSnapshot
+  const list: { name: string; snap: HealthStatusSnapshot }[] = []
+  if (hs.overall) list.push({ name: "전체", snap: hs.overall })
+  if (hs.database) list.push({ name: "DB", snap: hs.database })
+  if (hs.redis) list.push({ name: "Redis", snap: hs.redis })
+  if (hs.externalApis) {
+    for (const [k, v] of Object.entries(hs.externalApis)) {
+      list.push({ name: k, snap: v })
+    }
+  }
+  return list
 }
 
 export default function AdminHealthClient() {
@@ -83,38 +220,51 @@ export default function AdminHealthClient() {
   const { user, ready } = useAuthSession()
   const allowed = Boolean(user && canManageUsers(user.role))
 
-  const [health, setHealth] = useState<SystemHealthView | null>(null)
-  const [metrics, setMetrics] = useState<HealthMetricsView | null>(null)
-  const [database, setDatabase] = useState<HealthStatusView | null>(null)
-  const [external, setExternal] = useState<Record<string, HealthStatusView>>({})
+  const [period, setPeriod] = useState<PeriodMode>("weekly")
+  const [customFrom, setCustomFrom] = useState(daysAgoIso(14))
+  const [customTo, setCustomTo] = useState(todayIso())
+  const [overview, setOverview] = useState<AdminStatsOverview | null>(null)
+  const [healthChart, setHealthChart] = useState<AdminStatsChart | null>(null)
+  const [metricsChart, setMetricsChart] = useState<AdminStatsChart | null>(null)
   const [loading, setLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null)
 
-  const loadAll = useCallback(async () => {
+  const rangeQuery = useMemo(() => {
+    if (period === "daily") return { days: 1 as number }
+    if (period === "weekly") return { days: 7 as number }
+    if (period === "monthly") return { days: 30 as number }
+    return { from: customFrom, to: customTo }
+  }, [period, customFrom, customTo])
+
+  const rangeLabel = useMemo(() => {
+    if (period === "daily") return `${todayIso()} (일별)`
+    if (period === "weekly") return `${daysAgoIso(7)} ~ ${todayIso()} (주별)`
+    if (period === "monthly") return `${daysAgoIso(30)} ~ ${todayIso()} (월별)`
+    return `${customFrom} ~ ${customTo} (기간별)`
+  }, [period, customFrom, customTo])
+
+  const load = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const [h, m, d, e] = await Promise.all([
-      fetchSystemHealth(),
-      fetchHealthMetrics(),
-      fetchHealthDatabase(),
-      fetchHealthExternal(),
+    const [ov, health, metrics] = await Promise.all([
+      fetchAdminStatsOverview(),
+      fetchAdminStatsChart("health", rangeQuery),
+      fetchAdminStatsChart("metrics", rangeQuery),
     ])
     setLoading(false)
-
-    const errors: string[] = []
-    if (h.ok) setHealth(h.health)
-    else errors.push(h.message)
-    if (m.ok) setMetrics(m.metrics)
-    else errors.push(m.message)
-    if (d.ok) setDatabase(d.status)
-    else errors.push(d.message)
-    if (e.ok) setExternal(e.services)
-    else errors.push(e.message)
-
-    if (errors.length) setError(errors[0] ?? null)
-  }, [])
+    if (!ov.ok) {
+      setError(ov.message)
+      return
+    }
+    setOverview(ov.data)
+    if (health.ok) setHealthChart(health.data)
+    else setError(health.message)
+    if (metrics.ok) setMetricsChart(metrics.data)
+    else if (health.ok) setError(metrics.message)
+    setUpdatedAt(new Date().toLocaleString("ko-KR"))
+  }, [rangeQuery])
 
   useEffect(() => {
     if (!ready) return
@@ -124,119 +274,255 @@ export default function AdminHealthClient() {
     }
     if (!canManageUsers(user.role)) {
       router.replace("/")
-      return
     }
-    void loadAll()
-  }, [ready, user, router, loadAll])
+  }, [ready, user, router])
+
+  useEffect(() => {
+    if (!allowed) return
+    void load()
+  }, [allowed, load])
+
+  useEffect(() => {
+    if (!allowed) return
+    const id = window.setInterval(() => {
+      void load()
+    }, 30_000)
+    return () => window.clearInterval(id)
+  }, [allowed, load])
 
   async function onRefresh() {
     setRefreshing(true)
-    setMessage(null)
     setError(null)
-    const result = await refreshHealthStatus()
+    const result = await refreshAdminHealth()
     setRefreshing(false)
     if (!result.ok) {
       setError(result.message)
       return
     }
-    setMessage("상태를 새로고침했습니다.")
-    await loadAll()
+    await load()
   }
 
-  if (!ready || !user) {
-    return <div className="min-h-[40vh]" />
-  }
-
-  if (!allowed) {
+  if (!ready || !allowed) {
     return (
-      <section className="mx-auto max-w-5xl px-4 py-12">
-        <p className="text-sm text-red-600">관리자 권한이 필요합니다.</p>
-      </section>
+      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-gray-500">
+        권한을 확인하는 중…
+      </div>
     )
   }
 
-  const componentEntries = Object.entries(health?.components ?? {})
-  const externalEntries = Object.entries(external)
+  const metrics: MetricsSnapshot | undefined = overview?.metricsSnapshot
+  const statuses = collectStatuses(overview)
+  const critical = statuses.filter((s) => statusRank(s.snap.status) === "critical").length
+  const warning = statuses.filter((s) => statusRank(s.snap.status) === "warning").length
+  const okCount = statuses.filter((s) => statusRank(s.snap.status) === "ok").length
+
+  const heapPct = metrics?.heapUsagePercent ?? null
+  const loadAvg = metrics?.systemLoadAverage
+  const loadPct =
+    loadAvg == null || loadAvg < 0 || !metrics?.processors
+      ? null
+      : Math.min(100, (loadAvg / Math.max(metrics.processors, 1)) * 100)
+  const threadPct =
+    metrics?.threadCount == null ? null : Math.min(100, (metrics.threadCount / 200) * 100)
+
+  const infoCards = [
+    { label: "OS", value: "Windows / JVM" },
+    { label: "CPU Core", value: metrics?.processors != null ? String(metrics.processors) : "-" },
+    {
+      label: "Heap",
+      value:
+        metrics != null
+          ? `${Math.round(metrics.heapUsedMb)} / ${Math.round(metrics.heapMaxMb)} MB`
+          : "-",
+    },
+    { label: "Threads", value: metrics?.threadCount != null ? String(metrics.threadCount) : "-" },
+    { label: "Load Avg", value: loadAvg != null && loadAvg >= 0 ? loadAvg.toFixed(2) : "N/A" },
+    {
+      label: "DB",
+      value: overview?.healthSnapshot.database?.status ?? "-",
+    },
+    {
+      label: "Redis",
+      value: overview?.healthSnapshot.redis?.status ?? "-",
+    },
+    {
+      label: "회원",
+      value: overview != null ? String(overview.totalUsers) : "-",
+    },
+  ]
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-10 md:px-6 md:py-12">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">서버상황</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            시스템 헬스·메트릭·DB·외부 서비스 상태. 추이 차트는{" "}
-            <Link href="/admin/stats" className="text-finsight-primary underline-offset-2 hover:underline">
-              통계
-            </Link>
-            에서 확인할 수 있습니다.
-          </p>
+    <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+      <div className="overflow-hidden rounded border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-[#3d4654] px-5 py-3 text-white">
+          <div>
+            <h1 className="text-base font-medium tracking-tight">
+              서버상황 <span className="text-[#7CFC00]">FinSight</span>
+            </h1>
+            <p className="mt-0.5 text-xs text-gray-300">
+              헬스·메트릭 모니터링 ·{" "}
+              <Link href="/admin/stats" className="text-[#7CFC00] underline-offset-2 hover:underline">
+                전체 통계
+              </Link>
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-200">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#7CFC00]" />
+              30초 폴링
+            </span>
+            {updatedAt ? <span>갱신 {updatedAt}</span> : null}
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={loading}
+              className="rounded border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
+            >
+              {loading ? "조회 중…" : "다시 조회"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void onRefresh()}
+              disabled={refreshing}
+              className="rounded border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
+            >
+              {refreshing ? "재수집 중…" : "상태 새로고침"}
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className={buttonClass} disabled={loading} onClick={() => void loadAll()}>
-            {loading ? "불러오는 중…" : "다시 조회"}
-          </button>
-          <button
-            type="button"
-            className={primaryButtonClass}
-            disabled={refreshing || loading}
-            onClick={() => void onRefresh()}
-          >
-            {refreshing ? "새로고침 중…" : "상태 새로고침"}
-          </button>
+
+        <div className="flex flex-wrap items-end gap-3 border-b border-gray-100 px-5 py-4">
+          {(
+            [
+              ["daily", "일별"],
+              ["weekly", "주별"],
+              ["monthly", "월별"],
+              ["custom", "기간별"],
+            ] as const
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setPeriod(key)}
+              className={
+                period === key
+                  ? "rounded bg-finsight-primary px-3 py-1.5 text-sm font-medium text-white"
+                  : "rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+              }
+            >
+              {label}
+            </button>
+          ))}
+          {period === "custom" ? (
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="rounded border border-gray-300 bg-white px-2 py-1.5 text-gray-800"
+              />
+              <span className="text-gray-400">~</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="rounded border border-gray-300 bg-white px-2 py-1.5 text-gray-800"
+              />
+              <button
+                type="button"
+                onClick={() => void load()}
+                className="rounded border border-finsight-primary px-3 py-1.5 text-finsight-primary hover:bg-finsight-primary/5"
+              >
+                검색
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="space-y-6 px-5 py-6">
+          {error ? (
+            <p className="text-sm text-red-600" role="alert">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {infoCards.map((card) => (
+              <div
+                key={card.label}
+                className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3"
+              >
+                <p className="text-xs text-gray-500">{card.label}</p>
+                <p className="mt-1 truncate text-lg font-semibold text-gray-900">{card.value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg bg-red-600 px-4 py-5 text-center text-white shadow-sm">
+              <p className="text-sm font-medium opacity-90">Critical</p>
+              <p className="mt-1 text-3xl font-bold">{critical}</p>
+            </div>
+            <div className="rounded-lg bg-amber-500 px-4 py-5 text-center text-white shadow-sm">
+              <p className="text-sm font-medium opacity-90">Warning</p>
+              <p className="mt-1 text-3xl font-bold">{warning}</p>
+            </div>
+            <div className="rounded-lg bg-sky-600 px-4 py-5 text-center text-white shadow-sm">
+              <p className="text-sm font-medium opacity-90">Healthy</p>
+              <p className="mt-1 text-3xl font-bold">{okCount}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Gauge label="Heap Usage" percent={heapPct} sub="JVM Heap" />
+            <Gauge
+              label="CPU Load"
+              percent={loadPct}
+              sub={loadAvg != null && loadAvg >= 0 ? `load ${loadAvg.toFixed(2)}` : "Windows N/A"}
+            />
+            <Gauge
+              label="Threads"
+              percent={threadPct}
+              sub={metrics?.threadCount != null ? `${metrics.threadCount} threads` : undefined}
+            />
+            <Gauge
+              label="Processors"
+              percent={metrics?.processors != null ? Math.min(100, metrics.processors * 12.5) : null}
+              sub={metrics?.processors != null ? `${metrics.processors} cores` : undefined}
+            />
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-sm font-semibold text-gray-800">구성 요소 상태</h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {statuses.map(({ name, snap }) => (
+                <div key={name} className={`rounded-lg border p-3 ${statusColor(snap.status)}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-medium">{name}</span>
+                    <span className="text-xs font-bold tracking-wide">{snap.status}</span>
+                  </div>
+                  {snap.message ? <p className="mt-2 text-xs opacity-90">{snap.message}</p> : null}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <MiniLineChart
+              title="시스템 헬스 추이"
+              unit={healthChart?.unit ?? "건"}
+              series={healthChart?.series ?? []}
+              rangeLabel={rangeLabel}
+            />
+            <MiniLineChart
+              title="JVM 메트릭 추이"
+              unit={metricsChart?.unit ?? "%"}
+              series={metricsChart?.series ?? []}
+              rangeLabel={rangeLabel}
+            />
+          </div>
         </div>
       </div>
-
-      {error ? (
-        <p className="mt-4 text-sm text-red-600" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {message ? (
-        <p className="mt-4 text-sm text-emerald-700" role="status">
-          {message}
-        </p>
-      ) : null}
-
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <StatusCard title="전체 상태" status={health?.status} />
-        <StatusCard title="데이터베이스" status={database} />
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <p className="text-sm font-medium text-gray-800">점검 시각</p>
-          <p className="mt-2 text-sm text-gray-700">{health?.checkedAt ?? "-"}</p>
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <h2 className="text-lg font-medium text-gray-900">구성 요소</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {componentEntries.length ? (
-            componentEntries.map(([name, status]) => (
-              <StatusCard key={name} title={name} status={status} />
-            ))
-          ) : (
-            <p className="text-sm text-gray-400">구성 요소 상태 없음</p>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <h2 className="text-lg font-medium text-gray-900">외부 서비스</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {externalEntries.length ? (
-            externalEntries.map(([name, status]) => (
-              <StatusCard key={name} title={name} status={status} />
-            ))
-          ) : (
-            <p className="text-sm text-gray-400">외부 서비스 상태 없음</p>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-8 space-y-4">
-        <h2 className="text-lg font-medium text-gray-900">시스템 메트릭</h2>
-        <MetricTable title="JVM" data={metrics?.jvm ?? health?.metrics.jvm ?? {}} />
-        <MetricTable title="System" data={metrics?.system ?? health?.metrics.system ?? {}} />
-      </div>
-    </section>
+    </div>
   )
 }
