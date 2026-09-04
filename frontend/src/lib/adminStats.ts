@@ -63,6 +63,7 @@ export type MetricsSnapshot = {
   threadCount: number
   processors: number
   systemLoadAverage: number
+  cpuUsagePercent: number | null
   timestamp: number
 }
 
@@ -117,13 +118,15 @@ function parseHealthStatus(raw: unknown): HealthStatusSnapshot | undefined {
 function parseMetricsSnapshot(raw: unknown): MetricsSnapshot | undefined {
   const o = asRecord(raw)
   if (!o) return undefined
+  const cpuRaw = Number(o.cpuUsagePercent)
   return {
     heapUsedMb: Number(o.heapUsedMb) || 0,
     heapMaxMb: Number(o.heapMaxMb) || 0,
     heapUsagePercent: Number(o.heapUsagePercent) || 0,
     threadCount: Number(o.threadCount) || 0,
     processors: Number(o.processors) || 0,
-    systemLoadAverage: Number(o.systemLoadAverage) || 0,
+    systemLoadAverage: Number(o.systemLoadAverage),
+    cpuUsagePercent: Number.isFinite(cpuRaw) && cpuRaw >= 0 ? cpuRaw : null,
     timestamp: Number(o.timestamp) || 0,
   }
 }

@@ -38,11 +38,11 @@ public class ExternalHealthCheckAdapter implements ExternalHealthCheckPort {
     public HealthStatus checkDatabaseHealth() {
         try (Connection connection = dataSource.getConnection()) {
             if (connection.isValid(5)) {
-                return new HealthStatus("UP", "Database is healthy");
+                return new HealthStatus("UP", "DB가 정상입니다");
             }
-            return new HealthStatus("DOWN", "Database connection validation failed");
+            return new HealthStatus("DOWN", "DB 연결 검증에 실패했습니다");
         } catch (Exception e) {
-            return new HealthStatus("DOWN", "Database health check failed: " + e.getMessage());
+            return new HealthStatus("DOWN", "DB 헬스체크 실패: " + e.getMessage());
         }
     }
 
@@ -54,11 +54,11 @@ public class ExternalHealthCheckAdapter implements ExternalHealthCheckPort {
         }
         try {
             if (redisHealthService.isRedisAvailable()) {
-                return new HealthStatus("UP", "Redis is healthy");
+                return new HealthStatus("UP", "Redis가 정상입니다");
             }
-            return new HealthStatus("DOWN", "Redis connection check failed");
+            return new HealthStatus("DOWN", "Redis 연결 확인에 실패했습니다");
         } catch (Exception e) {
-            return new HealthStatus("DOWN", "Redis health check failed: " + e.getMessage());
+            return new HealthStatus("DOWN", "Redis 헬스체크 실패: " + e.getMessage());
         }
     }
 
@@ -67,7 +67,7 @@ public class ExternalHealthCheckAdapter implements ExternalHealthCheckPort {
         String key = apiName == null ? "" : apiName.trim().toLowerCase(Locale.ROOT);
         String base = externalApiBases.getOrDefault(key, "");
         if (base.isBlank()) {
-            return new HealthStatus("UNKNOWN", apiName + " base URL이 설정되지 않았습니다");
+            return new HealthStatus("UNKNOWN", apiName + " 기본 URL이 설정되지 않았습니다");
         }
         try {
             String normalizedBase = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
@@ -82,11 +82,11 @@ public class ExternalHealthCheckAdapter implements ExternalHealthCheckPort {
 
             int responseCode = connection.getResponseCode();
             if (responseCode >= 200 && responseCode < 300) {
-                return new HealthStatus("UP", apiName + " API is healthy");
+                return new HealthStatus("UP", apiName + " API가 정상입니다");
             }
-            return new HealthStatus("DOWN", apiName + " API returned status: " + responseCode);
+            return new HealthStatus("DOWN", apiName + " API 응답 상태: " + responseCode);
         } catch (Exception e) {
-            return new HealthStatus("DOWN", apiName + " API health check failed: " + e.getMessage());
+            return new HealthStatus("DOWN", apiName + " API 헬스체크 실패: " + e.getMessage());
         }
     }
 }

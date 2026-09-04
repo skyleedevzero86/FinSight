@@ -102,6 +102,7 @@ export default function VODSection() {
                 src={vod.thumbnail}
                 alt={vod.title}
                 fill
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 className="object-cover group-hover:scale-105 transition duration-300"
               />
               <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition flex items-center justify-center">

@@ -413,8 +413,21 @@ public class AdminStatsService {
         snapshot.put("threadCount", toLong(threads.get("count")));
         snapshot.put("processors", toLong(jvm.get("processors")));
         snapshot.put("systemLoadAverage", toDouble(os.get("systemLoadAverage")));
+        snapshot.put("cpuUsagePercent", resolveCpuUsagePercent(os));
         snapshot.put("timestamp", metrics.getTimestamp());
         return snapshot;
+    }
+
+    private long resolveCpuUsagePercent(Map<?, ?> os) {
+        double systemCpuLoad = toDouble(os.get("systemCpuLoad"));
+        if (systemCpuLoad >= 0.0d) {
+            return Math.round(systemCpuLoad * 100.0d);
+        }
+        double processCpuLoad = toDouble(os.get("processCpuLoad"));
+        if (processCpuLoad >= 0.0d) {
+            return Math.round(processCpuLoad * 100.0d);
+        }
+        return -1L;
     }
 
     private long extractHeapUsagePercent(SystemMetrics metrics) {

@@ -27,14 +27,14 @@ public class HealthQueryService implements HealthQueryUseCase {
             HealthStatus redisHealth = getRedisHealth();
 
             if ("UP".equals(dbHealth.getStatus()) && "UP".equals(redisHealth.getStatus())) {
-                return new HealthStatus("UP", "System is healthy",
+                return new HealthStatus("UP", "시스템이 정상입니다",
                         Map.of("database", "UP", "redis", "UP"));
             } else {
-                return new HealthStatus("DOWN", "Some components are down",
+                return new HealthStatus("DOWN", "일부 구성 요소에 장애가 있습니다",
                         Map.of("database", dbHealth.getStatus(), "redis", redisHealth.getStatus()));
             }
         } catch (Exception e) {
-            return new HealthStatus("DOWN", "System health check failed: " + e.getMessage(),
+            return new HealthStatus("DOWN", "시스템 헬스체크 실패: " + e.getMessage(),
                     Map.of("error", e.getMessage()));
         }
     }
