@@ -4,10 +4,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-
-import java.util.concurrent.TimeUnit;
 
 @Service
 @ConditionalOnBean(name = "redisTemplate")
@@ -25,12 +25,12 @@ public class RedisHealthService {
         }
 
         try {
-            String testKey = "health:check:" + System.currentTimeMillis();
-            redisTemplate.opsForValue().set(testKey, "test", 10, TimeUnit.SECONDS);
-            Object value = redisTemplate.opsForValue().get(testKey);
-            redisTemplate.delete(testKey);
-
-            boolean isAvailable = "test".equals(value);
+            // SET/GET/DELETE 3회 대신 PING 1회로 헬스체크 지연을 줄인다
+            if (redisTemplate.getConnectionFactory() == null) {
+                return false;
+            }
+            String pong = redisTemplate.execute((RedisCallback<String>) RedisConnection::ping);
+            boolean isAvailable = pong != null && !pong.isBlank();
             logger.debug("Redis 연결 상태: {}", isAvailable ? "정상" : "비정상");
             return isAvailable;
 

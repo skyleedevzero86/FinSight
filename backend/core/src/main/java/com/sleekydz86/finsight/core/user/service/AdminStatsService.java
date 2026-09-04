@@ -366,10 +366,19 @@ public class AdminStatsService {
     }
 
     private Map<String, Object> buildHealthSnapshot() {
-        HealthStatus overall = healthQueryUseCase.getOverallHealth();
+        // getOverallHealth()는 내부에서 DB/Redis를 다시 호출하므로 중복 점검을 피한다
         HealthStatus database = healthQueryUseCase.getDatabaseHealth();
         HealthStatus redis = healthQueryUseCase.getRedisHealth();
         Map<String, HealthStatus> external = healthQueryUseCase.getExternalApisHealth();
+
+        HealthStatus overall;
+        if ("UP".equals(nullSafeStatus(database)) && "UP".equals(nullSafeStatus(redis))) {
+            overall = new HealthStatus("UP", "시스템이 정상입니다",
+                    Map.of("database", "UP", "redis", "UP"));
+        } else {
+            overall = new HealthStatus("DOWN", "일부 구성 요소에 장애가 있습니다",
+                    Map.of("database", nullSafeStatus(database), "redis", nullSafeStatus(redis)));
+        }
 
         Map<String, Object> externalSnapshot = external.entrySet().stream()
                 .collect(Collectors.toMap(

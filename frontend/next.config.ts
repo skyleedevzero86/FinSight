@@ -32,6 +32,16 @@ const nextConfig = {
       },
     ],
   },
+  // 개발 중 HMR/컴파일이 길면 chunk 로드가 기본 타임아웃에 걸릴 수 있음
+  webpack: (config: { output?: Record<string, unknown> }, { dev, isServer }: { dev: boolean; isServer: boolean }) => {
+    if (dev && !isServer) {
+      config.output = {
+        ...config.output,
+        chunkLoadTimeout: 300_000,
+      }
+    }
+    return config
+  },
   async redirects() {
     return [
       { source: "/my", destination: "/myinfo", permanent: true },

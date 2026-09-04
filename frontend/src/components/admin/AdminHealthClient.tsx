@@ -104,7 +104,7 @@ function Gauge({
   const dash = value == null ? 0 : (semi * value) / 100
 
   return (
-    <div className="flex flex-col items-center rounded-lg border border-black bg-white p-4">
+    <div className="flex flex-col items-center border border-black bg-white p-4">
       <svg viewBox="0 0 120 80" className="h-20 w-28">
         <path
           d="M18 70 A42 42 0 0 1 102 70"
@@ -171,7 +171,7 @@ function MiniLineChart({
   }
 
   return (
-    <div className="rounded-lg border border-black bg-white p-4">
+    <div className="border border-black bg-white p-4">
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
@@ -221,7 +221,7 @@ function MiniLineChart({
             const y = padT + 4 + si * 18
             return (
               <g key={`lg-${s.name}`}>
-                <rect x={width - padR + 10} y={y} width="10" height="10" fill={color} rx="2" />
+                <rect x={width - padR + 10} y={y} width="10" height="10" fill={color} />
                 <text x={width - padR + 26} y={y + 9} fill="#374151" fontSize="11">
                   {s.label}
                 </text>
@@ -247,6 +247,10 @@ function collectStatuses(overview: AdminStatsOverview | null): { name: string; s
     }
   }
   return list
+}
+
+function SkeletonBlock({ className }: { className?: string }) {
+  return <div className={`animate-pulse bg-gray-200 ${className ?? ""}`} />
 }
 
 export default function AdminHealthClient() {
@@ -279,25 +283,33 @@ export default function AdminHealthClient() {
     return `${customFrom} ~ ${customTo} (기간별)`
   }, [period, customFrom, customTo])
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (opts?: { soft?: boolean }) => {
+    const soft = Boolean(opts?.soft)
+    if (!soft) setLoading(true)
     setError(null)
-    const [ov, health, metrics] = await Promise.all([
-      fetchAdminStatsOverview(),
-      fetchAdminStatsChart("health", rangeQuery),
-      fetchAdminStatsChart("metrics", rangeQuery),
-    ])
-    setLoading(false)
-    if (!ov.ok) {
-      setError(ov.message)
-      return
+    try {
+      // 카드(개요)를 먼저 그려 체감 지연을 줄이고, 차트는 이어서 로드
+      const ov = await fetchAdminStatsOverview()
+      if (!ov.ok) {
+        setError(ov.message)
+        return
+      }
+      setOverview(ov.data)
+      setUpdatedAt(new Date().toLocaleString("ko-KR"))
+
+      const [health, metrics] = await Promise.all([
+        fetchAdminStatsChart("health", rangeQuery),
+        fetchAdminStatsChart("metrics", rangeQuery),
+      ])
+      if (health.ok) setHealthChart(health.data)
+      else setError(health.message)
+      if (metrics.ok) setMetricsChart(metrics.data)
+      else if (health.ok) setError(metrics.message)
+    } catch {
+      setError("서버상황을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.")
+    } finally {
+      if (!soft) setLoading(false)
     }
-    setOverview(ov.data)
-    if (health.ok) setHealthChart(health.data)
-    else setError(health.message)
-    if (metrics.ok) setMetricsChart(metrics.data)
-    else if (health.ok) setError(metrics.message)
-    setUpdatedAt(new Date().toLocaleString("ko-KR"))
   }, [rangeQuery])
 
   useEffect(() => {
@@ -319,7 +331,7 @@ export default function AdminHealthClient() {
   useEffect(() => {
     if (!allowed) return
     const id = window.setInterval(() => {
-      void load()
+      void load({ soft: true })
     }, 30_000)
     return () => window.clearInterval(id)
   }, [allowed, load])
@@ -327,19 +339,36 @@ export default function AdminHealthClient() {
   async function onRefresh() {
     setRefreshing(true)
     setError(null)
-    const result = await refreshAdminHealth()
-    setRefreshing(false)
-    if (!result.ok) {
-      setError(result.message)
-      return
+    try {
+      const result = await refreshAdminHealth()
+      if (!result.ok) {
+        setError(result.message)
+        return
+      }
+      await load({ soft: true })
+    } catch {
+      setError("상태 새로고침에 실패했습니다.")
+    } finally {
+      setRefreshing(false)
     }
-    await load()
   }
 
-  if (!ready || !allowed) {
+  if (!ready) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-gray-500">
-        권한을 확인하는 중…
+      <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+        <div className="border border-black bg-white p-8 text-center text-sm text-gray-500">
+          권한을 확인하는 중…
+        </div>
+      </div>
+    )
+  }
+
+  if (!allowed) {
+    return (
+      <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+        <div className="border border-black bg-white p-8 text-center text-sm text-gray-500">
+          관리자 권한이 필요합니다.
+        </div>
       </div>
     )
   }
@@ -349,6 +378,7 @@ export default function AdminHealthClient() {
   const critical = statuses.filter((s) => statusRank(s.snap.status) === "critical").length
   const warning = statuses.filter((s) => statusRank(s.snap.status) === "warning").length
   const okCount = statuses.filter((s) => statusRank(s.snap.status) === "ok").length
+  const showSkeleton = loading && !overview
 
   const heapPct = metrics?.heapUsagePercent ?? null
   const loadAvg = metrics?.systemLoadAverage
@@ -394,7 +424,7 @@ export default function AdminHealthClient() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-      <div className="overflow-hidden rounded border border-black bg-white">
+      <div className="overflow-hidden border border-black bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black bg-[#3d4654] px-5 py-3 text-white">
           <div>
             <h1 className="text-base font-medium tracking-tight">
@@ -408,16 +438,17 @@ export default function AdminHealthClient() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-200">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-2.5 py-1">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#7CFC00]" />
+            <span className="inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-1">
+              <span className="h-1.5 w-1.5 animate-pulse bg-[#7CFC00]" />
               30초 폴링
             </span>
             {updatedAt ? <span>갱신 {updatedAt}</span> : null}
+            {loading && overview ? <span className="text-gray-300">갱신 중…</span> : null}
             <button
               type="button"
               onClick={() => void load()}
               disabled={loading}
-              className="rounded border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
+              className="border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
             >
               {loading ? "조회 중…" : "다시 조회"}
             </button>
@@ -425,7 +456,7 @@ export default function AdminHealthClient() {
               type="button"
               onClick={() => void onRefresh()}
               disabled={refreshing}
-              className="rounded border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
+              className="border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
             >
               {refreshing ? "재수집 중…" : "상태 새로고침"}
             </button>
@@ -447,8 +478,8 @@ export default function AdminHealthClient() {
               onClick={() => setPeriod(key)}
               className={
                 period === key
-                  ? "rounded bg-finsight-primary px-3 py-1.5 text-sm font-medium text-white"
-                  : "rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+                  ? "bg-finsight-primary px-3 py-1.5 text-sm font-medium text-white"
+                  : "border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
               }
             >
               {label}
@@ -460,19 +491,19 @@ export default function AdminHealthClient() {
                 type="date"
                 value={customFrom}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="rounded border border-gray-300 bg-white px-2 py-1.5 text-gray-800"
+                className="border border-gray-300 bg-white px-2 py-1.5 text-gray-800"
               />
               <span className="text-gray-400">~</span>
               <input
                 type="date"
                 value={customTo}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="rounded border border-gray-300 bg-white px-2 py-1.5 text-gray-800"
+                className="border border-gray-300 bg-white px-2 py-1.5 text-gray-800"
               />
               <button
                 type="button"
                 onClick={() => void load()}
-                className="rounded border border-finsight-primary px-3 py-1.5 text-finsight-primary hover:bg-finsight-primary/5"
+                className="border border-finsight-primary px-3 py-1.5 text-finsight-primary hover:bg-finsight-primary/5"
               >
                 검색
               </button>
@@ -480,98 +511,133 @@ export default function AdminHealthClient() {
           ) : null}
         </div>
 
-        <div className="space-y-6 px-5 py-6">
+        <div className="relative space-y-6 px-5 py-6">
           {error ? (
-            <p className="text-sm text-red-600" role="alert">
-              {error}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-3 border border-black bg-red-50 px-4 py-3 text-sm text-red-700">
+              <p role="alert">{error}</p>
+              <button
+                type="button"
+                onClick={() => void load()}
+                className="border border-black bg-white px-3 py-1.5 text-gray-800 hover:bg-gray-50"
+              >
+                다시 시도
+              </button>
+            </div>
           ) : null}
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {infoCards.map((card) => (
-              <div
-                key={card.label}
-                className="rounded-lg border border-black bg-gray-50 px-4 py-3"
-              >
-                <p className="text-xs text-gray-500">{card.label}</p>
-                <p className="mt-1 truncate text-lg font-semibold text-gray-900">{card.value}</p>
+          {showSkeleton ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <SkeletonBlock key={i} className="h-20 border border-black" />
+                ))}
               </div>
-            ))}
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-black bg-red-600 px-4 py-5 text-center text-white">
-              <p className="text-sm font-medium opacity-90">위험</p>
-              <p className="mt-1 text-3xl font-bold">{critical}</p>
-            </div>
-            <div className="rounded-lg border border-black bg-amber-500 px-4 py-5 text-center text-white">
-              <p className="text-sm font-medium opacity-90">주의</p>
-              <p className="mt-1 text-3xl font-bold">{warning}</p>
-            </div>
-            <div className="rounded-lg border border-black bg-sky-600 px-4 py-5 text-center text-white">
-              <p className="text-sm font-medium opacity-90">정상</p>
-              <p className="mt-1 text-3xl font-bold">{okCount}</p>
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Gauge label="힙 사용률" percent={heapPct} sub="JVM Heap" />
-            <Gauge
-              label="CPU 부하"
-              percent={loadPct}
-              sub={
-                loadPct != null
-                  ? metrics?.cpuUsagePercent != null
-                    ? `사용률 ${Math.round(loadPct)}%`
-                    : loadAvg != null && loadAvg >= 0
-                      ? `부하 ${loadAvg.toFixed(2)}`
-                      : undefined
-                  : "측정 불가"
-              }
-            />
-            <Gauge
-              label="스레드"
-              percent={threadPct}
-              sub={metrics?.threadCount != null ? `${metrics.threadCount}개` : undefined}
-            />
-            <Gauge
-              label="프로세서"
-              percent={metrics?.processors != null ? Math.min(100, metrics.processors * 12.5) : null}
-              sub={metrics?.processors != null ? `${metrics.processors}코어` : undefined}
-            />
-          </div>
-
-          <div>
-            <h2 className="mb-3 text-sm font-semibold text-gray-800">구성 요소 상태</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {statuses.map(({ name, snap }) => (
-                <div key={name} className={`rounded-lg border p-3 ${statusColor(snap.status)}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium">{name}</span>
-                    <span className="text-xs font-bold tracking-wide">{statusLabelKo(snap.status)}</span>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <SkeletonBlock key={i} className="h-24 border border-black" />
+                ))}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <SkeletonBlock key={i} className="h-36 border border-black" />
+                ))}
+              </div>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <SkeletonBlock className="h-64 border border-black" />
+                <SkeletonBlock className="h-64 border border-black" />
+              </div>
+              <p className="text-center text-sm text-gray-500">서버상황 데이터를 불러오는 중…</p>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {infoCards.map((card) => (
+                  <div key={card.label} className="border border-black bg-gray-50 px-4 py-3">
+                    <p className="text-xs text-gray-500">{card.label}</p>
+                    <p className="mt-1 truncate text-lg font-semibold text-gray-900">{card.value}</p>
                   </div>
-                  {snap.message ? (
-                    <p className="mt-2 text-xs opacity-90">{healthMessageKo(snap.message)}</p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </div>
+                ))}
+              </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <MiniLineChart
-              title="시스템 헬스 추이"
-              unit={healthChart?.unit ?? "건"}
-              series={healthChart?.series ?? []}
-              rangeLabel={rangeLabel}
-            />
-            <MiniLineChart
-              title="JVM 메트릭 추이"
-              unit={metricsChart?.unit ?? "%"}
-              series={metricsChart?.series ?? []}
-              rangeLabel={rangeLabel}
-            />
-          </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="border border-black bg-red-600 px-4 py-5 text-center text-white">
+                  <p className="text-sm font-medium opacity-90">위험</p>
+                  <p className="mt-1 text-3xl font-bold">{critical}</p>
+                </div>
+                <div className="border border-black bg-amber-500 px-4 py-5 text-center text-white">
+                  <p className="text-sm font-medium opacity-90">주의</p>
+                  <p className="mt-1 text-3xl font-bold">{warning}</p>
+                </div>
+                <div className="border border-black bg-sky-600 px-4 py-5 text-center text-white">
+                  <p className="text-sm font-medium opacity-90">정상</p>
+                  <p className="mt-1 text-3xl font-bold">{okCount}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <Gauge label="힙 사용률" percent={heapPct} sub="JVM Heap" />
+                <Gauge
+                  label="CPU 부하"
+                  percent={loadPct}
+                  sub={
+                    loadPct != null
+                      ? metrics?.cpuUsagePercent != null
+                        ? `사용률 ${Math.round(loadPct)}%`
+                        : loadAvg != null && loadAvg >= 0
+                          ? `부하 ${loadAvg.toFixed(2)}`
+                          : undefined
+                      : "측정 불가"
+                  }
+                />
+                <Gauge
+                  label="스레드"
+                  percent={threadPct}
+                  sub={metrics?.threadCount != null ? `${metrics.threadCount}개` : undefined}
+                />
+                <Gauge
+                  label="프로세서"
+                  percent={
+                    metrics?.processors != null ? Math.min(100, metrics.processors * 12.5) : null
+                  }
+                  sub={metrics?.processors != null ? `${metrics.processors}코어` : undefined}
+                />
+              </div>
+
+              <div>
+                <h2 className="mb-3 text-sm font-semibold text-gray-800">구성 요소 상태</h2>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  {statuses.map(({ name, snap }) => (
+                    <div key={name} className={`border p-3 ${statusColor(snap.status)}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium">{name}</span>
+                        <span className="text-xs font-bold tracking-wide">
+                          {statusLabelKo(snap.status)}
+                        </span>
+                      </div>
+                      {snap.message ? (
+                        <p className="mt-2 text-xs opacity-90">{healthMessageKo(snap.message)}</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <MiniLineChart
+                  title="시스템 헬스 추이"
+                  unit={healthChart?.unit ?? "건"}
+                  series={healthChart?.series ?? []}
+                  rangeLabel={rangeLabel}
+                />
+                <MiniLineChart
+                  title="JVM 메트릭 추이"
+                  unit={metricsChart?.unit ?? "%"}
+                  series={metricsChart?.series ?? []}
+                  rangeLabel={rangeLabel}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.global.config;
 
 import io.lettuce.core.ClientOptions;
+import io.lettuce.core.SocketOptions;
 import io.lettuce.core.protocol.ProtocolVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +67,12 @@ public class RedisConfig {
             }
 
             
+            SocketOptions socketOptions = SocketOptions.builder()
+                    .connectTimeout(Duration.ofMillis(Math.max(connectionTimeout, 1)))
+                    .build();
+
             ClientOptions options = ClientOptions.builder()
+                    .socketOptions(socketOptions)
                     .protocolVersion(ProtocolVersion.RESP2)
                     .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
                     .autoReconnect(true)
@@ -74,12 +80,13 @@ public class RedisConfig {
 
             LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
                     .clientOptions(options)
-                    .commandTimeout(Duration.ofMillis(commandTimeout))
+                    .commandTimeout(Duration.ofMillis(Math.max(commandTimeout, 1)))
                     .shutdownTimeout(Duration.ofMillis(100))
                     .build();
 
             LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
-            factory.setValidateConnection(true);
+            // 연결마다 PING 검증은 Redis 장애 시 요청 전체가 타임아웃까지 막힐 수 있음
+            factory.setValidateConnection(false);
             factory.setShareNativeConnection(true);
 
             logger.info("Redis 연결 팩토리 생성 완료");
