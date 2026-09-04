@@ -165,6 +165,24 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
     }
 
     @Override
+    public List<Board> findModerationCandidates(BoardStatus status, int minReportCount, List<BoardType> boardTypes) {
+        return boardJpaRepository
+                .findModerationCandidates(status, minReportCount, boardTypes)
+                .stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+    }
+
+    @Override
+    public List<Board> findByStatusAndBoardTypes(BoardStatus status, List<BoardType> boardTypes) {
+        return boardJpaRepository
+                .findByStatusAndBoardTypeIn(status, boardTypes)
+                .stream()
+                .map(boardJpaMapper::toDomain)
+                .toList();
+    }
+
+    @Override
     public Boards findEditorDocuments(BoardType boardType, BoardStatus status, String keyword, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         String kw = keyword == null ? "" : keyword.trim();

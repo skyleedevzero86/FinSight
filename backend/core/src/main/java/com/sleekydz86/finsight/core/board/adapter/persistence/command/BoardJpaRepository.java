@@ -154,6 +154,28 @@ public interface BoardJpaRepository extends JpaRepository<BoardJpaEntity, Long> 
 
         @Query("""
                         SELECT b FROM BoardJpaEntity b
+                        WHERE b.status = :status
+                          AND b.reportCount >= :minReportCount
+                          AND b.boardType IN :boardTypes
+                        ORDER BY b.reportCount DESC, b.id DESC
+                        """)
+        List<BoardJpaEntity> findModerationCandidates(
+                        @Param("status") BoardStatus status,
+                        @Param("minReportCount") int minReportCount,
+                        @Param("boardTypes") List<BoardType> boardTypes);
+
+        @Query("""
+                        SELECT b FROM BoardJpaEntity b
+                        WHERE b.status = :status
+                          AND b.boardType IN :boardTypes
+                        ORDER BY b.updatedAt DESC, b.id DESC
+                        """)
+        List<BoardJpaEntity> findByStatusAndBoardTypeIn(
+                        @Param("status") BoardStatus status,
+                        @Param("boardTypes") List<BoardType> boardTypes);
+
+        @Query("""
+                        SELECT b FROM BoardJpaEntity b
                         WHERE b.boardType = :boardType AND b.status = :status
                         AND (:kw = '' OR LOWER(b.title) LIKE LOWER(CONCAT('%', :kw, '%'))
                              OR b.content LIKE CONCAT('%', :kw, '%'))
