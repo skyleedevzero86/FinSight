@@ -109,6 +109,10 @@ export default function Header() {
                   <Link href="/admin/notifications" className="hover:text-finsight-secondary transition">
                     알림
                   </Link>
+                  <span className="text-gray-400">|</span>
+                  <Link href="/admin/sms" className="hover:text-finsight-secondary transition">
+                    SMS
+                  </Link>
                 </>
               ) : null}
               <span className="text-gray-400">|</span>
@@ -299,6 +303,14 @@ export default function Header() {
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >
                       알림
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/admin/sms"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      SMS
                     </Link>
                   </li>
                 </>
