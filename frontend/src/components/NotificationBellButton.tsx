@@ -25,13 +25,13 @@ export default function NotificationBellButton() {
       failStreakRef.current += 1
       return
     }
-    try {
-      const count = await fetchInboxUnreadCount()
-      setUnread(count)
-      failStreakRef.current = 0
-    } catch {
+    const count = await fetchInboxUnreadCount()
+    if (count === null) {
       failStreakRef.current += 1
+      return
     }
+    setUnread(count)
+    failStreakRef.current = 0
   }, [user])
 
   useEffect(() => {

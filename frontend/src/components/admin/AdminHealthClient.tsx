@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import { canManageUsers } from "@/lib/adminUsers"
@@ -55,35 +55,35 @@ function statusColor(status: string | undefined): string {
 
 function statusLabelKo(status: string | undefined): string {
   const s = (status ?? "").toUpperCase()
-  if (s === "UP" || s === "HEALTHY") return "정상"
-  if (s === "DOWN" || s === "UNHEALTHY") return "장애"
-  if (s === "DEGRADED") return "저하"
-  if (s === "UNKNOWN") return "확인불가"
+  if (s === "UP" || s === "HEALTHY") return "ì ì"
+  if (s === "DOWN" || s === "UNHEALTHY") return "ì¥ì "
+  if (s === "DEGRADED") return "ì í"
+  if (s === "UNKNOWN") return "íì¸ë¶ê°"
   return status || "-"
 }
 
 function healthMessageKo(message: string | undefined): string {
   if (!message) return ""
   const known: Record<string, string> = {
-    "Some components are down": "일부 구성 요소에 장애가 있습니다",
-    "System is healthy": "시스템이 정상입니다",
-    "Database is healthy": "DB가 정상입니다",
-    "Database connection validation failed": "DB 연결 검증에 실패했습니다",
-    "Redis is healthy": "Redis가 정상입니다",
-    "Redis connection check failed": "Redis 연결 확인에 실패했습니다",
-    "Redis health check not implemented": "Redis 헬스체크가 구성되지 않았습니다",
+    "Some components are down": "ì¼ë¶ êµ¬ì± ììì ì¥ì ê° ììµëë¤",
+    "System is healthy": "ìì¤íì´ ì ììëë¤",
+    "Database is healthy": "DBê° ì ììëë¤",
+    "Database connection validation failed": "DB ì°ê²° ê²ì¦ì ì¤í¨íìµëë¤",
+    "Redis is healthy": "Redisê° ì ììëë¤",
+    "Redis connection check failed": "Redis ì°ê²° íì¸ì ì¤í¨íìµëë¤",
+    "Redis health check not implemented": "Redis í¬ì¤ì²´í¬ê° êµ¬ì±ëì§ ìììµëë¤",
   }
   if (known[message]) return known[message]
 
   let out = message
-  out = out.replace(/^Database health check failed:\s*/i, "DB 헬스체크 실패: ")
-  out = out.replace(/^Redis health check failed:\s*/i, "Redis 헬스체크 실패: ")
-  out = out.replace(/^System health check failed:\s*/i, "시스템 헬스체크 실패: ")
-  out = out.replace(/^(.+?) API is healthy$/i, "$1 API가 정상입니다")
-  out = out.replace(/^(.+?) API returned status:\s*/i, "$1 API 응답 상태: ")
-  out = out.replace(/^(.+?) API health check failed:\s*/i, "$1 API 헬스체크 실패: ")
-  out = out.replace(/base URL이 설정되지 않았습니다/i, "기본 URL이 설정되지 않았습니다")
-  out = out.replace(/api\.example\.com/gi, "미설정 URL")
+  out = out.replace(/^Database health check failed:\s*/i, "DB í¬ì¤ì²´í¬ ì¤í¨: ")
+  out = out.replace(/^Redis health check failed:\s*/i, "Redis í¬ì¤ì²´í¬ ì¤í¨: ")
+  out = out.replace(/^System health check failed:\s*/i, "ìì¤í í¬ì¤ì²´í¬ ì¤í¨: ")
+  out = out.replace(/^(.+?) API is healthy$/i, "$1 APIê° ì ììëë¤")
+  out = out.replace(/^(.+?) API returned status:\s*/i, "$1 API ìëµ ìí: ")
+  out = out.replace(/^(.+?) API health check failed:\s*/i, "$1 API í¬ì¤ì²´í¬ ì¤í¨: ")
+  out = out.replace(/base URLì´ ì¤ì ëì§ ìììµëë¤/i, "ê¸°ë³¸ URLì´ ì¤ì ëì§ ìììµëë¤")
+  out = out.replace(/api\.example\.com/gi, "ë¯¸ì¤ì  URL")
   return out
 }
 
@@ -177,7 +177,7 @@ function MiniLineChart({
           <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
           <p className="text-xs text-gray-500">{rangeLabel}</p>
         </div>
-        <span className="text-xs text-gray-400">단위: {unit}</span>
+        <span className="text-xs text-gray-400">ë¨ì: {unit}</span>
       </div>
       <div className="overflow-x-auto">
         <svg viewBox={`0 0 ${width} ${height}`} className="h-auto min-w-[480px] w-full">
@@ -238,7 +238,7 @@ function collectStatuses(overview: AdminStatsOverview | null): { name: string; s
   if (!overview) return []
   const hs = overview.healthSnapshot
   const list: { name: string; snap: HealthStatusSnapshot }[] = []
-  if (hs.overall) list.push({ name: "전체", snap: hs.overall })
+  if (hs.overall) list.push({ name: "ì ì²´", snap: hs.overall })
   if (hs.database) list.push({ name: "DB", snap: hs.database })
   if (hs.redis) list.push({ name: "Redis", snap: hs.redis })
   if (hs.externalApis) {
@@ -268,6 +268,7 @@ export default function AdminHealthClient() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
+  const failStreakRef = useRef(0)
 
   const rangeQuery = useMemo(() => {
     if (period === "daily") return { days: 1 as number }
@@ -286,16 +287,18 @@ export default function AdminHealthClient() {
   const load = useCallback(async (opts?: { soft?: boolean }) => {
     const soft = Boolean(opts?.soft)
     if (!soft) setLoading(true)
-    setError(null)
+    if (!soft) setError(null)
     try {
-      // 카드(개요)를 먼저 그려 체감 지연을 줄이고, 차트는 이어서 로드
       const ov = await fetchAdminStatsOverview()
       if (!ov.ok) {
-        setError(ov.message)
+        failStreakRef.current += 1
+        if (!soft || failStreakRef.current <= 1) setError(ov.message)
         return
       }
+      failStreakRef.current = 0
       setOverview(ov.data)
       setUpdatedAt(new Date().toLocaleString("ko-KR"))
+      setError(null)
 
       const [health, metrics] = await Promise.all([
         fetchAdminStatsChart("health", rangeQuery),
@@ -306,7 +309,10 @@ export default function AdminHealthClient() {
       if (metrics.ok) setMetricsChart(metrics.data)
       else if (health.ok) setError(metrics.message)
     } catch {
-      setError("서버상황을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.")
+      failStreakRef.current += 1
+      if (!soft || failStreakRef.current <= 1) {
+        setError("서버상황을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.")
+      }
     } finally {
       if (!soft) setLoading(false)
     }
@@ -325,12 +331,14 @@ export default function AdminHealthClient() {
 
   useEffect(() => {
     if (!allowed) return
+    failStreakRef.current = 0
     void load()
   }, [allowed, load])
 
   useEffect(() => {
     if (!allowed) return
     const id = window.setInterval(() => {
+      if (failStreakRef.current >= 3) return
       void load({ soft: true })
     }, 30_000)
     return () => window.clearInterval(id)
@@ -339,6 +347,7 @@ export default function AdminHealthClient() {
   async function onRefresh() {
     setRefreshing(true)
     setError(null)
+    failStreakRef.current = 0
     try {
       const result = await refreshAdminHealth()
       if (!result.ok) {
@@ -357,7 +366,7 @@ export default function AdminHealthClient() {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
         <div className="border border-black bg-white p-8 text-center text-sm text-gray-500">
-          권한을 확인하는 중…
+          ê¶íì íì¸íë ì¤â¦
         </div>
       </div>
     )
@@ -367,7 +376,7 @@ export default function AdminHealthClient() {
     return (
       <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
         <div className="border border-black bg-white p-8 text-center text-sm text-gray-500">
-          관리자 권한이 필요합니다.
+          ê´ë¦¬ì ê¶íì´ íìí©ëë¤.
         </div>
       </div>
     )
@@ -405,7 +414,7 @@ export default function AdminHealthClient() {
     },
     { label: "Threads", value: metrics?.threadCount != null ? String(metrics.threadCount) : "-" },
     {
-      label: "CPU 사용률",
+      label: "CPU ì¬ì©ë¥ ",
       value: loadPct != null ? `${Math.round(loadPct)}%` : "N/A",
     },
     {
@@ -417,7 +426,7 @@ export default function AdminHealthClient() {
       value: statusLabelKo(overview?.healthSnapshot.redis?.status),
     },
     {
-      label: "회원",
+      label: "íì",
       value: overview != null ? String(overview.totalUsers) : "-",
     },
   ]
@@ -428,29 +437,29 @@ export default function AdminHealthClient() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black bg-[#3d4654] px-5 py-3 text-white">
           <div>
             <h1 className="text-base font-medium tracking-tight">
-              서버상황 <span className="text-[#7CFC00]">FinSight</span>
+              ìë²ìí© <span className="text-[#7CFC00]">FinSight</span>
             </h1>
             <p className="mt-0.5 text-xs text-gray-300">
-              헬스·메트릭 모니터링 ·{" "}
+              í¬ì¤Â·ë©í¸ë¦­ ëª¨ëí°ë§ Â·{" "}
               <Link href="/admin/stats" className="text-[#7CFC00] underline-offset-2 hover:underline">
-                전체 통계
+                ì ì²´ íµê³
               </Link>
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-gray-200">
             <span className="inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-1">
               <span className="h-1.5 w-1.5 animate-pulse bg-[#7CFC00]" />
-              30초 폴링
+              30ì´ í´ë§
             </span>
-            {updatedAt ? <span>갱신 {updatedAt}</span> : null}
-            {loading && overview ? <span className="text-gray-300">갱신 중…</span> : null}
+            {updatedAt ? <span>ê°±ì  {updatedAt}</span> : null}
+            {loading && overview ? <span className="text-gray-300">ê°±ì  ì¤â¦</span> : null}
             <button
               type="button"
               onClick={() => void load()}
               disabled={loading}
               className="border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
             >
-              {loading ? "조회 중…" : "다시 조회"}
+              {loading ? "ì¡°í ì¤â¦" : "ë¤ì ì¡°í"}
             </button>
             <button
               type="button"
@@ -458,7 +467,7 @@ export default function AdminHealthClient() {
               disabled={refreshing}
               className="border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
             >
-              {refreshing ? "재수집 중…" : "상태 새로고침"}
+              {refreshing ? "ì¬ìì§ ì¤â¦" : "ìí ìë¡ê³ ì¹¨"}
             </button>
           </div>
         </div>
@@ -466,10 +475,10 @@ export default function AdminHealthClient() {
         <div className="flex flex-wrap items-end gap-3 border-b border-black px-5 py-4">
           {(
             [
-              ["daily", "일별"],
-              ["weekly", "주별"],
-              ["monthly", "월별"],
-              ["custom", "기간별"],
+              ["daily", "ì¼ë³"],
+              ["weekly", "ì£¼ë³"],
+              ["monthly", "ìë³"],
+              ["custom", "ê¸°ê°ë³"],
             ] as const
           ).map(([key, label]) => (
             <button
@@ -505,7 +514,7 @@ export default function AdminHealthClient() {
                 onClick={() => void load()}
                 className="border border-finsight-primary px-3 py-1.5 text-finsight-primary hover:bg-finsight-primary/5"
               >
-                검색
+                ê²ì
               </button>
             </div>
           ) : null}
@@ -520,7 +529,7 @@ export default function AdminHealthClient() {
                 onClick={() => void load()}
                 className="border border-black bg-white px-3 py-1.5 text-gray-800 hover:bg-gray-50"
               >
-                다시 시도
+                ë¤ì ìë
               </button>
             </div>
           ) : null}
@@ -546,7 +555,7 @@ export default function AdminHealthClient() {
                 <SkeletonBlock className="h-64 border border-black" />
                 <SkeletonBlock className="h-64 border border-black" />
               </div>
-              <p className="text-center text-sm text-gray-500">서버상황 데이터를 불러오는 중…</p>
+              <p className="text-center text-sm text-gray-500">ìë²ìí© ë°ì´í°ë¥¼ ë¶ë¬ì¤ë ì¤â¦</p>
             </>
           ) : (
             <>
@@ -561,50 +570,50 @@ export default function AdminHealthClient() {
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="border border-black bg-red-600 px-4 py-5 text-center text-white">
-                  <p className="text-sm font-medium opacity-90">위험</p>
+                  <p className="text-sm font-medium opacity-90">ìí</p>
                   <p className="mt-1 text-3xl font-bold">{critical}</p>
                 </div>
                 <div className="border border-black bg-amber-500 px-4 py-5 text-center text-white">
-                  <p className="text-sm font-medium opacity-90">주의</p>
+                  <p className="text-sm font-medium opacity-90">ì£¼ì</p>
                   <p className="mt-1 text-3xl font-bold">{warning}</p>
                 </div>
                 <div className="border border-black bg-sky-600 px-4 py-5 text-center text-white">
-                  <p className="text-sm font-medium opacity-90">정상</p>
+                  <p className="text-sm font-medium opacity-90">ì ì</p>
                   <p className="mt-1 text-3xl font-bold">{okCount}</p>
                 </div>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <Gauge label="힙 사용률" percent={heapPct} sub="JVM Heap" />
+                <Gauge label="í ì¬ì©ë¥ " percent={heapPct} sub="JVM Heap" />
                 <Gauge
-                  label="CPU 부하"
+                  label="CPU ë¶í"
                   percent={loadPct}
                   sub={
                     loadPct != null
                       ? metrics?.cpuUsagePercent != null
-                        ? `사용률 ${Math.round(loadPct)}%`
+                        ? `ì¬ì©ë¥  ${Math.round(loadPct)}%`
                         : loadAvg != null && loadAvg >= 0
-                          ? `부하 ${loadAvg.toFixed(2)}`
+                          ? `ë¶í ${loadAvg.toFixed(2)}`
                           : undefined
-                      : "측정 불가"
+                      : "ì¸¡ì  ë¶ê°"
                   }
                 />
                 <Gauge
-                  label="스레드"
+                  label="ì¤ë ë"
                   percent={threadPct}
-                  sub={metrics?.threadCount != null ? `${metrics.threadCount}개` : undefined}
+                  sub={metrics?.threadCount != null ? `${metrics.threadCount}ê°` : undefined}
                 />
                 <Gauge
-                  label="프로세서"
+                  label="íë¡ì¸ì"
                   percent={
                     metrics?.processors != null ? Math.min(100, metrics.processors * 12.5) : null
                   }
-                  sub={metrics?.processors != null ? `${metrics.processors}코어` : undefined}
+                  sub={metrics?.processors != null ? `${metrics.processors}ì½ì´` : undefined}
                 />
               </div>
 
               <div>
-                <h2 className="mb-3 text-sm font-semibold text-gray-800">구성 요소 상태</h2>
+                <h2 className="mb-3 text-sm font-semibold text-gray-800">êµ¬ì± ìì ìí</h2>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {statuses.map(({ name, snap }) => (
                     <div key={name} className={`border p-3 ${statusColor(snap.status)}`}>
@@ -624,13 +633,13 @@ export default function AdminHealthClient() {
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <MiniLineChart
-                  title="시스템 헬스 추이"
-                  unit={healthChart?.unit ?? "건"}
+                  title="ìì¤í í¬ì¤ ì¶ì´"
+                  unit={healthChart?.unit ?? "ê±´"}
                   series={healthChart?.series ?? []}
                   rangeLabel={rangeLabel}
                 />
                 <MiniLineChart
-                  title="JVM 메트릭 추이"
+                  title="JVM ë©í¸ë¦­ ì¶ì´"
                   unit={metricsChart?.unit ?? "%"}
                   series={metricsChart?.series ?? []}
                   rangeLabel={rangeLabel}

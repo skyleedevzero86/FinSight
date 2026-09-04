@@ -118,22 +118,26 @@ function parseSettings(payload: unknown): InboxSettings {
   }
 }
 
-export async function fetchInboxUnreadCount(): Promise<number> {
+export async function fetchInboxUnreadCount(): Promise<number | null> {
   if (!readAccessToken()) return 0
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    throw new Error("offline")
+    return null
   }
-  const res = await fetch("/api/v1/inbox/unread-count", {
-    headers: authHeadersJson(),
-    cache: "no-store",
-  })
-  if (res.status === 401 || res.status === 403 || res.status === 404) return 0
-  const payload = await readJson(res)
-  if (!res.ok) return 0
-  const root = asRecord(payload)
-  const data = asRecord(root?.data)
-  const count = data?.unreadCount
-  return typeof count === "number" ? count : 0
+  try {
+    const res = await fetch("/api/v1/inbox/unread-count", {
+      headers: authHeadersJson(),
+      cache: "no-store",
+    })
+    if (res.status === 401 || res.status === 403 || res.status === 404) return 0
+    if (!res.ok) return null
+    const payload = await readJson(res)
+    const root = asRecord(payload)
+    const data = asRecord(root?.data)
+    const count = data?.unreadCount
+    return typeof count === "number" ? count : 0
+  } catch {
+    return null
+  }
 }
 
 export async function fetchInboxPage(params: {

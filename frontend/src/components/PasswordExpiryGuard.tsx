@@ -18,20 +18,24 @@ export default function PasswordExpiryGuard() {
 
     let cancelled = false
     void (async () => {
-      const forced =
-        typeof window !== "undefined" &&
-        sessionStorage.getItem(FINSIGHT_FORCE_PASSWORD_KEY) === "1"
-      const status = await fetchPasswordStatus()
-      if (cancelled) return
-      const required = forced || Boolean(status?.changeRequired)
-      if (!required) return
       try {
-        sessionStorage.setItem(FINSIGHT_FORCE_PASSWORD_KEY, "1")
+        const forced =
+          typeof window !== "undefined" &&
+          sessionStorage.getItem(FINSIGHT_FORCE_PASSWORD_KEY) === "1"
+        const status = await fetchPasswordStatus()
+        if (cancelled) return
+        const required = forced || Boolean(status?.changeRequired)
+        if (!required) return
+        try {
+          sessionStorage.setItem(FINSIGHT_FORCE_PASSWORD_KEY, "1")
+        } catch {
+          void 0
+        }
+        if (!pathname.startsWith("/myinfo")) {
+          router.replace("/myinfo?password=required")
+        }
       } catch {
         void 0
-      }
-      if (!pathname.startsWith("/myinfo")) {
-        router.replace("/myinfo?password=required")
       }
     })()
 

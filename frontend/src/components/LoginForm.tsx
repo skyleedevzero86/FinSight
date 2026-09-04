@@ -11,6 +11,7 @@ import { postLogin } from "@/lib/authClient"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import {
   storeAuthSession,
+  clearAuthSession,
   FINSIGHT_FORCE_PASSWORD_KEY,
   type AuthProvider,
 } from "@/lib/finsightToken"
@@ -69,7 +70,8 @@ export default function LoginForm() {
   const nextPathRaw = searchParams.get("next")?.trim() || ""
   const nextPath =
     nextPathRaw.startsWith("/") && !nextPathRaw.startsWith("//") ? nextPathRaw : ""
-  const { user, ready } = useAuthSession()
+  const { user, ready, logout } = useAuthSession()
+  const [switchAccount, setSwitchAccount] = useState(false)
 
   const [email, setEmail] = useState(accountParam)
   const [password, setPassword] = useState("")
@@ -78,22 +80,21 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!ready || !user) return
-    try {
-      if (sessionStorage.getItem(FINSIGHT_FORCE_PASSWORD_KEY) === "1") {
-        router.replace("/myinfo?password=required")
-        return
-      }
-    } catch {
-      void 0
-    }
-    router.replace(nextPath || "/")
-  }, [ready, user, router, nextPath])
+  const alreadySignedIn = ready && Boolean(user) && !switchAccount
 
   useEffect(() => {
     if (accountParam) setEmail(accountParam)
   }, [accountParam])
+
+  async function onUseOtherAccount() {
+    setFormError(null)
+    setSwitchAccount(true)
+    try {
+      await logout()
+    } catch {
+      clearAuthSession()
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -179,6 +180,40 @@ export default function LoginForm() {
         </div>
       )}
 
+      {alreadySignedIn ? (
+        <div className="space-y-4">
+          <div
+            role="status"
+            className="rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800"
+          >
+            <p className="font-medium">이미 로그인되어 있습니다.</p>
+            <p className="mt-1 text-gray-600">
+              {user?.email
+                ? `${user.email} 계정으로 접속 중입니다.`
+                : "저장된 세션으로 접속 중입니다."}
+            </p>
+            <p className="mt-2 text-xs text-gray-500">
+              「로그인 유지」 또는 같은 탭의 이전 세션이 남아 있는 경우입니다.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push(nextPath || "/")}
+            className="w-full rounded py-3.5 text-[15px] font-semibold text-white transition hover:brightness-105 active:brightness-95"
+            style={{ backgroundColor: "#B24DFF" }}
+          >
+            홈으로 이동
+          </button>
+          <button
+            type="button"
+            onClick={() => void onUseOtherAccount()}
+            className="w-full rounded border border-gray-300 bg-white py-3 text-[15px] font-medium text-gray-800 transition hover:bg-gray-50"
+          >
+            다른 계정으로 로그인
+          </button>
+        </div>
+      ) : (
+        <>
       <form className="space-y-3" onSubmit={onSubmit} noValidate>
         <input
           id={`${id}-email`}
@@ -263,6 +298,8 @@ export default function LoginForm() {
       <p className="mt-4 text-center text-[11px] leading-relaxed text-gray-400">
         • 로그인 유지 설정 시, 개인정보 유출 위험에 유의해 주세요.
       </p>
+        </>
+      )}
         </AuthCard>
       </div>
     </section>

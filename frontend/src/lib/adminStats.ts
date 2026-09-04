@@ -179,54 +179,66 @@ function parseChart(raw: unknown): AdminStatsChart | null {
 export async function fetchAdminStatsOverview(): Promise<
   { ok: true; data: AdminStatsOverview } | { ok: false; message: string }
 > {
-  const res = await fetch("/api/v1/admin/stats/overview", {
-    headers: authHeadersJson(),
-    cache: "no-store",
-  })
-  const payload = await readJson(res)
-  if (!res.ok) {
-    return { ok: false, message: readMessage(payload, "통계 개요를 불러오지 못했습니다.") }
+  try {
+    const res = await fetch("/api/v1/admin/stats/overview", {
+      headers: authHeadersJson(),
+      cache: "no-store",
+    })
+    const payload = await readJson(res)
+    if (!res.ok) {
+      return { ok: false, message: readMessage(payload, "통계 개요를 불러오지 못했습니다.") }
+    }
+    const data = parseOverview(payload)
+    if (!data) return { ok: false, message: "통계 개요 형식이 올바르지 않습니다." }
+    return { ok: true, data }
+  } catch {
+    return { ok: false, message: "서버에 연결하지 못했습니다. Next/백엔드가 실행 중인지 확인해 주세요." }
   }
-  const data = parseOverview(payload)
-  if (!data) return { ok: false, message: "통계 개요 형식이 올바르지 않습니다." }
-  return { ok: true, data }
 }
 
 export async function fetchAdminStatsChart(
   chartKey: AdminStatsChartKey,
   options?: { days?: number; from?: string; to?: string },
 ): Promise<{ ok: true; data: AdminStatsChart } | { ok: false; message: string }> {
-  const qs = new URLSearchParams()
-  if (options?.from && options?.to) {
-    qs.set("from", options.from)
-    qs.set("to", options.to)
-  } else {
-    qs.set("days", String(options?.days ?? 7))
+  try {
+    const qs = new URLSearchParams()
+    if (options?.from && options?.to) {
+      qs.set("from", options.from)
+      qs.set("to", options.to)
+    } else {
+      qs.set("days", String(options?.days ?? 7))
+    }
+    const res = await fetch(`/api/v1/admin/stats/charts/${chartKey}?${qs.toString()}`, {
+      headers: authHeadersJson(),
+      cache: "no-store",
+    })
+    const payload = await readJson(res)
+    if (!res.ok) {
+      return { ok: false, message: readMessage(payload, "통계 차트를 불러오지 못했습니다.") }
+    }
+    const data = parseChart(payload)
+    if (!data) return { ok: false, message: "통계 차트 형식이 올바르지 않습니다." }
+    return { ok: true, data }
+  } catch {
+    return { ok: false, message: "서버에 연결하지 못했습니다. Next/백엔드가 실행 중인지 확인해 주세요." }
   }
-  const res = await fetch(`/api/v1/admin/stats/charts/${chartKey}?${qs.toString()}`, {
-    headers: authHeadersJson(),
-    cache: "no-store",
-  })
-  const payload = await readJson(res)
-  if (!res.ok) {
-    return { ok: false, message: readMessage(payload, "통계 차트를 불러오지 못했습니다.") }
-  }
-  const data = parseChart(payload)
-  if (!data) return { ok: false, message: "통계 차트 형식이 올바르지 않습니다." }
-  return { ok: true, data }
 }
 
 export async function refreshAdminHealth(): Promise<
   { ok: true } | { ok: false; message: string }
 > {
-  const res = await fetch("/api/v1/admin/stats/health/refresh", {
-    method: "POST",
-    headers: authHeadersJson(),
-    cache: "no-store",
-  })
-  const payload = await readJson(res)
-  if (!res.ok) {
-    return { ok: false, message: readMessage(payload, "헬스 상태를 새로고침하지 못했습니다.") }
+  try {
+    const res = await fetch("/api/v1/admin/stats/health/refresh", {
+      method: "POST",
+      headers: authHeadersJson(),
+      cache: "no-store",
+    })
+    const payload = await readJson(res)
+    if (!res.ok) {
+      return { ok: false, message: readMessage(payload, "헬스 상태를 새로고침하지 못했습니다.") }
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false, message: "서버에 연결하지 못했습니다. Next/백엔드가 실행 중인지 확인해 주세요." }
   }
-  return { ok: true }
 }

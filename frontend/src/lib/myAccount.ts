@@ -106,23 +106,27 @@ export async function updateWatchlist(
 }
 
 export async function fetchPasswordStatus(): Promise<PasswordStatus | null> {
-  const res = await fetch("/api/v1/users/password/status", {
-    headers: authHeadersJson(),
-    cache: "no-store",
-  })
-  if (!res.ok) return null
-  const data = unwrapData(await readJson(res))
-  if (!data) return null
-  const required = data.passwordChangeRequired === true || data.changeRequired === true
-    || data.isChangeRequired === true
-  const recommended = data.passwordChangeRecommended === true || data.changeRecommended === true
-    || data.isChangeRecommended === true
-  const daysRaw = data.daysUntilExpiry
-  return {
-    changeRequired: required,
-    changeRecommended: recommended,
-    daysUntilExpiry: typeof daysRaw === "number" ? daysRaw : null,
-    statusMessage: typeof data.statusMessage === "string" ? data.statusMessage : "",
+  try {
+    const res = await fetch("/api/v1/users/password/status", {
+      headers: authHeadersJson(),
+      cache: "no-store",
+    })
+    if (!res.ok) return null
+    const data = unwrapData(await readJson(res))
+    if (!data) return null
+    const required = data.passwordChangeRequired === true || data.changeRequired === true
+      || data.isChangeRequired === true
+    const recommended = data.passwordChangeRecommended === true || data.changeRecommended === true
+      || data.isChangeRecommended === true
+    const daysRaw = data.daysUntilExpiry
+    return {
+      changeRequired: required,
+      changeRecommended: recommended,
+      daysUntilExpiry: typeof daysRaw === "number" ? daysRaw : null,
+      statusMessage: typeof data.statusMessage === "string" ? data.statusMessage : "",
+    }
+  } catch {
+    return null
   }
 }
 
