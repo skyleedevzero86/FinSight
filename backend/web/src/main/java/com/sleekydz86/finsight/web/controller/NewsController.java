@@ -15,12 +15,17 @@ import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.concurrent.CompletableFuture;
 
+@Tag(name = "뉴스", description = "뉴스 조회·검색·스크랩·개인화 API")
+@SecurityRequirement(name = "BearerAuth")
 @RestController
 @RequestMapping("/api/v1/news")
 public class NewsController {
@@ -33,6 +38,7 @@ public class NewsController {
         this.newsQueryUseCase = newsQueryUseCase;
     }
 
+    @Operation(summary = "뉴스 스크래핑", description = "뉴스를 스크래핑합니다.")
     @PostMapping("/scrap")
     @LogExecution("뉴스 스크래핑 API")
     @PerformanceMonitor(threshold = 5000, metricName = "api.news.scrap")
@@ -50,6 +56,7 @@ public class NewsController {
         }
     }
 
+    @Operation(summary = "뉴스 상세 조회", description = "뉴스 ID로 상세 정보를 조회합니다.")
     @GetMapping("/{newsId}")
     @LogExecution("뉴스 상세 조회 API")
     @PerformanceMonitor(threshold = 1000, metricName = "api.news.detail")
@@ -68,6 +75,7 @@ public class NewsController {
         }
     }
 
+    @Operation(summary = "뉴스 목록 조회", description = "필터 조건에 따라 뉴스 목록을 조회합니다.")
     @GetMapping
     @LogExecution("뉴스 목록 조회 API")
     @PerformanceMonitor(threshold = 2000, metricName = "api.news.list")
@@ -86,6 +94,7 @@ public class NewsController {
         }
     }
 
+    @Operation(summary = "뉴스 검색", description = "키워드와 조건으로 뉴스를 검색합니다.")
     @GetMapping("/search")
     @LogExecution("뉴스 검색 API")
     @PerformanceMonitor(threshold = 3000, metricName = "api.news.search")
@@ -104,6 +113,7 @@ public class NewsController {
         }
     }
 
+    @Operation(summary = "인기 뉴스 조회", description = "인기 뉴스 목록을 조회합니다.")
     @GetMapping("/popular")
     @LogExecution("인기 뉴스 조회 API")
     @PerformanceMonitor(threshold = 1000, metricName = "api.news.popular")
@@ -122,6 +132,7 @@ public class NewsController {
         }
     }
 
+    @Operation(summary = "최신 뉴스 조회", description = "최신 뉴스 목록을 조회합니다.")
     @GetMapping("/latest")
     @LogExecution("최신 뉴스 조회 API")
     @PerformanceMonitor(threshold = 1000, metricName = "api.news.latest")
@@ -140,6 +151,7 @@ public class NewsController {
         }
     }
 
+    @Operation(summary = "개인화 뉴스 조회", description = "로그인한 사용자 맞춤 뉴스 목록을 조회합니다.")
     @GetMapping("/personalized")
     @LogExecution("개인화 뉴스 조회 API")
     @PerformanceMonitor(threshold = 2000, metricName = "api.news.personalized")

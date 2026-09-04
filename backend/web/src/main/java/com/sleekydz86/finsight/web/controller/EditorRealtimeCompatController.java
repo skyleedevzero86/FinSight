@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.web.controller;
 
 import com.sleekydz86.finsight.web.dto.editor.EditorLiveSyncMessage;
+import io.swagger.v3.oas.annotations.Hidden;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
@@ -10,6 +11,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+@Hidden
 @Controller
 public class EditorRealtimeCompatController {
 

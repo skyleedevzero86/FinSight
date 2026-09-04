@@ -19,6 +19,9 @@ import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 import com.sleekydz86.finsight.core.global.exception.BaseException;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@Tag(name = "댓글", description = "게시글 댓글 CRUD·반응·신고 API")
 @RestController
 @RequestMapping("/api/v1/comments")
 public class CommentController {
@@ -38,6 +42,7 @@ public class CommentController {
         this.commentCommandUseCase = commentCommandUseCase;
     }
 
+    @Operation(summary = "게시판 댓글 목록 조회", description = "게시판 ID로 댓글 목록을 조회합니다.")
     @GetMapping("/board/{boardId}")
     @LogExecution("게시판 댓글 조회")
     @PerformanceMonitor(threshold = 2000, operation = "comment_list")
@@ -67,6 +72,7 @@ public class CommentController {
         }
     }
 
+    @Operation(summary = "댓글 상세 조회", description = "댓글 ID로 상세 정보를 조회합니다.")
     @GetMapping("/{commentId}")
     @LogExecution("댓글 상세 조회")
     @PerformanceMonitor(threshold = 1000, operation = "comment_detail")
@@ -87,6 +93,8 @@ public class CommentController {
         }
     }
 
+    @Operation(summary = "댓글 생성", description = "새 댓글을 생성합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PostMapping
     @LogExecution("댓글 생성")
     @PerformanceMonitor(threshold = 2000, operation = "comment_create")
@@ -109,6 +117,8 @@ public class CommentController {
         }
     }
 
+    @Operation(summary = "댓글 수정", description = "기존 댓글을 수정합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PutMapping("/{commentId}")
     @LogExecution("댓글 수정")
     @PerformanceMonitor(threshold = 2000, operation = "comment_update")
@@ -131,6 +141,8 @@ public class CommentController {
         }
     }
 
+    @Operation(summary = "댓글 삭제", description = "댓글을 삭제합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @DeleteMapping("/{commentId}")
     @LogExecution("댓글 삭제")
     @PerformanceMonitor(threshold = 1000, operation = "comment_delete")
@@ -151,6 +163,8 @@ public class CommentController {
         }
     }
 
+    @Operation(summary = "댓글 좋아요", description = "댓글에 좋아요를 처리합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PostMapping("/{commentId}/like")
     @LogExecution("댓글 좋아요")
     @PerformanceMonitor(threshold = 1000, operation = "comment_like")
@@ -172,6 +186,8 @@ public class CommentController {
         }
     }
 
+    @Operation(summary = "댓글 싫어요", description = "댓글에 싫어요를 처리합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PostMapping("/{commentId}/dislike")
     @LogExecution("댓글 싫어요")
     @PerformanceMonitor(threshold = 1000, operation = "comment_dislike")
@@ -193,6 +209,8 @@ public class CommentController {
         }
     }
 
+    @Operation(summary = "댓글 신고", description = "댓글을 신고합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PostMapping("/{commentId}/report")
     @LogExecution("댓글 신고")
     @PerformanceMonitor(threshold = 2000, operation = "comment_report")
@@ -215,6 +233,8 @@ public class CommentController {
         }
     }
 
+    @Operation(summary = "내 댓글 목록 조회", description = "로그인한 사용자가 작성한 댓글 목록을 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @GetMapping("/my-comments")
     @LogExecution("내 댓글 목록 조회")
     @PerformanceMonitor(threshold = 2000, operation = "my_comments")

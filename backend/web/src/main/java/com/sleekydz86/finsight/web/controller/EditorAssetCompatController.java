@@ -5,6 +5,7 @@ import com.sleekydz86.finsight.core.editor.service.EditorAssetStorageService.Loa
 import com.sleekydz86.finsight.core.editor.service.EditorAssetStorageService.StoredMetadata;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
 import com.sleekydz86.finsight.web.dto.editor.EditorImageUploadResponse;
+import io.swagger.v3.oas.annotations.Hidden;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.InputStreamResource;
@@ -28,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 
+@Hidden
 @RestController
 @RequestMapping("/api/editor/images")
 public class EditorAssetCompatController {

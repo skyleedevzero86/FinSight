@@ -26,6 +26,7 @@ import com.sleekydz86.finsight.core.user.service.ProfileImageStorageService;
 import com.sleekydz86.finsight.core.user.service.StoredProfileImage;
 import com.sleekydz86.finsight.core.user.service.UserApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -53,7 +54,8 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-@Tag(name = "User Account", description = "로그인 사용자 본인 계정")
+@Tag(name = "사용자 계정", description = "로그인 사용자 본인 계정·관심목록·알림 설정 API")
+@SecurityRequirement(name = "BearerAuth")
 public class UserAccountController {
 
     private final UserQueryUseCase userQueryUseCase;
@@ -133,7 +135,7 @@ public class UserAccountController {
     }
 
     @GetMapping("/avatars/{userId}")
-    @Operation(summary = "프로필 사진 조회")
+    @Operation(summary = "프로필 사진 조회", description = "사용자 프로필 사진을 조회합니다. 인증 없이 접근 가능합니다.", security = {})
     public ResponseEntity<Resource> getAvatar(@PathVariable Long userId) {
         Optional<StoredProfileImage> stored = profileImageStorageService.load(userId);
         if (stored.isEmpty()) {
@@ -151,6 +153,8 @@ public class UserAccountController {
     @LogExecution("사용자 관심목록 조회")
     @PerformanceMonitor(threshold = 1000, operation = "user_watchlist")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
+    @Operation(summary = "관심목록 조회", description = "현재 사용자의 관심 카테고리 목록을 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     public ResponseEntity<ApiResponse<List<TargetCategory>>> getUserWatchlist(@CurrentUser AuthenticatedUser currentUser) {
         try {
             Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());
@@ -171,6 +175,8 @@ public class UserAccountController {
     @LogExecution("사용자 관심목록 수정")
     @PerformanceMonitor(threshold = 2000, operation = "user_watchlist_update")
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = { Exception.class })
+    @Operation(summary = "관심목록 수정", description = "현재 사용자의 관심 카테고리 목록을 수정합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     public ResponseEntity<ApiResponse<Void>> updateUserWatchlist(
             @RequestBody @Valid WatchlistUpdateRequest request,
             @CurrentUser AuthenticatedUser currentUser) {
@@ -194,6 +200,8 @@ public class UserAccountController {
     @LogExecution("사용자 알림 설정 조회")
     @PerformanceMonitor(threshold = 1000, operation = "user_notification_preferences")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
+    @Operation(summary = "알림 설정 조회", description = "현재 사용자의 알림 선호 설정을 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     public ResponseEntity<ApiResponse<List<NotificationType>>> getUserNotificationPreferences(
             @CurrentUser AuthenticatedUser currentUser) {
         try {
@@ -215,6 +223,8 @@ public class UserAccountController {
     @LogExecution("사용자 알림 설정 수정")
     @PerformanceMonitor(threshold = 2000, operation = "user_notification_preferences_update")
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = { Exception.class })
+    @Operation(summary = "알림 설정 수정", description = "현재 사용자의 알림 선호 설정을 수정합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     public ResponseEntity<ApiResponse<Void>> updateUserNotificationPreferences(
             @RequestBody @Valid List<NotificationType> preferences,
             @CurrentUser AuthenticatedUser currentUser) {
@@ -275,6 +285,8 @@ public class UserAccountController {
     @LogExecution("사용자 대시보드 조회")
     @PerformanceMonitor(threshold = 3000, operation = "user_dashboard")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
+    @Operation(summary = "사용자 대시보드 조회", description = "관심목록·알림 설정을 포함한 사용자 대시보드를 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     public ResponseEntity<ApiResponse<UserDashboardResponse>> getUserDashboard(@CurrentUser AuthenticatedUser currentUser) {
         try {
             Optional<User> userOpt = userQueryUseCase.findByEmail(currentUser.getEmail());

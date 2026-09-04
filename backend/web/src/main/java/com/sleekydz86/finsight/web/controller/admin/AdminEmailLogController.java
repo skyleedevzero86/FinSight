@@ -9,6 +9,7 @@ import com.sleekydz86.finsight.core.notification.domain.port.in.EmailLogQueryUse
 import com.sleekydz86.finsight.core.notification.domain.port.in.dto.EmailLogSearchCriteria;
 import com.sleekydz86.finsight.core.notification.domain.port.out.dto.EmailLogResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +31,8 @@ import java.time.LocalDateTime;
 @RequestMapping("/api/v1/admin/email-logs")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-@Tag(name = "Admin Email Logs", description = "관리자 메일 발송 이력")
+@Tag(name = "관리자 메일 이력", description = "관리자 메일 발송 이력 조회 API")
+@SecurityRequirement(name = "BearerAuth")
 public class AdminEmailLogController {
 
     private final EmailLogQueryUseCase emailLogQueryUseCase;

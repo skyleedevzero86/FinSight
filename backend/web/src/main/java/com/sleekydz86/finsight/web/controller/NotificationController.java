@@ -12,6 +12,7 @@ import com.sleekydz86.finsight.core.notification.domain.port.in.NotificationQuer
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Tag(name = "알림", description = "알림 관리 API")
+@SecurityRequirement(name = "BearerAuth")
 @RestController
 @RequestMapping("/api/v1/notifications")
 @RequiredArgsConstructor
