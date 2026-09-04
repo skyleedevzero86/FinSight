@@ -22,6 +22,7 @@ import com.sleekydz86.finsight.core.health.domain.port.out.ExternalHealthCheckPo
 import com.sleekydz86.finsight.core.health.domain.port.out.HealthPersistencePort;
 import com.sleekydz86.finsight.core.health.service.HealthQueryService;
 import com.sleekydz86.finsight.core.health.service.HealthCommandService;
+import com.sleekydz86.finsight.core.inbox.service.InboxService;
 import com.sleekydz86.finsight.core.notification.domain.port.out.NotificationSenderPort;
 import com.sleekydz86.finsight.core.notification.service.NotificationService;
 import org.springframework.beans.factory.annotation.Value;
@@ -141,7 +142,7 @@ public class AdvancedDependencyInjectionConfig {
     }
 
     @Bean
-    public NotificationService notificationService() {
-        return new NotificationService(userPersistencePort, notificationSenderPort);
+    public NotificationService notificationService(InboxService inboxService) {
+        return new NotificationService(userPersistencePort, notificationSenderPort, inboxService);
     }
 }
