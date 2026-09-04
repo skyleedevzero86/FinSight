@@ -15,11 +15,16 @@ public class Health {
 
     public Health(String id, HealthStatus status, SystemMetrics metrics,
                   Map<String, HealthStatus> componentStatuses) {
+        this(id, status, metrics, componentStatuses, LocalDateTime.now());
+    }
+
+    public Health(String id, HealthStatus status, SystemMetrics metrics,
+                  Map<String, HealthStatus> componentStatuses, LocalDateTime checkedAt) {
         this.id = id;
         this.status = status;
         this.metrics = metrics;
         this.componentStatuses = componentStatuses;
-        this.checkedAt = LocalDateTime.now();
+        this.checkedAt = checkedAt != null ? checkedAt : LocalDateTime.now();
     }
 
     public String getId() {

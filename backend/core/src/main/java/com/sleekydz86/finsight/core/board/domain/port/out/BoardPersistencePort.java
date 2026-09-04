@@ -38,5 +38,9 @@ public interface BoardPersistencePort {
 
     List<Board> findByStatusAndReportCountAtLeast(BoardStatus status, int minReportCount);
 
+    List<Board> findModerationCandidates(BoardStatus status, int minReportCount, List<BoardType> boardTypes);
+
+    List<Board> findByStatusAndBoardTypes(BoardStatus status, List<BoardType> boardTypes);
+
     Boards findEditorDocuments(BoardType boardType, BoardStatus status, String keyword, int page, int size);
 }

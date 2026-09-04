@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.popup.domain.port.in.dto.PopupItemCreateRequ
 import com.sleekydz86.finsight.core.popup.domain.port.in.dto.PopupItemResponse;
 import com.sleekydz86.finsight.core.popup.domain.port.in.dto.PopupItemUpdateRequest;
 import com.sleekydz86.finsight.core.popup.domain.port.out.PopupItemPersistencePort;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 public class PopupItemService {
@@ -26,6 +28,8 @@ public class PopupItemService {
 
     public PaginationResponse<PopupItemResponse> list(
             String domainId, boolean activeOnly, int page, int size) {
+        log.info("팝업 목록 서비스 - domainId={}, activeOnly={}, page={}, size={}",
+                domainId, activeOnly, page, size);
         var pg = persistencePort.findPage(blankToNull(domainId), activeOnly, PageRequest.of(page, size));
         List<PopupItemResponse> content = pg.getContent().stream()
                 .map(PopupItemResponse::from)
@@ -39,6 +43,7 @@ public class PopupItemService {
     }
 
     public PopupItemResponse get(String id) {
+        log.info("팝업 상세 서비스 - id={}", id);
         return persistencePort.findById(id)
                 .map(PopupItemResponse::from)
                 .orElseThrow(() -> new PopupItemNotFoundException(id));
@@ -49,7 +54,9 @@ public class PopupItemService {
         PopupItem d = new PopupItem();
         d.setId("POP" + System.currentTimeMillis());
         apply(d, req);
-        return PopupItemResponse.from(persistencePort.save(d));
+        PopupItem saved = persistencePort.save(d);
+        log.info("팝업 등록 완료 - id={}", saved.getId());
+        return PopupItemResponse.from(saved);
     }
 
     @Transactional
@@ -57,7 +64,9 @@ public class PopupItemService {
         PopupItem existing = persistencePort.findById(id)
                 .orElseThrow(() -> new PopupItemNotFoundException(id));
         apply(existing, req);
-        return PopupItemResponse.from(persistencePort.save(existing));
+        PopupItem saved = persistencePort.save(existing);
+        log.info("팝업 수정 완료 - id={}", id);
+        return PopupItemResponse.from(saved);
     }
 
     @Transactional
@@ -66,6 +75,7 @@ public class PopupItemService {
             throw new PopupItemNotFoundException(id);
         }
         persistencePort.deleteById(id);
+        log.info("팝업 삭제 완료 - id={}", id);
     }
 
     private static void apply(PopupItem d, PopupItemCreateRequest req) {

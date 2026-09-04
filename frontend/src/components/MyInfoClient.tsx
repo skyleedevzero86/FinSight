@@ -285,7 +285,7 @@ export default function MyInfoClient() {
         const status = await fetchPasswordStatus()
         setPasswordStatus(status)
         if (forcePassword) {
-          router.replace("/my")
+          router.replace("/myinfo")
         }
       }
 

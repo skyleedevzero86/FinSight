@@ -143,7 +143,7 @@ function LiveVodWatchBody() {
   const tab = (searchParams.get("tab") || "ALL").trim().toUpperCase() || "ALL"
   const backHref =
     tab === "FAVORITES"
-      ? "/my/favorites"
+      ? "/myinfo/favorites"
       : tab === "HISTORY"
         ? "/my/history"
         : tab === "ALL"

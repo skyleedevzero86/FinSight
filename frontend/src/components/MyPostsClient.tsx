@@ -41,7 +41,7 @@ export default function MyPostsClient() {
   useEffect(() => {
     if (!ready) return
     if (!user) {
-      router.replace(`/login?next=${encodeURIComponent("/my/posts")}`)
+      router.replace(`/login?next=${encodeURIComponent("/myinfo/posts")}`)
       return
     }
     let cancelled = false

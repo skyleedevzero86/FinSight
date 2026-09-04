@@ -19,6 +19,10 @@ import com.sleekydz86.finsight.core.comment.domain.ReactionType;
 import com.sleekydz86.finsight.core.global.exception.BoardNotFoundException;
 import com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException;
 import com.sleekydz86.finsight.core.global.exception.NewsNotFoundException;
+import com.sleekydz86.finsight.core.inbox.domain.InboxCategory;
+import com.sleekydz86.finsight.core.inbox.service.InboxService;
+import com.sleekydz86.finsight.core.user.domain.User;
+import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -37,15 +41,21 @@ public class CommentCommandService implements CommentCommandUseCase {
     private final CommentReactionPersistencePort commentReactionPersistencePort;
     private final CommentReportPersistencePort commentReportPersistencePort;
     private final BoardPersistencePort boardPersistencePort;
+    private final UserPersistencePort userPersistencePort;
+    private final InboxService inboxService;
 
     public CommentCommandService(CommentPersistencePort commentPersistencePort,
                                  CommentReactionPersistencePort commentReactionPersistencePort,
                                  CommentReportPersistencePort commentReportPersistencePort,
-                                 BoardPersistencePort boardPersistencePort) {
+                                 BoardPersistencePort boardPersistencePort,
+                                 UserPersistencePort userPersistencePort,
+                                 InboxService inboxService) {
         this.commentPersistencePort = commentPersistencePort;
         this.commentReactionPersistencePort = commentReactionPersistencePort;
         this.commentReportPersistencePort = commentReportPersistencePort;
         this.boardPersistencePort = boardPersistencePort;
+        this.userPersistencePort = userPersistencePort;
+        this.inboxService = inboxService;
     }
 
     @Override
@@ -82,10 +92,61 @@ public class CommentCommandService implements CommentCommandUseCase {
         if (board != null) {
             Board updated = board.incrementComment();
             boardPersistencePort.save(updated);
+            notifyBoardAuthorOnComment(board, userEmail, savedComment);
         }
         log.info("댓글 생성 완료 - 댓글 ID: {}", savedComment.getId());
 
         return savedComment;
+    }
+
+    private void notifyBoardAuthorOnComment(Board board, String commenterEmail, Comment comment) {
+        try {
+            if (board.getAuthorEmail() == null || board.getAuthorEmail().equalsIgnoreCase(commenterEmail)) {
+                return;
+            }
+            Optional<User> authorOpt = userPersistencePort.findByEmail(board.getAuthorEmail());
+            Optional<User> actorOpt = userPersistencePort.findByEmail(commenterEmail);
+            if (authorOpt.isEmpty()) {
+                return;
+            }
+            User author = authorOpt.get();
+            User actor = actorOpt.orElse(null);
+            String actorName = actor != null && actor.getNickname() != null && !actor.getNickname().isBlank()
+                    ? actor.getNickname()
+                    : commenterEmail;
+            String snippet = comment.getContent() == null ? null
+                    : (comment.getContent().length() > 120
+                            ? comment.getContent().substring(0, 120) + "…"
+                            : comment.getContent());
+            boolean isQna = board.getBoardType() == BoardType.QNA;
+            InboxCategory category = isQna ? InboxCategory.QNA : InboxCategory.COMMENT;
+            String title = actorName + " 님이 [" + board.getTitle() + "] 글에 댓글을 남겼습니다.";
+            String link = boardLink(board);
+            inboxService.createForUser(
+                    author.getId(),
+                    category,
+                    actor != null ? actor.getId() : null,
+                    actorName,
+                    actor != null ? actor.getProfileImageUrl() : null,
+                    title,
+                    snippet,
+                    link,
+                    "COMMENT",
+                    comment.getId());
+        } catch (Exception e) {
+            log.warn("댓글 인앱 알림 생성 실패 - boardId={}, error={}", board.getId(), e.getMessage());
+        }
+    }
+
+    private String boardLink(Board board) {
+        Long id = board.getId();
+        return switch (board.getBoardType()) {
+            case NOTICE -> "/community/notice/" + id;
+            case FREE -> "/community/free/" + id;
+            case QNA -> "/community/qna/" + id;
+            case MEDIA -> "/live-vod";
+            default -> "/community";
+        };
     }
 
     @Override

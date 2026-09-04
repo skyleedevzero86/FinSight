@@ -17,6 +17,7 @@ import com.sleekydz86.finsight.core.user.domain.port.in.dto.UserRegistrationRequ
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -243,6 +244,7 @@ public class AuthController {
     }
 
     @Operation(summary = "사용자 로그아웃", description = "현재 사용자를 로그아웃합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PostMapping("/logout")
     @LogExecution("사용자 로그아웃")
     @PerformanceMonitor(threshold = 500, metricName = "user_logout")
@@ -255,6 +257,7 @@ public class AuthController {
     }
 
     @Operation(summary = "현재 사용자 정보 조회", description = "현재 로그인한 사용자의 정보를 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @GetMapping("/me")
     @LogExecution("현재 사용자 정보 조회")
     @PerformanceMonitor(threshold = 1000, metricName = "current_user_info")

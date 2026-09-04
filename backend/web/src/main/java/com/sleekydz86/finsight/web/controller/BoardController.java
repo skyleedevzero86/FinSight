@@ -16,6 +16,9 @@ import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 import com.sleekydz86.finsight.core.global.exception.BaseException;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name = "게시판", description = "커뮤니티 게시글 CRUD·반응·스크랩 API")
 @RestController
 @RequestMapping("/api/v1/boards")
 public class BoardController {
@@ -36,6 +40,7 @@ public class BoardController {
         this.boardCommandUseCase = boardCommandUseCase;
     }
 
+    @Operation(summary = "게시판 목록 조회", description = "검색 조건에 따라 게시판 목록을 조회합니다.")
     @GetMapping
     @LogExecution("게시판 목록 조회")
     @PerformanceMonitor(threshold = 2000, operation = "board_list")
@@ -54,6 +59,7 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 상세 조회", description = "게시판 ID로 상세 정보를 조회합니다.")
     @GetMapping("/{boardId}")
     @LogExecution("게시판 상세 조회")
     @PerformanceMonitor(threshold = 1000, operation = "board_detail")
@@ -83,6 +89,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 생성", description = "새 게시글을 생성합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PostMapping
     @LogExecution("게시판 생성")
     @PerformanceMonitor(threshold = 3000, operation = "board_create")
@@ -102,6 +110,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 수정", description = "기존 게시글을 수정합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PutMapping("/{boardId}")
     @LogExecution("게시판 수정")
     @PerformanceMonitor(threshold = 2000, operation = "board_update")
@@ -127,6 +137,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 삭제", description = "게시글을 삭제합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @DeleteMapping("/{boardId}")
     @LogExecution("게시판 삭제")
     @PerformanceMonitor(threshold = 1000, operation = "board_delete")
@@ -149,6 +161,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 좋아요", description = "게시글에 좋아요를 처리합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PostMapping("/{boardId}/like")
     @LogExecution("게시판 좋아요")
     @PerformanceMonitor(threshold = 1000, operation = "board_like")
@@ -169,6 +183,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 싫어요", description = "게시글에 싫어요를 처리합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PostMapping("/{boardId}/dislike")
     @LogExecution("게시판 싫어요")
     @PerformanceMonitor(threshold = 1000, operation = "board_dislike")
@@ -189,6 +205,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 신고", description = "게시글을 신고합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PostMapping("/{boardId}/report")
     @LogExecution("게시판 신고")
     @PerformanceMonitor(threshold = 2000, operation = "board_report")
@@ -211,6 +229,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 스크랩", description = "게시글을 스크랩합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @PostMapping("/{boardId}/scrap")
     @LogExecution("게시판 스크랩")
     @PerformanceMonitor(threshold = 1000, operation = "board_scrap")
@@ -231,6 +251,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 스크랩 취소", description = "게시글 스크랩을 취소합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @DeleteMapping("/{boardId}/scrap")
     @LogExecution("게시판 스크랩 취소")
     @PerformanceMonitor(threshold = 1000, operation = "board_unscrap")
@@ -251,6 +273,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "내 스크랩 목록 조회", description = "로그인한 사용자의 스크랩 게시글 목록을 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @GetMapping("/my-scraps")
     @LogExecution("내 스크랩 목록 조회")
     @PerformanceMonitor(threshold = 2000, operation = "my_scraps")
@@ -275,6 +299,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "내 게시판 목록 조회", description = "로그인한 사용자가 작성한 게시글 목록을 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @GetMapping("/my-boards")
     @LogExecution("내 게시판 목록 조회")
     @PerformanceMonitor(threshold = 2000, operation = "my_boards")
@@ -299,6 +325,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "내 게시글 반응 조회", description = "로그인한 사용자의 게시글 반응 목록을 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @GetMapping("/my-reactions")
     @LogExecution("내 게시글 반응 조회")
     @PerformanceMonitor(threshold = 2000, operation = "my_board_reactions")
@@ -314,6 +342,7 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "인기 게시판 조회", description = "인기 게시글 목록을 조회합니다.")
     @GetMapping("/popular")
     @LogExecution("인기 게시판 조회")
     @PerformanceMonitor(threshold = 1000, operation = "board_popular")
@@ -334,6 +363,7 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "최신 게시판 조회", description = "최신 게시글 목록을 조회합니다.")
     @GetMapping("/latest")
     @LogExecution("최신 게시판 조회")
     @PerformanceMonitor(threshold = 1000, operation = "board_latest")
@@ -354,6 +384,7 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 통계 조회", description = "게시판 통계 정보를 조회합니다.")
     @GetMapping("/statistics")
     @LogExecution("게시판 통계 조회")
     @PerformanceMonitor(threshold = 2000, operation = "board_statistics")
@@ -368,6 +399,8 @@ public class BoardController {
         }
     }
 
+    @Operation(summary = "게시판 반응 상태 조회", description = "로그인한 사용자의 게시글 좋아요·싫어요·스크랩 상태를 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
     @GetMapping("/{boardId}/reaction-status")
     @LogExecution("게시판 반응 상태 조회")
     @PerformanceMonitor(threshold = 1000, operation = "board_reaction_status")

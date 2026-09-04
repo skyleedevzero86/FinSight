@@ -82,7 +82,7 @@ export default function LoginForm() {
     if (!ready || !user) return
     try {
       if (sessionStorage.getItem(FINSIGHT_FORCE_PASSWORD_KEY) === "1") {
-        router.replace("/my?password=required")
+        router.replace("/myinfo?password=required")
         return
       }
     } catch {
@@ -134,7 +134,7 @@ export default function LoginForm() {
     }
     router.push(
       passwordRequired && provider === "WEB"
-        ? "/my?password=required"
+        ? "/myinfo?password=required"
         : nextPath || "/",
     )
     router.refresh()

@@ -10,6 +10,7 @@ import com.sleekydz86.finsight.core.user.domain.port.in.dto.AdminPasswordResetRe
 import com.sleekydz86.finsight.core.user.domain.port.out.dto.UserResponse;
 import com.sleekydz86.finsight.core.user.service.UserApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/admin/users")
 @RequiredArgsConstructor
 @PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
-@Tag(name = "Admin Users", description = "관리자 사용자 관리")
+@Tag(name = "관리자 사용자", description = "관리자 사용자 승인·정지·역할·삭제 API")
+@SecurityRequirement(name = "BearerAuth")
 public class AdminUserController {
 
     private final UserApplicationService userApplicationService;

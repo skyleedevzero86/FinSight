@@ -90,7 +90,7 @@ export default function MyHistoryClient() {
   useEffect(() => {
     if (!ready) return
     if (!user) {
-      router.replace(`/login?next=${encodeURIComponent("/my/history")}`)
+      router.replace(`/login?next=${encodeURIComponent("/myinfo/history")}`)
     }
   }, [ready, user, router])
 
@@ -134,7 +134,7 @@ export default function MyHistoryClient() {
             <Link href="/live-vod" className="flv-back-link">
               LIVE/VOD 목록
             </Link>
-            <Link href="/my/favorites" className="flv-back-link">
+            <Link href="/myinfo/favorites" className="flv-back-link">
               즐겨찾기만 보기
             </Link>
           </div>

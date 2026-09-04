@@ -19,7 +19,7 @@ export default function MyFavoritesClient() {
   useEffect(() => {
     if (!ready) return
     if (!user) {
-      router.replace(`/login?next=${encodeURIComponent("/my/favorites")}`)
+      router.replace(`/login?next=${encodeURIComponent("/myinfo/favorites")}`)
     }
   }, [ready, user, router])
 
@@ -50,7 +50,7 @@ export default function MyFavoritesClient() {
             <h1>나의 즐겨찾기</h1>
             <p className="flv-fav-desc">저장한 LIVE/VOD 영상 목록입니다. 썸네일을 누르면 다시 시청할 수 있습니다.</p>
           </div>
-          <Link href="/my/history" className="flv-back-link">
+          <Link href="/myinfo/history" className="flv-back-link">
             시청 기록 보기
           </Link>
         </div>

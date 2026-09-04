@@ -22,6 +22,7 @@ import com.sleekydz86.finsight.web.dto.editor.EditorDocumentPageResponse;
 import com.sleekydz86.finsight.web.dto.editor.EditorDocumentSummaryResponse;
 import com.sleekydz86.finsight.web.dto.editor.EditorDraftResponse;
 import com.sleekydz86.finsight.web.dto.editor.EditorSaveDraftRequest;
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -42,6 +43,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+@Hidden
 @RestController
 @RequestMapping("/api/editor")
 public class EditorBoardCompatController {

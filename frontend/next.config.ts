@@ -32,6 +32,12 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      { source: "/my", destination: "/myinfo", permanent: true },
+      { source: "/my/:path*", destination: "/myinfo/:path*", permanent: true },
+    ]
+  },
   async headers() {
     return [
       {
