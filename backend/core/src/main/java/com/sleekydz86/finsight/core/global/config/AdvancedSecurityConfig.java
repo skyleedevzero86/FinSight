@@ -88,6 +88,7 @@ public class AdvancedSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authz -> authz
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/login/oauth2/code/google").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
@@ -107,6 +108,7 @@ public class AdvancedSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/comments/board/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/mainimg/items", "/api/v1/mainimg/items/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/popup/items", "/api/v1/popup/items/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/ulink/items", "/api/v1/ulink/items/**").permitAll()
                         .requestMatchers("/api/v1/media/**").permitAll()
                         .anyRequest().authenticated()
                 )

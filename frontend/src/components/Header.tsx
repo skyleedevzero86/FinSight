@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import HeaderSearchOverlay from "@/components/HeaderSearchOverlay"
 import BrandLogo from "@/components/BrandLogo"
 import { useAuthSession } from "@/components/AuthSessionProvider"
-import { canManageUsers } from "@/lib/adminUsers"
+import NotificationBellButton from "@/components/NotificationBellButton"
 
 function HeaderAvatar({ src }: { src: string | null }) {
   const [broken, setBroken] = useState(false)
@@ -56,7 +56,7 @@ export default function Header() {
           {user ? (
             <>
               <Link
-                href="/my"
+                href="/myinfo"
                 className="flex max-w-[11rem] items-center gap-1.5 hover:text-finsight-secondary transition"
                 title={user.nickname}
               >
@@ -64,15 +64,15 @@ export default function Header() {
                 <span className="truncate">{user.nickname}</span>
               </Link>
               <span className="text-gray-400">|</span>
-              <Link href="/my/history" className="hover:text-finsight-secondary transition">
+              <Link href="/myinfo/history" className="hover:text-finsight-secondary transition">
                 시청 기록
               </Link>
               <span className="text-gray-400">|</span>
-              <Link href="/my/favorites" className="hover:text-finsight-secondary transition">
+              <Link href="/myinfo/favorites" className="hover:text-finsight-secondary transition">
                 나의 즐겨찾기
               </Link>
               <span className="text-gray-400">|</span>
-              <Link href="/my/posts" className="hover:text-finsight-secondary transition">
+              <Link href="/myinfo/posts" className="hover:text-finsight-secondary transition">
                 나의 게시글
               </Link>
               {canManageUsers(user.role) ? (
@@ -90,6 +90,10 @@ export default function Header() {
                     팝업
                   </Link>
                   <span className="text-gray-400">|</span>
+                  <Link href="/admin/ulink" className="hover:text-finsight-secondary transition">
+                    통합링크
+                  </Link>
+                  <span className="text-gray-400">|</span>
                   <Link href="/admin/moderation" className="hover:text-finsight-secondary transition">
                     신고 관리
                   </Link>
@@ -100,6 +104,10 @@ export default function Header() {
                   <span className="text-gray-400">|</span>
                   <Link href="/admin/email-logs" className="hover:text-finsight-secondary transition">
                     메일 이력
+                  </Link>
+                  <span className="text-gray-400">|</span>
+                  <Link href="/admin/notifications" className="hover:text-finsight-secondary transition">
+                    알림
                   </Link>
                 </>
               ) : null}
@@ -151,36 +159,7 @@ export default function Header() {
             >
               <Search className="w-5 h-5" />
             </button>
-            {user ? (
-              <button
-                type="button"
-                className="hover:text-finsight-secondary transition"
-                aria-expanded={false}
-                aria-label="알림함 보기"
-              >
-                <svg
-                  width="20"
-                  height="22"
-                  viewBox="0 0 20 22"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="shrink-0"
-                  aria-hidden
-                >
-                  <g>
-                    <path
-                      d="M8.16611 16.55C7.75272 16.996 7.5 17.593 7.5 18.2491C7.5 19.6298 8.61929 20.7491 10 20.7491C11.3807 20.7491 12.5 19.6298 12.5 18.2491C12.5 17.593 12.2473 16.996 11.8339 16.55"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                    />
-                    <path
-                      d="M3 13.537L3.82923 13.8869L3.9 13.7191V13.537H3ZM1.75 16.5L0.920772 16.1502L0.3935 17.4H1.75V16.5ZM18.25 16.5V17.4H19.6065L19.0792 16.1502L18.25 16.5ZM17 13.537H16.1V13.7191L16.1708 13.8869L17 13.537ZM3.9 7.75C3.9 4.65721 6.40721 2.15 9.5 2.15V0.35C5.41309 0.35 2.1 3.66309 2.1 7.75H3.9ZM3.9 13.537V7.75H2.1V13.537H3.9ZM2.57923 16.8498L3.82923 13.8869L2.17077 13.1872L0.920772 16.1502L2.57923 16.8498ZM18.25 15.6H1.75V17.4H18.25V15.6ZM16.1708 13.8869L17.4208 16.8498L19.0792 16.1502L17.8292 13.1872L16.1708 13.8869ZM16.1 7.75V13.537H17.9V7.75H16.1ZM10.5 2.15C13.5928 2.15 16.1 4.65721 16.1 7.75H17.9C17.9 3.66309 14.5869 0.35 10.5 0.35V2.15ZM9.5 2.15H10.5V0.35H9.5V2.15Z"
-                      fill="currentColor"
-                    />
-                  </g>
-                </svg>
-              </button>
-            ) : null}
+            {user ? <NotificationBellButton /> : null}
             <button
               type="button"
               className="md:hidden hover:text-finsight-secondary transition"
@@ -232,7 +211,7 @@ export default function Header() {
                 <>
                   <li>
                     <Link
-                      href="/my/history"
+                      href="/myinfo/history"
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >
                       시청 기록
@@ -240,7 +219,7 @@ export default function Header() {
                   </li>
                   <li>
                     <Link
-                      href="/my/favorites"
+                      href="/myinfo/favorites"
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >
                       나의 즐겨찾기
@@ -248,7 +227,7 @@ export default function Header() {
                   </li>
                   <li>
                     <Link
-                      href="/my/posts"
+                      href="/myinfo/posts"
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >
                       나의 게시글
@@ -284,6 +263,14 @@ export default function Header() {
                   </li>
                   <li>
                     <Link
+                      href="/admin/ulink"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      통합링크
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
                       href="/admin/moderation"
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >
@@ -304,6 +291,14 @@ export default function Header() {
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >
                       메일 이력
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/admin/notifications"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      알림
                     </Link>
                   </li>
                 </>

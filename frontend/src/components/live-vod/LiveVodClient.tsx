@@ -123,7 +123,7 @@ function LiveVodWithTab() {
         <div className="mx-auto max-w-[1240px] px-4 py-6 md:px-6 md:py-8">
           <p className="text-sm text-gray-600">
             즐겨찾기는{" "}
-            <Link href="/my/favorites" className="underline">
+            <Link href="/myinfo/favorites" className="underline">
               나의 즐겨찾기
             </Link>
             에서 확인할 수 있습니다.
@@ -138,7 +138,7 @@ function LiveVodWithTab() {
         <div className="mx-auto max-w-[1240px] px-4 py-6 md:px-6 md:py-8">
           <p className="text-sm text-gray-600">
             시청 기록은{" "}
-            <Link href="/my/history" className="underline">
+            <Link href="/myinfo/history" className="underline">
               나의 히스토리
             </Link>
             에서 확인할 수 있습니다.

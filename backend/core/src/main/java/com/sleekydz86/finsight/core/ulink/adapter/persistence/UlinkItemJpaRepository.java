@@ -12,7 +12,7 @@ public interface UlinkItemJpaRepository extends JpaRepository<UlinkItemJpaEntity
             SELECT u FROM UlinkItemJpaEntity u
             WHERE (:domainId IS NULL OR u.domainId = :domainId)
             AND (:sectionCode IS NULL OR u.sectionCode = :sectionCode)
-            ORDER BY u.createdAt DESC
+            ORDER BY u.createdAt ASC, u.id ASC
             """)
     Page<UlinkItemJpaEntity> search(
             @Param("domainId") String domainId,

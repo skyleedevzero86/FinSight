@@ -96,7 +96,7 @@ function clientForwardHeaders(req: Request): Record<string, string> {
 export async function proxyJsonToFinSight(
   req: Request,
   backendPath: string,
-  options?: { timeoutMs?: number },
+  options?: { timeoutMs?: number; forwardCredentials?: boolean },
 ): Promise<Response> {
   try {
     const base = getFinSightBaseUrl()
@@ -114,6 +114,9 @@ export async function proxyJsonToFinSight(
     const controller = new AbortController()
     const timeoutMs = options?.timeoutMs ?? getProxyTimeoutMs()
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+    const forwardCredentials = options?.forwardCredentials !== false
+    const authHeader = req.headers.get("authorization")
+    const cookieHeader = req.headers.get("cookie")
 
     let upstream: Response
     try {
@@ -123,12 +126,8 @@ export async function proxyJsonToFinSight(
           "Content-Type": "application/json",
           Accept: "application/json",
           ...clientForwardHeaders(req),
-          ...(req.headers.get("authorization")
-            ? { Authorization: req.headers.get("authorization") as string }
-            : {}),
-          ...(req.headers.get("cookie")
-            ? { Cookie: req.headers.get("cookie") as string }
-            : {}),
+          ...(forwardCredentials && authHeader ? { Authorization: authHeader } : {}),
+          ...(forwardCredentials && cookieHeader ? { Cookie: cookieHeader } : {}),
         },
         body,
         signal: controller.signal,
@@ -171,22 +170,30 @@ export async function proxyJsonToFinSight(
 export async function mirrorRequestToFinSight(
   req: Request,
   backendPathAndQuery: string,
-  init?: { body?: BodyInit | null; timeoutMs?: number },
+  init?: {
+    body?: BodyInit | null
+    timeoutMs?: number
+    /** false면 Authorization/Cookie를 백엔드로 넘기지 않음(공개 GET용) */
+    forwardCredentials?: boolean
+  },
 ): Promise<Response> {
   try {
     const base = getFinSightBaseUrl()
     if (!base) return finSightUnavailableResponse()
 
     const method = req.method
+    const forwardCredentials = init?.forwardCredentials !== false
     const headers: Record<string, string> = {
       Accept: req.headers.get("accept") ?? "application/json",
       Connection: "close",
       ...clientForwardHeaders(req),
     }
-    const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
-    if (auth) headers.Authorization = auth
-    const cookie = req.headers.get("cookie") ?? req.headers.get("Cookie")
-    if (cookie) headers.Cookie = cookie
+    if (forwardCredentials) {
+      const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
+      if (auth) headers.Authorization = auth
+      const cookie = req.headers.get("cookie") ?? req.headers.get("Cookie")
+      if (cookie) headers.Cookie = cookie
+    }
     const contentType = req.headers.get("content-type") ?? req.headers.get("Content-Type")
     if (
       contentType &&

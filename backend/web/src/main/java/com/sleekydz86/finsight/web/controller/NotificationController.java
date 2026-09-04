@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Tag(name = "알림", description = "알림 관리 API")
+@Tag(name = "알림(발송)", description = "이메일·푸시 등 발송형 알림 관리. 인앱 알림함은 /api/v1/inbox 참고.")
 @SecurityRequirement(name = "BearerAuth")
 @RestController
 @RequestMapping("/api/v1/notifications")

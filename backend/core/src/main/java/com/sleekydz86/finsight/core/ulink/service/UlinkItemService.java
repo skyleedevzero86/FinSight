@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.ulink.domain.port.in.dto.UlinkItemCreateRequ
 import com.sleekydz86.finsight.core.ulink.domain.port.in.dto.UlinkItemResponse;
 import com.sleekydz86.finsight.core.ulink.domain.port.in.dto.UlinkItemUpdateRequest;
 import com.sleekydz86.finsight.core.ulink.domain.port.out.UlinkItemPersistencePort;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 public class UlinkItemService {
@@ -26,6 +28,8 @@ public class UlinkItemService {
 
     public PaginationResponse<UlinkItemResponse> list(
             String domainId, String sectionCode, int page, int size) {
+        log.info("통합링크 목록 서비스 - domainId={}, sectionCode={}, page={}, size={}",
+                domainId, sectionCode, page, size);
         var pg = persistencePort.findPage(blankToNull(domainId), blankToNull(sectionCode), PageRequest.of(page, size));
         List<UlinkItemResponse> content = pg.getContent().stream()
                 .map(UlinkItemResponse::from)
@@ -39,6 +43,7 @@ public class UlinkItemService {
     }
 
     public UlinkItemResponse get(String id) {
+        log.info("통합링크 상세 서비스 - id={}", id);
         return persistencePort.findById(id)
                 .map(UlinkItemResponse::from)
                 .orElseThrow(() -> new UlinkItemNotFoundException(id));
@@ -50,7 +55,9 @@ public class UlinkItemService {
         d.setId("ULK" + System.currentTimeMillis());
         apply(d, req.getDomainId(), req.getSectionCode(), req.getLinkGroup(),
                 req.getLinkName(), req.getLinkUrl(), req.getLinkTarget(), req.getDescription());
-        return UlinkItemResponse.from(persistencePort.save(d));
+        UlinkItem saved = persistencePort.save(d);
+        log.info("통합링크 등록 완료 - id={}", saved.getId());
+        return UlinkItemResponse.from(saved);
     }
 
     @Transactional
@@ -59,7 +66,9 @@ public class UlinkItemService {
                 .orElseThrow(() -> new UlinkItemNotFoundException(id));
         apply(existing, req.getDomainId(), req.getSectionCode(), req.getLinkGroup(),
                 req.getLinkName(), req.getLinkUrl(), req.getLinkTarget(), req.getDescription());
-        return UlinkItemResponse.from(persistencePort.save(existing));
+        UlinkItem saved = persistencePort.save(existing);
+        log.info("통합링크 수정 완료 - id={}", id);
+        return UlinkItemResponse.from(saved);
     }
 
     @Transactional
@@ -68,6 +77,7 @@ public class UlinkItemService {
             throw new UlinkItemNotFoundException(id);
         }
         persistencePort.deleteById(id);
+        log.info("통합링크 삭제 완료 - id={}", id);
     }
 
     private static void apply(

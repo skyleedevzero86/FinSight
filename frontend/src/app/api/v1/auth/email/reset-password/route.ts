@@ -1,5 +1,7 @@
 import { proxyJsonToFinSight } from "@/lib/finsightApiProxy"
 
 export async function POST(req: Request) {
-  return proxyJsonToFinSight(req, "/api/v1/auth/email/reset-password")
+  return proxyJsonToFinSight(req, "/api/v1/auth/email/reset-password", {
+    forwardCredentials: false,
+  })
 }

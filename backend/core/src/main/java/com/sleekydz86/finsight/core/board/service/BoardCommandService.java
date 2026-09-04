@@ -14,12 +14,18 @@ import com.sleekydz86.finsight.core.comment.domain.ReactionType;
 import com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException;
 import com.sleekydz86.finsight.core.global.exception.UserNotFoundException;
 import com.sleekydz86.finsight.core.global.exception.CommentAlreadyReportedException;
+import com.sleekydz86.finsight.core.inbox.domain.InboxCategory;
+import com.sleekydz86.finsight.core.inbox.service.InboxService;
+import com.sleekydz86.finsight.core.user.domain.User;
+import com.sleekydz86.finsight.core.user.domain.UserRole;
+import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -33,17 +39,23 @@ public class BoardCommandService implements BoardCommandUseCase {
     private final BoardReportPersistencePort boardReportPersistencePort;
     private final BoardScrapPersistencePort boardScrapPersistencePort;
     private final BoardFilePersistencePort boardFilePersistencePort;
+    private final UserPersistencePort userPersistencePort;
+    private final InboxService inboxService;
 
     public BoardCommandService(BoardPersistencePort boardPersistencePort,
                                BoardReactionPersistencePort boardReactionPersistencePort,
                                BoardReportPersistencePort boardReportPersistencePort,
                                BoardScrapPersistencePort boardScrapPersistencePort,
-                               BoardFilePersistencePort boardFilePersistencePort) {
+                               BoardFilePersistencePort boardFilePersistencePort,
+                               UserPersistencePort userPersistencePort,
+                               InboxService inboxService) {
         this.boardPersistencePort = boardPersistencePort;
         this.boardReactionPersistencePort = boardReactionPersistencePort;
         this.boardReportPersistencePort = boardReportPersistencePort;
         this.boardScrapPersistencePort = boardScrapPersistencePort;
         this.boardFilePersistencePort = boardFilePersistencePort;
+        this.userPersistencePort = userPersistencePort;
+        this.inboxService = inboxService;
     }
 
     @Override
@@ -62,8 +74,53 @@ public class BoardCommandService implements BoardCommandUseCase {
 
         Board savedBoard = boardPersistencePort.save(board);
         log.info("게시글 생성 완료 - 게시글 ID: {}", savedBoard.getId());
-
+        notifyOnBoardCreated(savedBoard, userEmail);
         return savedBoard;
+    }
+
+    private void notifyOnBoardCreated(Board board, String authorEmail) {
+        try {
+            Optional<User> actorOpt = userPersistencePort.findByEmail(authorEmail);
+            User actor = actorOpt.orElse(null);
+            String actorName = actor != null && actor.getNickname() != null && !actor.getNickname().isBlank()
+                    ? actor.getNickname()
+                    : authorEmail;
+
+            if (board.getBoardType() == BoardType.MEDIA) {
+                List<User> recipients = userPersistencePort.findAllActiveUsers();
+                inboxService.createForUsers(
+                        recipients,
+                        InboxCategory.YOUTUBE,
+                        actor != null ? actor.getId() : null,
+                        actorName,
+                        actor != null ? actor.getProfileImageUrl() : null,
+                        actorName + " 님이 새 유튜브/미디어 콘텐츠를 등록했습니다: [" + board.getTitle() + "]",
+                        null,
+                        "/live-vod",
+                        "BOARD",
+                        board.getId());
+                return;
+            }
+
+            if (board.getBoardType() == BoardType.NOTICE) {
+                List<User> admins = userPersistencePort.findAllActiveUsers().stream()
+                        .filter(u -> u.getRole() == UserRole.ADMIN || u.getRole() == UserRole.MANAGER)
+                        .toList();
+                inboxService.createForUsers(
+                        admins,
+                        InboxCategory.ADMIN,
+                        actor != null ? actor.getId() : null,
+                        actorName,
+                        actor != null ? actor.getProfileImageUrl() : null,
+                        "관리 메뉴·공지 갱신: [" + board.getTitle() + "]",
+                        null,
+                        "/community/notice/" + board.getId(),
+                        "BOARD",
+                        board.getId());
+            }
+        } catch (Exception e) {
+            log.warn("게시글 인앱 알림 생성 실패 - boardId={}, error={}", board.getId(), e.getMessage());
+        }
     }
 
     @Override

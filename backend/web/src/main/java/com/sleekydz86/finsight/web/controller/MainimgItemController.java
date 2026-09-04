@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.web.controller;
 
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
+import com.sleekydz86.finsight.core.global.security.SecurityAccess;
 import com.sleekydz86.finsight.core.mainimg.domain.port.in.dto.MainimgItemCreateRequest;
 import com.sleekydz86.finsight.core.mainimg.domain.port.in.dto.MainimgItemResponse;
 import com.sleekydz86.finsight.core.mainimg.domain.port.in.dto.MainimgItemUpdateRequest;
@@ -33,9 +34,8 @@ public class MainimgItemController {
 
     @Operation(
             summary = "메인이미지 목록 조회",
-            description = "reflectOnly=true(기본): 화면 반영(Y) 항목만 공개 조회. reflectOnly=false: ADMIN/MANAGER만 전체 조회.")
+            description = "reflectOnly=true(기본): 화면 반영(Y) 항목만 공개 조회(비인증 가능). reflectOnly=false: ADMIN/MANAGER만 전체 조회.")
     @GetMapping
-    @PreAuthorize("#reflectOnly == true or hasAnyRole('ADMIN','MANAGER')")
     public ResponseEntity<ApiResponse<PaginationResponse<MainimgItemResponse>>> list(
             @Parameter(description = "사이트·테넌트 구분 (선택)")
             @RequestParam(required = false) String domainId,
@@ -45,6 +45,9 @@ public class MainimgItemController {
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기 (1~100)")
             @RequestParam(defaultValue = "20") int size) {
+        if (!reflectOnly) {
+            SecurityAccess.requireAdminOrManager();
+        }
         int p = Math.max(0, page);
         int s = Math.min(100, Math.max(1, size));
         log.info("메인이미지 목록 조회 - domainId={}, reflectOnly={}, page={}, size={}", domainId, reflectOnly, p, s);
