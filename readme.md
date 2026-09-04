@@ -1,7 +1,9 @@
 # FinSight
 
-<img width="1136" height="505" alt="image" src="https://github.com/user-attachments/assets/a106a5d4-f7ba-4be0-be3b-daca917b7a2a" />
-<img width="1917" height="324" alt="image" src="https://github.com/user-attachments/assets/45ebb257-5bb3-49f0-9f4d-1764d4f7d44a" />
+<img width="1889" height="922" alt="image" src="https://github.com/user-attachments/assets/85211cf6-0c1e-4aa5-918a-87dd447f746b" />
+<img width="1882" height="922" alt="image" src="https://github.com/user-attachments/assets/5259b901-159d-4228-9381-ab8c17c79cdd" />
+<img width="1884" height="910" alt="image" src="https://github.com/user-attachments/assets/f03b2d6d-344e-4c4c-b006-4ebeae5bbbfd" />
+<img width="1886" height="924" alt="image" src="https://github.com/user-attachments/assets/0fa1822a-f465-47a7-882e-41cddd6bb7a8" />
 
 경제/시장 뉴스를 수집·AI 분석하고, 커뮤니티·미디어·알림과 함께 제공하는 서비스입니다.
 
