@@ -110,6 +110,7 @@ public class AdvancedSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/popup/items", "/api/v1/popup/items/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/ulink/items", "/api/v1/ulink/items/**").permitAll()
                         .requestMatchers("/api/v1/media/**").permitAll()
+                        .requestMatchers("/api/v1/health", "/api/v1/health/**").hasAnyRole("ADMIN", "MANAGER")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

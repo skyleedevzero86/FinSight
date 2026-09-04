@@ -83,6 +83,10 @@ export default function Header() {
                     통계
                   </Link>
                   <span className="text-gray-400">|</span>
+                  <Link href="/admin/health" className="hover:text-finsight-secondary transition">
+                    서버상황
+                  </Link>
+                  <span className="text-gray-400">|</span>
                   <Link href="/admin/mainimg" className="hover:text-finsight-secondary transition">
                     메인이미지
                   </Link>
@@ -248,6 +252,14 @@ export default function Header() {
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >
                       통계
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/admin/health"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      서버상황
                     </Link>
                   </li>
                   <li>
