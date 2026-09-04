@@ -1,5 +1,6 @@
 import Header from "@/components/Header"
 import Footer from "@/components/Footer"
+import SitePopupLayer from "@/components/SitePopupLayer"
 
 export default function SiteLayout({
   children,
@@ -11,6 +12,7 @@ export default function SiteLayout({
       <Header />
       <main className="min-h-0 flex-1 w-full">{children}</main>
       <Footer />
+      <SitePopupLayer />
     </div>
   )
 }

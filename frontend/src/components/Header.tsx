@@ -86,6 +86,10 @@ export default function Header() {
                     메인이미지
                   </Link>
                   <span className="text-gray-400">|</span>
+                  <Link href="/admin/popup" className="hover:text-finsight-secondary transition">
+                    팝업
+                  </Link>
+                  <span className="text-gray-400">|</span>
                   <Link href="/admin/moderation" className="hover:text-finsight-secondary transition">
                     신고 관리
                   </Link>
@@ -268,6 +272,14 @@ export default function Header() {
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >
                       메인이미지
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/admin/popup"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      팝업
                     </Link>
                   </li>
                   <li>
