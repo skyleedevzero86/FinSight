@@ -59,7 +59,7 @@ public class AdminSmsController {
             @CurrentUser AuthenticatedUser currentUser,
             @Valid @RequestBody SmsManualSendRequest request) {
         log.info("관리자 SMS 수동 발송 - actorId={}, toPhone={}, email={}",
-                currentUser.getId(), request.toPhone(), request.userEmail());
+                currentUser.getId(), maskPhoneNumber(request.toPhone()), maskEmail(request.userEmail()));
         SmsManualSendResponse result = smsAdminService.sendManual(request, currentUser.getId());
         return ResponseEntity.status(result.success() ? HttpStatus.OK : HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.success(result, result.success() ? "SMS를 발송했습니다" : "SMS 발송에 실패했습니다"));
@@ -95,5 +95,27 @@ public class AdminSmsController {
     @GetMapping("/stats")
     public ResponseEntity<ApiResponse<SmsStatsResponse>> stats() {
         return ResponseEntity.ok(ApiResponse.success(smsAdminService.stats(), "SMS 통계를 조회했습니다"));
+    }
+
+    private static String maskPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            return "-";
+        }
+        if (phoneNumber.length() <= 4) {
+            return "[REDACTED]";
+        }
+        return "****" + phoneNumber.substring(phoneNumber.length() - 4);
+    }
+
+    private static String maskEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return "-";
+        }
+        int at = email.indexOf('@');
+        if (at <= 0 || at == email.length() - 1) {
+            return "[REDACTED]";
+        }
+        String maskedLocal = at == 1 ? "***" : email.charAt(0) + "***";
+        return maskedLocal + "@" + email.substring(at + 1);
     }
 }

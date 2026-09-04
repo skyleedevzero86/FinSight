@@ -48,7 +48,7 @@ public class SmsNotificationService {
         }
         String phoneNumber = user.getPhoneNumber();
         if (phoneNumber == null || phoneNumber.isBlank()) {
-            log.warn("사용자 전화번호가 없어 카카오 알림톡 발송 불가 - 사용자: {}", user.getEmail());
+            log.warn("사용자 전화번호가 없어 카카오 알림톡 발송 불가 - 사용자: {}", maskEmail(user.getEmail()));
             return;
         }
         try {
@@ -56,7 +56,7 @@ public class SmsNotificationService {
             smsAdminService.recordSend(SmsPurpose.NOTIFICATION, MessageType.KAKAO_ALIMTALK,
                     phoneNumber, smsAdminService.resolveFromNumber(), message, result, user.getId(), null);
         } catch (Exception e) {
-            log.error("카카오 알림톡 발송 중 예외 - 사용자: {}, 오류: {}", user.getEmail(), e.getMessage(), e);
+            log.error("카카오 알림톡 발송 중 예외 - 사용자: {}, 오류: {}", maskEmail(user.getEmail()), e.getMessage(), e);
             throw new RuntimeException("카카오 알림톡 발송 실패", e);
         }
     }
@@ -95,12 +95,12 @@ public class SmsNotificationService {
         if (!smsAdminService.isPurposeEnabled(purpose)) {
             smsAdminService.recordSkipped(purpose, user.getPhoneNumber(),
                     "관리자 SMS 설정으로 비활성", user.getId());
-            log.debug("SMS 발송 스킵 - purpose={}, user={}", purpose, user.getEmail());
+            log.debug("SMS 발송 스킵 - purpose={}, user={}", purpose, maskEmail(user.getEmail()));
             return;
         }
         String phoneNumber = user.getPhoneNumber();
         if (phoneNumber == null || phoneNumber.isBlank()) {
-            log.warn("사용자 전화번호가 없어 SMS 발송 불가 - 사용자: {}", user.getEmail());
+            log.warn("사용자 전화번호가 없어 SMS 발송 불가 - 사용자: {}", maskEmail(user.getEmail()));
             return;
         }
         String from = smsAdminService.resolveFromNumber();
@@ -115,14 +115,14 @@ public class SmsNotificationService {
             smsAdminService.recordSend(purpose, type, phoneNumber, from, message, result, user.getId(), null);
             if (result.isSuccess()) {
                 log.info("SMS 발송 성공 - purpose={}, user={}, messageId={}",
-                        purpose, user.getEmail(), result.getMessageId());
+                        purpose, maskEmail(user.getEmail()), result.getMessageId());
             } else {
                 log.error("SMS 발송 실패 - purpose={}, user={}, error={}",
-                        purpose, user.getEmail(), result.getErrorMessage());
+                        purpose, maskEmail(user.getEmail()), result.getErrorMessage());
             }
         } catch (Exception e) {
             log.error("SMS 발송 예외 - purpose={}, user={}, error={}",
-                    purpose, user.getEmail(), e.getMessage(), e);
+                    purpose, maskEmail(user.getEmail()), e.getMessage(), e);
             throw new RuntimeException("SMS 발송 실패", e);
         }
     }
@@ -174,10 +174,24 @@ public class SmsNotificationService {
     }
 
     private String maskPhoneNumber(String phoneNumber) {
-        if (phoneNumber == null || phoneNumber.length() < 8) {
-            return phoneNumber;
+        if (phoneNumber == null || phoneNumber.isBlank()) {
+            return "-";
         }
-        int length = phoneNumber.length();
-        return phoneNumber.substring(0, length - 8) + "****" + phoneNumber.substring(length - 4);
+        if (phoneNumber.length() <= 4) {
+            return "[REDACTED]";
+        }
+        return "****" + phoneNumber.substring(phoneNumber.length() - 4);
+    }
+
+    private String maskEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return "-";
+        }
+        int at = email.indexOf('@');
+        if (at <= 0 || at == email.length() - 1) {
+            return "[REDACTED]";
+        }
+        String maskedLocal = at == 1 ? "***" : email.charAt(0) + "***";
+        return maskedLocal + "@" + email.substring(at + 1);
     }
 }

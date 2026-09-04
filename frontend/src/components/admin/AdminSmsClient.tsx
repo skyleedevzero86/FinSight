@@ -64,26 +64,31 @@ export default function AdminSmsClient() {
   const loadAll = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const [s, st, b, l] = await Promise.all([
-      fetchSmsSettings(),
-      fetchSmsStats(),
-      fetchSmsBalance(),
-      fetchSmsLogs({ page, size: 15 }),
-    ])
-    setLoading(false)
-    if (!s.ok) {
-      setError(s.message)
-      return
-    }
-    setSettings(s.settings)
-    if (st.ok) setStats(st.stats)
-    if (b.ok) {
-      setBalanceText(b.balance.balanceText)
-      setSimulation(b.balance.simulation)
-    }
-    if (l.ok) {
-      setLogs(l.content)
-      setTotalPages(Math.max(1, l.totalPages))
+    try {
+      const [s, st, b, l] = await Promise.all([
+        fetchSmsSettings(),
+        fetchSmsStats(),
+        fetchSmsBalance(),
+        fetchSmsLogs({ page, size: 15 }),
+      ])
+      const failures: string[] = []
+      if (s.ok) setSettings(s.settings)
+      else failures.push(s.message)
+      if (st.ok) setStats(st.stats)
+      else failures.push(st.message)
+      if (b.ok) {
+        setBalanceText(b.balance.balanceText)
+        setSimulation(b.balance.simulation)
+      } else failures.push(b.message)
+      if (l.ok) {
+        setLogs(l.content)
+        setTotalPages(Math.max(1, l.totalPages))
+      } else failures.push(l.message)
+      if (failures.length > 0) setError(failures.join(" "))
+    } catch {
+      setError("SMS 대시보드 정보를 불러오지 못했습니다.")
+    } finally {
+      setLoading(false)
     }
   }, [page])
 
@@ -102,15 +107,20 @@ export default function AdminSmsClient() {
     setSaving(true)
     setError(null)
     setMessage(null)
-    const { solapiEnabled: _, ...body } = settings
-    const result = await updateSmsSettings(body)
-    setSaving(false)
-    if (!result.ok) {
-      setError(result.message)
-      return
+    try {
+      const { solapiEnabled: _, ...body } = settings
+      const result = await updateSmsSettings(body)
+      if (!result.ok) {
+        setError(result.message)
+        return
+      }
+      setSettings(result.settings)
+      setMessage("SMS 발송 설정을 저장했습니다.")
+    } catch {
+      setError("SMS 발송 설정 저장 중 오류가 발생했습니다.")
+    } finally {
+      setSaving(false)
     }
-    setSettings(result.settings)
-    setMessage("SMS 발송 설정을 저장했습니다.")
   }
 
   async function onSend(e: FormEvent) {
@@ -122,36 +132,46 @@ export default function AdminSmsClient() {
     setSaving(true)
     setError(null)
     setMessage(null)
-    const result = await sendAdminSms({
-      toPhone: targetMode === "phone" ? toPhone.trim() : undefined,
-      userEmail: targetMode === "email" ? userEmail.trim() : undefined,
-      message: sendMessage.trim(),
-      messageType,
-      subject: subject.trim() || undefined,
-      imageId: imageId.trim() || undefined,
-    })
-    setSaving(false)
-    if (!result.ok) {
-      setError(result.message)
-      return
+    try {
+      const result = await sendAdminSms({
+        toPhone: targetMode === "phone" ? toPhone.trim() : undefined,
+        userEmail: targetMode === "email" ? userEmail.trim() : undefined,
+        message: sendMessage.trim(),
+        messageType,
+        subject: subject.trim() || undefined,
+        imageId: imageId.trim() || undefined,
+      })
+      if (!result.ok) {
+        setError(result.message)
+        return
+      }
+      setMessage(result.message)
+      setSendMessage("")
+      void loadAll()
+    } catch {
+      setError("SMS 발송 중 오류가 발생했습니다.")
+    } finally {
+      setSaving(false)
     }
-    setMessage(result.message)
-    setSendMessage("")
-    void loadAll()
   }
 
   async function onUpload(file: File | null) {
     if (!file) return
     setSaving(true)
     setError(null)
-    const result = await uploadSmsImage(file)
-    setSaving(false)
-    if (!result.ok) {
-      setError(result.message)
-      return
+    try {
+      const result = await uploadSmsImage(file)
+      if (!result.ok) {
+        setError(result.message)
+        return
+      }
+      setImageId(result.imageId)
+      setMessage(`이미지 업로드 완료: ${result.imageId}`)
+    } catch {
+      setError("이미지 업로드 중 오류가 발생했습니다.")
+    } finally {
+      setSaving(false)
     }
-    setImageId(result.imageId)
-    setMessage(`이미지 업로드 완료: ${result.imageId}`)
   }
 
   if (!ready || !allowed) {

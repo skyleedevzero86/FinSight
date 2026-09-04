@@ -135,7 +135,9 @@ public class SmsAdminService {
             case MMS -> solapiMessageService.sendMms(phone, request.message(),
                     request.subject() != null ? request.subject() : "FinSight",
                     request.imageId(), from);
-            default -> solapiMessageService.sendSms(phone, request.message(), from);
+            case KAKAO_ALIMTALK, KAKAO_FRIENDTALK -> MessageSendResult.failure(
+                    "카카오 메시지 수동 발송은 지원하지 않습니다.", "UNSUPPORTED_MESSAGE_TYPE");
+            case SMS -> solapiMessageService.sendSms(phone, request.message(), from);
         };
 
         SmsSendStatus status = result.isSuccess() ? SmsSendStatus.SENT : SmsSendStatus.FAILED;
@@ -178,7 +180,10 @@ public class SmsAdminService {
     public PaginationResponse<SmsSendLogResponse> listLogs(SmsSendStatus status, SmsPurpose purpose, int page, int size) {
         PageRequest pageable = PageRequest.of(Math.max(0, page), Math.min(50, Math.max(1, size)));
         Page<SmsSendLogJpaEntity> result;
-        if (status != null) {
+        if (status != null && purpose != null) {
+            result = smsSendLogJpaRepository.findByStatusAndPurposeOrderByCreatedAtDescIdDesc(
+                    status, purpose, pageable);
+        } else if (status != null) {
             result = smsSendLogJpaRepository.findByStatusOrderByCreatedAtDescIdDesc(status, pageable);
         } else if (purpose != null) {
             result = smsSendLogJpaRepository.findByPurposeOrderByCreatedAtDescIdDesc(purpose, pageable);
@@ -245,7 +250,9 @@ public class SmsAdminService {
             String errorMessage,
             Long recipientUserId,
             Long actorUserId) {
-        String preview = content == null ? null
+        String preview = purpose == SmsPurpose.OTP
+                ? "[REDACTED]"
+                : content == null ? null
                 : (content.length() > 480 ? content.substring(0, 480) + "…" : content);
         smsSendLogJpaRepository.save(SmsSendLogJpaEntity.builder()
                 .purpose(purpose)
@@ -283,7 +290,7 @@ public class SmsAdminService {
                 e.getMessageType(),
                 e.getToPhone(),
                 e.getFromPhone(),
-                e.getContentPreview(),
+                e.getPurpose() == SmsPurpose.OTP ? "[REDACTED]" : e.getContentPreview(),
                 e.getStatus(),
                 e.getExternalMessageId(),
                 e.getErrorMessage(),

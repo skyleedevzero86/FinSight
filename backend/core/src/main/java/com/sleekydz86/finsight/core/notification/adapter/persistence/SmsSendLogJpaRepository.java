@@ -19,6 +19,9 @@ public interface SmsSendLogJpaRepository extends JpaRepository<SmsSendLogJpaEnti
 
     Page<SmsSendLogJpaEntity> findByPurposeOrderByCreatedAtDescIdDesc(SmsPurpose purpose, Pageable pageable);
 
+    Page<SmsSendLogJpaEntity> findByStatusAndPurposeOrderByCreatedAtDescIdDesc(
+            SmsSendStatus status, SmsPurpose purpose, Pageable pageable);
+
     long countByStatus(SmsSendStatus status);
 
     long countByPurpose(SmsPurpose purpose);
