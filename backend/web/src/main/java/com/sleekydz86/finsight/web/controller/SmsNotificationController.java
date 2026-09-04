@@ -1,79 +1,62 @@
 package com.sleekydz86.finsight.web.controller;
 
-import com.sleekydz86.finsight.core.notification.service.SmsNotificationService;
-import com.sleekydz86.finsight.core.notification.service.SolapiMessageService;
-import com.sleekydz86.finsight.core.user.domain.User;
-import com.sleekydz86.finsight.core.user.service.UserService;
+import com.sleekydz86.finsight.core.global.dto.ApiResponse;
+import com.sleekydz86.finsight.core.notification.domain.port.in.dto.SmsBalanceResponse;
+import com.sleekydz86.finsight.core.notification.domain.port.in.dto.SmsManualSendRequest;
+import com.sleekydz86.finsight.core.notification.domain.port.in.dto.SmsManualSendResponse;
+import com.sleekydz86.finsight.core.notification.service.SmsAdminService;
+import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
+import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
 import java.io.IOException;
-import java.util.Optional;
+import java.util.Map;
 
 @Slf4j
-@Tag(name = "SMS 알림", description = "Solapi SMS 발송·잔액·이미지 업로드 API")
+@Tag(
+        name = "SMS 알림",
+        description = "Solapi SMS 발송·잔액·이미지 업로드(레거시 경로). 관리 UI는 /api/v1/admin/sms 권장.")
 @SecurityRequirement(name = "BearerAuth")
 @RestController
 @RequestMapping("/api/notification/sms")
 @RequiredArgsConstructor
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
 public class SmsNotificationController {
 
-    private final SmsNotificationService smsNotificationService;
-    private final SolapiMessageService solapiMessageService;
-    private final UserService userService;
+    private final SmsAdminService smsAdminService;
 
-    @Operation(summary = "SMS 발송", description = "지정 사용자에게 Solapi SMS를 발송합니다.")
+    @Operation(summary = "SMS 발송", description = "레거시. userEmail+message. 신규는 POST /api/v1/admin/sms/send")
     @PostMapping("/send")
-    public ResponseEntity<String> sendSms(
+    public ResponseEntity<ApiResponse<SmsManualSendResponse>> sendSms(
+            @CurrentUser AuthenticatedUser currentUser,
             @RequestParam String userEmail,
             @RequestParam String message) {
-
-        try {
-            Optional<User> userOptional = userService.findByEmail(userEmail);
-            if (userOptional.isEmpty()) {
-                return ResponseEntity.badRequest().body("사용자를 찾을 수 없습니다: " + userEmail);
-            }
-
-            User user = userOptional.get();
-            smsNotificationService.sendNotification(user,
-                    com.sleekydz86.finsight.core.notification.domain.Notification.builder()
-                            .title("FinSight 알림")
-                            .content(message)
-                            .build());
-
-            return ResponseEntity.ok("SMS 발송 완료");
-        } catch (Exception e) {
-            log.error("SMS 발송 실패", e);
-            return ResponseEntity.badRequest().body("SMS 발송 실패: " + e.getMessage());
-        }
+        SmsManualSendResponse result = smsAdminService.sendManual(
+                new SmsManualSendRequest(null, userEmail, message, null, null, null),
+                currentUser.getId());
+        return ResponseEntity.ok(ApiResponse.success(result, result.success() ? "SMS 발송 완료" : "SMS 발송 실패"));
     }
 
-    @Operation(summary = "SMS 이미지 업로드", description = "Solapi MMS용 이미지를 업로드합니다.")
-    @PostMapping("/upload-image")
-    public ResponseEntity<String> uploadImage(@RequestParam("file") MultipartFile file) {
-        try {
-            String imageId = solapiMessageService.uploadImage(file);
-            return ResponseEntity.ok(imageId);
-        } catch (IOException e) {
-            log.error("이미지 업로드 실패", e);
-            return ResponseEntity.badRequest().body("이미지 업로드 실패: " + e.getMessage());
-        }
+    @Operation(summary = "SMS 이미지 업로드", description = "Solapi MMS용 이미지 업로드")
+    @PostMapping(value = "/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadImage(@RequestParam("file") MultipartFile file)
+            throws IOException {
+        String imageId = smsAdminService.uploadImage(file);
+        return ResponseEntity.ok(ApiResponse.success(Map.of("imageId", imageId), "이미지 업로드 완료"));
     }
 
-    @Operation(summary = "SMS 잔액 조회", description = "Solapi 계정 잔액을 조회합니다.")
+    @Operation(summary = "SMS 잔액 조회", description = "Solapi 계정 잔액")
     @GetMapping("/balance")
-    public ResponseEntity<String> getBalance() {
-        try {
-            String balance = solapiMessageService.getBalance();
-            return ResponseEntity.ok(balance);
-        } catch (Exception e) {
-            log.error("잔액 조회 실패", e);
-            return ResponseEntity.badRequest().body("잔액 조회 실패: " + e.getMessage());
-        }
+    public ResponseEntity<ApiResponse<SmsBalanceResponse>> getBalance() {
+        return ResponseEntity.ok(ApiResponse.success(smsAdminService.balance(), "잔액 조회 완료"));
     }
 }
