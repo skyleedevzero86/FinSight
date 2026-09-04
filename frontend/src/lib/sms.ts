@@ -97,7 +97,7 @@ export async function updateSmsSettings(
 ): Promise<{ ok: true; settings: SmsSettings } | { ok: false; message: string }> {
   const res = await fetch("/api/v1/admin/sms/settings", {
     method: "PUT",
-    headers: authHeadersJson(),
+    headers: { ...authHeadersJson(), "Content-Type": "application/json" },
     body: JSON.stringify(settings),
   })
   const payload = await readJson(res)
@@ -117,7 +117,7 @@ export async function sendAdminSms(input: {
 }): Promise<{ ok: true; message: string } | { ok: false; message: string }> {
   const res = await fetch("/api/v1/admin/sms/send", {
     method: "POST",
-    headers: authHeadersJson(),
+    headers: { ...authHeadersJson(), "Content-Type": "application/json" },
     body: JSON.stringify(input),
   })
   const payload = await readJson(res)
