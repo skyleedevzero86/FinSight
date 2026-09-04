@@ -35,7 +35,7 @@ public class MarketAuxSentimentRequester {
                 .uri(url)
                 .retrieve()
                 .bodyToMono(SentimentAggregationResponse.class)
-                .doOnError(error -> log.error("Failed to fetch sentiment aggregation: {}", error.getMessage()));
+                .doOnError(error -> log.error("감정 집계 조회 실패: {}", error.getMessage()));
     }
 
     public static class SentimentAggregationResponse {

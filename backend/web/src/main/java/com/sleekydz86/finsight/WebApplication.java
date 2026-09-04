@@ -1,6 +1,6 @@
 package com.sleekydz86.finsight;
 
-import com.sleekydz86.finsight.core.config.ApplicationComponentScanConfig;
+import com.sleekydz86.finsight.core.global.config.ApplicationComponentScanConfig;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration;

@@ -38,15 +38,15 @@ public class DatabaseCleanupListener extends AbstractTestExecutionListener {
                 try {
                     entityManager.createNativeQuery("DELETE FROM " + tableName).executeUpdate();
                 } catch (Exception e) {
-                    log.debug("Table {} not found or already empty", tableName);
+                    log.debug("테이블 {}을(를) 찾을 수 없거나 이미 비어 있음", tableName);
                 }
             }
 
             transactionManager.commit(status);
-            log.info("Database cleanup completed successfully");
+            log.info("데이터베이스 정리 완료");
         } catch (Exception e) {
             transactionManager.rollback(status);
-            log.error("Database cleanup failed", e);
+            log.error("데이터베이스 정리 실패", e);
         }
     }
 }

@@ -64,13 +64,13 @@ public class NewsQueryService implements NewsQueryUseCase {
 
         @Override
         public Newses findAllByFilters(NewsQueryRequest request) {
-                log.info("Finding news by filters: {}", request);
+                log.info("필터로 뉴스 조회: {}", request);
                 return newsPersistencePort.findAllByFilters(request);
         }
 
         @Override
         public PaginationResponse<Newses> searchNews(NewsSearchRequest request) {
-                log.info("Searching news with request: {}", request);
+                log.info("뉴스 검색 요청: {}", request);
 
                 Pageable pageable = Pageable.ofSize(request.getSize())
                         .withPage(request.getPage());
@@ -87,7 +87,7 @@ public class NewsQueryService implements NewsQueryUseCase {
 
         @Override
         public NewsDetailResponse getNewsDetail(Long newsId) {
-                log.info("Getting news detail for ID: {}", newsId);
+                log.info("뉴스 상세 조회 - ID: {}", newsId);
 
                 News news = newsPersistencePort.findById(newsId)
                         .orElseThrow(() -> new NewsNotFoundException(newsId));
@@ -127,7 +127,7 @@ public class NewsQueryService implements NewsQueryUseCase {
 
         @Override
         public Newses getRelatedNews(Long newsId, int limit) {
-                log.info("Getting related news for ID: {}, limit: {}", newsId, limit);
+                log.info("관련 뉴스 조회 - ID: {}, 제한: {}", newsId, limit);
 
                 News news = newsPersistencePort.findById(newsId)
                         .orElseThrow(() -> new NewsNotFoundException(newsId));
@@ -151,7 +151,7 @@ public class NewsQueryService implements NewsQueryUseCase {
 
         @Override
         public Newses getPopularNews(int limit) {
-                log.info("Getting popular news, limit: {}", limit);
+                log.info("인기 뉴스 조회 - 제한: {}", limit);
 
                 NewsQueryRequest request = new NewsQueryRequest(
                         null, null, null, null, null, null);
@@ -174,7 +174,7 @@ public class NewsQueryService implements NewsQueryUseCase {
 
         @Override
         public Newses getLatestNews(int limit) {
-                log.info("Getting latest news, limit: {}", limit);
+                log.info("최신 뉴스 조회 - 제한: {}", limit);
 
                 NewsQueryRequest request = new NewsQueryRequest(
                         null, null, null, null, null, null);
@@ -197,7 +197,7 @@ public class NewsQueryService implements NewsQueryUseCase {
 
         @Override
         public Newses getNewsByCategory(String category, int limit) {
-                log.info("Getting news by category: {}, limit: {}", category, limit);
+                log.info("카테고리별 뉴스 조회 - 카테고리: {}, 제한: {}", category, limit);
 
                 try {
                         TargetCategory targetCategory = TargetCategory.valueOf(category.toUpperCase());
@@ -205,7 +205,7 @@ public class NewsQueryService implements NewsQueryUseCase {
                                 null, null, null, null, List.of(targetCategory), null);
                         return newsPersistencePort.findAllByFilters(request);
                 } catch (IllegalArgumentException e) {
-                        log.warn("Invalid category: {}", category);
+                        log.warn("유효하지 않은 카테고리: {}", category);
                         return new Newses();
                 }
         }

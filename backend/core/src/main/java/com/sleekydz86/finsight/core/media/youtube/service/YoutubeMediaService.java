@@ -276,7 +276,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
         try {
             return youtubeApiClient.fetchFeaturedLiveVideo(category);
         } catch (Exception e) {
-            log.warn("featured live 조회 실패: {}", e.getMessage());
+            log.warn("추천 라이브 조회 실패: {}", e.getMessage());
             return Optional.empty();
         }
     }
@@ -613,7 +613,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .build();
 
         YoutubeImportSource savedSource = youtubeImportSourcePersistencePort.save(source);
-        log.info("Created YouTube import source {} by {}", savedSource.getId(), adminEmail);
+        log.info("YouTube 가져오기 소스 {} 생성 - 관리자: {}", savedSource.getId(), adminEmail);
         return toSourceResponse(savedSource);
     }
 
@@ -653,7 +653,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .orElseThrow(() -> new IllegalArgumentException("YouTube import source not found: " + sourceId));
 
         YoutubeSyncSummaryResponse summary = syncSingleSource(source);
-        log.info("Synced YouTube import source {} with imported={}, updated={}",
+        log.info("YouTube 가져오기 소스 {} 동기화 완료 - 신규: {}, 갱신: {}",
                 sourceId, summary.getImportedCount(), summary.getUpdatedCount());
         return summary;
     }
@@ -731,7 +731,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 youtubeVideoMetaPersistencePort.save(enrichMeta(meta, generatedContent));
                 summary = summary.merge(YoutubeAiEnrichmentSummaryResponse.builder().enrichedCount(1).build());
             } catch (Exception e) {
-                log.error("Failed to enrich YouTube draft board {}", meta.getBoardId(), e);
+                log.error("YouTube 초안 게시글 {} AI 보강 실패", meta.getBoardId(), e);
                 summary = summary.merge(YoutubeAiEnrichmentSummaryResponse.builder().failedCount(1).build());
             }
         }
@@ -831,7 +831,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                     summary = summary.merge(YoutubeSyncSummaryResponse.builder().importedCount(1).build());
                 }
             } catch (Exception e) {
-                log.error("Failed to import YouTube video {}", fetchedVideo.videoId(), e);
+                log.error("YouTube 영상 가져오기 실패: {}", fetchedVideo.videoId(), e);
                 summary = summary.merge(YoutubeSyncSummaryResponse.builder().failedCount(1).build());
             }
         }

@@ -110,7 +110,7 @@ public class RedisRateLimitService implements RateLimitServiceInterface {
             if (checkRedisConnection()) {
                 useRedis.set(true);
                 consecutiveFailures.set(0);
-                log.info("Redis 연결 성공 - Redis 기반 rate limiting을 사용합니다.");
+                log.info("Redis 연결 성공 - Redis 기반 요청 한도 제한을 사용합니다.");
             } else {
                 switchToMemoryFallback("Redis 연결 실패");
             }
@@ -128,7 +128,7 @@ public class RedisRateLimitService implements RateLimitServiceInterface {
     @Override
     public void checkRateLimit(String identifier, String action) {
         if (isWhitelisted(identifier)) {
-            log.debug("화이트리스트된 식별자 {} - rate limiting 건너뜀", identifier);
+            log.debug("화이트리스트된 식별자 {} - 요청 한도 제한 건너뜀", identifier);
             return;
         }
 
@@ -145,7 +145,7 @@ public class RedisRateLimitService implements RateLimitServiceInterface {
             try {
                 checkRateLimitWithRedis(identifier, action);
             } catch (Exception e) {
-                handleRedisFailure("Rate limit 확인 실패", identifier, action, e);
+                handleRedisFailure("요청 한도 확인 실패", identifier, action, e);
                 checkRateLimitWithMemory(identifier, action);
             }
         } else {
@@ -172,7 +172,7 @@ public class RedisRateLimitService implements RateLimitServiceInterface {
             try {
                 resetLimitWithRedis(identifier, action);
             } catch (Exception e) {
-                log.warn("Redis에서 limit reset 실패, 메모리에서 처리: {}", e.getMessage());
+                log.warn("Redis에서 요청 한도 초기화 실패, 메모리에서 처리: {}", e.getMessage());
                 resetLimitWithMemory(identifier, action);
             }
         } else {
@@ -439,7 +439,7 @@ public class RedisRateLimitService implements RateLimitServiceInterface {
                 k -> new ViolationTracker());
         tracker.recordViolation();
 
-        log.warn("Rate limit 위반 기록: 식별자 {}, 액션 {}, 총 위반 횟수: {}",
+        log.warn("요청 한도 위반 기록: 식별자 {}, 액션 {}, 총 위반 횟수: {}",
                 identifier, action, tracker.getViolationCount());
     }
 
@@ -476,13 +476,13 @@ public class RedisRateLimitService implements RateLimitServiceInterface {
         RateLimitInfo info = memoryCache.get(key);
         if (info != null) {
             info.reset(LocalDateTime.now());
-            log.info("Rate limit reset for identifier: {} action: {} (memory)", identifier, action);
+            log.info("요청 한도 초기화 - 식별자: {}, 액션: {} (메모리)", identifier, action);
         }
     }
 
     private void handleRedisFailure(String message, String identifier, String action, Exception e) {
         consecutiveFailures.incrementAndGet();
-        log.error("{} - identifier: {}, action: {}, 오류: {}", message, identifier, action, e.getMessage());
+        log.error("{} - 식별자: {}, 액션: {}, 오류: {}", message, identifier, action, e.getMessage());
 
         if (consecutiveFailures.get() >= MAX_CONSECUTIVE_FAILURES) {
             switchToMemoryFallback("연속적인 Redis 연결 실패");
@@ -491,7 +491,7 @@ public class RedisRateLimitService implements RateLimitServiceInterface {
 
     private void switchToMemoryFallback(String reason) {
         useRedis.set(false);
-        log.warn("Redis에서 메모리 fallback으로 전환: {}", reason);
+        log.warn("Redis에서 메모리 폴백으로 전환: {}", reason);
 
         if (memoryCache.size() > memoryCacheLimit) {
             cleanupMemoryCache();
@@ -612,6 +612,6 @@ public class RedisRateLimitService implements RateLimitServiceInterface {
     private void resetLimitWithRedis(String identifier, String action) {
         String key = generateKey(identifier, action);
         redisTemplate.delete(key);
-        log.info("Rate limit reset for identifier: {} action: {} (Redis)", identifier, action);
+        log.info("요청 한도 초기화 - 식별자: {}, 액션: {} (Redis)", identifier, action);
     }
 }

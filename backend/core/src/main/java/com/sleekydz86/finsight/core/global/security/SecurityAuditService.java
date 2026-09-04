@@ -17,17 +17,17 @@ public class SecurityAuditService {
             boolean logUser, String[] sensitiveFields) {
 
         StringBuilder logMessage = new StringBuilder();
-        logMessage.append("Security Event - Action: ").append(action)
-                .append(", Resource: ").append(resource)
-                .append(", Level: ").append(level);
+        logMessage.append("보안 이벤트 - 액션: ").append(action)
+                .append(", 리소스: ").append(resource)
+                .append(", 수준: ").append(level);
 
         if (logRequest && args != null) {
-            logMessage.append(", Args: ").append(Arrays.toString(args));
+            logMessage.append(", 인자: ").append(Arrays.toString(args));
         }
 
         if (logUser) {
             
-            logMessage.append(", User: [Current User]");
+            logMessage.append(", 사용자: [현재 사용자]");
         }
 
         switch (level) {
@@ -48,7 +48,7 @@ public class SecurityAuditService {
 
     public void logSecurityFailure(String action, String resource, String errorMessage,
             Object[] args, String[] sensitiveFields) {
-        logger.error("Security Failure - Action: {}, Resource: {}, Error: {}, Args: {}",
+        logger.error("보안 실패 - 액션: {}, 리소스: {}, 오류: {}, 인자: {}",
                 action, resource, errorMessage, Arrays.toString(args));
     }
 }

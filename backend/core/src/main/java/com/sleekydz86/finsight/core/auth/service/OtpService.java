@@ -191,7 +191,7 @@ public class OtpService {
             byte[] qrCodeImage = outputStream.toByteArray();
             String base64Image = Base64.getEncoder().encodeToString(qrCodeImage);
 
-            log.debug("QR 코드 이미지 생성 완료: {} bytes", qrCodeImage.length);
+            log.debug("QR 코드 이미지 생성 완료: {}바이트", qrCodeImage.length);
             return base64Image;
         } catch (WriterException | IOException e) {
             log.error("QR 코드 생성 실패", e);

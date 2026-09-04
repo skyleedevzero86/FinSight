@@ -33,20 +33,20 @@ public class PerformanceMonitoringAspect {
             long executionTime = System.currentTimeMillis() - startTime;
 
             if (executionTime > performanceMonitor.threshold()) {
-                logger.warn("Performance warning: {} took {}ms (threshold: {}ms)",
+                logger.warn("성능 경고: {}이(가) {}ms 소요됨 (임계값: {}ms)",
                         metricName, executionTime, performanceMonitor.threshold());
             }
 
-            logger.info("Performance metric: {} execution time: {}ms", metricName, executionTime);
+            logger.info("성능 지표: {} 실행 시간: {}ms", metricName, executionTime);
             return result;
         } catch (Exception e) {
             long executionTime = System.currentTimeMillis() - startTime;
             if (isExpectedClientError(e)) {
                 BaseException clientError = (BaseException) e;
-                logger.debug("Performance metric: {} rejected after {}ms (status={}, code={})",
+                logger.debug("성능 지표: {}이(가) {}ms 후 요청 거부됨 (상태={}, 코드={})",
                         metricName, executionTime, clientError.getHttpStatus(), clientError.getErrorCode());
             } else {
-                logger.error("Performance metric: {} failed after {}ms with exception: {}",
+                logger.error("성능 지표: {}이(가) {}ms 후 예외로 실패: {}",
                         metricName, executionTime, e.getMessage(), e);
             }
             throw e;

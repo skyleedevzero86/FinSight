@@ -31,32 +31,32 @@ public class LoggingAspect {
         try {
             if (logExecution.includeArgs()) {
                 Object[] args = joinPoint.getArgs();
-                logger.info("Executing {}.{} with args: {}", className, methodName, Arrays.toString(args));
+                logger.info("{}.{} 실행 중 (인자: {})", className, methodName, Arrays.toString(args));
             } else {
-                logger.info("Executing {}.{}", className, methodName);
+                logger.info("{}.{} 실행 중", className, methodName);
             }
 
             Object result = joinPoint.proceed();
 
             if (logExecution.includeResult()) {
-                logger.info("Method {}.{} completed successfully with result: {}", className, methodName, result);
+                logger.info("메서드 {}.{} 정상 완료 (결과: {})", className, methodName, result);
             } else {
-                logger.info("Method {}.{} completed successfully", className, methodName);
+                logger.info("메서드 {}.{} 정상 완료", className, methodName);
             }
 
             return result;
         } catch (Exception e) {
             if (isExpectedClientError(e)) {
                 BaseException clientError = (BaseException) e;
-                logger.debug("Method {}.{} rejected request (status={}, code={})",
+                logger.debug("메서드 {}.{} 요청 거부 (상태={}, 코드={})",
                         className, methodName, clientError.getHttpStatus(), clientError.getErrorCode());
             } else {
-                logger.error("Method {}.{} failed with exception: {}", className, methodName, e.getMessage(), e);
+                logger.error("메서드 {}.{} 예외로 실패: {}", className, methodName, e.getMessage(), e);
             }
             throw e;
         } finally {
             long executionTime = System.currentTimeMillis() - startTime;
-            logger.info("Method {}.{} execution time: {}ms", className, methodName, executionTime);
+            logger.info("메서드 {}.{} 실행 시간: {}ms", className, methodName, executionTime);
         }
     }
 

@@ -35,20 +35,20 @@ public class SecurityAuditAspect {
 
         try {
             if (securityAudit.logRequest()) {
-                logger.info("Security audit - User: {}, Action: {}, Resource: {}, Level: {}, Time: {}",
+                logger.info("보안 감사 - 사용자: {}, 액션: {}, 리소스: {}, 수준: {}, 시각: {}",
                         username, action, resource, securityAudit.level(), LocalDateTime.now());
             }
 
             Object result = joinPoint.proceed();
 
             if (securityAudit.logResponse()) {
-                logger.info("Security audit - User: {}, Action: {}, Resource: {}, Result: SUCCESS, Time: {}",
+                logger.info("보안 감사 - 사용자: {}, 액션: {}, 리소스: {}, 결과: 성공, 시각: {}",
                         username, action, resource, LocalDateTime.now());
             }
 
             return result;
         } catch (Exception e) {
-            logger.error("Security audit - User: {}, Action: {}, Resource: {}, Result: FAILED, Error: {}, Time: {}",
+            logger.error("보안 감사 - 사용자: {}, 액션: {}, 리소스: {}, 결과: 실패, 오류: {}, 시각: {}",
                     username, action, resource, e.getMessage(), LocalDateTime.now());
             throw e;
         }
