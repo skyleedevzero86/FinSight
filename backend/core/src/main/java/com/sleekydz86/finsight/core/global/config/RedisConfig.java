@@ -66,7 +66,6 @@ public class RedisConfig {
                 config.setPassword(redisPassword.trim());
             }
 
-            
             SocketOptions socketOptions = SocketOptions.builder()
                     .connectTimeout(Duration.ofMillis(Math.max(connectionTimeout, 1)))
                     .build();
@@ -85,7 +84,7 @@ public class RedisConfig {
                     .build();
 
             LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
-            // 연결마다 PING 검증은 Redis 장애 시 요청 전체가 타임아웃까지 막힐 수 있음
+
             factory.setValidateConnection(false);
             factory.setShareNativeConnection(true);
 
@@ -105,7 +104,6 @@ public class RedisConfig {
             RedisTemplate<String, Object> template = new RedisTemplate<>();
             template.setConnectionFactory(connectionFactory);
 
-            
             template.setKeySerializer(new StringRedisSerializer());
             template.setHashKeySerializer(new StringRedisSerializer());
             template.setValueSerializer(new GenericJackson2JsonRedisSerializer());

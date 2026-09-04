@@ -26,7 +26,7 @@ export function isChunkLoadError(reason: unknown): boolean {
   if (err.name === "ChunkLoadError") return true
   const message = String(err.message ?? "")
   if (/ChunkLoadError|Loading chunk .+ failed/i.test(message)) return true
-  // webpack script load failures sometimes surface as Event
+
   if (err.type === "error" && message.includes("/_next/static/chunks/")) return true
   return false
 }
@@ -89,7 +89,6 @@ export function installChunkLoadRecovery(): void {
   )
 }
 
-/** layout <head>에서 React보다 먼저 설치 — HMR ChunkLoadError 선제 복구 */
 export const CHUNK_LOAD_RECOVERY_SCRIPT = `(function () {
   if (typeof window === "undefined") return;
   if (window.__finsightChunkLoadRecovery) return;

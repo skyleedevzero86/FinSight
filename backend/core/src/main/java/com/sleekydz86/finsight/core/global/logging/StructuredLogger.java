@@ -65,7 +65,7 @@ public class StructuredLogger {
             String jsonString = objectMapper.writeValueAsString(logData);
             logFunction.log(jsonString, throwable);
         } catch (JsonProcessingException e) {
-            
+
             logger.warn("로그 데이터를 JSON으로 변환하지 못했습니다: {}", e.getMessage());
             logFunction.log(logData.toString(), throwable);
         }

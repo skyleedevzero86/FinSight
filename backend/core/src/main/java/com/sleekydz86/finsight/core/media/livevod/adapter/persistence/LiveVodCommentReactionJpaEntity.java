@@ -41,13 +41,11 @@ public class LiveVodCommentReactionJpaEntity {
     protected LiveVodCommentReactionJpaEntity() {
     }
 
-
     public LiveVodCommentReactionJpaEntity(Long commentId, String userEmail, String reactionType) {
         this.commentId = commentId;
         this.userEmail = userEmail;
         this.reactionType = reactionType;
     }
-
 
     @PrePersist
     void onCreate() {
@@ -58,12 +56,10 @@ public class LiveVodCommentReactionJpaEntity {
         updatedAt = now;
     }
 
-
     @PreUpdate
     void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-
 
     public Long getId() {
         return id;
@@ -73,16 +69,13 @@ public class LiveVodCommentReactionJpaEntity {
         return commentId;
     }
 
-
     public String getUserEmail() {
         return userEmail;
     }
 
-
     public String getReactionType() {
         return reactionType;
     }
-
 
     public void setReactionType(String reactionType) {
         this.reactionType = reactionType;

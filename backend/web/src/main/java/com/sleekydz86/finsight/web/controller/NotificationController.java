@@ -128,9 +128,6 @@ public class NotificationController {
         User user = userPersistencePort.findById(currentUser.getId())
                 .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
 
-        
-        
-
         return ResponseEntity.ok(ApiResponse.success(null, "테스트 알림이 발송되었습니다."));
     }
 

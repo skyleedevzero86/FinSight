@@ -77,7 +77,6 @@ public class ExternalHealthCheckAdapter implements ExternalHealthCheckPort {
             URL url = URI.create(normalizedBase + path).toURL();
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
-            // overview 매 호출마다 동기 점검하므로 타임아웃을 짧게 유지
             connection.setConnectTimeout(2000);
             connection.setReadTimeout(2000);
 

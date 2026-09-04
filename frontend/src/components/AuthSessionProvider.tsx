@@ -54,10 +54,15 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
       setReady(true)
       return
     }
-    const next = await fetchCurrentUser()
-    setUser(next)
-    setHasToken(Boolean(next) || Boolean(readUsableAccessToken()))
-    setReady(true)
+    try {
+      const next = await fetchCurrentUser()
+      setUser(next)
+      setHasToken(Boolean(next) || Boolean(readUsableAccessToken()))
+    } catch {
+      setUser(null)
+    } finally {
+      setReady(true)
+    }
   }, [])
 
   const logout = useCallback(async () => {

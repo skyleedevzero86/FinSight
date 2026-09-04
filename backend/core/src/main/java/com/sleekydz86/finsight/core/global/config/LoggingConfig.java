@@ -17,11 +17,10 @@ public class LoggingConfig {
         configurator.setContext(context);
         context.reset();
 
-        
         try {
             configurator.doConfigure(getClass().getResourceAsStream("/logback-spring.xml"));
         } catch (Exception e) {
-            
+
         }
     }
 }

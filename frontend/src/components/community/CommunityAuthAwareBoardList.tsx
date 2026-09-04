@@ -72,7 +72,7 @@ export default function CommunityAuthAwareBoardList({
         setTotalCount(Number(data.totalElements) || 0)
         setTotalPages(Math.max(1, Number(data.totalPages) || 1))
       } catch {
-        /* keep SSR rows */
+        void 0
       }
     }
     void run()

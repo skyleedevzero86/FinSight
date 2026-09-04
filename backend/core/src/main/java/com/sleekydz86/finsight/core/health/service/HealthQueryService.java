@@ -89,7 +89,7 @@ public class HealthQueryService implements HealthQueryUseCase {
     @Override
     public Map<String, HealthStatus> getExternalApisHealth() {
         Map<String, HealthStatus> statuses = new HashMap<>();
-        // 순차 호출 시 타임아웃이 누적되므로 병렬 점검
+
         var marketaux = java.util.concurrent.CompletableFuture.supplyAsync(
                 () -> externalHealthCheckPort.checkExternalApiHealth("marketaux", "/api/health"));
         var openai = java.util.concurrent.CompletableFuture.supplyAsync(
@@ -102,7 +102,7 @@ public class HealthQueryService implements HealthQueryUseCase {
     @Override
     public Health getCompleteHealth() {
         String id = UUID.randomUUID().toString();
-        // DB/Redis를 overall·component에서 중복 호출하지 않는다
+
         HealthStatus database = getDatabaseHealth();
         HealthStatus redis = getRedisHealth();
         HealthStatus overallStatus;

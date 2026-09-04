@@ -13,21 +13,15 @@ public interface LiveVodCommentJpaRepository extends JpaRepository<LiveVodCommen
 
 List<LiveVodCommentJpaEntity> findByVideoIdOrderByCreatedAtAsc(String videoId);
 
-
 Page<LiveVodCommentJpaEntity> findByVideoIdAndParentIsNullOrderByCreatedAtDesc(String videoId, Pageable pageable);
-
 
 Page<LiveVodCommentJpaEntity> findByParent_IdOrderByCreatedAtAsc(Long parentId, Pageable pageable);
 
-
 long countByVideoId(String videoId);
-
 
 long countByVideoIdAndParentIsNull(String videoId);
 
-
 long countByParent_Id(Long parentId);
-
 
     @Query("SELECT c.videoId, COUNT(c) FROM LiveVodCommentJpaEntity c WHERE c.videoId IN :videoIds GROUP BY c.videoId")
     List<Object[]> countByVideoIds(@Param("videoIds") Collection<String> videoIds);

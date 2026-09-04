@@ -25,7 +25,7 @@ public class RedisHealthService {
         }
 
         try {
-            // SET/GET/DELETE 3회 대신 PING 1회로 헬스체크 지연을 줄인다
+
             if (redisTemplate.getConnectionFactory() == null) {
                 return false;
             }

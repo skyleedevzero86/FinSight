@@ -12,10 +12,14 @@ export default function NotificationBellButton() {
   const [unread, setUnread] = useState(0)
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const failStreakRef = useRef(0)
+  const cooldownUntilRef = useRef(0)
 
   const refreshUnread = useCallback(async () => {
     if (!user || !readUsableAccessToken()) {
       setUnread(0)
+      return
+    }
+    if (Date.now() < cooldownUntilRef.current) {
       return
     }
     if (typeof document !== "undefined" && document.visibilityState === "hidden") {
@@ -23,15 +27,18 @@ export default function NotificationBellButton() {
     }
     if (typeof navigator !== "undefined" && navigator.onLine === false) {
       failStreakRef.current += 1
+      cooldownUntilRef.current = Date.now() + Math.min(120_000, 15_000 * failStreakRef.current)
       return
     }
     const count = await fetchInboxUnreadCount()
     if (count === null) {
       failStreakRef.current += 1
+      cooldownUntilRef.current = Date.now() + Math.min(120_000, 15_000 * failStreakRef.current)
       return
     }
     setUnread(count)
     failStreakRef.current = 0
+    cooldownUntilRef.current = 0
   }, [user])
 
   useEffect(() => {
@@ -42,11 +49,13 @@ export default function NotificationBellButton() {
     }, 30000)
 
     function onOnline() {
+      if (Date.now() < cooldownUntilRef.current) return
       failStreakRef.current = 0
       void refreshUnread()
     }
     function onVisible() {
       if (document.visibilityState !== "visible") return
+      if (Date.now() < cooldownUntilRef.current) return
       failStreakRef.current = 0
       void refreshUnread()
     }
@@ -89,6 +98,7 @@ export default function NotificationBellButton() {
           setOpen((v) => !v)
           if (!open) {
             failStreakRef.current = 0
+            cooldownUntilRef.current = 0
             void refreshUnread()
           }
         }}

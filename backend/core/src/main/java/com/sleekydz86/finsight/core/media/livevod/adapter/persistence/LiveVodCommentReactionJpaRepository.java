@@ -12,9 +12,7 @@ public interface LiveVodCommentReactionJpaRepository extends JpaRepository<LiveV
 
 Optional<LiveVodCommentReactionJpaEntity> findByUserEmailAndCommentId(String userEmail, Long commentId);
 
-
 long countByCommentIdAndReactionType(Long commentId, String reactionType);
-
 
     @Query("""
             SELECT r.commentId, r.reactionType, COUNT(r)
@@ -23,7 +21,6 @@ long countByCommentIdAndReactionType(Long commentId, String reactionType);
             GROUP BY r.commentId, r.reactionType
             """)
     List<Object[]> countGroupedByCommentIds(@Param("commentIds") Collection<Long> commentIds);
-
 
 List<LiveVodCommentReactionJpaEntity> findByUserEmailAndCommentIdIn(String userEmail, Collection<Long> commentIds);
 }

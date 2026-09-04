@@ -77,7 +77,7 @@ public class NotificationScheduler {
 
             if (!oldNotifications.isEmpty()) {
                 log.info("오래된 알림 {}건 정리 시작", oldNotifications.size());
-                
+
                 log.info("오래된 알림 {}건 정리 완료", oldNotifications.size());
             }
 
@@ -86,5 +86,3 @@ public class NotificationScheduler {
         }
     }
 }
-
-

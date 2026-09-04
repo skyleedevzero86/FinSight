@@ -49,12 +49,6 @@ public class NewsOpenAiAnalysisRequester implements NewsAiRequester {
         }
     }
 
-    
-
-
-    
-
-
     public Mono<AiChatResponse> requestAsync(AiChatRequest aiChatRequest) {
         if (!openAiProperties.isConfigured()) {
             return Mono.error(new IllegalStateException(

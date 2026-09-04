@@ -60,12 +60,9 @@ public class NewsScrapJobTest {
 
         @Test
         public void 뉴스를_크롤링하고_ai_분석을_정상적으로_진행한다() throws Exception {
-                
 
-                
                 JobExecution jobExecution = jobLauncherTestUtils.launchJob();
 
-                
                 assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
         }
 }

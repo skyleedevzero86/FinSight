@@ -70,6 +70,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     const res = await fetch("/api/v1/auth/me", {
       headers: authHeadersJson(),
       cache: "no-store",
+      signal: AbortSignal.timeout(4000),
     })
     if (res.status === 401 || res.status === 403) {
       clearAuthSession({ emit: false })

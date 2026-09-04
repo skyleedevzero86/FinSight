@@ -366,7 +366,7 @@ public class AdminStatsService {
     }
 
     private Map<String, Object> buildHealthSnapshot() {
-        // getOverallHealth()는 내부에서 DB/Redis를 다시 호출하므로 중복 점검을 피한다
+
         HealthStatus database = healthQueryUseCase.getDatabaseHealth();
         HealthStatus redis = healthQueryUseCase.getRedisHealth();
         Map<String, HealthStatus> external = healthQueryUseCase.getExternalApisHealth();
