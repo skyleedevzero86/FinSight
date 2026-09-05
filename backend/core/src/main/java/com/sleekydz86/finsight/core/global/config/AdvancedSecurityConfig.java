@@ -74,7 +74,10 @@ public class AdvancedSecurityConfig {
                                 "/api/v1/boards/my-boards",
                                 "/api/v1/boards/my-scraps",
                                 "/api/v1/boards/my-reactions",
-                                "/api/v1/boards/*/reaction-status")
+                                "/api/v1/boards/my-activity-stats",
+                                "/api/v1/boards/*/reaction-status",
+                                "/api/v1/comments/my-comments",
+                                "/api/v1/comments/my-reactions")
                         .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/editor/images/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/boards", "/api/v1/boards/**").permitAll()
@@ -84,6 +87,7 @@ public class AdvancedSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/ulink/items", "/api/v1/ulink/items/**").permitAll()
                         .requestMatchers("/api/v1/media/**").permitAll()
                         .requestMatchers("/api/v1/health", "/api/v1/health/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "MANAGER")
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

@@ -87,20 +87,20 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
                 Pageable pageable);
 
         @Query(value = """
-                        SELECT DATE(created_at) AS d, COUNT(*) AS c
+                        SELECT DATE(`createdAt`) AS d, COUNT(*) AS c
                         FROM users
-                        WHERE created_at >= :from AND created_at < :to
-                        GROUP BY DATE(created_at)
+                        WHERE `createdAt` >= :from AND `createdAt` < :to
+                        GROUP BY DATE(`createdAt`)
                         ORDER BY d
                         """, nativeQuery = true)
         List<Object[]> countSignupsByDay(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 
         @Query(value = """
-                        SELECT DATE(last_login_at) AS d, COUNT(*) AS c
+                        SELECT DATE(`lastLoginAt`) AS d, COUNT(*) AS c
                         FROM users
-                        WHERE last_login_at IS NOT NULL
-                          AND last_login_at >= :from AND last_login_at < :to
-                        GROUP BY DATE(last_login_at)
+                        WHERE `lastLoginAt` IS NOT NULL
+                          AND `lastLoginAt` >= :from AND `lastLoginAt` < :to
+                        GROUP BY DATE(`lastLoginAt`)
                         ORDER BY d
                         """, nativeQuery = true)
         List<Object[]> countLoginsByDay(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
@@ -120,11 +120,11 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
         List<Object[]> countGroupedByStatus();
 
         @Query(value = """
-                        SELECT DATE(updated_at) AS d, COUNT(*) AS c
+                        SELECT DATE(`updatedAt`) AS d, COUNT(*) AS c
                         FROM users
                         WHERE status = 'WITHDRAWN'
-                          AND updated_at >= :from AND updated_at < :to
-                        GROUP BY DATE(updated_at)
+                          AND `updatedAt` >= :from AND `updatedAt` < :to
+                        GROUP BY DATE(`updatedAt`)
                         ORDER BY d
                         """, nativeQuery = true)
         List<Object[]> countWithdrawnByUpdatedDay(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
@@ -132,7 +132,7 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
         @Query(value = """
                         SELECT COUNT(*)
                         FROM users
-                        WHERE created_at < :before
+                        WHERE `createdAt` < :before
                         """, nativeQuery = true)
         long countCreatedBefore(@Param("before") LocalDateTime before);
 }

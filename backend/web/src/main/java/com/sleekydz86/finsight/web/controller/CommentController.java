@@ -239,7 +239,7 @@ public class CommentController {
     @LogExecution("내 댓글 목록 조회")
     @PerformanceMonitor(threshold = 2000, operation = "my_comments")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = {Exception.class})
-    public ResponseEntity<ApiResponse<List<CommentResponse>>> getMyComments(
+    public ResponseEntity<ApiResponse<PaginationResponse<java.util.Map<String, Object>>>> getMyComments(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @CurrentUser AuthenticatedUser currentUser) {
@@ -251,12 +251,39 @@ public class CommentController {
                 throw new ValidationException("페이지 크기는 1-100 사이여야 합니다", List.of("INVALID_SIZE"));
             }
 
-            List<CommentResponse> comments = commentQueryUseCase.getCommentsByUserEmail(currentUser.getEmail(), page, size);
+            PaginationResponse<java.util.Map<String, Object>> comments =
+                    commentQueryUseCase.getCommentsByUserEmail(currentUser.getEmail(), page, size);
             return ResponseEntity.ok(ApiResponse.success(comments, "내 댓글 목록을 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
             throw e;
         } catch (Exception e) {
             throw new SystemException("내 댓글 목록 조회 중 오류가 발생했습니다", "MY_COMMENTS_ERROR", e);
+        }
+    }
+
+    @Operation(summary = "내 댓글 반응 목록", description = "로그인한 사용자가 댓글에 남긴 좋아요·싫어요 기록을 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
+    @GetMapping("/my-reactions")
+    @LogExecution("내 댓글 반응 목록 조회")
+    @PerformanceMonitor(threshold = 2000, operation = "my_comment_reactions")
+    public ResponseEntity<ApiResponse<PaginationResponse<java.util.Map<String, Object>>>> getMyReactions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @CurrentUser AuthenticatedUser currentUser) {
+        try {
+            if (page < 0) {
+                throw new ValidationException("페이지 번호는 0 이상이어야 합니다", List.of("INVALID_PAGE"));
+            }
+            if (size <= 0 || size > 100) {
+                throw new ValidationException("페이지 크기는 1-100 사이여야 합니다", List.of("INVALID_SIZE"));
+            }
+            PaginationResponse<java.util.Map<String, Object>> reactions =
+                    commentQueryUseCase.getMyReactions(currentUser.getEmail(), page, size);
+            return ResponseEntity.ok(ApiResponse.success(reactions, "내 댓글 반응 목록을 성공적으로 조회했습니다"));
+        } catch (ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SystemException("내 댓글 반응 목록 조회 중 오류가 발생했습니다", "MY_COMMENT_REACTIONS_ERROR", e);
         }
     }
 

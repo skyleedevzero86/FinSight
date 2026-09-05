@@ -78,9 +78,11 @@ export default function MyInfoClient() {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("")
   const [showOld, setShowOld] = useState(false)
   const [showNew, setShowNew] = useState(false)
+  const [pwFieldsUnlocked, setPwFieldsUnlocked] = useState(false)
 
   const [passwordStatus, setPasswordStatus] = useState<PasswordStatus | null>(null)
   const [saving, setSaving] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
   const [savingWatchlist, setSavingWatchlist] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -279,72 +281,8 @@ export default function MyInfoClient() {
       return
     }
 
-    const wantsPasswordChange = Boolean(oldPassword || newPassword || newPasswordConfirm)
-    if (passwordLocked && !wantsPasswordChange) {
-      setSaving(true)
-      try {
-        const watched = await updateWatchlist(watchlist)
-        if (!watched.ok) {
-          setFormError(watched.message)
-          return
-        }
-        setWatchlist(watched.categories)
-        const saved = await updateProfile({ email: email.trim() })
-        if (!saved.ok) {
-          setFormError(saved.message)
-          return
-        }
-        await refresh()
-        setFormOk("관심 카테고리와 이메일이 저장되었습니다. 계속 이용하려면 비밀번호도 변경해 주세요.")
-      } finally {
-        setSaving(false)
-      }
-      return
-    }
-
-    if (wantsPasswordChange || passwordLocked) {
-      const pwErr = validatePassword(newPassword)
-      if (pwErr) {
-        setFormError(pwErr)
-        return
-      }
-      if (!oldPassword) {
-        setFormError("현재 비밀번호를 입력해 주세요.")
-        return
-      }
-      if (newPassword !== newPasswordConfirm) {
-        setFormError("새 비밀번호 확인이 일치하지 않습니다.")
-        return
-      }
-    }
-
     setSaving(true)
     try {
-      if (wantsPasswordChange || passwordLocked) {
-        const changed = await changePassword({
-          oldPassword,
-          newPassword,
-          newPasswordConfirm,
-        })
-        if (!changed.ok) {
-          setFormError(changed.message)
-          return
-        }
-        setOldPassword("")
-        setNewPassword("")
-        setNewPasswordConfirm("")
-        try {
-          sessionStorage.removeItem(FINSIGHT_FORCE_PASSWORD_KEY)
-        } catch {
-          void 0
-        }
-        const status = await fetchPasswordStatus()
-        setPasswordStatus(status)
-        if (forcePassword) {
-          router.replace("/myinfo")
-        }
-      }
-
       const watched = await updateWatchlist(watchlist)
       if (!watched.ok) {
         setFormError(watched.message)
@@ -358,9 +296,63 @@ export default function MyInfoClient() {
         return
       }
       await refresh()
-      setFormOk("내정보가 저장되었습니다.")
+      setFormOk(
+        passwordLocked
+          ? "관심 카테고리와 이메일이 저장되었습니다. 계속 이용하려면 비밀번호도 변경해 주세요."
+          : "내정보가 저장되었습니다.",
+      )
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function onChangePassword(e: FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    setFormOk(null)
+
+    const pwErr = validatePassword(newPassword)
+    if (pwErr) {
+      setFormError(pwErr)
+      return
+    }
+    if (!oldPassword) {
+      setFormError("현재 비밀번호를 입력해 주세요.")
+      return
+    }
+    if (newPassword !== newPasswordConfirm) {
+      setFormError("새 비밀번호 확인이 일치하지 않습니다.")
+      return
+    }
+
+    setChangingPassword(true)
+    try {
+      const changed = await changePassword({
+        oldPassword,
+        newPassword,
+        newPasswordConfirm,
+      })
+      if (!changed.ok) {
+        setFormError(changed.message)
+        return
+      }
+      setOldPassword("")
+      setNewPassword("")
+      setNewPasswordConfirm("")
+      setPwFieldsUnlocked(false)
+      try {
+        sessionStorage.removeItem(FINSIGHT_FORCE_PASSWORD_KEY)
+      } catch {
+        void 0
+      }
+      const status = await fetchPasswordStatus()
+      setPasswordStatus(status)
+      if (forcePassword) {
+        router.replace("/myinfo")
+      }
+      setFormOk("비밀번호가 변경되었습니다.")
+    } finally {
+      setChangingPassword(false)
     }
   }
 
@@ -450,7 +442,12 @@ export default function MyInfoClient() {
               </button>
             </form>
           ) : (
-            <form className="mt-8 space-y-6" onSubmit={(e) => void onSaveWeb(e)}>
+            <>
+            <form
+              className="mt-8 space-y-6"
+              onSubmit={(e) => void onSaveWeb(e)}
+              autoComplete="off"
+            >
               <section className="space-y-2">
                 <label htmlFor={`${id}-email`} className="block text-sm font-medium text-gray-800">
                   이메일
@@ -458,58 +455,11 @@ export default function MyInfoClient() {
                 <input
                   id={`${id}-email`}
                   type="email"
+                  name="finsight-profile-email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={inputClass}
-                />
-              </section>
-
-              <section className="space-y-3">
-                <p className="text-sm font-medium text-gray-800">비밀번호</p>
-                <p className="text-xs text-gray-500">90일마다 변경해야 합니다. 영문·숫자·특수문자 포함 8자 이상.</p>
-                <div className="relative">
-                  <input
-                    type={showOld ? "text" : "password"}
-                    value={oldPassword}
-                    onChange={(e) => setOldPassword(e.target.value)}
-                    placeholder="현재 비밀번호"
-                    className={inputClass}
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    onClick={() => setShowOld((v) => !v)}
-                    aria-label="현재 비밀번호 표시"
-                  >
-                    {showOld ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <div className="relative">
-                  <input
-                    type={showNew ? "text" : "password"}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="새 비밀번호"
-                    className={inputClass}
-                    autoComplete="new-password"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    onClick={() => setShowNew((v) => !v)}
-                    aria-label="새 비밀번호 표시"
-                  >
-                    {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <input
-                  type={showNew ? "text" : "password"}
-                  value={newPasswordConfirm}
-                  onChange={(e) => setNewPasswordConfirm(e.target.value)}
-                  placeholder="새 비밀번호 확인"
-                  className={inputClass}
-                  autoComplete="new-password"
+                  autoComplete="off"
                 />
               </section>
 
@@ -517,12 +467,89 @@ export default function MyInfoClient() {
 
               <button
                 type="submit"
-                disabled={saving || savingWatchlist}
+                disabled={saving || savingWatchlist || changingPassword}
                 className="w-full rounded-md bg-finsight-primary px-4 py-2.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
               >
                 {saving ? "저장 중..." : "저장"}
               </button>
             </form>
+
+            <form
+              className="mt-8 space-y-3 border-t border-gray-100 pt-8"
+              onSubmit={(e) => void onChangePassword(e)}
+              autoComplete="off"
+            >
+              <p className="text-sm font-medium text-gray-800">비밀번호 변경</p>
+              <p className="text-xs text-gray-500">
+                저장 버튼과 별개입니다. 비밀번호를 바꿀 때만 아래를 입력한 뒤 「비밀번호 변경」을 눌러 주세요.
+                90일마다 변경 · 영문·숫자·특수문자 포함 8자 이상.
+              </p>
+              <div className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0" aria-hidden>
+                <input type="text" name="username" tabIndex={-1} autoComplete="username" defaultValue="" />
+                <input type="password" name="password" tabIndex={-1} autoComplete="current-password" defaultValue="" />
+              </div>
+              <div className="relative">
+                <input
+                  type={showOld ? "text" : "password"}
+                  name="finsight-old-password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  onFocus={() => setPwFieldsUnlocked(true)}
+                  placeholder="현재 비밀번호"
+                  className={inputClass}
+                  autoComplete="off"
+                  readOnly={!pwFieldsUnlocked}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  onClick={() => setShowOld((v) => !v)}
+                  aria-label="현재 비밀번호 표시"
+                >
+                  {showOld ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showNew ? "text" : "password"}
+                  name="finsight-new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  onFocus={() => setPwFieldsUnlocked(true)}
+                  placeholder="새 비밀번호"
+                  className={inputClass}
+                  autoComplete="new-password"
+                  readOnly={!pwFieldsUnlocked}
+                />
+                <button
+                  type="button"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  onClick={() => setShowNew((v) => !v)}
+                  aria-label="새 비밀번호 표시"
+                >
+                  {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <input
+                type={showNew ? "text" : "password"}
+                name="finsight-new-password-confirm"
+                value={newPasswordConfirm}
+                onChange={(e) => setNewPasswordConfirm(e.target.value)}
+                onFocus={() => setPwFieldsUnlocked(true)}
+                placeholder="새 비밀번호 확인"
+                className={inputClass}
+                autoComplete="new-password"
+                readOnly={!pwFieldsUnlocked}
+              />
+              <button
+                type="submit"
+                disabled={changingPassword || saving}
+                className="w-full rounded-md border border-finsight-primary px-4 py-2.5 text-sm font-medium text-finsight-primary hover:bg-finsight-primary/5 disabled:opacity-60"
+              >
+                {changingPassword ? "변경 중..." : "비밀번호 변경"}
+              </button>
+            </form>
+            </>
           )}
 
           <button

@@ -820,6 +820,42 @@
   margin-top: 24px;
 }
 
+.fcb-md-reaction-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 16px 0 8px;
+}
+
+.fcb-md-reaction-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid rgba(59, 93, 118, 0.18);
+  background: #fff;
+  color: #334155;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.fcb-md-reaction-btn:hover {
+  background: #f8fafc;
+}
+
+.fcb-md-reaction-btn.is-on {
+  border-color: #3055a6;
+  background: #eef3fb;
+  color: #3055a6;
+}
+
+.fcb-md-reaction-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .fcb-md-action {
   display: inline-flex;
   align-items: center;
@@ -1451,4 +1487,40 @@
   color: #17344c;
   font-weight: 600;
 }
+
+.fcb-moderation-restricted {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.fcb-moderation-restricted__banner {
+  position: relative;
+  z-index: 2;
+  margin-bottom: 0.75rem;
+  border: 1px solid #f1c40f;
+  border-radius: 0.75rem;
+  background: #fff8e1;
+  padding: 0.85rem 1rem;
+  color: #5c4b00;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.fcb-moderation-restricted__blur {
+  filter: blur(6px);
+  opacity: 0.55;
+  user-select: none;
+  pointer-events: none;
+}
+
+.fcb-moderation-restricted--comment {
+  margin: 0.35rem 0 0.5rem;
+}
+
+.fcb-moderation-restricted--comment .fcb-moderation-restricted__banner {
+  font-size: 0.8rem;
+  padding: 0.6rem 0.75rem;
+}
+
 

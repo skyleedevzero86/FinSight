@@ -31,8 +31,20 @@ public class MainimgItemJpaEntity {
     @Column(name = "description", length = 1000)
     private String description;
 
+    @Column(name = "link_url", length = 500)
+    private String linkUrl;
+
+    @Column(name = "notice_begin", length = 20)
+    private String noticeBegin;
+
+    @Column(name = "notice_end", length = 20)
+    private String noticeEnd;
+
     @Column(name = "reflect_yn", nullable = false, length = 1)
     private String reflectYn = "Y";
+
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 0;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -90,12 +102,44 @@ public class MainimgItemJpaEntity {
         this.description = description;
     }
 
+    public String getLinkUrl() {
+        return linkUrl;
+    }
+
+    public void setLinkUrl(String linkUrl) {
+        this.linkUrl = linkUrl;
+    }
+
+    public String getNoticeBegin() {
+        return noticeBegin;
+    }
+
+    public void setNoticeBegin(String noticeBegin) {
+        this.noticeBegin = noticeBegin;
+    }
+
+    public String getNoticeEnd() {
+        return noticeEnd;
+    }
+
+    public void setNoticeEnd(String noticeEnd) {
+        this.noticeEnd = noticeEnd;
+    }
+
     public String getReflectYn() {
         return reflectYn;
     }
 
     public void setReflectYn(String reflectYn) {
         this.reflectYn = reflectYn;
+    }
+
+    public Integer getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder;
     }
 
     public LocalDateTime getCreatedAt() {

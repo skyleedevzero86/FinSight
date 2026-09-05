@@ -12,14 +12,22 @@ public interface MainimgItemJpaRepository extends JpaRepository<MainimgItemJpaEn
             SELECT m FROM MainimgItemJpaEntity m
             WHERE (:domainId IS NULL OR m.domainId = :domainId)
             AND m.reflectYn = 'Y'
-            ORDER BY m.id DESC
+            AND (m.noticeBegin IS NULL OR m.noticeBegin = '' OR m.noticeBegin <= :today)
+            AND (m.noticeEnd IS NULL OR m.noticeEnd = '' OR m.noticeEnd >= :today)
+            ORDER BY m.sortOrder ASC, m.id ASC
             """)
-    Page<MainimgItemJpaEntity> searchReflectOnly(@Param("domainId") String domainId, Pageable pageable);
+    Page<MainimgItemJpaEntity> searchReflectOnly(
+            @Param("domainId") String domainId,
+            @Param("today") String today,
+            Pageable pageable);
 
     @Query("""
             SELECT m FROM MainimgItemJpaEntity m
             WHERE (:domainId IS NULL OR m.domainId = :domainId)
-            ORDER BY m.id DESC
+            ORDER BY m.sortOrder ASC, m.id ASC
             """)
     Page<MainimgItemJpaEntity> searchAll(@Param("domainId") String domainId, Pageable pageable);
+
+    @Query("SELECT COALESCE(MAX(m.sortOrder), 0) FROM MainimgItemJpaEntity m")
+    int findMaxSortOrder();
 }

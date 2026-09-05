@@ -27,6 +27,7 @@ export type ModerationItem = {
   boardType: string
   status: string
   reportCount: number
+  targetId: number | null
   createdAt: string | null
   updatedAt: string | null
 }
@@ -53,6 +54,7 @@ function parseItem(raw: unknown): ModerationItem | null {
     boardType: typeof o.boardType === "string" ? o.boardType : "",
     status: typeof o.status === "string" ? o.status : "",
     reportCount: Number(o.reportCount) || 0,
+    targetId: typeof o.targetId === "number" ? o.targetId : Number(o.targetId) || null,
     createdAt: typeof o.createdAt === "string" ? o.createdAt : null,
     updatedAt: typeof o.updatedAt === "string" ? o.updatedAt : null,
   }
@@ -83,18 +85,11 @@ function parseItemList(raw: unknown): ModerationItem[] {
   return list.map(parseItem).filter((x): x is ModerationItem => x != null)
 }
 
-function parseRunList(raw: unknown): ModerationRun[] {
-  const root = asRecord(raw)
-  const data = root?.data
-  const list = Array.isArray(data) ? data : []
-  return list.map(parseRun).filter((x): x is ModerationRun => x != null)
-}
-
 export async function fetchModerationCandidates(
   reportThreshold: number,
 ): Promise<{ ok: true; data: ModerationItem[] } | { ok: false; message: string }> {
   const res = await fetch(
-    `/api/v1/admin/boards/maintenance/candidates?reportThreshold=${reportThreshold}`,
+    `/api/v1/admin/comments/maintenance/candidates?reportThreshold=${reportThreshold}`,
     { headers: authHeadersJson(), cache: "no-store" },
   )
   const payload = await readJson(res)
@@ -105,7 +100,7 @@ export async function fetchModerationCandidates(
 export async function fetchHiddenBoards(): Promise<
   { ok: true; data: ModerationItem[] } | { ok: false; message: string }
 > {
-  const res = await fetch("/api/v1/admin/boards/maintenance/hidden", {
+  const res = await fetch("/api/v1/admin/comments/maintenance/hidden", {
     headers: authHeadersJson(),
     cache: "no-store",
   })
@@ -118,7 +113,7 @@ export async function hideOverReported(
   reportThreshold: number,
 ): Promise<{ ok: true; data: ModerationRun } | { ok: false; message: string }> {
   const res = await fetch(
-    `/api/v1/admin/boards/maintenance/hide-over-reported?reportThreshold=${reportThreshold}`,
+    `/api/v1/admin/comments/maintenance/hide-over-reported?reportThreshold=${reportThreshold}`,
     { method: "POST", headers: authHeadersJson(), cache: "no-store" },
   )
   const payload = await readJson(res)
@@ -129,9 +124,9 @@ export async function hideOverReported(
 }
 
 export async function restoreModerationBoard(
-  boardId: number,
+  commentId: number,
 ): Promise<{ ok: true; data: ModerationItem } | { ok: false; message: string }> {
-  const res = await fetch(`/api/v1/admin/boards/maintenance/boards/${boardId}/restore`, {
+  const res = await fetch(`/api/v1/admin/comments/maintenance/comments/${commentId}/restore`, {
     method: "POST",
     headers: authHeadersJson(),
     cache: "no-store",
@@ -145,9 +140,9 @@ export async function restoreModerationBoard(
 }
 
 export async function blockModerationBoard(
-  boardId: number,
+  commentId: number,
 ): Promise<{ ok: true; data: ModerationItem } | { ok: false; message: string }> {
-  const res = await fetch(`/api/v1/admin/boards/maintenance/boards/${boardId}/block`, {
+  const res = await fetch(`/api/v1/admin/comments/maintenance/comments/${commentId}/block`, {
     method: "POST",
     headers: authHeadersJson(),
     cache: "no-store",
@@ -160,48 +155,6 @@ export async function blockModerationBoard(
   return { ok: true, data: item }
 }
 
-export async function fetchModerationRuns(
-  limit = 20,
-): Promise<{ ok: true; data: ModerationRun[] } | { ok: false; message: string }> {
-  const res = await fetch(`/api/v1/admin/boards/maintenance/runs?limit=${limit}`, {
-    headers: authHeadersJson(),
-    cache: "no-store",
-  })
-  const payload = await readJson(res)
-  if (!res.ok) return { ok: false, message: readMessage(payload, "실행 이력을 불러오지 못했습니다.") }
-  return { ok: true, data: parseRunList(payload) }
-}
-
-export async function fetchModerationRunDetail(
-  runId: number,
-): Promise<{ ok: true; data: ModerationRun } | { ok: false; message: string }> {
-  const res = await fetch(`/api/v1/admin/boards/maintenance/runs/${runId}`, {
-    headers: authHeadersJson(),
-    cache: "no-store",
-  })
-  const payload = await readJson(res)
-  if (!res.ok) return { ok: false, message: readMessage(payload, "실행 상세를 불러오지 못했습니다.") }
-  const data = parseRun(payload)
-  if (!data) return { ok: false, message: "실행 상세 형식이 올바르지 않습니다." }
-  return { ok: true, data }
-}
-
-export async function reportBoard(
-  boardId: number,
-  reason: string,
-  description?: string,
-): Promise<{ ok: true } | { ok: false; message: string }> {
-  const res = await fetch(`/api/v1/boards/${boardId}/report`, {
-    method: "POST",
-    headers: authHeadersJson(),
-    body: JSON.stringify({ reason, description: description ?? "" }),
-    cache: "no-store",
-  })
-  const payload = await readJson(res)
-  if (!res.ok) return { ok: false, message: readMessage(payload, "신고에 실패했습니다.") }
-  return { ok: true }
-}
-
 export const REPORT_REASONS = [
   { value: "SPAM", label: "스팸·광고" },
   { value: "ABUSE", label: "욕설·비방" },
@@ -209,3 +162,6 @@ export const REPORT_REASONS = [
   { value: "PRIVACY", label: "개인정보 노출" },
   { value: "OTHER", label: "기타" },
 ] as const
+
+export const MODERATION_RESTRICTED_MESSAGE =
+  "해당 서비스 규정에 위반하여 게시 중단된 게시물 입니다"

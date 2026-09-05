@@ -37,6 +37,15 @@ public class UlinkItemJpaEntity {
     @Column(name = "description", length = 1000)
     private String description;
 
+    @Column(name = "img_path", length = 500)
+    private String imgPath;
+
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 0;
+
+    @Column(name = "open_yn", nullable = false, length = 1)
+    private String openYn = "Y";
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -107,6 +116,30 @@ public class UlinkItemJpaEntity {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getImgPath() {
+        return imgPath;
+    }
+
+    public void setImgPath(String imgPath) {
+        this.imgPath = imgPath;
+    }
+
+    public Integer getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder;
+    }
+
+    public String getOpenYn() {
+        return openYn;
+    }
+
+    public void setOpenYn(String openYn) {
+        this.openYn = openYn;
     }
 
     public LocalDateTime getCreatedAt() {

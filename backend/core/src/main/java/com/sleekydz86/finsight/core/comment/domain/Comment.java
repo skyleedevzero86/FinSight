@@ -121,6 +121,10 @@ public class Comment {
         return this.status == CommentStatus.BLOCKED;
     }
 
+    public boolean isHidden() {
+        return this.status == CommentStatus.HIDDEN;
+    }
+
     public boolean isReported() {
         return this.status == CommentStatus.REPORTED;
     }

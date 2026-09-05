@@ -18,8 +18,9 @@ public class UlinkItemRepositoryImpl implements UlinkItemPersistencePort {
     }
 
     @Override
-    public Page<UlinkItem> findPage(String domainId, String sectionCode, Pageable pageable) {
-        return jpaRepository.search(domainId, sectionCode, pageable).map(UlinkItemRepositoryImpl::toDomain);
+    public Page<UlinkItem> findPage(String domainId, String sectionCode, boolean openOnly, Pageable pageable) {
+        return jpaRepository.search(domainId, sectionCode, openOnly, pageable)
+                .map(UlinkItemRepositoryImpl::toDomain);
     }
 
     @Override
@@ -37,6 +38,11 @@ public class UlinkItemRepositoryImpl implements UlinkItemPersistencePort {
         jpaRepository.deleteById(id);
     }
 
+    @Override
+    public int findMaxSortOrder() {
+        return jpaRepository.findMaxSortOrder();
+    }
+
     static UlinkItem toDomain(UlinkItemJpaEntity e) {
         UlinkItem d = new UlinkItem();
         d.setId(e.getId());
@@ -47,6 +53,9 @@ public class UlinkItemRepositoryImpl implements UlinkItemPersistencePort {
         d.setLinkUrl(e.getLinkUrl());
         d.setLinkTarget(e.getLinkTarget());
         d.setDescription(e.getDescription());
+        d.setImgPath(e.getImgPath());
+        d.setSortOrder(e.getSortOrder() != null ? e.getSortOrder() : 0);
+        d.setOpenYn(e.getOpenYn() != null ? e.getOpenYn() : "Y");
         d.setCreatedAt(e.getCreatedAt());
         d.setUpdatedAt(e.getUpdatedAt());
         return d;
@@ -62,6 +71,9 @@ public class UlinkItemRepositoryImpl implements UlinkItemPersistencePort {
         e.setLinkUrl(d.getLinkUrl());
         e.setLinkTarget(d.getLinkTarget());
         e.setDescription(d.getDescription());
+        e.setImgPath(d.getImgPath());
+        e.setSortOrder(d.getSortOrder() != null ? d.getSortOrder() : 0);
+        e.setOpenYn(d.getOpenYn() != null ? d.getOpenYn() : "Y");
         return e;
     }
 }

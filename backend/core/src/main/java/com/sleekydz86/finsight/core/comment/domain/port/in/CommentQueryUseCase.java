@@ -4,8 +4,10 @@ import com.sleekydz86.finsight.core.comment.domain.Comment;
 import com.sleekydz86.finsight.core.comment.domain.Comments;
 import com.sleekydz86.finsight.core.comment.domain.CommentType;
 import com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentResponse;
+import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 
 import java.util.List;
+import java.util.Map;
 
 public interface CommentQueryUseCase {
     Comments getCommentsByTargetId(Long targetId, CommentType commentType);
@@ -16,5 +18,6 @@ public interface CommentQueryUseCase {
     Comments getReportedComments();
     boolean hasUserLikedComment(String userEmail, Long commentId);
     boolean hasUserDislikedComment(String userEmail, Long commentId);
-    List<CommentResponse> getCommentsByUserEmail(String userEmail, int page, int size);
+    PaginationResponse<Map<String, Object>> getCommentsByUserEmail(String userEmail, int page, int size);
+    PaginationResponse<Map<String, Object>> getMyReactions(String userEmail, int page, int size);
 }

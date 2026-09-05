@@ -131,6 +131,12 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
     }
 
     @Override
+    public long countByAuthorEmailBetween(String authorEmail, java.time.LocalDateTime from, java.time.LocalDateTime to) {
+        return boardJpaRepository.countByAuthorEmailAndStatusAndCreatedAtBetween(
+                authorEmail, BoardStatus.ACTIVE, from, to);
+    }
+
+    @Override
     public List<Board> findPreviousAndNext(Long boardId, BoardType boardType) {
         Pageable pageable = PageRequest.of(0, 2);
 

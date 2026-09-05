@@ -1,4 +1,4 @@
-import { authHeadersJson } from "@/lib/finsightToken"
+import { authHeadersJson, clearAuthSession, readUsableAccessToken } from "@/lib/finsightToken"
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
@@ -9,7 +9,22 @@ function readMessage(payload: unknown, fallback: string): string {
   const root = asRecord(payload)
   if (!root) return fallback
   if (typeof root.message === "string" && root.message) return root.message
+  const data = asRecord(root.data)
+  if (data && typeof data.message === "string" && data.message) return data.message
   return fallback
+}
+
+function authFailureMessage(status: number): string {
+  if (status === 401) {
+    return "로그인이 만료되었거나 유효하지 않습니다. 다시 로그인해 주세요."
+  }
+  return "관리자 권한이 필요합니다."
+}
+
+function handleAdminAuthFailure(status: number): string | null {
+  if (status !== 401 && status !== 403) return null
+  clearAuthSession({ emit: true })
+  return authFailureMessage(status)
 }
 
 async function readJson(res: Response): Promise<unknown> {
@@ -177,14 +192,26 @@ function parseChart(raw: unknown): AdminStatsChart | null {
 }
 
 export async function fetchAdminStatsOverview(): Promise<
-  { ok: true; data: AdminStatsOverview } | { ok: false; message: string }
+  { ok: true; data: AdminStatsOverview } | { ok: false; message: string; unauthorized?: boolean }
 > {
   try {
+    if (!readUsableAccessToken()) {
+      clearAuthSession({ emit: true })
+      return {
+        ok: false,
+        message: authFailureMessage(401),
+        unauthorized: true,
+      }
+    }
     const res = await fetch("/api/v1/admin/stats/overview", {
       headers: authHeadersJson(),
       cache: "no-store",
     })
     const payload = await readJson(res)
+    const authMsg = handleAdminAuthFailure(res.status)
+    if (authMsg) {
+      return { ok: false, message: authMsg, unauthorized: true }
+    }
     if (!res.ok) {
       return { ok: false, message: readMessage(payload, "통계 개요를 불러오지 못했습니다.") }
     }
@@ -199,8 +226,16 @@ export async function fetchAdminStatsOverview(): Promise<
 export async function fetchAdminStatsChart(
   chartKey: AdminStatsChartKey,
   options?: { days?: number; from?: string; to?: string },
-): Promise<{ ok: true; data: AdminStatsChart } | { ok: false; message: string }> {
+): Promise<{ ok: true; data: AdminStatsChart } | { ok: false; message: string; unauthorized?: boolean }> {
   try {
+    if (!readUsableAccessToken()) {
+      clearAuthSession({ emit: true })
+      return {
+        ok: false,
+        message: authFailureMessage(401),
+        unauthorized: true,
+      }
+    }
     const qs = new URLSearchParams()
     if (options?.from && options?.to) {
       qs.set("from", options.from)
@@ -213,6 +248,10 @@ export async function fetchAdminStatsChart(
       cache: "no-store",
     })
     const payload = await readJson(res)
+    const authMsg = handleAdminAuthFailure(res.status)
+    if (authMsg) {
+      return { ok: false, message: authMsg, unauthorized: true }
+    }
     if (!res.ok) {
       return { ok: false, message: readMessage(payload, "통계 차트를 불러오지 못했습니다.") }
     }
@@ -225,15 +264,27 @@ export async function fetchAdminStatsChart(
 }
 
 export async function refreshAdminHealth(): Promise<
-  { ok: true } | { ok: false; message: string }
+  { ok: true } | { ok: false; message: string; unauthorized?: boolean }
 > {
   try {
+    if (!readUsableAccessToken()) {
+      clearAuthSession({ emit: true })
+      return {
+        ok: false,
+        message: authFailureMessage(401),
+        unauthorized: true,
+      }
+    }
     const res = await fetch("/api/v1/admin/stats/health/refresh", {
       method: "POST",
       headers: authHeadersJson(),
       cache: "no-store",
     })
     const payload = await readJson(res)
+    const authMsg = handleAdminAuthFailure(res.status)
+    if (authMsg) {
+      return { ok: false, message: authMsg, unauthorized: true }
+    }
     if (!res.ok) {
       return { ok: false, message: readMessage(payload, "헬스 상태를 새로고침하지 못했습니다.") }
     }

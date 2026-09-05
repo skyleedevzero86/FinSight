@@ -113,6 +113,9 @@ public class BoardQueryService implements BoardQueryUseCase {
                 if (board.getStatus() == BoardStatus.ACTIVE) {
                         return;
                 }
+                if (board.getStatus() == BoardStatus.HIDDEN || board.getStatus() == BoardStatus.BLOCKED) {
+                        return;
+                }
                 if (board.getStatus() == BoardStatus.PRIVATE) {
                         if (staffViewer) {
                                 return;
@@ -211,18 +214,26 @@ public class BoardQueryService implements BoardQueryUseCase {
         }
 
         @Override
-        public List<BoardListResponse> getMyBoards(String userEmail, int page, int size) {
+        public PaginationResponse<BoardListResponse> getMyBoards(String userEmail, int page, int size) {
                 log.info("사용자 작성 게시판 조회 요청: user={}, page={}, size={}", userEmail, page, size);
 
                 var boards = boardPersistencePort.findByAuthorEmail(userEmail, page, size);
-                return boards.getBoards().stream()
+                List<BoardListResponse> content = boards.getBoards().stream()
                                 .map(BoardListResponse::from)
                                 .collect(Collectors.toList());
+                return PaginationResponse.<BoardListResponse>builder()
+                                .content(content)
+                                .page(page)
+                                .size(size)
+                                .totalElements(boards.getTotalElements())
+                                .build();
         }
 
         @Override
-        public List<Map<String, Object>> getMyReactions(String userEmail, int page, int size) {
-                return boardReactionPersistencePort.findByUserEmail(userEmail, page, size).stream()
+        public PaginationResponse<Map<String, Object>> getMyReactions(String userEmail, int page, int size) {
+                long total = boardReactionPersistencePort.countByUserEmail(userEmail);
+                List<Map<String, Object>> content = boardReactionPersistencePort.findByUserEmail(userEmail, page, size)
+                                .stream()
                                 .map(reaction -> {
                                         Map<String, Object> row = new java.util.LinkedHashMap<>();
                                         row.put("boardId", reaction.getBoardId());
@@ -242,6 +253,12 @@ public class BoardQueryService implements BoardQueryUseCase {
                                         return row;
                                 })
                                 .collect(Collectors.toList());
+                return PaginationResponse.<Map<String, Object>>builder()
+                                .content(content)
+                                .page(page)
+                                .size(size)
+                                .totalElements(total)
+                                .build();
         }
 
         @Override

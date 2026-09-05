@@ -42,15 +42,18 @@ public class UlinkItemController {
             @RequestParam(required = false) String domainId,
             @Parameter(description = "구역 코드 (선택)", example = "FOOTER_SERVICE")
             @RequestParam(required = false) String sectionCode,
+            @Parameter(description = "오픈(Y) 항목만 조회")
+            @RequestParam(defaultValue = "false") boolean openOnly,
             @Parameter(description = "페이지 (0부터)")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기 (1~100)")
             @RequestParam(defaultValue = "20") int size) {
         int p = Math.max(0, page);
         int s = Math.min(100, Math.max(1, size));
-        log.info("통합링크 목록 조회 - domainId={}, sectionCode={}, page={}, size={}", domainId, sectionCode, p, s);
+        log.info("통합링크 목록 조회 - domainId={}, sectionCode={}, openOnly={}, page={}, size={}",
+                domainId, sectionCode, openOnly, p, s);
         PaginationResponse<UlinkItemResponse> data =
-                ulinkItemService.list(domainId, sectionCode, p, s);
+                ulinkItemService.list(domainId, sectionCode, openOnly, p, s);
         return ResponseEntity.ok(ApiResponse.success(data, "통합링크 목록을 조회했습니다"));
     }
 

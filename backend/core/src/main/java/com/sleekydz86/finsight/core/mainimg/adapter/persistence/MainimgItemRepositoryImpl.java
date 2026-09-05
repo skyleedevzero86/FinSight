@@ -18,9 +18,10 @@ public class MainimgItemRepositoryImpl implements MainimgItemPersistencePort {
     }
 
     @Override
-    public Page<MainimgItem> findPage(String domainId, boolean reflectOnly, Pageable pageable) {
-        Page<MainimgItemJpaEntity> page =
-                reflectOnly ? jpaRepository.searchReflectOnly(domainId, pageable) : jpaRepository.searchAll(domainId, pageable);
+    public Page<MainimgItem> findPage(String domainId, boolean reflectOnly, String today, Pageable pageable) {
+        Page<MainimgItemJpaEntity> page = reflectOnly
+                ? jpaRepository.searchReflectOnly(domainId, today, pageable)
+                : jpaRepository.searchAll(domainId, pageable);
         return page.map(MainimgItemRepositoryImpl::toDomain);
     }
 
@@ -39,6 +40,11 @@ public class MainimgItemRepositoryImpl implements MainimgItemPersistencePort {
         jpaRepository.deleteById(id);
     }
 
+    @Override
+    public int findMaxSortOrder() {
+        return jpaRepository.findMaxSortOrder();
+    }
+
     static MainimgItem toDomain(MainimgItemJpaEntity e) {
         MainimgItem d = new MainimgItem();
         d.setId(e.getId());
@@ -47,7 +53,11 @@ public class MainimgItemRepositoryImpl implements MainimgItemPersistencePort {
         d.setImage(e.getImage());
         d.setImageFile(e.getImageFile());
         d.setDescription(e.getDescription());
+        d.setLinkUrl(e.getLinkUrl());
+        d.setNoticeBegin(e.getNoticeBegin());
+        d.setNoticeEnd(e.getNoticeEnd());
         d.setReflectYn(e.getReflectYn());
+        d.setSortOrder(e.getSortOrder() != null ? e.getSortOrder() : 0);
         d.setCreatedAt(e.getCreatedAt());
         d.setUpdatedAt(e.getUpdatedAt());
         return d;
@@ -61,7 +71,11 @@ public class MainimgItemRepositoryImpl implements MainimgItemPersistencePort {
         e.setImage(d.getImage());
         e.setImageFile(d.getImageFile());
         e.setDescription(d.getDescription());
+        e.setLinkUrl(d.getLinkUrl());
+        e.setNoticeBegin(d.getNoticeBegin());
+        e.setNoticeEnd(d.getNoticeEnd());
         e.setReflectYn(d.getReflectYn() != null ? d.getReflectYn() : "Y");
+        e.setSortOrder(d.getSortOrder() != null ? d.getSortOrder() : 0);
         return e;
     }
 }

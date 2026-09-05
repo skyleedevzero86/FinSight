@@ -1,4 +1,8 @@
 import { authHeadersJson } from "@/lib/finsightToken"
+import { prepareImageForUpload, uploadEditorAsset } from "@/lib/editorUpload"
+
+export const POPUP_DEFAULT_WIDTH = 480
+export const POPUP_DEFAULT_HEIGHT = 640
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
@@ -157,6 +161,25 @@ export function hidePopupToday(id: string): void {
     const today = new Date().toISOString().slice(0, 10)
     localStorage.setItem(`${HIDE_PREFIX}${id}`, today)
   } catch {
+  }
+}
+
+export async function uploadPopupImage(
+  file: File,
+): Promise<{ ok: true; url: string; fileName: string } | { ok: false; message: string }> {
+  try {
+    const prepared = await prepareImageForUpload(file)
+    const uploaded = await uploadEditorAsset(prepared)
+    const url = uploaded.url?.trim()
+    if (!url) return { ok: false, message: "업로드 응답에 이미지 URL이 없습니다." }
+    return {
+      ok: true,
+      url,
+      fileName: uploaded.originalFileName || file.name,
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "이미지 업로드에 실패했습니다."
+    return { ok: false, message }
   }
 }
 

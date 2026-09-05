@@ -9,11 +9,14 @@ import {
   dislikeBoardComment,
   fetchBoardComments,
   deleteBoardComment,
+  isCommentRestricted,
   likeBoardComment,
+  reportBoardComment,
   type BoardComment,
 } from "@/lib/boardComments"
 import type { BoardTypeCode } from "@/lib/boardApi"
 import { formatAuthor } from "@/lib/boardApi"
+import { MODERATION_RESTRICTED_MESSAGE, REPORT_REASONS } from "@/lib/boardModeration"
 
 function formatTime(value: string | null): string | null {
   if (!value) return null
@@ -36,6 +39,19 @@ function GuestCommentPlaceholders({ count }: { count: number }) {
         </li>
       ))}
     </ul>
+  )
+}
+
+function RestrictedCommentBody() {
+  return (
+    <div className="fcb-moderation-restricted fcb-moderation-restricted--comment">
+      <div className="fcb-moderation-restricted__banner" role="status">
+        {MODERATION_RESTRICTED_MESSAGE}
+      </div>
+      <div className="fcb-moderation-restricted__blur">
+        <p className="fcb-comment-body">표시할 수 없는 내용입니다.</p>
+      </div>
+    </div>
   )
 }
 
@@ -66,6 +82,12 @@ export default function CommunityBoardComments({
   const [loginPromptOpen, setLoginPromptOpen] = useState(false)
   const [reactionBusyId, setReactionBusyId] = useState<number | null>(null)
   const [deletingCommentId, setDeletingCommentId] = useState<number | null>(null)
+  const [reportTarget, setReportTarget] = useState<BoardComment | null>(null)
+  const [reportReason, setReportReason] = useState<string>(REPORT_REASONS[0].value)
+  const [reportDesc, setReportDesc] = useState("")
+  const [reportBusy, setReportBusy] = useState(false)
+  const [reportError, setReportError] = useState<string | null>(null)
+  const [reportDone, setReportDone] = useState(false)
   const replyTextareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const loginNext = () => {
@@ -83,8 +105,7 @@ export default function CommunityBoardComments({
       onCountChange?.(total)
     } catch (e) {
       const message = e instanceof Error ? e.message : "댓글을 불러오지 못했습니다."
-      const authLike =
-        /인증|로그인|Unauthorized|401/i.test(message)
+      const authLike = /인증|로그인|Unauthorized|401/i.test(message)
       if (!authLike) setError(message)
       setComments([])
     } finally {
@@ -160,7 +181,7 @@ export default function CommunityBoardComments({
   }
 
   const onReaction = async (comment: BoardComment, kind: "LIKE" | "DISLIKE") => {
-    if (!ready || reactionBusyId === comment.id) return
+    if (!ready || reactionBusyId === comment.id || isCommentRestricted(comment.status)) return
     if (!user) {
       setLoginPromptOpen(true)
       return
@@ -186,11 +207,16 @@ export default function CommunityBoardComments({
   const total = loadedTotal > 0 ? loadedTotal : initialCommentCount
 
   const canDeleteComment = (c: BoardComment) => {
-    if (!user) return false
+    if (!user || isCommentRestricted(c.status)) return false
     const userRole = (user.role ?? "").toUpperCase().replace(/^ROLE_/, "")
     const isAdminOrManager = userRole === "ADMIN" || userRole === "MANAGER"
     const isAuthor = c.authorEmail?.toLowerCase() === user.email?.toLowerCase()
     return isAdminOrManager || isAuthor
+  }
+
+  const canReportComment = (c: BoardComment) => {
+    if (!user || isCommentRestricted(c.status)) return false
+    return c.authorEmail?.toLowerCase() !== user.email?.toLowerCase()
   }
 
   const onDeleteComment = async (commentId: number) => {
@@ -207,16 +233,92 @@ export default function CommunityBoardComments({
       await deleteBoardComment(commentId)
       await load()
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "댓글 삭제에 실패했습니다."
+      const message = err instanceof Error ? err.message : "댓글 삭제에 실패했습니다."
       setError(message)
     } finally {
       setDeletingCommentId(null)
     }
   }
 
+  function openReport(comment: BoardComment) {
+    if (!user) {
+      setLoginPromptOpen(true)
+      return
+    }
+    setReportTarget(comment)
+    setReportReason(REPORT_REASONS[0].value)
+    setReportDesc("")
+    setReportError(null)
+    setReportDone(false)
+  }
+
+  async function onSubmitReport(e: FormEvent) {
+    e.preventDefault()
+    if (!reportTarget || reportBusy) return
+    setReportBusy(true)
+    setReportError(null)
+    try {
+      await reportBoardComment(reportTarget.id, reportReason, reportDesc.trim())
+      setReportDone(true)
+      await load()
+    } catch (err) {
+      setReportError(err instanceof Error ? err.message : "댓글 신고에 실패했습니다.")
+    } finally {
+      setReportBusy(false)
+    }
+  }
+
   const showRealComments = comments.length > 0
   const showPlaceholders = commentsLocked && !showRealComments
+
+  function renderCommentActions(comment: BoardComment, isReply = false) {
+    if (isCommentRestricted(comment.status)) return null
+    return (
+      <div className="fcb-comment-toolbar">
+        <div className="fcb-comment-toolbar__left">
+          {!isReply && canWriteComment ? (
+            <button type="button" onClick={() => setReplyTo(comment)}>
+              답글
+            </button>
+          ) : null}
+          {canReportComment(comment) ? (
+            <button type="button" onClick={() => openReport(comment)}>
+              신고
+            </button>
+          ) : null}
+          {canDeleteComment(comment) ? (
+            <button
+              type="button"
+              className="fcb-comment-delete"
+              disabled={deletingCommentId === comment.id}
+              onClick={() => void onDeleteComment(comment.id)}
+            >
+              삭제
+            </button>
+          ) : null}
+          {isStaff && comment.reportCount > 0 ? (
+            <span className="text-xs text-amber-700">신고 {comment.reportCount}</span>
+          ) : null}
+        </div>
+        <div className="fcb-comment-toolbar__reactions">
+          <button
+            type="button"
+            disabled={reactionBusyId === comment.id}
+            onClick={() => void onReaction(comment, "LIKE")}
+          >
+            좋아요 {comment.likeCount}
+          </button>
+          <button
+            type="button"
+            disabled={reactionBusyId === comment.id}
+            onClick={() => void onReaction(comment, "DISLIKE")}
+          >
+            싫어요 {comment.dislikeCount}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <section className="fcb-comments">
@@ -276,42 +378,12 @@ export default function CommunityBoardComments({
                   <strong>{formatAuthor(comment.authorEmail)}</strong>
                   <span>{formatTime(comment.createdAt)}</span>
                 </div>
-                <p className="fcb-comment-body">{comment.content}</p>
-                <div className="fcb-comment-toolbar">
-                  <div className="fcb-comment-toolbar__left">
-                    {canWriteComment ? (
-                      <button type="button" onClick={() => setReplyTo(comment)}>
-                        답글
-                      </button>
-                    ) : null}
-                    {canDeleteComment(comment) ? (
-                      <button
-                        type="button"
-                        className="fcb-comment-delete"
-                        disabled={deletingCommentId === comment.id}
-                        onClick={() => void onDeleteComment(comment.id)}
-                      >
-                        삭제
-                      </button>
-                    ) : null}
-                  </div>
-                  <div className="fcb-comment-toolbar__reactions">
-                    <button
-                      type="button"
-                      disabled={reactionBusyId === comment.id}
-                      onClick={() => void onReaction(comment, "LIKE")}
-                    >
-                      좋아요 {comment.likeCount}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={reactionBusyId === comment.id}
-                      onClick={() => void onReaction(comment, "DISLIKE")}
-                    >
-                      싫어요 {comment.dislikeCount}
-                    </button>
-                  </div>
-                </div>
+                {isCommentRestricted(comment.status) ? (
+                  <RestrictedCommentBody />
+                ) : (
+                  <p className="fcb-comment-body">{comment.content}</p>
+                )}
+                {renderCommentActions(comment)}
 
                 {replyTo?.id === comment.id ? (
                   <form
@@ -345,37 +417,12 @@ export default function CommunityBoardComments({
                           <strong>{formatAuthor(reply.authorEmail)}</strong>
                           <span>{formatTime(reply.createdAt)}</span>
                         </div>
-                        <p className="fcb-comment-body">{reply.content}</p>
-                        <div className="fcb-comment-toolbar">
-                          <div className="fcb-comment-toolbar__left">
-                            {canDeleteComment(reply) ? (
-                              <button
-                                type="button"
-                                className="fcb-comment-delete"
-                                disabled={deletingCommentId === reply.id}
-                                onClick={() => void onDeleteComment(reply.id)}
-                              >
-                                삭제
-                              </button>
-                            ) : null}
-                          </div>
-                          <div className="fcb-comment-toolbar__reactions">
-                            <button
-                              type="button"
-                              disabled={reactionBusyId === reply.id}
-                              onClick={() => void onReaction(reply, "LIKE")}
-                            >
-                              좋아요 {reply.likeCount}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={reactionBusyId === reply.id}
-                              onClick={() => void onReaction(reply, "DISLIKE")}
-                            >
-                              싫어요 {reply.dislikeCount}
-                            </button>
-                          </div>
-                        </div>
+                        {isCommentRestricted(reply.status) ? (
+                          <RestrictedCommentBody />
+                        ) : (
+                          <p className="fcb-comment-body">{reply.content}</p>
+                        )}
+                        {renderCommentActions(reply, true)}
                       </li>
                     ))}
                   </ul>
@@ -386,10 +433,67 @@ export default function CommunityBoardComments({
         )}
       </div>
 
+      {reportTarget ? (
+        <div className="fcb-login-prompt" role="dialog" aria-modal="true">
+          <div className="fcb-login-prompt__card">
+            <h3 className="text-sm font-semibold text-gray-900">댓글 신고</h3>
+            <p className="mt-1 text-xs text-gray-500">허위 신고는 이용 제한 사유가 될 수 있습니다.</p>
+            {reportError ? (
+              <p className="mt-2 text-sm text-red-600">{reportError}</p>
+            ) : null}
+            {reportDone ? (
+              <p className="mt-2 text-sm text-emerald-700">신고가 접수되었습니다.</p>
+            ) : (
+              <form className="mt-3 space-y-3 text-left" onSubmit={(e) => void onSubmitReport(e)}>
+                <label className="block text-xs text-gray-600">
+                  사유
+                  <select
+                    className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm"
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                  >
+                    {REPORT_REASONS.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-xs text-gray-600">
+                  상세 설명 (선택)
+                  <textarea
+                    className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm"
+                    rows={3}
+                    maxLength={500}
+                    value={reportDesc}
+                    onChange={(e) => setReportDesc(e.target.value)}
+                  />
+                </label>
+                <div className="fcb-comment-actions">
+                  <button type="button" onClick={() => setReportTarget(null)}>
+                    취소
+                  </button>
+                  <button type="submit" disabled={reportBusy}>
+                    신고 제출
+                  </button>
+                </div>
+              </form>
+            )}
+            {reportDone ? (
+              <div className="fcb-comment-actions mt-3">
+                <button type="button" onClick={() => setReportTarget(null)}>
+                  닫기
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
       {loginPromptOpen ? (
         <div className="fcb-login-prompt" role="dialog" aria-modal="true">
           <div className="fcb-login-prompt__card">
-            <p>댓글을 작성하려면 로그인이 필요합니다.</p>
+            <p>댓글을 작성·신고하려면 로그인이 필요합니다.</p>
             <div className="fcb-comment-actions">
               <button type="button" onClick={() => setLoginPromptOpen(false)}>
                 닫기

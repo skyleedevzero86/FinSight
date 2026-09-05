@@ -1,14 +1,18 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
+import AdminDateField from "@/components/admin/AdminDateField"
 import { canManageUsers } from "@/lib/adminUsers"
 import {
+  POPUP_DEFAULT_HEIGHT,
+  POPUP_DEFAULT_WIDTH,
   createPopupItem,
   deletePopupItem,
   fetchAdminPopupItems,
   updatePopupItem,
+  uploadPopupImage,
   type PopupItem,
 } from "@/lib/popup"
 
@@ -22,29 +26,25 @@ const primaryButtonClass =
   "rounded bg-finsight-primary px-4 py-2 text-sm text-white hover:bg-finsight-primary/90 disabled:opacity-50"
 
 type FormState = {
-  domainId: string
   title: string
   imgPath: string
+  fileName: string
   fileUrl: string
   linkTarget: string
   noticeBegin: string
   noticeEnd: string
-  widthSize: string
-  verticalSize: string
   stopTodayHide: "Y" | "N"
   noticeActive: "Y" | "N"
 }
 
 const emptyForm: FormState = {
-  domainId: "",
   title: "",
   imgPath: "",
+  fileName: "",
   fileUrl: "",
   linkTarget: "_blank",
   noticeBegin: "",
   noticeEnd: "",
-  widthSize: "420",
-  verticalSize: "",
   stopTodayHide: "Y",
   noticeActive: "Y",
 }
@@ -54,17 +54,11 @@ function formatDate(value: string | null): string {
   return value.replace("T", " ").slice(0, 16)
 }
 
-function toOptionalNumber(raw: string): number | undefined {
-  const trimmed = raw.trim()
-  if (!trimmed) return undefined
-  const n = Number(trimmed)
-  return Number.isFinite(n) ? n : undefined
-}
-
 export default function AdminPopupClient() {
   const router = useRouter()
   const { user, ready } = useAuthSession()
   const allowed = Boolean(user && canManageUsers(user.role))
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [page, setPage] = useState(0)
   const [rows, setRows] = useState<PopupItem[]>([])
@@ -72,6 +66,7 @@ export default function AdminPopupClient() {
   const [totalElements, setTotalElements] = useState(0)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -115,25 +110,49 @@ export default function AdminPopupClient() {
     setForm(emptyForm)
     setMessage(null)
     setError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
   function startEdit(item: PopupItem) {
     setEditingId(item.id)
     setForm({
-      domainId: item.domainId ?? "",
       title: item.title,
       imgPath: item.imgPath ?? "",
+      fileName: item.fileName ?? "",
       fileUrl: item.fileUrl ?? "",
       linkTarget: item.linkTarget || "_blank",
       noticeBegin: item.noticeBegin ?? "",
       noticeEnd: item.noticeEnd ?? "",
-      widthSize: item.widthSize != null ? String(item.widthSize) : "420",
-      verticalSize: item.verticalSize != null ? String(item.verticalSize) : "",
       stopTodayHide: item.stopTodayHide === "Y" ? "Y" : "N",
       noticeActive: item.noticeActive === "N" ? "N" : "Y",
     })
     setMessage(null)
     setError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith("image/")) {
+      setError("이미지 파일만 업로드할 수 있습니다.")
+      return
+    }
+    setUploading(true)
+    setError(null)
+    setMessage(null)
+    const result = await uploadPopupImage(file)
+    setUploading(false)
+    if (!result.ok) {
+      setError(result.message)
+      return
+    }
+    setForm((f) => ({
+      ...f,
+      imgPath: result.url,
+      fileName: result.fileName,
+    }))
+    setMessage("이미지를 업로드했습니다. 저장을 눌러 반영하세요.")
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -142,19 +161,23 @@ export default function AdminPopupClient() {
       setError("제목을 입력해 주세요.")
       return
     }
+    if (!form.imgPath.trim()) {
+      setError("팝업 이미지를 업로드해 주세요.")
+      return
+    }
     setSaving(true)
     setError(null)
     setMessage(null)
     const payload = {
-      domainId: form.domainId.trim() || undefined,
       title: form.title.trim(),
       imgPath: form.imgPath.trim() || undefined,
+      fileName: form.fileName.trim() || undefined,
       fileUrl: form.fileUrl.trim() || undefined,
       linkTarget: form.linkTarget.trim() || undefined,
       noticeBegin: form.noticeBegin.trim() || undefined,
       noticeEnd: form.noticeEnd.trim() || undefined,
-      widthSize: toOptionalNumber(form.widthSize),
-      verticalSize: toOptionalNumber(form.verticalSize),
+      widthSize: POPUP_DEFAULT_WIDTH,
+      verticalSize: POPUP_DEFAULT_HEIGHT,
       stopTodayHide: form.stopTodayHide,
       noticeActive: form.noticeActive,
     }
@@ -195,13 +218,18 @@ export default function AdminPopupClient() {
     )
   }
 
+  const previewScale = 0.55
+  const previewW = Math.round(POPUP_DEFAULT_WIDTH * previewScale)
+  const previewH = Math.round(POPUP_DEFAULT_HEIGHT * previewScale)
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">팝업 관리</h1>
           <p className="mt-1 text-sm text-gray-500">
-            활성(Y)이고 노출 기간 안인 팝업이 사이트 전역에 표시됩니다. 「오늘 하루 보지 않기」는 브라우저에
+            활성(Y)이고 노출 기간 안인 팝업이 사이트에 표시됩니다. 팝업 크기{" "}
+            {POPUP_DEFAULT_WIDTH}×{POPUP_DEFAULT_HEIGHT}px · 「오늘 하루 보지 않기」는 브라우저에
             저장됩니다.
           </p>
         </div>
@@ -310,34 +338,84 @@ export default function AdminPopupClient() {
           <h2 className="mb-3 text-sm font-semibold text-gray-800">
             {editingId ? `수정 · ${editingId}` : "새 팝업 등록"}
           </h2>
-          <form className="space-y-3" onSubmit={(e) => void onSubmit(e)}>
+          <form
+            key={editingId ?? "create"}
+            className="space-y-3"
+            autoComplete="off"
+            onSubmit={(e) => void onSubmit(e)}
+          >
+            <div aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0">
+              <input type="text" name="username" tabIndex={-1} autoComplete="username" defaultValue="" />
+              <input
+                type="password"
+                name="password"
+                tabIndex={-1}
+                autoComplete="new-password"
+                defaultValue=""
+              />
+            </div>
             <label className="block text-xs text-gray-600">
               제목 *
               <input
                 className={`${inputClass} mt-1`}
+                name="popup-title"
+                autoComplete="off"
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 maxLength={200}
                 required
               />
             </label>
-            <label className="block text-xs text-gray-600">
-              이미지 URL
+            <div className="block text-xs text-gray-600">
+              이미지 파일 *
               <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
                 className={`${inputClass} mt-1`}
-                value={form.imgPath}
-                onChange={(e) => setForm((f) => ({ ...f, imgPath: e.target.value }))}
-                placeholder="https://..."
-                maxLength={500}
+                disabled={uploading || saving}
+                onChange={(e) => void onFileChange(e)}
               />
-            </label>
+              <p className="mt-1 text-[11px] text-gray-400">
+                {uploading
+                  ? "업로드 중…"
+                  : form.fileName
+                    ? `선택됨: ${form.fileName}`
+                    : "이미지 파일을 선택하면 업로드·미리보기가 표시됩니다."}
+              </p>
+            </div>
+            {form.imgPath ? (
+              <div className="space-y-1">
+                <p className="text-xs text-gray-600">
+                  미리보기 ({POPUP_DEFAULT_WIDTH}×{POPUP_DEFAULT_HEIGHT}px · {previewScale * 100}%
+                  축소)
+                </p>
+                <div
+                  className="overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
+                  style={{ width: previewW, height: previewH }}
+                >
+                  <div className="flex h-8 items-center border-b border-gray-100 px-2">
+                    <span className="truncate text-[11px] font-medium text-gray-800">
+                      {form.title || "팝업 제목"}
+                    </span>
+                  </div>
+                  <img
+                    src={form.imgPath}
+                    alt="팝업 미리보기"
+                    className="h-[calc(100%-2rem)] w-full object-cover"
+                  />
+                </div>
+              </div>
+            ) : null}
             <label className="block text-xs text-gray-600">
               클릭 링크 URL
               <input
                 className={`${inputClass} mt-1`}
+                name="popup-link-url"
+                autoComplete="off"
                 value={form.fileUrl}
                 onChange={(e) => setForm((f) => ({ ...f, fileUrl: e.target.value }))}
-                placeholder="https://..."
+                placeholder="https://... (비우면 클릭 없음)"
                 maxLength={500}
               />
             </label>
@@ -353,54 +431,19 @@ export default function AdminPopupClient() {
               </select>
             </label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="block text-xs text-gray-600">
-                노출 시작 (yyyy-MM-dd)
-                <input
-                  className={`${inputClass} mt-1`}
-                  value={form.noticeBegin}
-                  onChange={(e) => setForm((f) => ({ ...f, noticeBegin: e.target.value }))}
-                  placeholder="2026-09-01"
-                  maxLength={20}
-                />
-              </label>
-              <label className="block text-xs text-gray-600">
-                노출 종료 (yyyy-MM-dd)
-                <input
-                  className={`${inputClass} mt-1`}
-                  value={form.noticeEnd}
-                  onChange={(e) => setForm((f) => ({ ...f, noticeEnd: e.target.value }))}
-                  placeholder="2026-12-31"
-                  maxLength={20}
-                />
-              </label>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block text-xs text-gray-600">
-                가로 크기(px)
-                <input
-                  className={`${inputClass} mt-1`}
-                  value={form.widthSize}
-                  onChange={(e) => setForm((f) => ({ ...f, widthSize: e.target.value }))}
-                />
-              </label>
-              <label className="block text-xs text-gray-600">
-                세로 크기(px)
-                <input
-                  className={`${inputClass} mt-1`}
-                  value={form.verticalSize}
-                  onChange={(e) => setForm((f) => ({ ...f, verticalSize: e.target.value }))}
-                />
-              </label>
-            </div>
-            <label className="block text-xs text-gray-600">
-              도메인 ID (선택)
-              <input
-                className={`${inputClass} mt-1`}
-                value={form.domainId}
-                onChange={(e) => setForm((f) => ({ ...f, domainId: e.target.value }))}
-                maxLength={32}
+              <AdminDateField
+                label="노출 시작"
+                value={form.noticeBegin}
+                disabled={saving}
+                onChange={(noticeBegin) => setForm((f) => ({ ...f, noticeBegin }))}
               />
-            </label>
+              <AdminDateField
+                label="노출 종료"
+                value={form.noticeEnd}
+                disabled={saving}
+                onChange={(noticeEnd) => setForm((f) => ({ ...f, noticeEnd }))}
+              />
+            </div>
             <label className="block text-xs text-gray-600">
               게시 활성
               <select
@@ -427,13 +470,12 @@ export default function AdminPopupClient() {
                 <option value="N">N · 버튼 숨김</option>
               </select>
             </label>
-            {form.imgPath ? (
-              <div className="overflow-hidden rounded border border-gray-200 bg-gray-50">
-                <img src={form.imgPath} alt="미리보기" className="h-40 w-full object-cover" />
-              </div>
-            ) : null}
             <div className="flex gap-2 pt-1">
-              <button type="submit" className={primaryButtonClass} disabled={saving}>
+              <button
+                type="submit"
+                className={primaryButtonClass}
+                disabled={saving || uploading}
+              >
                 {editingId ? "수정 저장" : "등록"}
               </button>
               {editingId ? (

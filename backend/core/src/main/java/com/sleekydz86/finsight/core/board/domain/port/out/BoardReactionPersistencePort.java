@@ -12,4 +12,6 @@ public interface BoardReactionPersistencePort {
     void deleteByBoardIdAndUserEmail(Long boardId, String userEmail);
     long countByBoardIdAndReactionType(Long boardId, ReactionType reactionType);
     List<BoardReaction> findByUserEmail(String userEmail, int page, int size);
+    long countByUserEmail(String userEmail);
+    long countByUserEmailBetween(String userEmail, java.time.LocalDateTime from, java.time.LocalDateTime to);
 }

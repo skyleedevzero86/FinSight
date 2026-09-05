@@ -131,7 +131,20 @@ public interface BoardJpaRepository extends JpaRepository<BoardJpaEntity, Long> 
 
         long countByAuthorEmailAndStatus(String authorEmail, BoardStatus status);
 
-        @Modifying(clearAutomatically = true)
+    @Query("""
+            SELECT COUNT(b) FROM BoardJpaEntity b
+            WHERE b.authorEmail = :authorEmail
+              AND b.status = :status
+              AND b.createdAt >= :from
+              AND b.createdAt < :to
+            """)
+    long countByAuthorEmailAndStatusAndCreatedAtBetween(
+            @Param("authorEmail") String authorEmail,
+            @Param("status") BoardStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    @Modifying(clearAutomatically = true)
         @Transactional(propagation = Propagation.REQUIRES_NEW)
         @Query("UPDATE BoardJpaEntity b SET b.viewCount = b.viewCount + 1 WHERE b.id = :boardId")
         void incrementViewCount(@Param("boardId") Long boardId);
@@ -191,10 +204,10 @@ public interface BoardJpaRepository extends JpaRepository<BoardJpaEntity, Long> 
                         Pageable pageable);
 
         @Query(value = """
-                        SELECT DATE(created_at) AS d, COUNT(*) AS c
+                        SELECT DATE(`createdAt`) AS d, COUNT(*) AS c
                         FROM boards
-                        WHERE created_at >= :from AND created_at < :to
-                        GROUP BY DATE(created_at)
+                        WHERE `createdAt` >= :from AND `createdAt` < :to
+                        GROUP BY DATE(`createdAt`)
                         ORDER BY d
                         """, nativeQuery = true)
         List<Object[]> countCreatedByDay(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);

@@ -86,6 +86,10 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     if (root?.unavailable === true) {
       return null
     }
+    if (root?.sessionInvalid === true || root?.data == null) {
+      clearAuthSession({ emit: false })
+      return null
+    }
 
     const user = parseAuthUser(payload)
     if (!user) {

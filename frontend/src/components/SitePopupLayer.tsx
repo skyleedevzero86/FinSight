@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import {
+  POPUP_DEFAULT_HEIGHT,
+  POPUP_DEFAULT_WIDTH,
   fetchPublicPopupItems,
   hidePopupToday,
   isPopupHiddenToday,
@@ -36,12 +38,19 @@ export default function SitePopupLayer() {
   const current = queue[index] ?? null
   if (!current) return null
 
-  const width = current.widthSize && current.widthSize > 0 ? current.widthSize : 420
-  const height = current.verticalSize && current.verticalSize > 0 ? current.verticalSize : undefined
+  const width =
+    current.widthSize && current.widthSize > 0 ? current.widthSize : POPUP_DEFAULT_WIDTH
+  const height =
+    current.verticalSize && current.verticalSize > 0
+      ? current.verticalSize
+      : POPUP_DEFAULT_HEIGHT
   const style: React.CSSProperties = {
     width: Math.min(width, typeof window !== "undefined" ? window.innerWidth - 32 : width),
+    maxHeight: Math.min(
+      height,
+      typeof window !== "undefined" ? window.innerHeight - 48 : height,
+    ),
   }
-  if (height) style.maxHeight = height
 
   function dismiss(hideToday: boolean) {
     if (hideToday && current.stopTodayHide === "Y") {

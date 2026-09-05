@@ -7,33 +7,41 @@ import java.util.stream.Collectors;
 
 public class Comments {
     private final List<Comment> comments;
+    private final long totalElements;
 
     public Comments() {
         this.comments = new ArrayList<>();
+        this.totalElements = 0;
     }
 
     public Comments(List<Comment> comments) {
         this.comments = comments != null ? new ArrayList<>(comments) : new ArrayList<>();
+        this.totalElements = this.comments.size();
+    }
+
+    public Comments(List<Comment> comments, long totalElements) {
+        this.comments = comments != null ? new ArrayList<>(comments) : new ArrayList<>();
+        this.totalElements = totalElements;
     }
 
     public Comments addComment(Comment comment) {
         List<Comment> newComments = new ArrayList<>(this.comments);
         newComments.add(comment);
-        return new Comments(newComments);
+        return new Comments(newComments, this.totalElements + 1);
     }
 
     public Comments removeComment(Long commentId) {
         List<Comment> newComments = this.comments.stream()
                 .filter(comment -> !Objects.equals(comment.getId(), commentId))
                 .collect(Collectors.toList());
-        return new Comments(newComments);
+        return new Comments(newComments, Math.max(0, this.totalElements - 1));
     }
 
     public Comments updateComment(Long commentId, Comment updatedComment) {
         List<Comment> newComments = this.comments.stream()
                 .map(comment -> Objects.equals(comment.getId(), commentId) ? updatedComment : comment)
                 .collect(Collectors.toList());
-        return new Comments(newComments);
+        return new Comments(newComments, this.totalElements);
     }
 
     public List<Comment> getActiveComments() {
@@ -70,6 +78,10 @@ public class Comments {
         return comments.size();
     }
 
+    public long getTotalElements() {
+        return totalElements;
+    }
+
     public int getActiveCount() {
         return (int) comments.stream().filter(Comment::isActive).count();
     }
@@ -101,6 +113,7 @@ public class Comments {
     public String toString() {
         return "Comments{" +
                 "comments=" + comments +
+                ", totalElements=" + totalElements +
                 '}';
     }
 }

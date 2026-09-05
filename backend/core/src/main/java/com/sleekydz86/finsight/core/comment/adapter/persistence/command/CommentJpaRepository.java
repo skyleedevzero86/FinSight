@@ -30,6 +30,24 @@ public interface CommentJpaRepository extends JpaRepository<CommentJpaEntity, Lo
     List<CommentJpaEntity> findByAuthorEmailAndStatusOrderByCreatedAtDesc(
             String authorEmail, CommentStatus status);
 
+    Page<CommentJpaEntity> findByAuthorEmailAndStatusOrderByCreatedAtDesc(
+            String authorEmail, CommentStatus status, Pageable pageable);
+
+    long countByAuthorEmailAndStatus(String authorEmail, CommentStatus status);
+
+    @Query("""
+            SELECT COUNT(c) FROM CommentJpaEntity c
+            WHERE c.authorEmail = :authorEmail
+              AND c.status = :status
+              AND c.createdAt >= :from
+              AND c.createdAt < :to
+            """)
+    long countByAuthorEmailAndStatusAndCreatedAtBetween(
+            @Param("authorEmail") String authorEmail,
+            @Param("status") CommentStatus status,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
     List<CommentJpaEntity> findByParentIdAndStatusOrderByCreatedAtAsc(
             Long parentId, CommentStatus status);
 
@@ -37,6 +55,55 @@ public interface CommentJpaRepository extends JpaRepository<CommentJpaEntity, Lo
 
     @Query("SELECT c FROM CommentJpaEntity c WHERE c.status = :status AND c.reportCount > 0 ORDER BY c.reportCount DESC")
     List<CommentJpaEntity> findReportedComments(@Param("status") CommentStatus status);
+
+    @Query("""
+            SELECT c FROM CommentJpaEntity c
+            WHERE c.targetId = :targetId
+              AND c.commentType = :commentType
+              AND c.parentId IS NULL
+              AND c.status IN :statuses
+            ORDER BY c.createdAt DESC
+            """)
+    List<CommentJpaEntity> findVisibleRoots(
+            @Param("targetId") Long targetId,
+            @Param("commentType") CommentType commentType,
+            @Param("statuses") List<CommentStatus> statuses);
+
+    @Query("""
+            SELECT c FROM CommentJpaEntity c
+            WHERE c.targetId = :targetId
+              AND c.commentType = :commentType
+              AND c.parentId IS NULL
+              AND c.status IN :statuses
+            ORDER BY c.createdAt DESC
+            """)
+    Page<CommentJpaEntity> findVisibleRoots(
+            @Param("targetId") Long targetId,
+            @Param("commentType") CommentType commentType,
+            @Param("statuses") List<CommentStatus> statuses,
+            Pageable pageable);
+
+    @Query("""
+            SELECT c FROM CommentJpaEntity c
+            WHERE c.parentId = :parentId
+              AND c.status IN :statuses
+            ORDER BY c.createdAt ASC
+            """)
+    List<CommentJpaEntity> findVisibleReplies(
+            @Param("parentId") Long parentId,
+            @Param("statuses") List<CommentStatus> statuses);
+
+    @Query("""
+            SELECT c FROM CommentJpaEntity c
+            WHERE c.status = :status
+              AND c.reportCount >= :minReportCount
+            ORDER BY c.reportCount DESC, c.id DESC
+            """)
+    List<CommentJpaEntity> findModerationCandidates(
+            @Param("status") CommentStatus status,
+            @Param("minReportCount") int minReportCount);
+
+    List<CommentJpaEntity> findByStatusOrderByUpdatedAtDesc(CommentStatus status);
 
     long countByTargetIdAndCommentTypeAndStatus(Long targetId, CommentType commentType, CommentStatus status);
 
@@ -46,10 +113,10 @@ public interface CommentJpaRepository extends JpaRepository<CommentJpaEntity, Lo
                                             @Param("status") CommentStatus status);
 
     @Query(value = """
-            SELECT DATE(created_at) AS d, COUNT(*) AS c
+            SELECT DATE(`createdAt`) AS d, COUNT(*) AS c
             FROM comments
-            WHERE created_at >= :from AND created_at < :to
-            GROUP BY DATE(created_at)
+            WHERE `createdAt` >= :from AND `createdAt` < :to
+            GROUP BY DATE(`createdAt`)
             ORDER BY d
             """, nativeQuery = true)
     List<Object[]> countCreatedByDay(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
