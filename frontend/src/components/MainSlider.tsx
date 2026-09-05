@@ -13,6 +13,7 @@ type Slide = {
   image: string
   title: string
   subtitle: string
+  linkUrl: string
 }
 
 const FALLBACK_SLIDES: Slide[] = [
@@ -21,18 +22,21 @@ const FALLBACK_SLIDES: Slide[] = [
     image: "https://images.unsplash.com/photo-1516307365426-bea591f05011?w=1920&h=600&fit=crop",
     title: "백 년의 기억",
     subtitle: "매주 금요일 밤 10시 40분",
+    linkUrl: "",
   },
   {
     id: "fallback-2",
     image: "https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=1920&h=600&fit=crop",
     title: "착한 사나이",
     subtitle: "매주 목요일 밤 10시 50분",
+    linkUrl: "",
   },
   {
     id: "fallback-3",
     image: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=1920&h=600&fit=crop",
     title: "finsight 뉴스룸",
     subtitle: "평일 저녁 7시 50분",
+    linkUrl: "",
   },
 ]
 
@@ -46,6 +50,7 @@ function toSlides(items: MainimgItem[]): Slide[] {
         image,
         title: item.imageName,
         subtitle: item.description?.trim() || "",
+        linkUrl: item.linkUrl?.trim() || "",
       }
     })
     .filter((s): s is Slide => s != null)
@@ -111,6 +116,15 @@ export default function MainSlider() {
             }`}
           >
             <div className="relative w-full h-full">
+              {slide.linkUrl ? (
+                <a
+                  href={slide.linkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute inset-0 z-[1]"
+                  aria-label={`${slide.title} 바로가기`}
+                />
+              ) : null}
               <img
                 src={slide.image}
                 alt={slide.title}
@@ -118,7 +132,7 @@ export default function MainSlider() {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
 
-              <div className="absolute bottom-10 left-10 md:bottom-20 md:left-20 text-white">
+              <div className="absolute bottom-10 left-10 md:bottom-20 md:left-20 text-white z-[2] pointer-events-none">
                 <h2 className="text-3xl md:text-5xl font-bold mb-2">{slide.title}</h2>
                 {slide.subtitle ? (
                   <p className="text-lg md:text-xl">{slide.subtitle}</p>

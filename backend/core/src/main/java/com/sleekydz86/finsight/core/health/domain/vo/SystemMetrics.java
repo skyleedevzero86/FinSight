@@ -56,14 +56,30 @@ public class SystemMetrics {
         Map<String, Object> metrics = new HashMap<>();
 
         OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+        double systemLoadAverage = osBean.getSystemLoadAverage();
+        double systemCpuLoad = -1.0d;
+        double processCpuLoad = -1.0d;
 
-        metrics.put("os", Map.of(
-                "name", osBean.getName(),
-                "version", osBean.getVersion(),
-                "arch", osBean.getArch(),
-                "availableProcessors", osBean.getAvailableProcessors(),
-                "systemLoadAverage", osBean.getSystemLoadAverage()
-        ));
+        if (osBean instanceof com.sun.management.OperatingSystemMXBean sunOsBean) {
+            systemCpuLoad = sunOsBean.getCpuLoad();
+            processCpuLoad = sunOsBean.getProcessCpuLoad();
+            if (systemCpuLoad < 0.0d) {
+                systemCpuLoad = sunOsBean.getCpuLoad();
+            }
+            if (processCpuLoad < 0.0d) {
+                processCpuLoad = sunOsBean.getProcessCpuLoad();
+            }
+        }
+
+        Map<String, Object> os = new HashMap<>();
+        os.put("name", osBean.getName());
+        os.put("version", osBean.getVersion());
+        os.put("arch", osBean.getArch());
+        os.put("availableProcessors", osBean.getAvailableProcessors());
+        os.put("systemLoadAverage", systemLoadAverage);
+        os.put("systemCpuLoad", systemCpuLoad);
+        os.put("processCpuLoad", processCpuLoad);
+        metrics.put("os", os);
 
         return metrics;
     }

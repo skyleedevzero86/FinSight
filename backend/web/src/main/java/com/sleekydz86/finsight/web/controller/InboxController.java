@@ -50,9 +50,9 @@ public class InboxController {
     @GetMapping("/unread-count")
     public ResponseEntity<ApiResponse<InboxUnreadCountResponse>> unreadCount(
             @CurrentUser AuthenticatedUser currentUser) {
-        return ResponseEntity.ok(ApiResponse.success(
-                inboxService.unreadCount(currentUser.getId()),
-                "미읽음 수를 조회했습니다"));
+        InboxUnreadCountResponse result = inboxService.unreadCount(currentUser.getId());
+        log.debug("인앱 미읽음 수 조회 - userId={}, count={}", currentUser.getId(), result.unreadCount());
+        return ResponseEntity.ok(ApiResponse.success(result, "미읽음 수를 조회했습니다"));
     }
 
     @Operation(summary = "알림 읽음 처리", description = "단건 읽음")

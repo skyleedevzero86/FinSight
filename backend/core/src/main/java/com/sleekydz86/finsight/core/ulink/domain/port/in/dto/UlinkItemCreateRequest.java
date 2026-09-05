@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.ulink.domain.port.in.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -12,17 +13,17 @@ public class UlinkItemCreateRequest {
     private String domainId;
 
     @Schema(
-            description = "구역 코드",
-            example = "FOOTER_SERVICE",
-            allowableValues = {"FOOTER_SERVICE", "FOOTER_POLICY", "FOOTER_SOCIAL"})
+            description = "표시 유형",
+            example = "FOOTER_TEXT",
+            allowableValues = {"FOOTER_TEXT", "FOOTER_IMAGE", "FOOTER_SERVICE", "FOOTER_POLICY", "FOOTER_SOCIAL"})
     @Size(max = 32)
     private String sectionCode;
 
-    @Schema(description = "같은 구역 내 그룹명 (선택)", example = "서비스")
+    @Schema(description = "링크 구분. 정책 링크는 POLICY", example = "POLICY")
     @Size(max = 100)
     private String linkGroup;
 
-    @Schema(description = "링크 표시명", example = "뉴스", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(description = "링크 제목", example = "뉴스", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank
     @Size(max = 200)
     private String linkName;
@@ -36,9 +37,21 @@ public class UlinkItemCreateRequest {
     @Size(max = 32)
     private String linkTarget;
 
-    @Schema(description = "비고. FOOTER_SOCIAL이면 아이콘 키(FACEBOOK|INSTAGRAM|YOUTUBE|TWITTER)", example = "FACEBOOK")
+    @Schema(description = "설명")
     @Size(max = 1000)
     private String description;
+
+    @Schema(description = "푸터 이미지 URL (이미지 유형일 때)", example = "https://cdn.example.com/icon.png")
+    @Size(max = 500)
+    private String imgPath;
+
+    @Schema(description = "표시 순번(작을수록 앞). 비우면 다음 번호 자동 부여", example = "1")
+    @Min(1)
+    private Integer sortOrder;
+
+    @Schema(description = "오픈 여부 Y/N", example = "Y", allowableValues = {"Y", "N"})
+    @Size(max = 1)
+    private String openYn = "Y";
 
     public String getDomainId() {
         return domainId;
@@ -94,5 +107,29 @@ public class UlinkItemCreateRequest {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getImgPath() {
+        return imgPath;
+    }
+
+    public void setImgPath(String imgPath) {
+        this.imgPath = imgPath;
+    }
+
+    public Integer getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder;
+    }
+
+    public String getOpenYn() {
+        return openYn;
+    }
+
+    public void setOpenYn(String openYn) {
+        this.openYn = openYn;
     }
 }

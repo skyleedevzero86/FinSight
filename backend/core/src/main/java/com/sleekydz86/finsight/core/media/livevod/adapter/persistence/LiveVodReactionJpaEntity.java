@@ -41,13 +41,11 @@ public class LiveVodReactionJpaEntity {
     protected LiveVodReactionJpaEntity() {
     }
 
-
     public LiveVodReactionJpaEntity(String videoId, String userEmail, String reactionType) {
         this.videoId = videoId;
         this.userEmail = userEmail;
         this.reactionType = reactionType;
     }
-
 
     @PrePersist
     void onCreate() {
@@ -58,7 +56,6 @@ public class LiveVodReactionJpaEntity {
         updatedAt = now;
     }
 
-
     @PreUpdate
     void onUpdate() {
         updatedAt = LocalDateTime.now();
@@ -68,11 +65,9 @@ public class LiveVodReactionJpaEntity {
         return id;
     }
 
-
     public String getVideoId() {
         return videoId;
     }
-
 
     public String getUserEmail() {
         return userEmail;
@@ -81,7 +76,6 @@ public class LiveVodReactionJpaEntity {
     public String getReactionType() {
         return reactionType;
     }
-
 
     public void setReactionType(String reactionType) {
         this.reactionType = reactionType;

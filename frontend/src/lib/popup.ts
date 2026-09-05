@@ -1,4 +1,8 @@
 import { authHeadersJson } from "@/lib/finsightToken"
+import { prepareImageForUpload, uploadEditorAsset } from "@/lib/editorUpload"
+
+export const POPUP_DEFAULT_WIDTH = 480
+export const POPUP_DEFAULT_HEIGHT = 640
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
@@ -160,6 +164,25 @@ export function hidePopupToday(id: string): void {
   }
 }
 
+export async function uploadPopupImage(
+  file: File,
+): Promise<{ ok: true; url: string; fileName: string } | { ok: false; message: string }> {
+  try {
+    const prepared = await prepareImageForUpload(file)
+    const uploaded = await uploadEditorAsset(prepared)
+    const url = uploaded.url?.trim()
+    if (!url) return { ok: false, message: "업로드 응답에 이미지 URL이 없습니다." }
+    return {
+      ok: true,
+      url,
+      fileName: uploaded.originalFileName || file.name,
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "이미지 업로드에 실패했습니다."
+    return { ok: false, message }
+  }
+}
+
 export async function fetchPublicPopupItems(options?: {
   domainId?: string
   size?: number
@@ -169,12 +192,16 @@ export async function fetchPublicPopupItems(options?: {
   params.set("page", "0")
   params.set("size", String(options?.size ?? 20))
   if (options?.domainId) params.set("domainId", options.domainId)
-  const res = await fetch(`/api/v1/popup/items?${params.toString()}`, { cache: "no-store" })
-  const payload = await readJson(res)
-  if (!res.ok) return { ok: false, message: readMessage(payload, "팝업을 불러오지 못했습니다.") }
-  const page = parsePage(payload)
-  if (!page) return { ok: false, message: "팝업 형식이 올바르지 않습니다." }
-  return { ok: true, data: page.content }
+  try {
+    const res = await fetch(`/api/v1/popup/items?${params.toString()}`, { cache: "no-store" })
+    const payload = await readJson(res)
+    if (!res.ok) return { ok: false, message: readMessage(payload, "팝업을 불러오지 못했습니다.") }
+    const page = parsePage(payload)
+    if (!page) return { ok: false, message: "팝업 형식이 올바르지 않습니다." }
+    return { ok: true, data: page.content }
+  } catch {
+    return { ok: false, message: "팝업을 불러오지 못했습니다." }
+  }
 }
 
 export async function fetchAdminPopupItems(options?: {

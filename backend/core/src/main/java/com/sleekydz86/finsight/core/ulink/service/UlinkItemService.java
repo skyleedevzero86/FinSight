@@ -27,10 +27,11 @@ public class UlinkItemService {
     }
 
     public PaginationResponse<UlinkItemResponse> list(
-            String domainId, String sectionCode, int page, int size) {
-        log.info("통합링크 목록 서비스 - domainId={}, sectionCode={}, page={}, size={}",
-                domainId, sectionCode, page, size);
-        var pg = persistencePort.findPage(blankToNull(domainId), blankToNull(sectionCode), PageRequest.of(page, size));
+            String domainId, String sectionCode, boolean openOnly, int page, int size) {
+        log.info("통합링크 목록 서비스 - domainId={}, sectionCode={}, openOnly={}, page={}, size={}",
+                domainId, sectionCode, openOnly, page, size);
+        var pg = persistencePort.findPage(
+                blankToNull(domainId), blankToNull(sectionCode), openOnly, PageRequest.of(page, size));
         List<UlinkItemResponse> content = pg.getContent().stream()
                 .map(UlinkItemResponse::from)
                 .collect(Collectors.toList());
@@ -53,10 +54,10 @@ public class UlinkItemService {
     public UlinkItemResponse create(UlinkItemCreateRequest req) {
         UlinkItem d = new UlinkItem();
         d.setId("ULK" + System.currentTimeMillis());
-        apply(d, req.getDomainId(), req.getSectionCode(), req.getLinkGroup(),
-                req.getLinkName(), req.getLinkUrl(), req.getLinkTarget(), req.getDescription());
+        applyCreate(d, req);
         UlinkItem saved = persistencePort.save(d);
-        log.info("통합링크 등록 완료 - id={}", saved.getId());
+        log.info("통합링크 등록 완료 - id={}, sortOrder={}, openYn={}",
+                saved.getId(), saved.getSortOrder(), saved.getOpenYn());
         return UlinkItemResponse.from(saved);
     }
 
@@ -64,10 +65,10 @@ public class UlinkItemService {
     public UlinkItemResponse update(String id, UlinkItemUpdateRequest req) {
         UlinkItem existing = persistencePort.findById(id)
                 .orElseThrow(() -> new UlinkItemNotFoundException(id));
-        apply(existing, req.getDomainId(), req.getSectionCode(), req.getLinkGroup(),
-                req.getLinkName(), req.getLinkUrl(), req.getLinkTarget(), req.getDescription());
+        applyUpdate(existing, req);
         UlinkItem saved = persistencePort.save(existing);
-        log.info("통합링크 수정 완료 - id={}", id);
+        log.info("통합링크 수정 완료 - id={}, sortOrder={}, openYn={}",
+                id, saved.getSortOrder(), saved.getOpenYn());
         return UlinkItemResponse.from(saved);
     }
 
@@ -80,7 +81,41 @@ public class UlinkItemService {
         log.info("통합링크 삭제 완료 - id={}", id);
     }
 
-    private static void apply(
+    private void applyCreate(UlinkItem d, UlinkItemCreateRequest req) {
+        applyCommon(
+                d,
+                req.getDomainId(),
+                req.getSectionCode(),
+                req.getLinkGroup(),
+                req.getLinkName(),
+                req.getLinkUrl(),
+                req.getLinkTarget(),
+                req.getDescription(),
+                req.getImgPath(),
+                req.getOpenYn());
+        d.setSortOrder(resolveSortOrder(req.getSortOrder(), true));
+    }
+
+    private void applyUpdate(UlinkItem d, UlinkItemUpdateRequest req) {
+        applyCommon(
+                d,
+                req.getDomainId(),
+                req.getSectionCode(),
+                req.getLinkGroup(),
+                req.getLinkName(),
+                req.getLinkUrl(),
+                req.getLinkTarget(),
+                req.getDescription(),
+                req.getImgPath(),
+                req.getOpenYn());
+        if (req.getSortOrder() != null) {
+            d.setSortOrder(Math.max(1, req.getSortOrder()));
+        } else if (d.getSortOrder() == null || d.getSortOrder() < 1) {
+            d.setSortOrder(resolveSortOrder(null, true));
+        }
+    }
+
+    private static void applyCommon(
             UlinkItem d,
             String domainId,
             String sectionCode,
@@ -88,14 +123,28 @@ public class UlinkItemService {
             String linkName,
             String linkUrl,
             String linkTarget,
-            String description) {
+            String description,
+            String imgPath,
+            String openYn) {
         d.setDomainId(blankToNull(domainId));
         d.setSectionCode(blankToNull(sectionCode));
         d.setLinkGroup(blankToNull(linkGroup));
         d.setLinkName(linkName.trim());
         d.setLinkUrl(linkUrl.trim());
         d.setLinkTarget(blankToNull(linkTarget));
-        d.setDescription(description);
+        d.setDescription(blankToNull(description));
+        d.setImgPath(blankToNull(imgPath));
+        d.setOpenYn(yn(openYn, "Y"));
+    }
+
+    private int resolveSortOrder(Integer requested, boolean allocateNext) {
+        if (requested != null && requested >= 1) {
+            return requested;
+        }
+        if (!allocateNext) {
+            return 1;
+        }
+        return persistencePort.findMaxSortOrder() + 1;
     }
 
     private static String blankToNull(String s) {
@@ -103,5 +152,12 @@ public class UlinkItemService {
             return null;
         }
         return s.trim();
+    }
+
+    private static String yn(String v, String def) {
+        if (v == null || v.isBlank()) {
+            return def;
+        }
+        return v.trim().equalsIgnoreCase("N") ? "N" : "Y";
     }
 }

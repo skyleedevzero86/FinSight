@@ -167,11 +167,12 @@ public class UserJpaEntity extends BaseTimeEntity {
     @Column(name = "password_expiry_notified_at")
     private LocalDateTime passwordExpiryNotifiedAt;
 
-    @ElementCollection(targetClass = TargetCategory.class)
+    @ElementCollection(targetClass = TargetCategory.class, fetch = FetchType.EAGER)
     @CollectionTable(name = "user_watchlist", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false)
     @Builder.Default
+    @org.hibernate.annotations.Fetch(org.hibernate.annotations.FetchMode.SUBSELECT)
     private List<TargetCategory> watchlist = new ArrayList<>();
 
     @ElementCollection(targetClass = NotificationType.class)

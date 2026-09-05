@@ -34,15 +34,18 @@ public class BoardQueryService implements BoardQueryUseCase {
         private final BoardReactionPersistencePort boardReactionPersistencePort;
         private final BoardScrapPersistencePort boardScrapPersistencePort;
         private final MarkdownRenderingService markdownRenderingService;
+        private final BoardViewCountService boardViewCountService;
 
         public BoardQueryService(BoardPersistencePort boardPersistencePort,
                         BoardReactionPersistencePort boardReactionPersistencePort,
                         BoardScrapPersistencePort boardScrapPersistencePort,
-                        MarkdownRenderingService markdownRenderingService) {
+                        MarkdownRenderingService markdownRenderingService,
+                        BoardViewCountService boardViewCountService) {
                 this.boardPersistencePort = boardPersistencePort;
                 this.boardReactionPersistencePort = boardReactionPersistencePort;
                 this.boardScrapPersistencePort = boardScrapPersistencePort;
                 this.markdownRenderingService = markdownRenderingService;
+                this.boardViewCountService = boardViewCountService;
         }
 
         @Override
@@ -78,19 +81,19 @@ public class BoardQueryService implements BoardQueryUseCase {
         }
 
         @Override
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = true)
         public BoardDetailResponse getBoardDetail(Long boardId) {
                 return getBoardDetail(boardId, null, false, true);
         }
 
         @Override
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = true)
         public BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer) {
                 return getBoardDetail(boardId, viewerEmail, staffViewer, true);
         }
 
         @Override
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = true)
         public BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer, boolean incrementViewCount) {
                 log.info("게시판 상세 조회 요청: boardId={}", boardId);
 
@@ -100,7 +103,7 @@ public class BoardQueryService implements BoardQueryUseCase {
                 assertReadable(board, viewerEmail, staffViewer);
 
                 if (incrementViewCount) {
-                        boardPersistencePort.incrementViewCount(boardId);
+                        boardViewCountService.incrementSafely(boardId);
                 }
 
                 return BoardDetailResponse.from(board, markdownRenderingService.render(board.getContent()));
@@ -108,6 +111,9 @@ public class BoardQueryService implements BoardQueryUseCase {
 
         private void assertReadable(Board board, String viewerEmail, boolean staffViewer) {
                 if (board.getStatus() == BoardStatus.ACTIVE) {
+                        return;
+                }
+                if (board.getStatus() == BoardStatus.HIDDEN || board.getStatus() == BoardStatus.BLOCKED) {
                         return;
                 }
                 if (board.getStatus() == BoardStatus.PRIVATE) {
@@ -123,13 +129,13 @@ public class BoardQueryService implements BoardQueryUseCase {
         }
 
         @Override
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = true)
         public BoardDetailResponse getBoardDetailWithNavigation(Long boardId, BoardType boardType) {
                 return getBoardDetailWithNavigation(boardId, boardType, true);
         }
 
         @Override
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = true)
         public BoardDetailResponse getBoardDetailWithNavigation(Long boardId, BoardType boardType, boolean incrementViewCount) {
                 log.info("게시판 상세 조회 (네비게이션 포함) 요청: boardId={}, boardType={}", boardId, boardType);
 
@@ -156,7 +162,7 @@ public class BoardQueryService implements BoardQueryUseCase {
                 }
 
                 if (incrementViewCount) {
-                        boardPersistencePort.incrementViewCount(boardId);
+                        boardViewCountService.incrementSafely(boardId);
                 }
 
                 return BoardDetailResponse.from(board, navigation, markdownRenderingService.render(board.getContent()));
@@ -208,18 +214,26 @@ public class BoardQueryService implements BoardQueryUseCase {
         }
 
         @Override
-        public List<BoardListResponse> getMyBoards(String userEmail, int page, int size) {
+        public PaginationResponse<BoardListResponse> getMyBoards(String userEmail, int page, int size) {
                 log.info("사용자 작성 게시판 조회 요청: user={}, page={}, size={}", userEmail, page, size);
 
                 var boards = boardPersistencePort.findByAuthorEmail(userEmail, page, size);
-                return boards.getBoards().stream()
+                List<BoardListResponse> content = boards.getBoards().stream()
                                 .map(BoardListResponse::from)
                                 .collect(Collectors.toList());
+                return PaginationResponse.<BoardListResponse>builder()
+                                .content(content)
+                                .page(page)
+                                .size(size)
+                                .totalElements(boards.getTotalElements())
+                                .build();
         }
 
         @Override
-        public List<Map<String, Object>> getMyReactions(String userEmail, int page, int size) {
-                return boardReactionPersistencePort.findByUserEmail(userEmail, page, size).stream()
+        public PaginationResponse<Map<String, Object>> getMyReactions(String userEmail, int page, int size) {
+                long total = boardReactionPersistencePort.countByUserEmail(userEmail);
+                List<Map<String, Object>> content = boardReactionPersistencePort.findByUserEmail(userEmail, page, size)
+                                .stream()
                                 .map(reaction -> {
                                         Map<String, Object> row = new java.util.LinkedHashMap<>();
                                         row.put("boardId", reaction.getBoardId());
@@ -239,6 +253,12 @@ public class BoardQueryService implements BoardQueryUseCase {
                                         return row;
                                 })
                                 .collect(Collectors.toList());
+                return PaginationResponse.<Map<String, Object>>builder()
+                                .content(content)
+                                .page(page)
+                                .size(size)
+                                .totalElements(total)
+                                .build();
         }
 
         @Override

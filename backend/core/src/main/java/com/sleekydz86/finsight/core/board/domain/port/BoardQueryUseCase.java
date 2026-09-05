@@ -32,9 +32,9 @@ public interface BoardQueryUseCase {
 
     List<BoardListResponse> getMyScrappedBoards(String userEmail, int page, int size);
 
-    List<BoardListResponse> getMyBoards(String userEmail, int page, int size);
+    PaginationResponse<BoardListResponse> getMyBoards(String userEmail, int page, int size);
 
-    List<java.util.Map<String, Object>> getMyReactions(String userEmail, int page, int size);
+    PaginationResponse<java.util.Map<String, Object>> getMyReactions(String userEmail, int page, int size);
 
     List<BoardListResponse> getReportedBoards();
 

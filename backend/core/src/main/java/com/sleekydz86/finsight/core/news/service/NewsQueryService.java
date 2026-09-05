@@ -47,7 +47,7 @@ public class NewsQueryService implements NewsQueryUseCase {
                 log.debug("개인화 뉴스 조회: userEmail={}, limit={}", userEmail, limit);
 
                 try {
-                        
+
                         Optional<User> userOpt = userPersistencePort.findByEmail(userEmail);
                         if (userOpt.isEmpty()) {
                                 log.warn("사용자를 찾을 수 없습니다: {}", userEmail);

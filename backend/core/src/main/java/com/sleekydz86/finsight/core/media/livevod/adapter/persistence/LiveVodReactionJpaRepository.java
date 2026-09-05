@@ -10,9 +10,7 @@ public interface LiveVodReactionJpaRepository extends JpaRepository<LiveVodReact
 
 Optional<LiveVodReactionJpaEntity> findByUserEmailAndVideoId(String userEmail, String videoId);
 
-
 long countByVideoIdAndReactionType(String videoId, String reactionType);
-
 
     @Query("""
             SELECT r.reactionType, COUNT(r)

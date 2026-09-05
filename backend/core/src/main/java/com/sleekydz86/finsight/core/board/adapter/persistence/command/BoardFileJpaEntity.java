@@ -1,6 +1,14 @@
 package com.sleekydz86.finsight.core.board.adapter.persistence.command;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
@@ -32,9 +40,9 @@ public class BoardFileJpaEntity {
     @Column(name = "uploaded_at", nullable = false)
     private LocalDateTime uploadedAt;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, targetEntity = BoardJpaEntity.class)
     @JoinColumn(name = "board_id", insertable = false, updatable = false)
-    private com.sleekydz86.finsight.core.board.adapter.persistence.command.BoardJpaEntity board;
+    private BoardJpaEntity board;
 
     public BoardFileJpaEntity() {}
 
@@ -50,7 +58,6 @@ public class BoardFileJpaEntity {
         this.uploadedAt = uploadedAt;
     }
 
-    
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -75,8 +82,8 @@ public class BoardFileJpaEntity {
     public LocalDateTime getUploadedAt() { return uploadedAt; }
     public void setUploadedAt(LocalDateTime uploadedAt) { this.uploadedAt = uploadedAt; }
 
-    public com.sleekydz86.finsight.core.board.adapter.persistence.command.BoardJpaEntity getBoard() { return board; }
-    public void setBoard(com.sleekydz86.finsight.core.board.adapter.persistence.command.BoardJpaEntity board) { this.board = board; }
+    public BoardJpaEntity getBoard() { return board; }
+    public void setBoard(BoardJpaEntity board) { this.board = board; }
 
     @Override
     public boolean equals(Object o) {

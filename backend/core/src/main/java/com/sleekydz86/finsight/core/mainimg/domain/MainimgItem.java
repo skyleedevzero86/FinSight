@@ -9,7 +9,11 @@ public class MainimgItem {
     private String image;
     private String imageFile;
     private String description;
+    private String linkUrl;
+    private String noticeBegin;
+    private String noticeEnd;
     private String reflectYn;
+    private Integer sortOrder;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -61,12 +65,44 @@ public class MainimgItem {
         this.description = description;
     }
 
+    public String getLinkUrl() {
+        return linkUrl;
+    }
+
+    public void setLinkUrl(String linkUrl) {
+        this.linkUrl = linkUrl;
+    }
+
+    public String getNoticeBegin() {
+        return noticeBegin;
+    }
+
+    public void setNoticeBegin(String noticeBegin) {
+        this.noticeBegin = noticeBegin;
+    }
+
+    public String getNoticeEnd() {
+        return noticeEnd;
+    }
+
+    public void setNoticeEnd(String noticeEnd) {
+        this.noticeEnd = noticeEnd;
+    }
+
     public String getReflectYn() {
         return reflectYn;
     }
 
     public void setReflectYn(String reflectYn) {
         this.reflectYn = reflectYn;
+    }
+
+    public Integer getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder;
     }
 
     public LocalDateTime getCreatedAt() {

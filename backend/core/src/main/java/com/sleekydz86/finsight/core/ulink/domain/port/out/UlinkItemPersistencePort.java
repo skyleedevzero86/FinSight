@@ -8,11 +8,13 @@ import java.util.Optional;
 
 public interface UlinkItemPersistencePort {
 
-    Page<UlinkItem> findPage(String domainId, String sectionCode, Pageable pageable);
+    Page<UlinkItem> findPage(String domainId, String sectionCode, boolean openOnly, Pageable pageable);
 
     Optional<UlinkItem> findById(String id);
 
     UlinkItem save(UlinkItem item);
 
     void deleteById(String id);
+
+    int findMaxSortOrder();
 }

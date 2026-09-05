@@ -76,7 +76,12 @@ public class GlobalExceptionHandler {
 
         @ExceptionHandler(BaseException.class)
         public ResponseEntity<ApiResponse<ErrorResponse>> handleBaseException(BaseException ex, WebRequest request) {
-                logger.error("기본 예외가 발생했습니다: {}", ex.getMessage(), ex);
+                if (ex.getHttpStatus() >= 500) {
+                        logger.error("기본 예외가 발생했습니다: {}", ex.getMessage(), ex);
+                } else {
+                        logger.warn("요청 처리 실패: status={}, code={}, message={}",
+                                        ex.getHttpStatus(), ex.getErrorCode(), ex.getMessage());
+                }
 
                 ErrorResponse errorResponse = ErrorResponse.builder()
                                 .timestamp(LocalDateTime.now())
@@ -230,6 +235,24 @@ public class GlobalExceptionHandler {
 
                 return ResponseEntity.badRequest()
                                 .body(ApiResponse.error(errorResponse));
+        }
+
+        @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+        public ResponseEntity<ApiResponse<ErrorResponse>> handleHttpMessageNotReadable(
+                        org.springframework.http.converter.HttpMessageNotReadableException ex, WebRequest request) {
+                logger.warn("요청 JSON 파싱 실패: {}", ex.getMostSpecificCause() != null
+                                ? ex.getMostSpecificCause().getMessage()
+                                : ex.getMessage());
+
+                ErrorResponse errorResponse = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.BAD_REQUEST.value())
+                                .errorCode("BAD_REQUEST")
+                                .message("요청 JSON 형식이 올바르지 않습니다. 본문을 확인해 주세요.")
+                                .path(request.getDescription(false).replace("uri=", ""))
+                                .build();
+
+                return ResponseEntity.badRequest().body(ApiResponse.error(errorResponse));
         }
 
         @ExceptionHandler(Exception.class)

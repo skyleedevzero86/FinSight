@@ -1,4 +1,5 @@
 import { authHeadersJson } from "@/lib/finsightToken"
+import { prepareImageForUpload, uploadEditorAsset } from "@/lib/editorUpload"
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
@@ -27,7 +28,11 @@ export type MainimgItem = {
   image: string | null
   imageFile: string | null
   description: string | null
+  linkUrl: string | null
+  noticeBegin: string | null
+  noticeEnd: string | null
   reflectYn: string
+  sortOrder: number
   createdAt: string | null
   updatedAt: string | null
 }
@@ -38,7 +43,11 @@ export type MainimgItemInput = {
   image?: string
   imageFile?: string
   description?: string
+  linkUrl?: string
+  noticeBegin?: string
+  noticeEnd?: string
   reflectYn?: string
+  sortOrder?: number
 }
 
 export type MainimgPage = {
@@ -55,6 +64,13 @@ function parseItem(raw: unknown): MainimgItem | null {
   const id = typeof o.id === "string" ? o.id : ""
   const imageName = typeof o.imageName === "string" ? o.imageName : ""
   if (!id || !imageName) return null
+  const sortOrderRaw = o.sortOrder
+  const sortOrder =
+    typeof sortOrderRaw === "number" && Number.isFinite(sortOrderRaw)
+      ? sortOrderRaw
+      : typeof sortOrderRaw === "string" && sortOrderRaw.trim()
+        ? Number(sortOrderRaw)
+        : 0
   return {
     id,
     domainId: typeof o.domainId === "string" ? o.domainId : null,
@@ -62,7 +78,11 @@ function parseItem(raw: unknown): MainimgItem | null {
     image: typeof o.image === "string" ? o.image : null,
     imageFile: typeof o.imageFile === "string" ? o.imageFile : null,
     description: typeof o.description === "string" ? o.description : null,
+    linkUrl: typeof o.linkUrl === "string" ? o.linkUrl : null,
+    noticeBegin: typeof o.noticeBegin === "string" ? o.noticeBegin : null,
+    noticeEnd: typeof o.noticeEnd === "string" ? o.noticeEnd : null,
     reflectYn: typeof o.reflectYn === "string" ? o.reflectYn : "Y",
+    sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
     createdAt: typeof o.createdAt === "string" ? o.createdAt : null,
     updatedAt: typeof o.updatedAt === "string" ? o.updatedAt : null,
   }
@@ -94,8 +114,22 @@ function parseOne(raw: unknown): MainimgItem | null {
 }
 
 export function resolveMainimgUrl(item: Pick<MainimgItem, "image" | "imageFile">): string {
-  const url = (item.image || item.imageFile || "").trim()
-  return url
+  return (item.image || item.imageFile || "").trim()
+}
+
+export async function uploadMainimgFile(
+  file: File,
+): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  try {
+    const prepared = await prepareImageForUpload(file)
+    const uploaded = await uploadEditorAsset(prepared)
+    const url = uploaded.url?.trim()
+    if (!url) return { ok: false, message: "업로드 응답에 이미지 URL이 없습니다." }
+    return { ok: true, url }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "이미지 업로드에 실패했습니다."
+    return { ok: false, message }
+  }
 }
 
 export async function fetchPublicMainimgItems(options?: {

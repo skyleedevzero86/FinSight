@@ -48,7 +48,6 @@ public class SlackNotificationService {
         payload.put("text", message.get("text"));
         payload.put("attachments", message.get("attachments"));
 
-        
         log.debug("슬랙 메시지 발송 - 채널: {}, 메시지: {}", channel, message);
     }
 

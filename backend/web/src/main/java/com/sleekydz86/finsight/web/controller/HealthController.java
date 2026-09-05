@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -21,6 +22,7 @@ import java.util.Map;
 
 @Tag(name = "헬스", description = "시스템 헬스·메트릭·외부 서비스 상태 API. 실시간 추이는 관리자 통계(/api/v1/admin/stats)에서 차트·폴링으로 제공합니다.")
 @SecurityRequirement(name = "BearerAuth")
+@PreAuthorize("hasAnyRole('ADMIN','MANAGER')")
 @RestController
 @RequestMapping("/api/v1/health")
 public class HealthController {

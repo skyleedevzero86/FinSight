@@ -12,10 +12,15 @@ public interface UlinkItemJpaRepository extends JpaRepository<UlinkItemJpaEntity
             SELECT u FROM UlinkItemJpaEntity u
             WHERE (:domainId IS NULL OR u.domainId = :domainId)
             AND (:sectionCode IS NULL OR u.sectionCode = :sectionCode)
-            ORDER BY u.createdAt ASC, u.id ASC
+            AND (:openOnly = false OR u.openYn = 'Y')
+            ORDER BY u.sortOrder ASC, u.id ASC
             """)
     Page<UlinkItemJpaEntity> search(
             @Param("domainId") String domainId,
             @Param("sectionCode") String sectionCode,
+            @Param("openOnly") boolean openOnly,
             Pageable pageable);
+
+    @Query("SELECT COALESCE(MAX(u.sortOrder), 0) FROM UlinkItemJpaEntity u")
+    int findMaxSortOrder();
 }

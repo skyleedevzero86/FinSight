@@ -9,6 +9,7 @@ import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.annotation.LogExecution;
 import com.sleekydz86.finsight.core.global.annotation.PerformanceMonitor;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
+import com.sleekydz86.finsight.core.global.exception.AuthenticationFailedException;
 import com.sleekydz86.finsight.core.global.exception.BaseException;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.user.domain.AuthProvider;
@@ -57,6 +58,8 @@ public class AuthController {
             var session = authenticationService.loginWithUser(request);
             LoginResultResponse result = socialAuthService.toWebLoginResult(session.user(), session.token());
             return ResponseEntity.ok(ApiResponse.success(result, "로그인에 성공했습니다"));
+        } catch (AuthenticationFailedException e) {
+            return ResponseEntity.ok(ApiResponse.error(e.getMessage(), 401));
         } catch (BaseException e) {
             throw e;
         } catch (Exception e) {

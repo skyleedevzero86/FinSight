@@ -8,11 +8,13 @@ import java.util.Optional;
 
 public interface MainimgItemPersistencePort {
 
-    Page<MainimgItem> findPage(String domainId, boolean reflectOnly, Pageable pageable);
+    Page<MainimgItem> findPage(String domainId, boolean reflectOnly, String today, Pageable pageable);
 
     Optional<MainimgItem> findById(String id);
 
     MainimgItem save(MainimgItem item);
 
     void deleteById(String id);
+
+    int findMaxSortOrder();
 }

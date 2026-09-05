@@ -11,6 +11,9 @@ public class UlinkItem {
     private String linkUrl;
     private String linkTarget;
     private String description;
+    private String imgPath;
+    private Integer sortOrder;
+    private String openYn;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -76,6 +79,30 @@ public class UlinkItem {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getImgPath() {
+        return imgPath;
+    }
+
+    public void setImgPath(String imgPath) {
+        this.imgPath = imgPath;
+    }
+
+    public Integer getSortOrder() {
+        return sortOrder;
+    }
+
+    public void setSortOrder(Integer sortOrder) {
+        this.sortOrder = sortOrder;
+    }
+
+    public String getOpenYn() {
+        return openYn;
+    }
+
+    public void setOpenYn(String openYn) {
+        this.openYn = openYn;
     }
 
     public LocalDateTime getCreatedAt() {

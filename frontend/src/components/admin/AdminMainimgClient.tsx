@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
+import AdminDateField from "@/components/admin/AdminDateField"
 import { canManageUsers } from "@/lib/adminUsers"
 import {
   createMainimgItem,
@@ -10,6 +11,7 @@ import {
   fetchAdminMainimgItems,
   resolveMainimgUrl,
   updateMainimgItem,
+  uploadMainimgFile,
   type MainimgItem,
 } from "@/lib/mainimg"
 
@@ -23,20 +25,24 @@ const primaryButtonClass =
   "rounded bg-finsight-primary px-4 py-2 text-sm text-white hover:bg-finsight-primary/90 disabled:opacity-50"
 
 type FormState = {
-  domainId: string
+  sortOrder: string
   imageName: string
-  image: string
   imageFile: string
   description: string
+  linkUrl: string
+  noticeBegin: string
+  noticeEnd: string
   reflectYn: "Y" | "N"
 }
 
 const emptyForm: FormState = {
-  domainId: "",
+  sortOrder: "",
   imageName: "",
-  image: "",
   imageFile: "",
   description: "",
+  linkUrl: "",
+  noticeBegin: "",
+  noticeEnd: "",
   reflectYn: "Y",
 }
 
@@ -45,10 +51,15 @@ function formatDate(value: string | null): string {
   return value.replace("T", " ").slice(0, 16)
 }
 
+function digitsOnly(value: string): string {
+  return value.replace(/\D/g, "")
+}
+
 export default function AdminMainimgClient() {
   const router = useRouter()
   const { user, ready } = useAuthSession()
   const allowed = Boolean(user && canManageUsers(user.role))
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [page, setPage] = useState(0)
   const [rows, setRows] = useState<MainimgItem[]>([])
@@ -56,6 +67,7 @@ export default function AdminMainimgClient() {
   const [totalElements, setTotalElements] = useState(0)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -99,42 +111,83 @@ export default function AdminMainimgClient() {
     setForm(emptyForm)
     setMessage(null)
     setError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
   function startEdit(item: MainimgItem) {
     setEditingId(item.id)
     setForm({
-      domainId: item.domainId ?? "",
+      sortOrder: item.sortOrder > 0 ? String(item.sortOrder) : "",
       imageName: item.imageName,
-      image: item.image ?? "",
-      imageFile: item.imageFile ?? "",
+      imageFile: resolveMainimgUrl(item),
       description: item.description ?? "",
+      linkUrl: item.linkUrl ?? "",
+      noticeBegin: item.noticeBegin ?? "",
+      noticeEnd: item.noticeEnd ?? "",
       reflectYn: item.reflectYn === "N" ? "N" : "Y",
     })
     setMessage(null)
     setError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith("image/")) {
+      setError("이미지 파일만 업로드할 수 있습니다.")
+      return
+    }
+    setUploading(true)
+    setError(null)
+    setMessage(null)
+    const result = await uploadMainimgFile(file)
+    setUploading(false)
+    if (!result.ok) {
+      setError(result.message)
+      return
+    }
+    setForm((f) => ({
+      ...f,
+      imageFile: result.url,
+    }))
+    setMessage("이미지를 업로드했습니다. 저장을 눌러 반영하세요.")
   }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.imageName.trim()) {
-      setError("이미지명을 입력해 주세요.")
+      setError("제목을 입력해 주세요.")
       return
     }
-    if (!form.image.trim() && !form.imageFile.trim()) {
-      setError("이미지 URL 또는 파일 경로를 입력해 주세요.")
+    if (!form.imageFile.trim()) {
+      setError("이미지를 업로드해 주세요.")
       return
+    }
+    const sortDigits = form.sortOrder.trim()
+    let sortOrder: number | undefined
+    if (sortDigits) {
+      const n = Number(sortDigits)
+      if (!Number.isInteger(n) || n < 1) {
+        setError("순번은 1 이상의 숫자만 입력할 수 있습니다.")
+        return
+      }
+      sortOrder = n
     }
     setSaving(true)
     setError(null)
     setMessage(null)
+    const uploaded = form.imageFile.trim()
     const payload = {
-      domainId: form.domainId.trim() || undefined,
       imageName: form.imageName.trim(),
-      image: form.image.trim() || undefined,
-      imageFile: form.imageFile.trim() || undefined,
+      image: uploaded,
+      imageFile: uploaded,
       description: form.description.trim() || undefined,
+      linkUrl: form.linkUrl.trim() || undefined,
+      noticeBegin: form.noticeBegin.trim() || undefined,
+      noticeEnd: form.noticeEnd.trim() || undefined,
       reflectYn: form.reflectYn,
+      ...(sortOrder != null ? { sortOrder } : {}),
     }
     const result = editingId
       ? await updateMainimgItem(editingId, payload)
@@ -145,7 +198,9 @@ export default function AdminMainimgClient() {
       return
     }
     setMessage(editingId ? "메인이미지를 수정했습니다." : "메인이미지를 등록했습니다.")
-    startCreate()
+    setEditingId(null)
+    setForm(emptyForm)
+    if (fileInputRef.current) fileInputRef.current.value = ""
     await load()
   }
 
@@ -160,7 +215,11 @@ export default function AdminMainimgClient() {
       setError(result.message)
       return
     }
-    if (editingId === item.id) startCreate()
+    if (editingId === item.id) {
+      setEditingId(null)
+      setForm(emptyForm)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
     setMessage("메인이미지를 삭제했습니다.")
     await load()
   }
@@ -173,13 +232,16 @@ export default function AdminMainimgClient() {
     )
   }
 
+  const previewUrl = form.imageFile
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">메인이미지 관리</h1>
           <p className="mt-1 text-sm text-gray-500">
-            홈 히어로 슬라이더에 노출할 이미지를 등록·수정합니다. 반영(Y)인 항목만 메인에 표시됩니다.
+            순번·제목·클릭 URL·이미지·설명·노출 기간을 관리합니다. 반영(Y)이고 기간 안인 항목만 메인에
+            표시됩니다.
           </p>
         </div>
         <button type="button" className={buttonClass} onClick={startCreate}>
@@ -216,6 +278,9 @@ export default function AdminMainimgClient() {
                 const url = resolveMainimgUrl(item)
                 return (
                   <li key={item.id} className="flex gap-3 px-4 py-3">
+                    <div className="flex h-16 w-10 shrink-0 flex-col items-center justify-center rounded bg-gray-50 text-xs font-semibold text-gray-700">
+                      {item.sortOrder > 0 ? item.sortOrder : "-"}
+                    </div>
                     <div className="h-16 w-28 shrink-0 overflow-hidden rounded bg-gray-100">
                       {url ? (
                         <img src={url} alt={item.imageName} className="h-full w-full object-cover" />
@@ -239,9 +304,11 @@ export default function AdminMainimgClient() {
                         </span>
                       </div>
                       <p className="mt-0.5 truncate text-xs text-gray-500">
-                        {item.description || item.id}
+                        {item.description || item.linkUrl || item.id}
                       </p>
                       <p className="mt-0.5 text-[11px] text-gray-400">
+                        {(item.noticeBegin || "-") + " ~ " + (item.noticeEnd || "-")}
+                        {" · "}
                         {formatDate(item.updatedAt || item.createdAt)}
                       </p>
                       <div className="mt-2 flex gap-2">
@@ -290,11 +357,42 @@ export default function AdminMainimgClient() {
           <h2 className="mb-3 text-sm font-semibold text-gray-800">
             {editingId ? `수정 · ${editingId}` : "새 메인이미지 등록"}
           </h2>
-          <form className="space-y-3" onSubmit={(e) => void onSubmit(e)}>
+          <form
+            key={editingId ?? "create"}
+            className="space-y-3"
+            autoComplete="off"
+            onSubmit={(e) => void onSubmit(e)}
+          >
+            <div aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0">
+              <input type="text" name="username" tabIndex={-1} autoComplete="username" defaultValue="" />
+              <input
+                type="password"
+                name="password"
+                tabIndex={-1}
+                autoComplete="new-password"
+                defaultValue=""
+              />
+            </div>
             <label className="block text-xs text-gray-600">
-              이미지명 *
+              순번
               <input
                 className={`${inputClass} mt-1`}
+                name="mainimg-sort-order"
+                autoComplete="off"
+                value={form.sortOrder}
+                onChange={(e) => setForm((f) => ({ ...f, sortOrder: digitsOnly(e.target.value) }))}
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="비우면 저장 시 다음 번호"
+                maxLength={6}
+              />
+            </label>
+            <label className="block text-xs text-gray-600">
+              제목 *
+              <input
+                className={`${inputClass} mt-1`}
+                name="mainimg-title"
+                autoComplete="off"
                 value={form.imageName}
                 onChange={(e) => setForm((f) => ({ ...f, imageName: e.target.value }))}
                 maxLength={200}
@@ -302,47 +400,69 @@ export default function AdminMainimgClient() {
               />
             </label>
             <label className="block text-xs text-gray-600">
-              이미지 URL
+              이미지 클릭 URL
               <input
                 className={`${inputClass} mt-1`}
-                value={form.image}
-                onChange={(e) => setForm((f) => ({ ...f, image: e.target.value }))}
-                placeholder="https://..."
+                name="mainimg-link-url"
+                autoComplete="off"
+                value={form.linkUrl}
+                onChange={(e) => setForm((f) => ({ ...f, linkUrl: e.target.value }))}
+                placeholder="https://... (비우면 클릭 없음)"
                 maxLength={500}
               />
             </label>
-            <label className="block text-xs text-gray-600">
-              이미지 파일 경로
+            <div className="block text-xs text-gray-600">
+              이미지 업로드 *
               <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                name="mainimg-image-file"
+                autoComplete="off"
                 className={`${inputClass} mt-1`}
-                value={form.imageFile}
-                onChange={(e) => setForm((f) => ({ ...f, imageFile: e.target.value }))}
-                placeholder="/uploads/... 또는 URL"
-                maxLength={500}
+                disabled={uploading || saving}
+                onChange={(e) => void onFileChange(e)}
               />
-            </label>
+              <p className="mt-1 text-[11px] text-gray-400">
+                {uploading
+                  ? "업로드 중…"
+                  : previewUrl
+                    ? "업로드된 이미지가 있습니다. 바꾸려면 파일을 다시 선택하세요."
+                    : "이미지를 선택하면 업로드됩니다."}
+              </p>
+            </div>
             <label className="block text-xs text-gray-600">
-              설명 (슬라이더 부제)
+              설명
               <textarea
                 className={`${inputClass} mt-1 min-h-[72px]`}
+                name="mainimg-description"
+                autoComplete="off"
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 maxLength={1000}
+                placeholder="슬라이더 부제·설명"
               />
             </label>
-            <label className="block text-xs text-gray-600">
-              도메인 ID (선택)
-              <input
-                className={`${inputClass} mt-1`}
-                value={form.domainId}
-                onChange={(e) => setForm((f) => ({ ...f, domainId: e.target.value }))}
-                maxLength={32}
+            <div className="grid grid-cols-2 gap-3">
+              <AdminDateField
+                label="기간 시작"
+                value={form.noticeBegin}
+                disabled={saving || uploading}
+                onChange={(noticeBegin) => setForm((f) => ({ ...f, noticeBegin }))}
               />
-            </label>
+              <AdminDateField
+                label="기간 종료"
+                value={form.noticeEnd}
+                disabled={saving || uploading}
+                onChange={(noticeEnd) => setForm((f) => ({ ...f, noticeEnd }))}
+              />
+            </div>
             <label className="block text-xs text-gray-600">
               화면 반영
               <select
                 className={`${inputClass} mt-1`}
+                name="mainimg-reflect-yn"
+                autoComplete="off"
                 value={form.reflectYn}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, reflectYn: e.target.value === "N" ? "N" : "Y" }))
@@ -352,17 +472,13 @@ export default function AdminMainimgClient() {
                 <option value="N">N · 숨김</option>
               </select>
             </label>
-            {(form.image || form.imageFile) && (
+            {previewUrl ? (
               <div className="overflow-hidden rounded border border-gray-200 bg-gray-50">
-                <img
-                  src={form.image || form.imageFile}
-                  alt="미리보기"
-                  className="h-40 w-full object-cover"
-                />
+                <img src={previewUrl} alt="미리보기" className="h-40 w-full object-cover" />
               </div>
-            )}
+            ) : null}
             <div className="flex gap-2 pt-1">
-              <button type="submit" className={primaryButtonClass} disabled={saving}>
+              <button type="submit" className={primaryButtonClass} disabled={saving || uploading}>
                 {editingId ? "수정 저장" : "등록"}
               </button>
               {editingId ? (

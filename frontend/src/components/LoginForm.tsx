@@ -11,12 +11,22 @@ import { postLogin } from "@/lib/authClient"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import {
   storeAuthSession,
+  clearAuthSession,
   FINSIGHT_FORCE_PASSWORD_KEY,
   type AuthProvider,
 } from "@/lib/finsightToken"
 
 const inputClass =
   "w-full rounded border border-gray-300 bg-white px-3 py-2.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-finsight-secondary focus:ring-1 focus:ring-finsight-secondary/40"
+
+const DEFAULT_LOGIN_ID = "guest"
+
+function normalizeLoginId(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ""
+  if (trimmed.toLowerCase() === "system2") return DEFAULT_LOGIN_ID
+  return trimmed
+}
 
 function extractToken(data: unknown): string | null {
   if (!data || typeof data !== "object") return null
@@ -69,75 +79,97 @@ export default function LoginForm() {
   const nextPathRaw = searchParams.get("next")?.trim() || ""
   const nextPath =
     nextPathRaw.startsWith("/") && !nextPathRaw.startsWith("//") ? nextPathRaw : ""
-  const { user, ready } = useAuthSession()
+  const { user, ready, logout } = useAuthSession()
+  const [switchAccount, setSwitchAccount] = useState(false)
 
-  const [email, setEmail] = useState(accountParam)
+  const [email, setEmail] = useState(
+    () => normalizeLoginId(accountParam) || DEFAULT_LOGIN_ID,
+  )
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [remember, setRemember] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!ready || !user) return
-    try {
-      if (sessionStorage.getItem(FINSIGHT_FORCE_PASSWORD_KEY) === "1") {
-        router.replace("/myinfo?password=required")
-        return
-      }
-    } catch {
-      void 0
-    }
-    router.replace(nextPath || "/")
-  }, [ready, user, router, nextPath])
+  const alreadySignedIn = ready && Boolean(user) && !switchAccount
 
   useEffect(() => {
-    if (accountParam) setEmail(accountParam)
+    if (accountParam) {
+      setEmail(normalizeLoginId(accountParam) || DEFAULT_LOGIN_ID)
+      return
+    }
+    setEmail((cur) => normalizeLoginId(cur) || DEFAULT_LOGIN_ID)
   }, [accountParam])
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setEmail((cur) =>
+        cur.trim().toLowerCase() === "system2" ? DEFAULT_LOGIN_ID : cur,
+      )
+    }, 50)
+    return () => window.clearTimeout(t)
+  }, [])
+
+  async function onUseOtherAccount() {
+    setFormError(null)
+    setSwitchAccount(true)
+    try {
+      await logout()
+    } catch {
+      clearAuthSession()
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
-    const em = email.trim()
+    const em = normalizeLoginId(email) || email.trim()
     if (!em || !password) {
       setFormError("이메일 또는 아이디와 비밀번호를 입력해 주세요.")
       return
     }
     setLoading(true)
-    const result = await postLogin({
-      email: em,
-      password,
-    })
-    setLoading(false)
-
-    if (!result.ok) {
-      setFormError(result.message)
-      return
-    }
-
-    const token = extractToken(result.data)
-    const provider = extractProvider(result.data)
-    const passwordRequired = extractPasswordChangeRequired(result.data)
     try {
-      if (token) {
+      const result = await postLogin({
+        email: em,
+        password,
+      })
+
+      if (!result.ok) {
+        setFormError(result.message)
+        return
+      }
+
+      const token = extractToken(result.data)
+      const provider = extractProvider(result.data)
+      const passwordRequired = extractPasswordChangeRequired(result.data)
+      if (!token) {
+        setFormError(
+          "로그인 응답이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.",
+        )
+        return
+      }
+      try {
         storeAuthSession({
           accessToken: token,
           authProvider: provider,
           remember,
         })
+        if (passwordRequired && provider === "WEB") {
+          sessionStorage.setItem(FINSIGHT_FORCE_PASSWORD_KEY, "1")
+        }
+      } catch {
+        void 0
       }
-      if (passwordRequired && provider === "WEB") {
-        sessionStorage.setItem(FINSIGHT_FORCE_PASSWORD_KEY, "1")
-      }
-    } catch {
-      void 0
+      router.push(
+        passwordRequired && provider === "WEB"
+          ? "/myinfo?password=required"
+          : nextPath || "/",
+      )
+      router.refresh()
+    } finally {
+      setLoading(false)
     }
-    router.push(
-      passwordRequired && provider === "WEB"
-        ? "/myinfo?password=required"
-        : nextPath || "/",
-    )
-    router.refresh()
   }
 
   return (
@@ -172,15 +204,51 @@ export default function LoginForm() {
         </div>
       )}
 
+      {alreadySignedIn ? (
+        <div className="space-y-4">
+          <div
+            role="status"
+            className="rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-800"
+          >
+            <p className="font-medium">이미 로그인되어 있습니다.</p>
+            <p className="mt-1 text-gray-600">
+              {user?.nickname
+                ? `${user.nickname} 계정으로 접속 중입니다.`
+                : user?.email
+                  ? `${user.email} 계정으로 접속 중입니다.`
+                  : "저장된 세션으로 접속 중입니다."}
+            </p>
+            <p className="mt-2 text-xs text-gray-500">
+              「로그인 유지」 또는 같은 탭의 이전 세션이 남아 있는 경우입니다.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push(nextPath || "/")}
+            className="w-full rounded py-3.5 text-[15px] font-semibold text-white transition hover:brightness-105 active:brightness-95"
+            style={{ backgroundColor: "#B24DFF" }}
+          >
+            홈으로 이동
+          </button>
+          <button
+            type="button"
+            onClick={() => void onUseOtherAccount()}
+            className="w-full rounded border border-gray-300 bg-white py-3 text-[15px] font-medium text-gray-800 transition hover:bg-gray-50"
+          >
+            다른 계정으로 로그인
+          </button>
+        </div>
+      ) : (
+        <>
       <form className="space-y-3" onSubmit={onSubmit} noValidate>
         <input
           id={`${id}-email`}
           type="text"
-          name="username"
+          name="finsight-login-id"
           autoComplete="username"
           placeholder="이메일 또는 아이디"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => setEmail(normalizeLoginId(e.target.value) || e.target.value)}
           className={inputClass}
         />
         <div className="relative">
@@ -256,6 +324,8 @@ export default function LoginForm() {
       <p className="mt-4 text-center text-[11px] leading-relaxed text-gray-400">
         • 로그인 유지 설정 시, 개인정보 유출 위험에 유의해 주세요.
       </p>
+        </>
+      )}
         </AuthCard>
       </div>
     </section>

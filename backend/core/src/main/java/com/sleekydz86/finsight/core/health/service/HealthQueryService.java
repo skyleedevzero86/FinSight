@@ -27,14 +27,14 @@ public class HealthQueryService implements HealthQueryUseCase {
             HealthStatus redisHealth = getRedisHealth();
 
             if ("UP".equals(dbHealth.getStatus()) && "UP".equals(redisHealth.getStatus())) {
-                return new HealthStatus("UP", "System is healthy",
+                return new HealthStatus("UP", "시스템이 정상입니다",
                         Map.of("database", "UP", "redis", "UP"));
             } else {
-                return new HealthStatus("DOWN", "Some components are down",
+                return new HealthStatus("DOWN", "일부 구성 요소에 장애가 있습니다",
                         Map.of("database", dbHealth.getStatus(), "redis", redisHealth.getStatus()));
             }
         } catch (Exception e) {
-            return new HealthStatus("DOWN", "System health check failed: " + e.getMessage(),
+            return new HealthStatus("DOWN", "시스템 헬스체크 실패: " + e.getMessage(),
                     Map.of("error", e.getMessage()));
         }
     }
@@ -89,20 +89,34 @@ public class HealthQueryService implements HealthQueryUseCase {
     @Override
     public Map<String, HealthStatus> getExternalApisHealth() {
         Map<String, HealthStatus> statuses = new HashMap<>();
-        statuses.put("marketaux", externalHealthCheckPort.checkExternalApiHealth("marketaux", "/api/health"));
-        statuses.put("openai", externalHealthCheckPort.checkExternalApiHealth("openai", "/api/health"));
+
+        var marketaux = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> externalHealthCheckPort.checkExternalApiHealth("marketaux", "/api/health"));
+        var openai = java.util.concurrent.CompletableFuture.supplyAsync(
+                () -> externalHealthCheckPort.checkExternalApiHealth("openai", "/api/health"));
+        statuses.put("marketaux", marketaux.join());
+        statuses.put("openai", openai.join());
         return statuses;
     }
 
     @Override
     public Health getCompleteHealth() {
         String id = UUID.randomUUID().toString();
-        HealthStatus overallStatus = getOverallHealth();
+
+        HealthStatus database = getDatabaseHealth();
+        HealthStatus redis = getRedisHealth();
+        HealthStatus overallStatus;
+        if ("UP".equals(database.getStatus()) && "UP".equals(redis.getStatus())) {
+            overallStatus = new HealthStatus("UP", "시스템이 정상입니다",
+                    Map.of("database", "UP", "redis", "UP"));
+        } else {
+            overallStatus = new HealthStatus("DOWN", "일부 구성 요소에 장애가 있습니다",
+                    Map.of("database", database.getStatus(), "redis", redis.getStatus()));
+        }
         SystemMetrics metrics = getSystemMetrics();
         Map<String, HealthStatus> componentStatuses = new HashMap<>();
-
-        componentStatuses.put("database", getDatabaseHealth());
-        componentStatuses.put("redis", getRedisHealth());
+        componentStatuses.put("database", database);
+        componentStatuses.put("redis", redis);
         componentStatuses.putAll(getExternalApisHealth());
 
         return new Health(id, overallStatus, metrics, componentStatuses);

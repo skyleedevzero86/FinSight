@@ -8,8 +8,10 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -70,6 +72,36 @@ public class BatchGlobalExceptionHandler {
         response.put("path", request.getRequestURI());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleUnsupportedMediaType(
+            HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+        log.warn("지원하지 않는 Content-Type: path={}, contentType={}",
+                request.getRequestURI(), ex.getContentType());
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("error", "UNSUPPORTED_MEDIA_TYPE");
+        response.put("message", "요청 형식이 올바르지 않습니다. Content-Type은 application/json 이어야 합니다.");
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(response);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadableMessage(
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
+        log.warn("요청 본문 파싱 실패: path={}, reason={}",
+                request.getRequestURI(),
+                ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : ex.getMessage());
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
+        response.put("error", "BAD_REQUEST");
+        response.put("message", "요청 JSON 형식이 올바르지 않습니다. 본문을 확인해 주세요.");
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("path", request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex, HttpServletRequest request) {
         Locale locale = getLocale(request);
@@ -198,9 +230,15 @@ public class BatchGlobalExceptionHandler {
         Locale locale = getLocale(request);
         log.warn("인증 실패: path={}, message={}", request.getRequestURI(), ex.getMessage());
 
+        String message = ex.getMessage();
+        if (message == null || message.isBlank()) {
+            message = getLocalizedMessage("user.message.authentication.failed", locale);
+        }
+
         Map<String, Object> response = new HashMap<>();
+        response.put("success", false);
         response.put("error", "AUTHENTICATION_FAILED");
-        response.put("message", getLocalizedMessage("user.message.authentication.failed", locale));
+        response.put("message", message);
         response.put("timestamp", System.currentTimeMillis());
         response.put("path", request.getRequestURI());
 

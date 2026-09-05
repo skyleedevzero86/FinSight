@@ -2,24 +2,71 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import NotificationInboxPanel from "@/components/NotificationInboxPanel"
+import { useAuthSession } from "@/components/AuthSessionProvider"
 import { fetchInboxUnreadCount } from "@/lib/inbox"
+import { readUsableAccessToken } from "@/lib/finsightToken"
 
 export default function NotificationBellButton() {
+  const { user } = useAuthSession()
   const [open, setOpen] = useState(false)
   const [unread, setUnread] = useState(0)
   const wrapRef = useRef<HTMLDivElement | null>(null)
+  const failStreakRef = useRef(0)
+  const cooldownUntilRef = useRef(0)
 
   const refreshUnread = useCallback(async () => {
+    if (!user || !readUsableAccessToken()) {
+      setUnread(0)
+      return
+    }
+    if (Date.now() < cooldownUntilRef.current) {
+      return
+    }
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      return
+    }
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      failStreakRef.current += 1
+      cooldownUntilRef.current = Date.now() + Math.min(120_000, 15_000 * failStreakRef.current)
+      return
+    }
     const count = await fetchInboxUnreadCount()
+    if (count === null) {
+      failStreakRef.current += 1
+      cooldownUntilRef.current = Date.now() + Math.min(120_000, 15_000 * failStreakRef.current)
+      return
+    }
     setUnread(count)
-  }, [])
+    failStreakRef.current = 0
+    cooldownUntilRef.current = 0
+  }, [user])
 
   useEffect(() => {
     void refreshUnread()
     const timer = window.setInterval(() => {
+      if (failStreakRef.current >= 3) return
       void refreshUnread()
     }, 30000)
-    return () => window.clearInterval(timer)
+
+    function onOnline() {
+      if (Date.now() < cooldownUntilRef.current) return
+      failStreakRef.current = 0
+      void refreshUnread()
+    }
+    function onVisible() {
+      if (document.visibilityState !== "visible") return
+      if (Date.now() < cooldownUntilRef.current) return
+      failStreakRef.current = 0
+      void refreshUnread()
+    }
+
+    window.addEventListener("online", onOnline)
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener("online", onOnline)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [refreshUnread])
 
   useEffect(() => {
@@ -49,7 +96,11 @@ export default function NotificationBellButton() {
         aria-label="알림함 보기"
         onClick={() => {
           setOpen((v) => !v)
-          if (!open) void refreshUnread()
+          if (!open) {
+            failStreakRef.current = 0
+            cooldownUntilRef.current = 0
+            void refreshUnread()
+          }
         }}
       >
         <svg

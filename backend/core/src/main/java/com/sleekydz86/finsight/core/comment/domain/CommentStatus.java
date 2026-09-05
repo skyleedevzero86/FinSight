@@ -4,5 +4,6 @@ public enum CommentStatus {
     ACTIVE,
     DELETED,
     BLOCKED,
-    REPORTED
+    REPORTED,
+    HIDDEN
 }

@@ -43,12 +43,12 @@ public class PersonalizedNewsService {
         }
 
         NewsQueryRequest request = new NewsQueryRequest(
-                null, 
-                null, 
-                null, 
-                null, 
-                userWatchlist, 
-                null  
+                null,
+                null,
+                null,
+                null,
+                userWatchlist,
+                null
         );
 
         Newses personalizedNews = newsPersistencePort.findAllByFilters(request);
@@ -121,7 +121,7 @@ public class PersonalizedNewsService {
                 .sorted((n1, n2) -> {
                     double score1 = calculateRelevanceScore(n1, userWatchlist);
                     double score2 = calculateRelevanceScore(n2, userWatchlist);
-                    int scoreCompare = Double.compare(score2, score1); 
+                    int scoreCompare = Double.compare(score2, score1);
 
                     if (scoreCompare == 0) {
                         if (n1.getNewsMeta() != null && n2.getNewsMeta() != null &&

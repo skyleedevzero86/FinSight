@@ -16,6 +16,8 @@ import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 import com.sleekydz86.finsight.core.global.exception.BaseException;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
+import com.sleekydz86.finsight.core.user.domain.port.in.dto.MyActivityStatsResponse;
+import com.sleekydz86.finsight.core.user.service.MyActivityStatsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -34,10 +36,15 @@ public class BoardController {
 
     private final BoardQueryUseCase boardQueryUseCase;
     private final BoardCommandUseCase boardCommandUseCase;
+    private final MyActivityStatsService myActivityStatsService;
 
-    public BoardController(BoardQueryUseCase boardQueryUseCase, BoardCommandUseCase boardCommandUseCase) {
+    public BoardController(
+            BoardQueryUseCase boardQueryUseCase,
+            BoardCommandUseCase boardCommandUseCase,
+            MyActivityStatsService myActivityStatsService) {
         this.boardQueryUseCase = boardQueryUseCase;
         this.boardCommandUseCase = boardCommandUseCase;
+        this.myActivityStatsService = myActivityStatsService;
     }
 
     @Operation(summary = "게시판 목록 조회", description = "검색 조건에 따라 게시판 목록을 조회합니다.")
@@ -63,7 +70,6 @@ public class BoardController {
     @GetMapping("/{boardId}")
     @LogExecution("게시판 상세 조회")
     @PerformanceMonitor(threshold = 1000, operation = "board_detail")
-    @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
     public ResponseEntity<ApiResponse<BoardDetailResponse>> getBoardDetail(
             @PathVariable Long boardId,
             @RequestParam(defaultValue = "true") boolean trackView,
@@ -220,8 +226,9 @@ public class BoardController {
                 throw new ValidationException("유효하지 않은 게시판 ID입니다", Arrays.asList("boardId는 1 이상의 양수여야 합니다"));
             }
             validateReportRequest(request);
-            boardCommandUseCase.reportBoard(currentUser.getEmail(), boardId, request);
-            return ResponseEntity.ok(ApiResponse.success(null, "게시판이 성공적으로 신고되었습니다"));
+            throw new ValidationException(
+                    "게시글 신고는 지원하지 않습니다. 댓글만 신고할 수 있습니다.",
+                    Arrays.asList("BOARD_REPORT_DISABLED"));
         } catch (ValidationException e) {
             throw e;
         } catch (Exception e) {
@@ -305,7 +312,7 @@ public class BoardController {
     @LogExecution("내 게시판 목록 조회")
     @PerformanceMonitor(threshold = 2000, operation = "my_boards")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
-    public ResponseEntity<ApiResponse<List<BoardListResponse>>> getMyBoards(
+    public ResponseEntity<ApiResponse<PaginationResponse<BoardListResponse>>> getMyBoards(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @CurrentUser AuthenticatedUser currentUser) {
@@ -316,7 +323,8 @@ public class BoardController {
             if (size <= 0 || size > 100) {
                 throw new ValidationException("페이지 크기는 1-100 사이여야 합니다", Arrays.asList("size는 1-100 사이의 값이어야 합니다"));
             }
-            List<BoardListResponse> response = boardQueryUseCase.getMyBoards(currentUser.getEmail(), page, size);
+            PaginationResponse<BoardListResponse> response =
+                    boardQueryUseCase.getMyBoards(currentUser.getEmail(), page, size);
             return ResponseEntity.ok(ApiResponse.success(response, "내 게시판 목록을 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
             throw e;
@@ -330,15 +338,35 @@ public class BoardController {
     @GetMapping("/my-reactions")
     @LogExecution("내 게시글 반응 조회")
     @PerformanceMonitor(threshold = 2000, operation = "my_board_reactions")
-    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getMyReactions(
+    public ResponseEntity<ApiResponse<PaginationResponse<Map<String, Object>>>> getMyReactions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @CurrentUser AuthenticatedUser currentUser) {
         try {
-            List<Map<String, Object>> response = boardQueryUseCase.getMyReactions(currentUser.getEmail(), page, size);
+            PaginationResponse<Map<String, Object>> response =
+                    boardQueryUseCase.getMyReactions(currentUser.getEmail(), page, size);
             return ResponseEntity.ok(ApiResponse.success(response, "내 반응 목록을 성공적으로 조회했습니다"));
         } catch (Exception e) {
             throw new SystemException("내 반응 목록 조회 중 오류가 발생했습니다", "MY_REACTIONS_ERROR", e);
+        }
+    }
+
+    @Operation(summary = "내 활동 통계", description = "작성 글·댓글·반응 건수를 기간별로 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
+    @GetMapping("/my-activity-stats")
+    @LogExecution("내 활동 통계 조회")
+    @PerformanceMonitor(threshold = 2000, operation = "my_activity_stats")
+    public ResponseEntity<ApiResponse<MyActivityStatsResponse>> getMyActivityStats(
+            @RequestParam(defaultValue = "ALL") String periodType,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate,
+            @CurrentUser AuthenticatedUser currentUser) {
+        try {
+            var response = myActivityStatsService.getStats(
+                    currentUser.getEmail(), periodType, fromDate, toDate);
+            return ResponseEntity.ok(ApiResponse.success(response, "내 활동 통계를 조회했습니다"));
+        } catch (Exception e) {
+            throw new SystemException("내 활동 통계 조회 중 오류가 발생했습니다", "MY_ACTIVITY_STATS_ERROR", e);
         }
     }
 

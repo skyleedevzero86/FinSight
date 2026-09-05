@@ -6,8 +6,10 @@ export type BoardComment = {
   content: string
   authorEmail: string
   parentId: number | null
+  status: string
   likeCount: number
   dislikeCount: number
+  reportCount: number
   createdAt: string | null
   replies: BoardComment[]
 }
@@ -35,8 +37,10 @@ function parseComment(raw: unknown): BoardComment | null {
     content: typeof o.content === "string" ? o.content : "",
     authorEmail: typeof o.authorEmail === "string" ? o.authorEmail : "",
     parentId: parentId != null && Number.isFinite(parentId) ? parentId : null,
+    status: typeof o.status === "string" ? o.status : "ACTIVE",
     likeCount: Number(o.likeCount) || 0,
     dislikeCount: Number(o.dislikeCount) || 0,
+    reportCount: Number(o.reportCount) || 0,
     createdAt: typeof o.createdAt === "string" ? o.createdAt : null,
     replies: repliesRaw.map(parseComment).filter((v): v is BoardComment => v != null),
   }
@@ -141,3 +145,28 @@ export async function deleteBoardComment(commentId: number): Promise<void> {
   })
   if (!res.ok) throw new Error(await readMessage(res, "댓글 삭제에 실패했습니다."))
 }
+
+export async function reportBoardComment(
+  commentId: number,
+  reason: string,
+  description?: string,
+): Promise<void> {
+  if (!readUsableAccessToken()) throw new Error("로그인이 필요합니다.")
+  const res = await fetch(`/api/v1/comments/${commentId}/report`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...authHeadersJson(),
+    },
+    body: JSON.stringify({ reason, description: description ?? "" }),
+    cache: "no-store",
+  })
+  if (!res.ok) throw new Error(await readMessage(res, "댓글 신고에 실패했습니다."))
+}
+
+export function isCommentRestricted(status: string | null | undefined): boolean {
+  const s = (status || "").toUpperCase()
+  return s === "HIDDEN" || s === "BLOCKED"
+}
+

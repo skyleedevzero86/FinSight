@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.global.config;
 
 import io.lettuce.core.ClientOptions;
+import io.lettuce.core.SocketOptions;
 import io.lettuce.core.protocol.ProtocolVersion;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,8 +66,12 @@ public class RedisConfig {
                 config.setPassword(redisPassword.trim());
             }
 
-            
+            SocketOptions socketOptions = SocketOptions.builder()
+                    .connectTimeout(Duration.ofMillis(Math.max(connectionTimeout, 1)))
+                    .build();
+
             ClientOptions options = ClientOptions.builder()
+                    .socketOptions(socketOptions)
                     .protocolVersion(ProtocolVersion.RESP2)
                     .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
                     .autoReconnect(true)
@@ -74,12 +79,13 @@ public class RedisConfig {
 
             LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
                     .clientOptions(options)
-                    .commandTimeout(Duration.ofMillis(commandTimeout))
+                    .commandTimeout(Duration.ofMillis(Math.max(commandTimeout, 1)))
                     .shutdownTimeout(Duration.ofMillis(100))
                     .build();
 
             LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
-            factory.setValidateConnection(true);
+
+            factory.setValidateConnection(false);
             factory.setShareNativeConnection(true);
 
             logger.info("Redis 연결 팩토리 생성 완료");
@@ -98,7 +104,6 @@ public class RedisConfig {
             RedisTemplate<String, Object> template = new RedisTemplate<>();
             template.setConnectionFactory(connectionFactory);
 
-            
             template.setKeySerializer(new StringRedisSerializer());
             template.setHashKeySerializer(new StringRedisSerializer());
             template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
@@ -114,5 +119,20 @@ public class RedisConfig {
             logger.error("Redis 템플릿 생성 실패: {}", e.getMessage(), e);
             throw new RuntimeException("Redis 템플릿 설정 실패", e);
         }
+    }
+
+    @Bean(name = "customStringRedisTemplate")
+    public RedisTemplate<String, String> customStringRedisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, String> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+        StringRedisSerializer stringSerializer = new StringRedisSerializer();
+        template.setKeySerializer(stringSerializer);
+        template.setHashKeySerializer(stringSerializer);
+        template.setValueSerializer(stringSerializer);
+        template.setHashValueSerializer(stringSerializer);
+        template.setDefaultSerializer(stringSerializer);
+        template.afterPropertiesSet();
+        logger.info("String Redis 템플릿 생성 완료");
+        return template;
     }
 }

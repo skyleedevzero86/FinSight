@@ -173,7 +173,6 @@ export async function mirrorRequestToFinSight(
   init?: {
     body?: BodyInit | null
     timeoutMs?: number
-    /** false면 Authorization/Cookie를 백엔드로 넘기지 않음(공개 GET용) */
     forwardCredentials?: boolean
   },
 ): Promise<Response> {
@@ -195,15 +194,6 @@ export async function mirrorRequestToFinSight(
       if (cookie) headers.Cookie = cookie
     }
     const contentType = req.headers.get("content-type") ?? req.headers.get("Content-Type")
-    if (
-      contentType &&
-      method !== "GET" &&
-      method !== "HEAD" &&
-      method !== "DELETE"
-    ) {
-      headers["Content-Type"] = contentType
-    }
-
     const target = `${base}${backendPathAndQuery.startsWith("/") ? "" : "/"}${backendPathAndQuery}`
     const controller = new AbortController()
     const timeoutMs = init?.timeoutMs ?? getProxyTimeoutMs()
@@ -223,6 +213,40 @@ export async function mirrorRequestToFinSight(
           body = text === "" ? undefined : text
         }
       }
+
+      if (
+        method !== "GET" &&
+        method !== "HEAD" &&
+        method !== "DELETE" &&
+        body !== undefined
+      ) {
+        const ct = (contentType ?? "").toLowerCase()
+        const bodyText =
+          typeof body === "string"
+            ? body.trim()
+            : typeof init?.body === "string"
+              ? init.body.trim()
+              : ""
+        const looksLikeJson =
+          bodyText.startsWith("{") || bodyText.startsWith("[")
+        if (
+          !ct ||
+          ct.startsWith("text/plain") ||
+          (looksLikeJson && !ct.includes("application/json") && !ct.includes("multipart/"))
+        ) {
+          headers["Content-Type"] = "application/json"
+        } else {
+          headers["Content-Type"] = contentType!
+        }
+      } else if (
+        contentType &&
+        method !== "GET" &&
+        method !== "HEAD" &&
+        method !== "DELETE"
+      ) {
+        headers["Content-Type"] = contentType
+      }
+
       upstream = await fetch(target, {
         method,
         headers,

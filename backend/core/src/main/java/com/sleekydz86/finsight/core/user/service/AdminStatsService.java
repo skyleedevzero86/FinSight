@@ -68,14 +68,32 @@ public class AdminStatsService {
     }
 
     public AdminStatsChartResponse chart(String chartKey, Integer days) {
-        int resolvedDays = clampDays(days);
+        return chart(chartKey, days, null, null);
+    }
+
+    public AdminStatsChartResponse chart(String chartKey, Integer days, LocalDate fromDate, LocalDate toDate) {
         String key = chartKey == null ? "" : chartKey.trim().toLowerCase(Locale.ROOT);
-        LocalDate to = LocalDate.now();
-        LocalDate from = to.minusDays(resolvedDays - 1L);
+        LocalDate to = toDate != null ? toDate : LocalDate.now();
+        LocalDate from;
+        if (fromDate != null) {
+            from = fromDate;
+        } else {
+            int resolvedDays = clampDays(days);
+            from = to.minusDays(resolvedDays - 1L);
+        }
+        if (from.isAfter(to)) {
+            LocalDate swap = from;
+            from = to;
+            to = swap;
+        }
+        long span = java.time.temporal.ChronoUnit.DAYS.between(from, to) + 1;
+        if (span > MAX_DAYS) {
+            from = to.minusDays(MAX_DAYS - 1L);
+        }
         LocalDateTime fromDateTime = from.atStartOfDay();
         LocalDateTime toExclusive = to.plusDays(1).atStartOfDay();
 
-        log.info("관리자 통계 차트 조회 - key={}, days={}, from={}, to={}", key, resolvedDays, from, to);
+        log.info("관리자 통계 차트 조회 - key={}, from={}, to={}", key, from, to);
 
         return switch (key) {
             case "signups" -> buildDailyChart(
@@ -348,10 +366,19 @@ public class AdminStatsService {
     }
 
     private Map<String, Object> buildHealthSnapshot() {
-        HealthStatus overall = healthQueryUseCase.getOverallHealth();
+
         HealthStatus database = healthQueryUseCase.getDatabaseHealth();
         HealthStatus redis = healthQueryUseCase.getRedisHealth();
         Map<String, HealthStatus> external = healthQueryUseCase.getExternalApisHealth();
+
+        HealthStatus overall;
+        if ("UP".equals(nullSafeStatus(database)) && "UP".equals(nullSafeStatus(redis))) {
+            overall = new HealthStatus("UP", "시스템이 정상입니다",
+                    Map.of("database", "UP", "redis", "UP"));
+        } else {
+            overall = new HealthStatus("DOWN", "일부 구성 요소에 장애가 있습니다",
+                    Map.of("database", nullSafeStatus(database), "redis", nullSafeStatus(redis)));
+        }
 
         Map<String, Object> externalSnapshot = external.entrySet().stream()
                 .collect(Collectors.toMap(
@@ -395,8 +422,21 @@ public class AdminStatsService {
         snapshot.put("threadCount", toLong(threads.get("count")));
         snapshot.put("processors", toLong(jvm.get("processors")));
         snapshot.put("systemLoadAverage", toDouble(os.get("systemLoadAverage")));
+        snapshot.put("cpuUsagePercent", resolveCpuUsagePercent(os));
         snapshot.put("timestamp", metrics.getTimestamp());
         return snapshot;
+    }
+
+    private long resolveCpuUsagePercent(Map<?, ?> os) {
+        double systemCpuLoad = toDouble(os.get("systemCpuLoad"));
+        if (systemCpuLoad >= 0.0d) {
+            return Math.round(systemCpuLoad * 100.0d);
+        }
+        double processCpuLoad = toDouble(os.get("processCpuLoad"));
+        if (processCpuLoad >= 0.0d) {
+            return Math.round(processCpuLoad * 100.0d);
+        }
+        return -1L;
     }
 
     private long extractHeapUsagePercent(SystemMetrics metrics) {

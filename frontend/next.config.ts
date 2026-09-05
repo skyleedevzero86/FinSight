@@ -32,6 +32,36 @@ const nextConfig = {
       },
     ],
   },
+  onDemandEntries: {
+    maxInactiveAge: 60_000,
+    pagesBufferLength: 4,
+  },
+  webpack: (config, { dev, isServer }) => {
+    if (dev) {
+      config.cache = false
+      if (process.platform === "win32") {
+        config.watchOptions = {
+          ...(config.watchOptions || {}),
+          poll: 2000,
+          aggregateTimeout: 800,
+          ignored: [
+            "**/.git/**",
+            "**/node_modules/**",
+            "**/.next/**",
+            "**/dist/**",
+            "**/.turbo/**",
+          ],
+        }
+      }
+      if (!isServer) {
+        config.output = {
+          ...config.output,
+          chunkLoadTimeout: 300_000,
+        }
+      }
+    }
+    return config
+  },
   async redirects() {
     return [
       { source: "/my", destination: "/myinfo", permanent: true },

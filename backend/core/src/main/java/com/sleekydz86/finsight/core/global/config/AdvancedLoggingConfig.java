@@ -21,7 +21,6 @@ public class AdvancedLoggingConfig {
     public LoggerContext loggerContext() {
         LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
 
-        
         ConsoleAppender<ILoggingEvent> consoleAppender = new ConsoleAppender<>();
         consoleAppender.setContext(context);
         consoleAppender.setName("CONSOLE");
@@ -34,7 +33,6 @@ public class AdvancedLoggingConfig {
         consoleAppender.setEncoder(consoleEncoder);
         consoleAppender.start();
 
-        
         RollingFileAppender<ILoggingEvent> fileAppender = new RollingFileAppender<>();
         fileAppender.setContext(context);
         fileAppender.setName("FILE");
@@ -59,7 +57,6 @@ public class AdvancedLoggingConfig {
         fileAppender.setRollingPolicy(rollingPolicy);
         fileAppender.start();
 
-        
         Logger rootLogger = context.getLogger(Logger.ROOT_LOGGER_NAME);
         rootLogger.setLevel(Level.INFO);
         rootLogger.addAppender(consoleAppender);

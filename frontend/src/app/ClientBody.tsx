@@ -5,8 +5,13 @@ import AuthSessionProvider from "@/components/AuthSessionProvider";
 import PasswordExpiryGuard from "@/components/PasswordExpiryGuard";
 import { cleanupStaleServiceWorkers } from "@/lib/cleanupStaleServiceWorkers";
 import { installNextHmrBfcacheGuard } from "@/lib/nextHmrBfcacheGuard";
+import {
+  clearChunkLoadRecoveryFlag,
+  installChunkLoadRecovery,
+} from "@/lib/recoverChunkLoadError";
 
 if (typeof window !== "undefined") {
+  installChunkLoadRecovery();
   installNextHmrBfcacheGuard();
   cleanupStaleServiceWorkers();
 }
@@ -17,8 +22,10 @@ export default function ClientBody({
   children: React.ReactNode;
 }) {
   useEffect(() => {
+    installChunkLoadRecovery();
     installNextHmrBfcacheGuard();
     cleanupStaleServiceWorkers();
+    clearChunkLoadRecoveryFlag();
   }, []);
 
   return (

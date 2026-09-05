@@ -177,7 +177,7 @@ public class UserAccountController {
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = { Exception.class })
     @Operation(summary = "관심목록 수정", description = "현재 사용자의 관심 카테고리 목록을 수정합니다.")
     @SecurityRequirement(name = "BearerAuth")
-    public ResponseEntity<ApiResponse<Void>> updateUserWatchlist(
+    public ResponseEntity<ApiResponse<List<TargetCategory>>> updateUserWatchlist(
             @RequestBody @Valid WatchlistUpdateRequest request,
             @CurrentUser AuthenticatedUser currentUser) {
         try {
@@ -187,8 +187,8 @@ public class UserAccountController {
             }
 
             validateWatchlistRequest(request);
-            userCommandUseCase.updateWatchlist(userOpt.get().getId(), request);
-            return ResponseEntity.ok(ApiResponse.success(null, "관심목록이 성공적으로 수정되었습니다"));
+            List<TargetCategory> updated = userCommandUseCase.updateWatchlist(userOpt.get().getId(), request);
+            return ResponseEntity.ok(ApiResponse.success(updated, "관심목록이 성공적으로 수정되었습니다"));
         } catch (ValidationException e) {
             throw e;
         } catch (Exception e) {

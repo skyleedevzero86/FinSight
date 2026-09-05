@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientBody from "./ClientBody";
 import { STALE_SERVICE_WORKER_CLEANUP_SCRIPT } from "@/lib/cleanupStaleServiceWorkers";
+import { NEXT_HMR_BFCACHE_GUARD_SCRIPT } from "@/lib/nextHmrBfcacheGuard";
+import { CHUNK_LOAD_RECOVERY_SCRIPT } from "@/lib/recoverChunkLoadError";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +33,12 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`${geistSans.variable} ${geistMono.variable}`}>
       <head>
+        <script
+          dangerouslySetInnerHTML={{ __html: CHUNK_LOAD_RECOVERY_SCRIPT }}
+        />
+        <script
+          dangerouslySetInnerHTML={{ __html: NEXT_HMR_BFCACHE_GUARD_SCRIPT }}
+        />
         <script
           dangerouslySetInnerHTML={{ __html: STALE_SERVICE_WORKER_CLEANUP_SCRIPT }}
         />

@@ -32,6 +32,8 @@ public interface BoardPersistencePort {
 
     long countByAuthorEmail(String authorEmail);
 
+    long countByAuthorEmailBetween(String authorEmail, java.time.LocalDateTime from, java.time.LocalDateTime to);
+
     List<Board> findPreviousAndNext(Long boardId, BoardType boardType);
 
     void incrementViewCount(Long boardId);

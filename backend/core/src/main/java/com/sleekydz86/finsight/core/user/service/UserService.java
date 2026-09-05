@@ -152,18 +152,22 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
             @CacheEvict(value = "userCache", key = "#userId"),
             @CacheEvict(value = { "user", "userProfile" }, key = "#userId")
     })
-    public void updateWatchlist(Long userId, WatchlistUpdateRequest request) {
+    public List<TargetCategory> updateWatchlist(Long userId, WatchlistUpdateRequest request) {
         log.info("관심종목 수정: 사용자ID={}", userId);
 
         User user = userPersistencePort.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다. ID: " + userId));
 
         List<TargetCategory> categories = request.getCategories() != null
-                ? request.getCategories()
+                ? List.copyOf(request.getCategories())
                 : List.of();
         user.updateWatchlist(categories);
-        userPersistencePort.save(user);
-        log.info("관심종목 수정 완료: 사용자ID={}, count={}", userId, categories.size());
+        User saved = userPersistencePort.save(user);
+        List<TargetCategory> persisted = saved.getWatchlist() != null
+                ? List.copyOf(saved.getWatchlist())
+                : List.of();
+        log.info("관심종목 수정 완료: 사용자ID={}, count={}", userId, persisted.size());
+        return persisted;
     }
 
     @Override
@@ -185,11 +189,12 @@ public class UserService implements UserCommandUseCase, UserQueryUseCase {
     }
 
     @Override
-    @Cacheable(value = "userCache", key = "'watchlist_' + #userId")
+    @Cacheable(value = "userCache", key = "'watchlist_' + #userId", unless = "#result == null")
     public List<TargetCategory> getUserWatchlist(Long userId) {
         log.debug("관심종목 조회: 사용자ID={}", userId);
         return userPersistencePort.findById(userId)
                 .map(User::getWatchlist)
+                .map(list -> list == null ? List.<TargetCategory>of() : List.copyOf(list))
                 .orElse(List.of());
     }
 

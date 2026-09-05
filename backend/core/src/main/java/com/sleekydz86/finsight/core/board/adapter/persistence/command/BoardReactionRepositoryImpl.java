@@ -53,4 +53,14 @@ public class BoardReactionRepositoryImpl implements BoardReactionPersistencePort
                 .map(boardReactionJpaMapper::toDomain)
                 .toList();
     }
+
+    @Override
+    public long countByUserEmail(String userEmail) {
+        return boardReactionJpaRepository.countByUserEmail(userEmail);
+    }
+
+    @Override
+    public long countByUserEmailBetween(String userEmail, java.time.LocalDateTime from, java.time.LocalDateTime to) {
+        return boardReactionJpaRepository.countByUserEmailAndCreatedAtBetween(userEmail, from, to);
+    }
 }
