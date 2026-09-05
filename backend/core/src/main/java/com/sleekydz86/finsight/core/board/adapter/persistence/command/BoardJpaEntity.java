@@ -1,6 +1,5 @@
 package com.sleekydz86.finsight.core.board.adapter.persistence.command;
 
-import com.sleekydz86.finsight.core.board.adapter.persistence.command.BoardFileJpaEntity;
 import com.sleekydz86.finsight.core.board.domain.BoardStatus;
 import com.sleekydz86.finsight.core.board.domain.BoardType;
 import com.sleekydz86.finsight.core.global.BaseEntity;
@@ -55,7 +54,11 @@ public class BoardJpaEntity extends BaseEntity {
     @Column(name = "hashtag")
     private List<String> hashtags = new ArrayList<>();
 
-    @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(
+            mappedBy = "board",
+            cascade = CascadeType.ALL,
+            fetch = FetchType.LAZY,
+            targetEntity = BoardFileJpaEntity.class)
     private List<BoardFileJpaEntity> files = new ArrayList<>();
 
     public BoardJpaEntity() {

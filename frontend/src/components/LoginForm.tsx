@@ -19,6 +19,15 @@ import {
 const inputClass =
   "w-full rounded border border-gray-300 bg-white px-3 py-2.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-finsight-secondary focus:ring-1 focus:ring-finsight-secondary/40"
 
+const DEFAULT_LOGIN_ID = "guest"
+
+function normalizeLoginId(raw: string): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ""
+  if (trimmed.toLowerCase() === "system2") return DEFAULT_LOGIN_ID
+  return trimmed
+}
+
 function extractToken(data: unknown): string | null {
   if (!data || typeof data !== "object") return null
   const o = data as Record<string, unknown>
@@ -73,7 +82,9 @@ export default function LoginForm() {
   const { user, ready, logout } = useAuthSession()
   const [switchAccount, setSwitchAccount] = useState(false)
 
-  const [email, setEmail] = useState(accountParam)
+  const [email, setEmail] = useState(
+    () => normalizeLoginId(accountParam) || DEFAULT_LOGIN_ID,
+  )
   const [password, setPassword] = useState("")
   const [showPw, setShowPw] = useState(false)
   const [remember, setRemember] = useState(false)
@@ -83,8 +94,21 @@ export default function LoginForm() {
   const alreadySignedIn = ready && Boolean(user) && !switchAccount
 
   useEffect(() => {
-    if (accountParam) setEmail(accountParam)
+    if (accountParam) {
+      setEmail(normalizeLoginId(accountParam) || DEFAULT_LOGIN_ID)
+      return
+    }
+    setEmail((cur) => normalizeLoginId(cur) || DEFAULT_LOGIN_ID)
   }, [accountParam])
+
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setEmail((cur) =>
+        cur.trim().toLowerCase() === "system2" ? DEFAULT_LOGIN_ID : cur,
+      )
+    }, 50)
+    return () => window.clearTimeout(t)
+  }, [])
 
   async function onUseOtherAccount() {
     setFormError(null)
@@ -99,7 +123,7 @@ export default function LoginForm() {
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setFormError(null)
-    const em = email.trim()
+    const em = normalizeLoginId(email) || email.trim()
     if (!em || !password) {
       setFormError("이메일 또는 아이디와 비밀번호를 입력해 주세요.")
       return
@@ -188,9 +212,11 @@ export default function LoginForm() {
           >
             <p className="font-medium">이미 로그인되어 있습니다.</p>
             <p className="mt-1 text-gray-600">
-              {user?.email
-                ? `${user.email} 계정으로 접속 중입니다.`
-                : "저장된 세션으로 접속 중입니다."}
+              {user?.nickname
+                ? `${user.nickname} 계정으로 접속 중입니다.`
+                : user?.email
+                  ? `${user.email} 계정으로 접속 중입니다.`
+                  : "저장된 세션으로 접속 중입니다."}
             </p>
             <p className="mt-2 text-xs text-gray-500">
               「로그인 유지」 또는 같은 탭의 이전 세션이 남아 있는 경우입니다.
@@ -218,11 +244,11 @@ export default function LoginForm() {
         <input
           id={`${id}-email`}
           type="text"
-          name="username"
+          name="finsight-login-id"
           autoComplete="username"
           placeholder="이메일 또는 아이디"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => setEmail(normalizeLoginId(e.target.value) || e.target.value)}
           className={inputClass}
         />
         <div className="relative">

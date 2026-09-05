@@ -34,15 +34,18 @@ public class BoardQueryService implements BoardQueryUseCase {
         private final BoardReactionPersistencePort boardReactionPersistencePort;
         private final BoardScrapPersistencePort boardScrapPersistencePort;
         private final MarkdownRenderingService markdownRenderingService;
+        private final BoardViewCountService boardViewCountService;
 
         public BoardQueryService(BoardPersistencePort boardPersistencePort,
                         BoardReactionPersistencePort boardReactionPersistencePort,
                         BoardScrapPersistencePort boardScrapPersistencePort,
-                        MarkdownRenderingService markdownRenderingService) {
+                        MarkdownRenderingService markdownRenderingService,
+                        BoardViewCountService boardViewCountService) {
                 this.boardPersistencePort = boardPersistencePort;
                 this.boardReactionPersistencePort = boardReactionPersistencePort;
                 this.boardScrapPersistencePort = boardScrapPersistencePort;
                 this.markdownRenderingService = markdownRenderingService;
+                this.boardViewCountService = boardViewCountService;
         }
 
         @Override
@@ -78,19 +81,19 @@ public class BoardQueryService implements BoardQueryUseCase {
         }
 
         @Override
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = true)
         public BoardDetailResponse getBoardDetail(Long boardId) {
                 return getBoardDetail(boardId, null, false, true);
         }
 
         @Override
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = true)
         public BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer) {
                 return getBoardDetail(boardId, viewerEmail, staffViewer, true);
         }
 
         @Override
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = true)
         public BoardDetailResponse getBoardDetail(Long boardId, String viewerEmail, boolean staffViewer, boolean incrementViewCount) {
                 log.info("게시판 상세 조회 요청: boardId={}", boardId);
 
@@ -100,7 +103,7 @@ public class BoardQueryService implements BoardQueryUseCase {
                 assertReadable(board, viewerEmail, staffViewer);
 
                 if (incrementViewCount) {
-                        boardPersistencePort.incrementViewCount(boardId);
+                        boardViewCountService.incrementSafely(boardId);
                 }
 
                 return BoardDetailResponse.from(board, markdownRenderingService.render(board.getContent()));
@@ -123,13 +126,13 @@ public class BoardQueryService implements BoardQueryUseCase {
         }
 
         @Override
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = true)
         public BoardDetailResponse getBoardDetailWithNavigation(Long boardId, BoardType boardType) {
                 return getBoardDetailWithNavigation(boardId, boardType, true);
         }
 
         @Override
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = true)
         public BoardDetailResponse getBoardDetailWithNavigation(Long boardId, BoardType boardType, boolean incrementViewCount) {
                 log.info("게시판 상세 조회 (네비게이션 포함) 요청: boardId={}, boardType={}", boardId, boardType);
 
@@ -156,7 +159,7 @@ public class BoardQueryService implements BoardQueryUseCase {
                 }
 
                 if (incrementViewCount) {
-                        boardPersistencePort.incrementViewCount(boardId);
+                        boardViewCountService.incrementSafely(boardId);
                 }
 
                 return BoardDetailResponse.from(board, navigation, markdownRenderingService.render(board.getContent()));

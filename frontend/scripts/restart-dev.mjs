@@ -1,10 +1,16 @@
 import { execSync, spawn } from "node:child_process"
-import { existsSync, rmSync } from "node:fs"
+import { existsSync, lstatSync, rmSync } from "node:fs"
+import os from "node:os"
 import { join } from "node:path"
-import { createRequire } from "node:module"
+import { fileURLToPath } from "node:url"
 
+const root = process.cwd()
 const ports = [3000, 3001]
-const nextDir = join(process.cwd(), ".next")
+const isWin = process.platform === "win32"
+const localNext = join(root, ".next")
+const legacyExternal = isWin
+  ? join(process.env.LOCALAPPDATA || os.tmpdir(), "FinSight", "next-dev")
+  : null
 
 function freePort(port) {
   if (process.platform === "win32") {
@@ -53,46 +59,39 @@ async function sleep(ms) {
   await new Promise((r) => setTimeout(r, ms))
 }
 
-async function cleanNext(retries = 8) {
-  if (!existsSync(nextDir)) {
-    console.log(".next 캐시가 없습니다.")
-    return
-  }
+async function removeDir(dir, retries = 8) {
+  if (!dir || !existsSync(dir)) return
   for (let i = 1; i <= retries; i++) {
     try {
-      rmSync(nextDir, { recursive: true, force: true })
-      if (!existsSync(nextDir)) {
-        console.log(".next 캐시를 삭제했습니다.")
+      const st = lstatSync(dir)
+      rmSync(dir, { recursive: true, force: true, maxRetries: 8, retryDelay: 250 })
+      if (!existsSync(dir)) {
+        console.log(`캐시 삭제: ${dir}${st.isSymbolicLink() ? " (정션/링크)" : ""}`)
         return
       }
     } catch (err) {
       if (i === retries) {
-        console.error(
-          ".next 캐시 삭제에 실패했습니다. 다른 Next/node 프로세스를 모두 종료한 뒤 다시 시도하세요.",
-          err,
-        )
+        console.error(`캐시 삭제 실패: ${dir}`, err)
         process.exit(1)
       }
     }
-    console.warn(`.next 삭제 재시도 ${i}/${retries}… (파일 잠금 해제 대기)`)
+    console.warn(`캐시 삭제 재시도 ${i}/${retries}: ${dir}`)
     await sleep(500 * i)
   }
-  console.error(".next 폴더가 남아 있습니다. 수동으로 삭제한 뒤 pnpm run dev 하세요.")
-  process.exit(1)
 }
 
 for (const port of ports) freePort(port)
 await sleep(1200)
-await cleanNext()
+await removeDir(localNext)
+await removeDir(legacyExternal)
 
-const require = createRequire(import.meta.url)
-const nextBin = require.resolve("next/dist/bin/next")
+const devScript = fileURLToPath(new URL("./dev.mjs", import.meta.url))
 console.log("Next.js 개발 서버를 포트 3000에서 시작합니다…")
-console.log("주의: Next는 한 개만 실행하세요. 3000/3001이 동시에 뜨면 .next가 깨집니다.")
-const child = spawn(process.execPath, [nextBin, "dev", "-p", "3000"], {
+console.log("주의: Next는 한 개만 실행하세요. 동시에 두 개 띄우면 캐시가 깨집니다.")
+const child = spawn(process.execPath, [devScript], {
   stdio: "inherit",
   env: process.env,
-  cwd: process.cwd(),
+  cwd: root,
 })
 
 child.on("exit", (code, signal) => {

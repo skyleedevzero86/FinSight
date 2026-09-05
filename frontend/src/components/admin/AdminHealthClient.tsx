@@ -45,12 +45,8 @@ function statusRank(status: string | undefined): "critical" | "warning" | "ok" |
   return "info"
 }
 
-function statusColor(status: string | undefined): string {
-  const rank = statusRank(status)
-  if (rank === "critical") return "border-black bg-red-50 text-red-800"
-  if (rank === "warning") return "border-black bg-amber-50 text-amber-900"
-  if (rank === "ok") return "border-black bg-emerald-50 text-emerald-800"
-  return "border-black bg-sky-50 text-sky-900"
+function statusColor(_status: string | undefined): string {
+  return "border-black bg-white text-black"
 }
 
 function statusLabelKo(status: string | undefined): string {
@@ -639,7 +635,7 @@ export default function AdminHealthClient() {
                         </span>
                       </div>
                       {snap.message ? (
-                        <p className="mt-2 text-xs opacity-90">{healthMessageKo(snap.message)}</p>
+                        <p className="mt-2 text-xs text-black">{healthMessageKo(snap.message)}</p>
                       ) : null}
                     </div>
                   ))}

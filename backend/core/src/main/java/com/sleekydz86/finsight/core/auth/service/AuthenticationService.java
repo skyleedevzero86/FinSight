@@ -232,11 +232,18 @@ public class AuthenticationService {
         if (loginId == null || loginId.isBlank()) {
             throw new UserNotFoundException("");
         }
-        String trimmed = loginId.trim();
+        String trimmed = normalizeLegacyLoginId(loginId.trim());
         return userPersistencePort.findByEmail(trimmed)
                 .or(() -> userPersistencePort.findByEmail(trimmed.toLowerCase(java.util.Locale.ROOT)))
                 .or(() -> userPersistencePort.findByUsername(trimmed))
                 .orElseThrow(() -> new UserNotFoundException(trimmed));
+    }
+
+    private static String normalizeLegacyLoginId(String loginId) {
+        if ("system2".equalsIgnoreCase(loginId)) {
+            return "guest";
+        }
+        return loginId;
     }
 
     private boolean isSocialOnlyAccount(User user) {

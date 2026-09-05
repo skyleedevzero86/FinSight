@@ -37,7 +37,7 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const router = useRouter()
-  const { user, logout } = useAuthSession()
+  const { user, ready, logout } = useAuthSession()
 
   async function onLogout() {
     if (loggingOut) return
@@ -50,93 +50,101 @@ export default function Header() {
     }
   }
 
+  const authBar = !ready ? (
+    <span className="inline-block min-h-[1rem] min-w-[7.5rem]" aria-hidden />
+  ) : user ? (
+    <>
+      <Link
+        href="/myinfo"
+        className="flex max-w-[11rem] items-center gap-1.5 hover:text-finsight-secondary transition"
+        title={user.nickname}
+      >
+        <HeaderAvatar src={user.profileImageUrl} />
+        <span className="truncate">{user.nickname}</span>
+      </Link>
+      <span className="text-gray-400">|</span>
+      <Link href="/myinfo/history" className="hover:text-finsight-secondary transition">
+        시청 기록
+      </Link>
+      <span className="text-gray-400">|</span>
+      <Link href="/myinfo/favorites" className="hover:text-finsight-secondary transition">
+        나의 즐겨찾기
+      </Link>
+      <span className="text-gray-400">|</span>
+      <Link href="/myinfo/posts" className="hover:text-finsight-secondary transition">
+        나의 게시글
+      </Link>
+      {canManageUsers(user.role) ? (
+        <>
+          <span className="text-gray-400">|</span>
+          <Link href="/admin/stats" className="hover:text-finsight-secondary transition">
+            통계
+          </Link>
+          <span className="text-gray-400">|</span>
+          <Link href="/admin/health" className="hover:text-finsight-secondary transition">
+            서버상황
+          </Link>
+          <span className="text-gray-400">|</span>
+          <Link href="/admin/mainimg" className="hover:text-finsight-secondary transition">
+            메인이미지
+          </Link>
+          <span className="text-gray-400">|</span>
+          <Link href="/admin/popup" className="hover:text-finsight-secondary transition">
+            팝업
+          </Link>
+          <span className="text-gray-400">|</span>
+          <Link href="/admin/ulink" className="hover:text-finsight-secondary transition">
+            통합링크
+          </Link>
+          <span className="text-gray-400">|</span>
+          <Link href="/admin/moderation" className="hover:text-finsight-secondary transition">
+            신고 관리
+          </Link>
+          <span className="text-gray-400">|</span>
+          <Link href="/admin/users" className="hover:text-finsight-secondary transition">
+            사용자 관리
+          </Link>
+          <span className="text-gray-400">|</span>
+          <Link href="/admin/email-logs" className="hover:text-finsight-secondary transition">
+            메일 이력
+          </Link>
+          <span className="text-gray-400">|</span>
+          <Link href="/admin/notifications" className="hover:text-finsight-secondary transition">
+            알림
+          </Link>
+          <span className="text-gray-400">|</span>
+          <Link href="/admin/sms" className="hover:text-finsight-secondary transition">
+            SMS
+          </Link>
+        </>
+      ) : null}
+      <span className="text-gray-400">|</span>
+      <button
+        type="button"
+        onClick={() => void onLogout()}
+        disabled={loggingOut}
+        className="hover:text-finsight-secondary transition disabled:opacity-60"
+      >
+        로그아웃
+      </button>
+    </>
+  ) : (
+    <>
+      <Link href="/signup" className="hover:text-finsight-secondary transition">
+        회원가입
+      </Link>
+      <span className="text-gray-400">|</span>
+      <Link href="/login" className="hover:text-finsight-secondary transition">
+        로그인
+      </Link>
+    </>
+  )
+
   return (
     <header className="bg-finsight-primary text-white sticky top-0 z-50">
       <div className="relative">
         <div className="absolute right-0 top-0 px-4 py-2 text-xs flex items-center gap-4 min-h-[2rem]">
-          {user ? (
-            <>
-              <Link
-                href="/myinfo"
-                className="flex max-w-[11rem] items-center gap-1.5 hover:text-finsight-secondary transition"
-                title={user.nickname}
-              >
-                <HeaderAvatar src={user.profileImageUrl} />
-                <span className="truncate">{user.nickname}</span>
-              </Link>
-              <span className="text-gray-400">|</span>
-              <Link href="/myinfo/history" className="hover:text-finsight-secondary transition">
-                시청 기록
-              </Link>
-              <span className="text-gray-400">|</span>
-              <Link href="/myinfo/favorites" className="hover:text-finsight-secondary transition">
-                나의 즐겨찾기
-              </Link>
-              <span className="text-gray-400">|</span>
-              <Link href="/myinfo/posts" className="hover:text-finsight-secondary transition">
-                나의 게시글
-              </Link>
-              {canManageUsers(user.role) ? (
-                <>
-                  <span className="text-gray-400">|</span>
-                  <Link href="/admin/stats" className="hover:text-finsight-secondary transition">
-                    통계
-                  </Link>
-                  <span className="text-gray-400">|</span>
-                  <Link href="/admin/health" className="hover:text-finsight-secondary transition">
-                    서버상황
-                  </Link>
-                  <span className="text-gray-400">|</span>
-                  <Link href="/admin/mainimg" className="hover:text-finsight-secondary transition">
-                    메인이미지
-                  </Link>
-                  <span className="text-gray-400">|</span>
-                  <Link href="/admin/popup" className="hover:text-finsight-secondary transition">
-                    팝업
-                  </Link>
-                  <span className="text-gray-400">|</span>
-                  <Link href="/admin/ulink" className="hover:text-finsight-secondary transition">
-                    통합링크
-                  </Link>
-                  <span className="text-gray-400">|</span>
-                  <Link href="/admin/moderation" className="hover:text-finsight-secondary transition">
-                    신고 관리
-                  </Link>
-                  <span className="text-gray-400">|</span>
-                  <Link href="/admin/users" className="hover:text-finsight-secondary transition">
-                    사용자 관리
-                  </Link>
-                  <span className="text-gray-400">|</span>
-                  <Link href="/admin/email-logs" className="hover:text-finsight-secondary transition">
-                    메일 이력
-                  </Link>
-                  <span className="text-gray-400">|</span>
-                  <Link href="/admin/notifications" className="hover:text-finsight-secondary transition">
-                    알림
-                  </Link>
-                  <span className="text-gray-400">|</span>
-                  <Link href="/admin/sms" className="hover:text-finsight-secondary transition">
-                    SMS
-                  </Link>
-                </>
-              ) : null}
-              <span className="text-gray-400">|</span>
-              <button
-                type="button"
-                onClick={() => void onLogout()}
-                disabled={loggingOut}
-                className="hover:text-finsight-secondary transition disabled:opacity-60"
-              >
-                로그아웃
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/signup" className="hover:text-finsight-secondary transition">회원가입</Link>
-              <span className="text-gray-400">|</span>
-              <Link href="/login" className="hover:text-finsight-secondary transition">로그인</Link>
-            </>
-          )}
+          {authBar}
         </div>
 
         <nav className="flex items-center justify-between px-4 md:px-8 pt-10 pb-4">
@@ -168,7 +176,7 @@ export default function Header() {
             >
               <Search className="w-5 h-5" />
             </button>
-            {user ? <NotificationBellButton /> : null}
+            {ready && user ? <NotificationBellButton /> : null}
             <button
               type="button"
               className="md:hidden hover:text-finsight-secondary transition"
@@ -216,7 +224,7 @@ export default function Header() {
                   커뮤니티
                 </Link>
               </li>
-              {user ? (
+              {ready && user ? (
                 <>
                   <li>
                     <Link
@@ -244,7 +252,7 @@ export default function Header() {
                   </li>
                 </>
               ) : null}
-              {user && canManageUsers(user.role) ? (
+              {ready && user && canManageUsers(user.role) ? (
                 <>
                   <li>
                     <Link

@@ -63,7 +63,6 @@ public class BoardController {
     @GetMapping("/{boardId}")
     @LogExecution("게시판 상세 조회")
     @PerformanceMonitor(threshold = 1000, operation = "board_detail")
-    @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
     public ResponseEntity<ApiResponse<BoardDetailResponse>> getBoardDetail(
             @PathVariable Long boardId,
             @RequestParam(defaultValue = "true") boolean trackView,
