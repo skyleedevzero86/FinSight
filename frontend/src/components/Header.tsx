@@ -74,6 +74,10 @@ export default function Header() {
       <Link href="/myinfo/posts" className="hover:text-finsight-secondary transition">
         나의 게시글
       </Link>
+      <span className="text-gray-400">|</span>
+      <Link href="/myinfo/portfolio" className="hover:text-finsight-secondary transition">
+        나의 포트폴리오
+      </Link>
       {canManageUsers(user.role) ? (
         <>
           <span className="text-gray-400">|</span>
@@ -107,14 +111,6 @@ export default function Header() {
           <span className="text-gray-400">|</span>
           <Link href="/admin/email-logs" className="hover:text-finsight-secondary transition">
             메일 이력
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/notifications" className="hover:text-finsight-secondary transition">
-            알림
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/sms" className="hover:text-finsight-secondary transition">
-            SMS
           </Link>
         </>
       ) : null}
@@ -250,6 +246,14 @@ export default function Header() {
                       나의 게시글
                     </Link>
                   </li>
+                  <li>
+                    <Link
+                      href="/myinfo/portfolio"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      나의 포트폴리오
+                    </Link>
+                  </li>
                 </>
               ) : null}
               {ready && user && canManageUsers(user.role) ? (
@@ -316,22 +320,6 @@ export default function Header() {
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >
                       메일 이력
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/notifications"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      알림
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/sms"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      SMS
                     </Link>
                   </li>
                 </>

@@ -14,6 +14,8 @@ import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDt
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.EngagementSummary;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.FavoriteToggleResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.LiveVodMetaResponse;
+import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.MyFavoriteItemResponse;
+import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.MyFavoritePageResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReactionToggleResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReplyPageResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeVideoMeta;
@@ -106,6 +108,53 @@ public class LiveVodEngagementService {
     @Transactional(readOnly = true)
     public EngagementSummary getEngagement(String videoId, String userEmail) {
         return summarizeOne(normalizeVideoId(videoId), userEmail);
+    }
+
+    @Transactional(readOnly = true)
+    public MyFavoritePageResponse listMyFavorites(String userEmail, int page, int size) {
+        requireUser(userEmail);
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100);
+        Page<LiveVodFavoriteJpaEntity> result = favoriteRepository.findByUserEmailOrderByCreatedAtDesc(
+                userEmail, PageRequest.of(safePage, safeSize));
+        List<MyFavoriteItemResponse> items = new ArrayList<>(result.getNumberOfElements());
+        for (LiveVodFavoriteJpaEntity row : result.getContent()) {
+            items.add(toFavoriteItem(row));
+        }
+        log.info("내 LIVE/VOD 즐겨찾기 목록 조회 - email={}, page={}, size={}, total={}",
+                userEmail, safePage, safeSize, result.getTotalElements());
+        return new MyFavoritePageResponse(
+                items,
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages(),
+                result.hasNext(),
+                result.hasPrevious());
+    }
+
+    private MyFavoriteItemResponse toFavoriteItem(LiveVodFavoriteJpaEntity row) {
+        String id = row.getVideoId();
+        String title = "VOD";
+        String channel = null;
+        String thumb = "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
+        try {
+            Optional<YoutubeVideoMeta> stored = youtubeVideoMetaPersistencePort.findByVideoId(id);
+            if (stored.isPresent()) {
+                YoutubeVideoMeta meta = stored.get();
+                if (meta.getYoutubeTitle() != null && !meta.getYoutubeTitle().isBlank()) {
+                    title = meta.getYoutubeTitle().trim();
+                }
+                channel = meta.getChannelTitle();
+                if (meta.getThumbnailUrl() != null && !meta.getThumbnailUrl().isBlank()) {
+                    thumb = meta.getThumbnailUrl();
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("즐겨찾기 메타 조회 실패 videoId={}: {}", id, ex.getMessage());
+        }
+        String savedAt = row.getCreatedAt() == null ? null : row.getCreatedAt().toString();
+        return new MyFavoriteItemResponse(id, title, channel, thumb, savedAt);
     }
 
     private static final String PLACEHOLDER_TITLE = "VOD 상세";

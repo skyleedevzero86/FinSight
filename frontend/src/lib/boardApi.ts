@@ -201,3 +201,57 @@ export async function dislikeBoard(
     return { ok: false, message: "싫어요 처리에 실패했습니다." }
   }
 }
+
+export async function scrapBoard(
+  boardId: number,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const res = await fetch(`/api/v1/boards/${boardId}/scrap`, {
+      method: "POST",
+      headers: authHeadersJson(),
+      cache: "no-store",
+    })
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, message: "로그인이 필요합니다." }
+    }
+    if (!res.ok) {
+      const payload: unknown = await res.json().catch(() => null)
+      const root = asRecord(payload)
+      const message =
+        typeof root?.message === "string" && root.message
+          ? root.message
+          : "즐겨찾기 저장에 실패했습니다."
+      return { ok: false, message }
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false, message: "즐겨찾기 저장에 실패했습니다." }
+  }
+}
+
+export async function unscrapBoard(
+  boardId: number,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const res = await fetch(`/api/v1/boards/${boardId}/scrap`, {
+      method: "DELETE",
+      headers: authHeadersJson(),
+      cache: "no-store",
+    })
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, message: "로그인이 필요합니다." }
+    }
+    if (!res.ok) {
+      const payload: unknown = await res.json().catch(() => null)
+      const root = asRecord(payload)
+      const message =
+        typeof root?.message === "string" && root.message
+          ? root.message
+          : "즐겨찾기 해제에 실패했습니다."
+      return { ok: false, message }
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false, message: "즐겨찾기 해제에 실패했습니다." }
+  }
+}

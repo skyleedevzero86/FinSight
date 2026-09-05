@@ -9,6 +9,7 @@ import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDt
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.EngagementSummary;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.FavoriteToggleResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.LiveVodMetaResponse;
+import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.MyFavoritePageResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReactionToggleRequest;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReactionToggleResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReplyPageResponse;
@@ -68,6 +69,18 @@ public class LiveVodEngagementController {
         return ResponseEntity.ok(ApiResponse.success(
                 liveVodEngagementService.getEngagement(videoId, email),
                 "참여 정보를 조회했습니다."));
+    }
+
+    @Operation(summary = "내 LIVE/VOD 즐겨찾기 목록", description = "로그인한 사용자의 LIVE/VOD 즐겨찾기 목록을 페이지 단위로 조회합니다.")
+    @SecurityRequirement(name = "BearerAuth")
+    @GetMapping("/live-vod/my-favorites")
+    public ResponseEntity<ApiResponse<MyFavoritePageResponse>> listMyFavorites(
+            @RequestParam(required = false, defaultValue = "0") int page,
+            @RequestParam(required = false, defaultValue = "15") int size,
+            @CurrentUser AuthenticatedUser currentUser) {
+        return ResponseEntity.ok(ApiResponse.success(
+                liveVodEngagementService.listMyFavorites(currentUser.getEmail(), page, size),
+                "내 즐겨찾기 목록을 조회했습니다."));
     }
 
     @Operation(summary = "즐겨찾기 토글", description = "영상 즐겨찾기를 추가하거나 해제합니다.")
