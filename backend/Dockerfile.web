@@ -1,0 +1,22 @@
+FROM eclipse-temurin:21-jdk-alpine AS builder
+WORKDIR /workspace
+COPY gradlew gradlew
+COPY gradle gradle
+COPY settings.gradle build.gradle ./
+COPY core core
+COPY web web
+COPY batch batch
+RUN chmod +x gradlew \
+    && ./gradlew --no-daemon clean :core:jar :web:bootJar -x test
+
+FROM eclipse-temurin:21-jre-alpine
+RUN apk add --no-cache curl \
+    && addgroup -S finsight \
+    && adduser -S finsight -G finsight \
+    && mkdir -p /app/logs \
+    && chown -R finsight:finsight /app
+WORKDIR /app
+COPY --from=builder /workspace/web/build/libs/*.jar /app/app.jar
+USER finsight
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

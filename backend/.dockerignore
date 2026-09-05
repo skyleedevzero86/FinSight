@@ -1,0 +1,13 @@
+**/build/
+**/.gradle/
+**/.idea/
+**/logs/
+**/*.log
+**/.git/
+**/src/test/
+**/bin/
+core/out/
+web/out/
+batch/out/
+**/.DS_Store
+**/Thumbs.db
