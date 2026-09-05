@@ -43,3 +43,4 @@ backend/web/src/main/resources/application-local.yml
 backend/web/src/main/resources/application-prod.yml
 backend/web/src/main/resources/application-test.yml
 backend/web/src/main/resources/application.yml
+.env

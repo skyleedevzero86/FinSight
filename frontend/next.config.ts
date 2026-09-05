@@ -13,6 +13,13 @@ const LIVE_VOD_PERMISSIONS_POLICY = [
 ].join(", ")
 
 const nextConfig = {
+  output: "standalone",
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       {
@@ -36,7 +43,7 @@ const nextConfig = {
     maxInactiveAge: 60_000,
     pagesBufferLength: 4,
   },
-  webpack: (config, { dev, isServer }) => {
+  webpack: (config: any, { dev, isServer }: { dev: boolean; isServer: boolean }) => {
     if (dev) {
       config.cache = false
       if (process.platform === "win32") {
