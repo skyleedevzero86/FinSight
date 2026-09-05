@@ -44,3 +44,13 @@ backend/web/src/main/resources/application-prod.yml
 backend/web/src/main/resources/application-test.yml
 backend/web/src/main/resources/application.yml
 .env
+.env.example
+
+# Docker local stack (추후에 변경사항있어도 커밋안되게 처리)
+backend/Dockerfile.web
+backend/Dockerfile.batch
+backend/.dockerignore
+frontend/Dockerfile
+frontend/.dockerignore
+infra/docker-compose.yml
+docker-compose.yml
