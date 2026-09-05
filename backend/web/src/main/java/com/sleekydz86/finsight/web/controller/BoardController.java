@@ -67,7 +67,7 @@ public class BoardController {
     }
 
     @Operation(summary = "게시판 상세 조회", description = "게시판 ID로 상세 정보를 조회합니다.")
-    @GetMapping("/{boardId}")
+    @GetMapping("/{boardId:\\d+}")
     @LogExecution("게시판 상세 조회")
     @PerformanceMonitor(threshold = 1000, operation = "board_detail")
     public ResponseEntity<ApiResponse<BoardDetailResponse>> getBoardDetail(
@@ -118,7 +118,7 @@ public class BoardController {
 
     @Operation(summary = "게시판 수정", description = "기존 게시글을 수정합니다.")
     @SecurityRequirement(name = "BearerAuth")
-    @PutMapping("/{boardId}")
+    @PutMapping("/{boardId:\\d+}")
     @LogExecution("게시판 수정")
     @PerformanceMonitor(threshold = 2000, operation = "board_update")
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = { Exception.class })
@@ -145,7 +145,7 @@ public class BoardController {
 
     @Operation(summary = "게시판 삭제", description = "게시글을 삭제합니다.")
     @SecurityRequirement(name = "BearerAuth")
-    @DeleteMapping("/{boardId}")
+    @DeleteMapping("/{boardId:\\d+}")
     @LogExecution("게시판 삭제")
     @PerformanceMonitor(threshold = 1000, operation = "board_delete")
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = { Exception.class })
@@ -169,7 +169,7 @@ public class BoardController {
 
     @Operation(summary = "게시판 좋아요", description = "게시글에 좋아요를 처리합니다.")
     @SecurityRequirement(name = "BearerAuth")
-    @PostMapping("/{boardId}/like")
+    @PostMapping("/{boardId:\\d+}/like")
     @LogExecution("게시판 좋아요")
     @PerformanceMonitor(threshold = 1000, operation = "board_like")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
@@ -191,7 +191,7 @@ public class BoardController {
 
     @Operation(summary = "게시판 싫어요", description = "게시글에 싫어요를 처리합니다.")
     @SecurityRequirement(name = "BearerAuth")
-    @PostMapping("/{boardId}/dislike")
+    @PostMapping("/{boardId:\\d+}/dislike")
     @LogExecution("게시판 싫어요")
     @PerformanceMonitor(threshold = 1000, operation = "board_dislike")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
@@ -213,7 +213,7 @@ public class BoardController {
 
     @Operation(summary = "게시판 신고", description = "게시글을 신고합니다.")
     @SecurityRequirement(name = "BearerAuth")
-    @PostMapping("/{boardId}/report")
+    @PostMapping("/{boardId:\\d+}/report")
     @LogExecution("게시판 신고")
     @PerformanceMonitor(threshold = 2000, operation = "board_report")
     @Retryable(maxAttempts = 2, delay = 2000, retryFor = { Exception.class })
@@ -238,7 +238,7 @@ public class BoardController {
 
     @Operation(summary = "게시판 스크랩", description = "게시글을 스크랩합니다.")
     @SecurityRequirement(name = "BearerAuth")
-    @PostMapping("/{boardId}/scrap")
+    @PostMapping("/{boardId:\\d+}/scrap")
     @LogExecution("게시판 스크랩")
     @PerformanceMonitor(threshold = 1000, operation = "board_scrap")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
@@ -260,7 +260,7 @@ public class BoardController {
 
     @Operation(summary = "게시판 스크랩 취소", description = "게시글 스크랩을 취소합니다.")
     @SecurityRequirement(name = "BearerAuth")
-    @DeleteMapping("/{boardId}/scrap")
+    @DeleteMapping("/{boardId:\\d+}/scrap")
     @LogExecution("게시판 스크랩 취소")
     @PerformanceMonitor(threshold = 1000, operation = "board_unscrap")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
@@ -429,7 +429,7 @@ public class BoardController {
 
     @Operation(summary = "게시판 반응 상태 조회", description = "로그인한 사용자의 게시글 좋아요·싫어요·스크랩 상태를 조회합니다.")
     @SecurityRequirement(name = "BearerAuth")
-    @GetMapping("/{boardId}/reaction-status")
+    @GetMapping("/{boardId:\\d+}/reaction-status")
     @LogExecution("게시판 반응 상태 조회")
     @PerformanceMonitor(threshold = 1000, operation = "board_reaction_status")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
