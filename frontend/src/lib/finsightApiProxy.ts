@@ -174,6 +174,7 @@ export async function mirrorRequestToFinSight(
     body?: BodyInit | null
     timeoutMs?: number
     forwardCredentials?: boolean
+    cache?: RequestCache
   },
 ): Promise<Response> {
   try {
@@ -252,7 +253,7 @@ export async function mirrorRequestToFinSight(
         headers,
         body,
         signal: controller.signal,
-        cache: "no-store",
+        cache: init?.cache ?? "no-store",
       })
     } catch (err) {
       const aborted = isAbortError(err)

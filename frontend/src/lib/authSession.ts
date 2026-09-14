@@ -1,7 +1,7 @@
 import {
   authHeadersJson,
   clearAuthSession,
-  readUsableAccessToken,
+  hasAuthSession,
   type AuthProvider,
 } from "@/lib/finsightToken"
 
@@ -65,10 +65,11 @@ export function authProviderLabel(provider: AuthProvider): string {
 }
 
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
-  if (!readUsableAccessToken()) return null
+  if (!hasAuthSession()) return null
   try {
     const res = await fetch("/api/v1/auth/me", {
       headers: authHeadersJson(),
+      credentials: "same-origin",
       cache: "no-store",
       signal: AbortSignal.timeout(4000),
     })

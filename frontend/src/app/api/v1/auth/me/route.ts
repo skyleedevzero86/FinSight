@@ -23,9 +23,15 @@ function sessionProbeResponse(options?: {
   )
 }
 
-export async function GET(req: Request) {
+function hasAuthCredential(req: Request): boolean {
   const auth = req.headers.get("authorization")
-  if (!auth || !auth.toLowerCase().startsWith("bearer ")) {
+  if (auth && auth.toLowerCase().startsWith("bearer ")) return true
+  const cookie = req.headers.get("cookie") ?? ""
+  return /(?:^|;\s*)accessToken=/.test(cookie) || /(?:^|;\s*)finsight_auth=1(?:;|$)/.test(cookie)
+}
+
+export async function GET(req: Request) {
+  if (!hasAuthCredential(req)) {
     return sessionProbeResponse()
   }
 

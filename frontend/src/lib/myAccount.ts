@@ -143,19 +143,10 @@ export async function updateProfile(body: {
   if (!res.ok) {
     return { ok: false, message: readMessage(payload, "프로필을 저장하지 못했습니다.") }
   }
-  const data = unwrapData(payload)
-  const tokenWrap = data ? asRecord(data.token) : null
-  const accessToken =
-    tokenWrap && typeof tokenWrap.accessToken === "string" ? tokenWrap.accessToken : null
-  if (accessToken) {
-    storeAuthSession({
-      accessToken,
-      authProvider: readAuthProvider() ?? "WEB",
-      remember: Boolean(
-        typeof window !== "undefined" && localStorage.getItem("finsight_access_token"),
-      ),
-    })
-  }
+  storeAuthSession({
+    authProvider: readAuthProvider() ?? "WEB",
+    remember: true,
+  })
   return { ok: true }
 }
 

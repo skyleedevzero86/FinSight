@@ -678,10 +678,12 @@ export default function AdminHealthClient() {
                         ["전체", overview.healthSnapshot.overall],
                         ["DB", overview.healthSnapshot.database],
                         ["Redis", overview.healthSnapshot.redis],
-                      ].map(([label, snap]) => {
+                      ].map((entry) => {
+                        const label = entry[0] as string
+                        const snap = entry[1] as HealthStatusSnapshot | undefined
                         const status = snap?.status ?? "UNKNOWN"
                         return (
-                          <div key={String(label)} className="border border-black px-3 py-2">
+                          <div key={label} className="border border-black px-3 py-2">
                             <div className="text-xs text-gray-500">{label}</div>
                             <div className="text-sm font-semibold">{statusLabelKo(status)}</div>
                             <div className="mt-1 truncate text-xs text-gray-500">

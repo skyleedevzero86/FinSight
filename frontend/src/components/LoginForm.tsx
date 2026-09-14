@@ -28,22 +28,6 @@ function normalizeLoginId(raw: string): string {
   return trimmed
 }
 
-function extractToken(data: unknown): string | null {
-  if (!data || typeof data !== "object") return null
-  const o = data as Record<string, unknown>
-  if (typeof o.accessToken === "string") return o.accessToken
-  const token = o.token
-  if (token && typeof token === "object") {
-    const t = token as Record<string, unknown>
-    if (typeof t.accessToken === "string") return t.accessToken
-  }
-  const inner = o.data
-  if (inner && typeof inner === "object") {
-    return extractToken(inner)
-  }
-  return null
-}
-
 function extractPasswordChangeRequired(data: unknown): boolean {
   if (!data || typeof data !== "object") return false
   const o = data as Record<string, unknown>
@@ -140,18 +124,10 @@ export default function LoginForm() {
         return
       }
 
-      const token = extractToken(result.data)
       const provider = extractProvider(result.data)
       const passwordRequired = extractPasswordChangeRequired(result.data)
-      if (!token) {
-        setFormError(
-          "로그인 응답이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.",
-        )
-        return
-      }
       try {
         storeAuthSession({
-          accessToken: token,
           authProvider: provider,
           remember,
         })

@@ -8,22 +8,6 @@ import {
   type AuthProvider,
 } from "@/lib/finsightToken"
 
-function extractToken(data: unknown): string | null {
-  if (!data || typeof data !== "object") return null
-  const o = data as Record<string, unknown>
-  if (typeof o.accessToken === "string") return o.accessToken
-  const token = o.token
-  if (token && typeof token === "object") {
-    const t = token as Record<string, unknown>
-    if (typeof t.accessToken === "string") return t.accessToken
-  }
-  const inner = o.data
-  if (inner && typeof inner === "object") {
-    return extractToken(inner)
-  }
-  return null
-}
-
 function extractProvider(data: unknown): AuthProvider {
   if (!data || typeof data !== "object") return "KAKAO"
   const o = data as Record<string, unknown>
@@ -86,14 +70,8 @@ export default function KakaoCallbackClient() {
           return
         }
 
-        const token = extractToken(data)
         const provider = extractProvider(data)
-        if (!token) {
-          setMessage("로그인 토큰을 받지 못했습니다.")
-          return
-        }
-
-        storeAuthSession({ accessToken: token, authProvider: provider })
+        storeAuthSession({ authProvider: provider })
         sessionStorage.removeItem("kakao_oauth_state")
         router.replace("/")
         router.refresh()

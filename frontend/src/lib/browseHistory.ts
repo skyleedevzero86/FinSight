@@ -79,14 +79,14 @@ function migrateLegacyLiveVod(): BrowseHistoryItem[] {
     const parsed = JSON.parse(raw) as unknown
     if (!Array.isArray(parsed)) return []
     return parsed
-      .map((row) => {
+      .map((row): BrowseHistoryItem | null => {
         if (!row || typeof row !== "object") return null
         const o = row as Record<string, unknown>
         if (typeof o.videoId !== "string" || !o.videoId) return null
         const videoId = o.videoId
         return {
           key: `live-vod:${videoId}`,
-          kind: "LIVE_VOD" as const,
+          kind: "LIVE_VOD",
           href: `/live-vod/watch/${encodeURIComponent(videoId)}?tab=HISTORY`,
           title: typeof o.title === "string" ? o.title : "VOD",
           subtitle: typeof o.channelTitle === "string" ? o.channelTitle : null,
@@ -95,7 +95,7 @@ function migrateLegacyLiveVod(): BrowseHistoryItem[] {
               ? o.thumbnailUrl
               : `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
           viewedAt: typeof o.watchedAt === "string" ? o.watchedAt : new Date().toISOString(),
-        } satisfies BrowseHistoryItem
+        }
       })
       .filter((v): v is BrowseHistoryItem => v != null)
   } catch {

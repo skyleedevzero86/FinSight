@@ -14,7 +14,7 @@ import {
   authHeadersJson,
   clearAuthSession,
   FINSIGHT_AUTH_CHANGED_EVENT,
-  readUsableAccessToken,
+  hasAuthSession,
 } from "@/lib/finsightToken"
 
 type AuthSessionValue = {
@@ -47,9 +47,9 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
   const [hasToken, setHasToken] = useState(false)
 
   const refresh = useCallback(async () => {
-    const token = readUsableAccessToken()
-    setHasToken(Boolean(token))
-    if (!token) {
+    const hinted = hasAuthSession()
+    setHasToken(hinted)
+    if (!hinted) {
       setUser(null)
       setReady(true)
       return
@@ -57,7 +57,7 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
     try {
       const next = await fetchCurrentUser()
       setUser(next)
-      setHasToken(Boolean(next) || Boolean(readUsableAccessToken()))
+      setHasToken(Boolean(next) || hasAuthSession())
     } catch {
       setUser(null)
     } finally {
@@ -67,13 +67,12 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
 
   const logout = useCallback(async () => {
     try {
-      if (readUsableAccessToken()) {
-        await fetch("/api/v1/auth/logout", {
-          method: "POST",
-          headers: { ...authHeadersJson(), "Content-Type": "application/json" },
-          body: "{}",
-        })
-      }
+      await fetch("/api/v1/auth/logout", {
+        method: "POST",
+        headers: { ...authHeadersJson(), "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: "{}",
+      })
     } catch {
       void 0
     }

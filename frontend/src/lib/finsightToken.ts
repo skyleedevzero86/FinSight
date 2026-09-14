@@ -2,6 +2,7 @@ export const FINSIGHT_ACCESS_TOKEN_KEY = "finsight_access_token"
 export const FINSIGHT_AUTH_PROVIDER_KEY = "finsight_auth_provider"
 export const FINSIGHT_AUTH_CHANGED_EVENT = "finsight-auth-changed"
 export const FINSIGHT_FORCE_PASSWORD_KEY = "finsight_force_password"
+export const FINSIGHT_AUTH_HINT_COOKIE = "finsight_auth"
 
 export function emitAuthChanged() {
   if (typeof window === "undefined") return
@@ -18,41 +19,31 @@ export function consumeOAuthCode(code: string): boolean {
   return true
 }
 
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null
+  const prefix = `${name}=`
+  const hit = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix))
+  if (!hit) return null
+  return decodeURIComponent(hit.slice(prefix.length))
+}
+
+export function hasAuthSession(): boolean {
+  return readCookie(FINSIGHT_AUTH_HINT_COOKIE) === "1"
+}
+
 export function readAccessToken(): string | null {
-  if (typeof window === "undefined") return null
-  try {
-    return (
-      localStorage.getItem(FINSIGHT_ACCESS_TOKEN_KEY) ||
-      sessionStorage.getItem(FINSIGHT_ACCESS_TOKEN_KEY)
-    )
-  } catch {
-    return null
-  }
+  return hasAuthSession() ? "cookie" : null
 }
 
 export function isAccessTokenUsable(token: string | null | undefined): boolean {
-  if (!token) return false
-  const parts = token.split(".")
-  if (parts.length < 2) return false
-  try {
-    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/")
-    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4)
-    const payload = JSON.parse(atob(padded)) as { exp?: unknown }
-    if (typeof payload.exp !== "number") return true
-    return payload.exp * 1000 > Date.now() - 5_000
-  } catch {
-    return false
-  }
+  return Boolean(token)
 }
 
 export function readUsableAccessToken(): string | null {
-  const token = readAccessToken()
-  if (!token) return null
-  if (!isAccessTokenUsable(token)) {
-    clearAuthSession({ emit: true })
-    return null
-  }
-  return token
+  return hasAuthSession() ? "cookie" : null
 }
 
 export function readAuthProvider(): AuthProvider | null {
@@ -71,21 +62,23 @@ export function readAuthProvider(): AuthProvider | null {
 }
 
 export function storeAuthSession(options: {
-  accessToken: string
+  accessToken?: string | null
   authProvider: AuthProvider
   remember?: boolean
 }) {
-  const { accessToken, authProvider, remember } = options
-  if (remember) {
-    localStorage.setItem(FINSIGHT_ACCESS_TOKEN_KEY, accessToken)
-    localStorage.setItem(FINSIGHT_AUTH_PROVIDER_KEY, authProvider)
-    sessionStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
-    sessionStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
-  } else {
-    sessionStorage.setItem(FINSIGHT_ACCESS_TOKEN_KEY, accessToken)
-    sessionStorage.setItem(FINSIGHT_AUTH_PROVIDER_KEY, authProvider)
+  const { authProvider, remember } = options
+  try {
     localStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
-    localStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
+    sessionStorage.removeItem(FINSIGHT_ACCESS_TOKEN_KEY)
+    if (remember) {
+      localStorage.setItem(FINSIGHT_AUTH_PROVIDER_KEY, authProvider)
+      sessionStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
+    } else {
+      sessionStorage.setItem(FINSIGHT_AUTH_PROVIDER_KEY, authProvider)
+      localStorage.removeItem(FINSIGHT_AUTH_PROVIDER_KEY)
+    }
+  } catch {
+    void 0
   }
   emitAuthChanged()
 }
@@ -105,22 +98,12 @@ export function clearAuthSession(options?: { emit?: boolean }) {
 }
 
 export function authHeadersJson(): HeadersInit {
-  const t = readUsableAccessToken()
-  if (!t) {
-    return {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    }
-  }
   return {
     Accept: "application/json",
     "Content-Type": "application/json",
-    Authorization: `Bearer ${t}`,
   }
 }
 
 export function authHeaders(): HeadersInit {
-  const t = readUsableAccessToken()
-  if (!t) return {}
-  return { Authorization: `Bearer ${t}` }
+  return {}
 }
