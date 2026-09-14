@@ -19,4 +19,12 @@ long countByVideoIdAndReactionType(String videoId, String reactionType);
             GROUP BY r.reactionType
             """)
     java.util.List<Object[]> countGroupedByType(@Param("videoId") String videoId);
+
+    @Query("""
+            SELECT r.videoId, COUNT(r)
+            FROM LiveVodReactionJpaEntity r
+            WHERE r.videoId IN :videoIds AND r.reactionType = 'LIKE'
+            GROUP BY r.videoId
+            """)
+    java.util.List<Object[]> countLikesByVideoIds(@Param("videoIds") java.util.Collection<String> videoIds);
 }

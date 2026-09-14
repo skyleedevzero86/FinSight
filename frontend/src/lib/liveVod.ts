@@ -7,6 +7,7 @@ export type LiveVodItem = {
   channelTitle: string | null
   favoriteCount: number
   commentCount: number
+  likeCount: number
 }
 
 export type LiveVodSection = {
@@ -189,6 +190,7 @@ function parseItem(raw: unknown): LiveVodItem | null {
     channelTitle: typeof o.channelTitle === "string" ? o.channelTitle : null,
     favoriteCount: typeof o.favoriteCount === "number" ? o.favoriteCount : Number(o.favoriteCount) || 0,
     commentCount: typeof o.commentCount === "number" ? o.commentCount : Number(o.commentCount) || 0,
+    likeCount: typeof o.likeCount === "number" ? o.likeCount : Number(o.likeCount) || 0,
   }
 }
 
@@ -266,4 +268,32 @@ export async function fetchLiveVodFeed(
         .filter((v): v is LiveVodSection => v !== null),
     },
   }
+}
+
+export function flattenLiveVodFeedItems(feed: LiveVodFeed): LiveVodItem[] {
+  const seen = new Set<string>()
+  const items: LiveVodItem[] = []
+  for (const section of feed.sections) {
+    for (const item of section.items) {
+      if (!item.videoId || seen.has(item.videoId)) continue
+      seen.add(item.videoId)
+      items.push(item)
+    }
+  }
+  return items
+}
+
+export function liveVodPopularityScore(item: LiveVodItem): number {
+  return item.favoriteCount + item.likeCount + item.commentCount
+}
+
+export function shuffleLiveVodItems<T>(items: T[]): T[] {
+  const next = [...items]
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const tmp = next[i]
+    next[i] = next[j]
+    next[j] = tmp
+  }
+  return next
 }

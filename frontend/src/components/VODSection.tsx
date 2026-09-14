@@ -2,63 +2,69 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useState } from "react"
-import { Play, Clock } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Play } from "lucide-react"
+import {
+  fetchLiveVodFeed,
+  flattenLiveVodFeedItems,
+  liveVodPopularityScore,
+  liveVodWatchHref,
+  stashLiveVodMetaHint,
+  type LiveVodItem,
+} from "@/lib/liveVod"
 
-const vodData = [
-  {
-    id: 1,
-    title: "11회 다시보기",
-    program: "착한 사나이",
-    thumbnail: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=400&h=300&fit=crop",
-    duration: "1:00:13",
-    views: "15.2만"
-  },
-  {
-    id: 2,
-    title: "[500회 특집] 드디어 500회 완전체 수지를 향해 날아간 축하 메시지",
-    program: "아는 형님",
-    thumbnail: "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=400&h=300&fit=crop",
-    duration: "00:46",
-    views: "8.5만"
-  },
-  {
-    id: 3,
-    title: "역사 이야기꾼들 1회 예고편",
-    program: "역사 이야기꾼들",
-    thumbnail: "https://images.unsplash.com/photo-1598899134739-24c46f58b8c0?w=400&h=300&fit=crop",
-    duration: "00:59",
-    views: "3.2만"
-  },
-  {
-    id: 4,
-    title: "14회 다시보기",
-    program: "디 엠파이어 법의 제국",
-    thumbnail: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?w=400&h=300&fit=crop",
-    duration: "45:29",
-    views: "12.8만"
-  },
-  {
-    id: 5,
-    title: "아는 형님 497회 예고",
-    program: "아는 형님",
-    thumbnail: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=400&h=300&fit=crop",
-    duration: "01:22",
-    views: "6.7만"
-  },
-  {
-    id: 6,
-    title: "140회 다시보기",
-    program: "디 엠파이어 법의 제국",
-    thumbnail: "https://images.unsplash.com/photo-1585951237318-9ea5e175b891?w=400&h=300&fit=crop",
-    duration: "1:34:57",
-    views: "9.1만"
-  }
+type VodTab = "upcoming" | "popular" | "latest"
+
+const TABS: { id: VodTab; label: string }[] = [
+  { id: "upcoming", label: "추후에 예정..." },
+  { id: "popular", label: "인기순" },
+  { id: "latest", label: "최신순" },
 ]
 
+const HOME_VOD_LIMIT = 6
+
+function formatEngagement(item: LiveVodItem): string {
+  const score = liveVodPopularityScore(item)
+  if (score <= 0) return "참여 0"
+  return `참여 ${score.toLocaleString("ko-KR")}`
+}
+
 export default function VODSection() {
-  const [activeTab, setActiveTab] = useState("추천순")
-  const tabs = ["추천순", "인기순", "최신순"]
+  const [activeTab, setActiveTab] = useState<VodTab>("latest")
+  const [items, setItems] = useState<LiveVodItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      setLoading(true)
+      const result = await fetchLiveVodFeed("ALL")
+      if (cancelled) return
+      if (!result.ok) {
+        setItems([])
+        setError(result.message)
+        setLoading(false)
+        return
+      }
+      setItems(flattenLiveVodFeedItems(result.data))
+      setError(null)
+      setLoading(false)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const visibleItems = useMemo(() => {
+    if (activeTab === "upcoming") return []
+    if (activeTab === "popular") {
+      return [...items]
+        .sort((a, b) => liveVodPopularityScore(b) - liveVodPopularityScore(a))
+        .slice(0, HOME_VOD_LIMIT)
+    }
+    return items.slice(0, HOME_VOD_LIMIT)
+  }, [activeTab, items])
 
   return (
     <section className="py-12 px-4 md:px-8 max-w-7xl mx-auto">
@@ -67,66 +73,91 @@ export default function VODSection() {
           실시간 VOD
         </h2>
         <Link
-          href="#"
+          href="/live-vod"
           className="col-span-1 row-start-1 justify-self-end text-sm font-medium text-[#3c3e40] hover:text-finsight-primary hover:underline md:col-start-3 md:row-start-1"
         >
           더보기 →
         </Link>
         <div className="col-span-2 row-start-2 flex justify-center gap-3 sm:gap-4 md:col-span-1 md:col-start-2 md:row-start-1 md:justify-self-center">
-          {tabs.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setActiveTab(tab)}
-              className={`inline-flex min-w-[4.25rem] justify-center px-3 py-2 text-center text-sm font-semibold transition sm:min-w-[4.5rem] sm:px-4 ${
-                activeTab === tab
-                  ? "text-finsight-primary border-b-2 border-finsight-primary"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
+          {TABS.map((tab) => {
+            const selected = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                title={
+                  tab.id === "upcoming"
+                    ? "추후에 예정되어 있습니다"
+                    : tab.id === "popular"
+                      ? "즐겨찾기·좋아요·댓글 합계가 많은 게시물"
+                      : "유튜브 최신 영상"
+                }
+                onClick={() => setActiveTab(tab.id)}
+                className={`inline-flex min-w-[4.25rem] justify-center px-3 py-2 text-center text-sm font-semibold transition sm:min-w-[4.5rem] sm:px-4 ${
+                  selected
+                    ? "text-finsight-primary border-b-2 border-finsight-primary"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {tab.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {vodData.map((vod) => (
-          <Link
-            key={vod.id}
-            href="#"
-            className="group cursor-pointer"
-          >
-            <div className="relative aspect-video overflow-hidden rounded-lg mb-3">
-              <Image
-                src={vod.thumbnail}
-                alt={vod.title}
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                className="object-cover group-hover:scale-105 transition duration-300"
-              />
-              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition flex items-center justify-center">
-                <div className="bg-white/90 rounded-full p-3 opacity-80 group-hover:opacity-100 transition">
-                  <Play className="w-8 h-8 text-finsight-primary fill-finsight-primary" />
+      {loading ? (
+        <p className="py-10 text-center text-sm text-gray-500">영상을 불러오는 중…</p>
+      ) : error ? (
+        <p className="py-10 text-center text-sm text-gray-500">{error}</p>
+      ) : activeTab === "upcoming" ? (
+        <p className="py-10 text-center text-sm text-gray-500">추후에 예정되어 있습니다.</p>
+      ) : visibleItems.length === 0 ? (
+        <p className="py-10 text-center text-sm text-gray-500">표시할 영상이 없습니다.</p>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {visibleItems.map((vod) => {
+            const href = liveVodWatchHref(vod, "ALL")
+            return (
+              <Link
+                key={vod.videoId}
+                href={href}
+                className="group cursor-pointer"
+                onClick={() => stashLiveVodMetaHint(vod)}
+              >
+                <div className="relative aspect-video overflow-hidden rounded-lg mb-3">
+                  <Image
+                    src={vod.thumbnailUrl}
+                    alt={vod.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover group-hover:scale-105 transition duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition flex items-center justify-center">
+                    <div className="bg-white/90 rounded-full p-3 opacity-80 group-hover:opacity-100 transition">
+                      <Play className="w-8 h-8 text-finsight-primary fill-finsight-primary" />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
-                {vod.duration}
-              </div>
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-finsight-primary transition mb-1">
-                {vod.title}
-              </h3>
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <span className="font-medium">{vod.program}</span>
-                <span>•</span>
-                <span>조회수 {vod.views}</span>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
+                <div>
+                  <h3 className="font-semibold text-sm line-clamp-2 group-hover:text-finsight-primary transition mb-1">
+                    {vod.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <span className="font-medium">{vod.channelTitle || "YouTube"}</span>
+                    <span>•</span>
+                    <span>
+                      {activeTab === "popular"
+                        ? formatEngagement(vod)
+                        : "최신 영상"}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      )}
     </section>
   )
 }

@@ -558,7 +558,8 @@ public class LiveVodEngagementService {
                 item.embedUrl(),
                 item.channelTitle(),
                 summary.favoriteCount(),
-                summary.commentCount());
+                summary.commentCount(),
+                summary.likeCount());
     }
 
     private Map<String, EngagementSummary> summarizeMany(Set<String> videoIds, String userEmail) {
@@ -582,6 +583,17 @@ public class LiveVodEngagementService {
             EngagementSummary prev = result.get(id);
             result.put(id, new EngagementSummary(
                     id, prev.favoriteCount(), count, null, prev.likeCount(), prev.dislikeCount(), null));
+        }
+        try {
+            for (Object[] row : reactionRepository.countLikesByVideoIds(videoIds)) {
+                String id = (String) row[0];
+                long count = ((Number) row[1]).longValue();
+                EngagementSummary prev = result.get(id);
+                result.put(id, new EngagementSummary(
+                        id, prev.favoriteCount(), prev.commentCount(), null, count, prev.dislikeCount(), null));
+            }
+        } catch (RuntimeException ex) {
+            log.warn("LIVE/VOD 좋아요 집계 실패 - size={}", videoIds.size());
         }
         if (userEmail != null && !userEmail.isBlank()) {
             for (String id : videoIds) {

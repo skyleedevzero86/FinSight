@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { rewriteDummyAssetUrl, rewriteDummyLinkUrl } from "@/lib/dummyAssetUrl"
 import {
   POPUP_DEFAULT_HEIGHT,
   POPUP_DEFAULT_WIDTH,
@@ -59,8 +60,8 @@ export default function SitePopupLayer() {
     setIndex((i) => i + 1)
   }
 
-  const image = (current.imgPath || "").trim()
-  const href = (current.fileUrl || "").trim()
+  const image = rewriteDummyAssetUrl(current.imgPath)
+  const href = rewriteDummyLinkUrl(current.fileUrl)
   const target = current.linkTarget === "_self" ? "_self" : "_blank"
 
   const body = (

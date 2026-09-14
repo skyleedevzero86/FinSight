@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { rewriteDummyLinkUrl } from "@/lib/dummyAssetUrl"
 import {
   fetchPublicMainimgItems,
   resolveMainimgUrl,
@@ -50,7 +51,7 @@ function toSlides(items: MainimgItem[]): Slide[] {
         image,
         title: item.imageName,
         subtitle: item.description?.trim() || "",
-        linkUrl: item.linkUrl?.trim() || "",
+        linkUrl: rewriteDummyLinkUrl(item.linkUrl),
       }
     })
     .filter((s): s is Slide => s != null)

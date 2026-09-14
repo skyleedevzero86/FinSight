@@ -31,11 +31,13 @@ public record LiveVodFeedResponse(
             String embedUrl,
             String channelTitle,
             long favoriteCount,
-            long commentCount
+            long commentCount,
+            long likeCount
     ) {
         public LiveVodItemResponse {
             if (favoriteCount < 0) favoriteCount = 0;
             if (commentCount < 0) commentCount = 0;
+            if (likeCount < 0) likeCount = 0;
         }
 
         public LiveVodItemResponse(
@@ -45,7 +47,7 @@ public record LiveVodFeedResponse(
                 String watchUrl,
                 String embedUrl,
                 String channelTitle) {
-            this(videoId, title, thumbnailUrl, watchUrl, embedUrl, channelTitle, 0, 0);
+            this(videoId, title, thumbnailUrl, watchUrl, embedUrl, channelTitle, 0, 0, 0);
         }
     }
 }
