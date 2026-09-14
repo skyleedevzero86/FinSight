@@ -4,34 +4,50 @@ import Image from "next/image"
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { Play } from "lucide-react"
+import { useAuthSession } from "@/components/AuthSessionProvider"
+import {
+  fetchHomeRecommendPool,
+  pickRecommendedItems,
+  type RecommendedLiveVodItem,
+} from "@/lib/homeVodRecommend"
 import {
   fetchLiveVodFeed,
   flattenLiveVodFeedItems,
   liveVodPopularityScore,
   liveVodWatchHref,
+  shuffleLiveVodItems,
   stashLiveVodMetaHint,
   type LiveVodItem,
 } from "@/lib/liveVod"
+import { fetchWatchlist } from "@/lib/myAccount"
+import type { TargetCategory } from "@/lib/registration"
 
-type VodTab = "upcoming" | "popular" | "latest"
+type VodTab = "recommended" | "popular" | "latest"
 
 const TABS: { id: VodTab; label: string }[] = [
-  { id: "upcoming", label: "추후에 예정..." },
+  { id: "recommended", label: "추천순" },
   { id: "popular", label: "인기순" },
   { id: "latest", label: "최신순" },
 ]
 
 const HOME_VOD_LIMIT = 6
 
+function hasPopularitySignal(items: LiveVodItem[]): boolean {
+  return items.some((item) => liveVodPopularityScore(item) > 0)
+}
+
 function formatEngagement(item: LiveVodItem): string {
   const score = liveVodPopularityScore(item)
-  if (score <= 0) return "참여 0"
+  if (score <= 0) return "인기 영상"
   return `참여 ${score.toLocaleString("ko-KR")}`
 }
 
 export default function VODSection() {
+  const { user, ready } = useAuthSession()
   const [activeTab, setActiveTab] = useState<VodTab>("latest")
-  const [items, setItems] = useState<LiveVodItem[]>([])
+  const [latestItems, setLatestItems] = useState<LiveVodItem[]>([])
+  const [recommendPool, setRecommendPool] = useState<RecommendedLiveVodItem[]>([])
+  const [watchlist, setWatchlist] = useState<TargetCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -39,16 +55,19 @@ export default function VODSection() {
     let cancelled = false
     void (async () => {
       setLoading(true)
-      const result = await fetchLiveVodFeed("ALL")
+      const [latestResult, recommendResult] = await Promise.all([
+        fetchLiveVodFeed("ALL"),
+        fetchHomeRecommendPool(),
+      ])
       if (cancelled) return
-      if (!result.ok) {
-        setItems([])
-        setError(result.message)
-        setLoading(false)
-        return
+      if (!latestResult.ok) {
+        setLatestItems([])
+        setError(latestResult.message)
+      } else {
+        setLatestItems(flattenLiveVodFeedItems(latestResult.data))
+        setError(null)
       }
-      setItems(flattenLiveVodFeedItems(result.data))
-      setError(null)
+      setRecommendPool(recommendResult)
       setLoading(false)
     })()
     return () => {
@@ -56,15 +75,39 @@ export default function VODSection() {
     }
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      if (!ready || !user) {
+        setWatchlist([])
+        return
+      }
+      const categories = await fetchWatchlist()
+      if (!cancelled) setWatchlist(categories)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [ready, user])
+
   const visibleItems = useMemo(() => {
-    if (activeTab === "upcoming") return []
+    if (activeTab === "recommended") {
+      return pickRecommendedItems(recommendPool, {
+        loggedIn: Boolean(user),
+        watchlist,
+        limit: HOME_VOD_LIMIT,
+      })
+    }
     if (activeTab === "popular") {
-      return [...items]
+      if (!hasPopularitySignal(latestItems)) {
+        return shuffleLiveVodItems(latestItems).slice(0, HOME_VOD_LIMIT)
+      }
+      return [...latestItems]
         .sort((a, b) => liveVodPopularityScore(b) - liveVodPopularityScore(a))
         .slice(0, HOME_VOD_LIMIT)
     }
-    return items.slice(0, HOME_VOD_LIMIT)
-  }, [activeTab, items])
+    return latestItems.slice(0, HOME_VOD_LIMIT)
+  }, [activeTab, latestItems, recommendPool, user, watchlist])
 
   return (
     <section className="py-12 px-4 md:px-8 max-w-7xl mx-auto">
@@ -86,8 +129,10 @@ export default function VODSection() {
                 key={tab.id}
                 type="button"
                 title={
-                  tab.id === "upcoming"
-                    ? "추후에 예정되어 있습니다"
+                  tab.id === "recommended"
+                    ? user
+                      ? "관심 타깃 카테고리 기반 추천"
+                      : "라이브·채널 탭 랜덤 추천"
                     : tab.id === "popular"
                       ? "즐겨찾기·좋아요·댓글 합계가 많은 게시물"
                       : "유튜브 최신 영상"
@@ -108,19 +153,19 @@ export default function VODSection() {
 
       {loading ? (
         <p className="py-10 text-center text-sm text-gray-500">영상을 불러오는 중…</p>
-      ) : error ? (
+      ) : error && activeTab !== "recommended" ? (
         <p className="py-10 text-center text-sm text-gray-500">{error}</p>
-      ) : activeTab === "upcoming" ? (
-        <p className="py-10 text-center text-sm text-gray-500">추후에 예정되어 있습니다.</p>
       ) : visibleItems.length === 0 ? (
         <p className="py-10 text-center text-sm text-gray-500">표시할 영상이 없습니다.</p>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {visibleItems.map((vod) => {
-            const href = liveVodWatchHref(vod, "ALL")
+            const sourceTab =
+              "sourceTab" in vod && typeof vod.sourceTab === "string" ? vod.sourceTab : "ALL"
+            const href = liveVodWatchHref(vod, sourceTab)
             return (
               <Link
-                key={vod.videoId}
+                key={`${activeTab}-${vod.videoId}`}
                 href={href}
                 className="group cursor-pointer"
                 onClick={() => stashLiveVodMetaHint(vod)}
@@ -149,7 +194,9 @@ export default function VODSection() {
                     <span>
                       {activeTab === "popular"
                         ? formatEngagement(vod)
-                        : "최신 영상"}
+                        : activeTab === "recommended"
+                          ? "추천 영상"
+                          : "최신 영상"}
                     </span>
                   </div>
                 </div>
