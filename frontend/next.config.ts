@@ -1,3 +1,5 @@
+import type { NextConfig } from "next"
+
 const YOUTUBE_ORIGINS =
   '(self "https://www.youtube-nocookie.com" "https://www.youtube.com")'
 
@@ -12,7 +14,7 @@ const LIVE_VOD_PERMISSIONS_POLICY = [
   `clipboard-write=${YOUTUBE_ORIGINS}`,
 ].join(", ")
 
-const nextConfig = {
+const nextConfig: NextConfig = {
   output: "standalone",
   typescript: {
     ignoreBuildErrors: false,
@@ -43,7 +45,7 @@ const nextConfig = {
     maxInactiveAge: 60_000,
     pagesBufferLength: 4,
   },
-  webpack: (config: any, { dev, isServer }: { dev: boolean; isServer: boolean }) => {
+  webpack: (config, { dev, isServer }) => {
     if (dev) {
       config.cache = false
       if (process.platform === "win32") {
