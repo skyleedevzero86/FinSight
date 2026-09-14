@@ -1,20 +1,7 @@
 package com.sleekydz86.finsight.core.notification.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "welcome_email_jobs")
 public class WelcomeEmailJob {
 
     public enum Status {
@@ -24,39 +11,16 @@ public class WelcomeEmailJob {
         FAILED
     }
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "user_id", nullable = false, unique = true)
     private Long userId;
-
-    @Column(name = "registered_at", nullable = false)
     private LocalDateTime registeredAt;
-
-    @Column(name = "deadline_at", nullable = false)
     private LocalDateTime deadlineAt;
-
-    @Column(name = "scheduled_at", nullable = false)
     private LocalDateTime scheduledAt;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
     private Status status;
-
-    @Column(name = "attempt_count", nullable = false)
     private int attemptCount;
-
-    @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
-
-    @Column(name = "sent_at")
     private LocalDateTime sentAt;
-
-    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     protected WelcomeEmailJob() {
@@ -75,18 +39,27 @@ public class WelcomeEmailJob {
         this.attemptCount = 0;
     }
 
-    @PrePersist
-    void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
-        if (createdAt == null) {
-            createdAt = now;
-        }
-        updatedAt = now;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = LocalDateTime.now();
+    public static WelcomeEmailJob restore(
+            Long id,
+            Long userId,
+            LocalDateTime registeredAt,
+            LocalDateTime deadlineAt,
+            LocalDateTime scheduledAt,
+            Status status,
+            int attemptCount,
+            String lastError,
+            LocalDateTime sentAt,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+        WelcomeEmailJob job = new WelcomeEmailJob(userId, registeredAt, deadlineAt, scheduledAt);
+        job.id = id;
+        job.status = status;
+        job.attemptCount = attemptCount;
+        job.lastError = lastError;
+        job.sentAt = sentAt;
+        job.createdAt = createdAt;
+        job.updatedAt = updatedAt;
+        return job;
     }
 
     public void markSent() {
@@ -138,5 +111,21 @@ public class WelcomeEmailJob {
 
     public int getAttemptCount() {
         return attemptCount;
+    }
+
+    public String getLastError() {
+        return lastError;
+    }
+
+    public LocalDateTime getSentAt() {
+        return sentAt;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
     }
 }

@@ -128,6 +128,21 @@ public class UserJpaEntity extends BaseTimeEntity {
     @Column(name = "phone_number", length = 30)
     private String phoneNumber;
 
+    @Column(name = "deviceToken", length = 500)
+    private String deviceToken;
+
+    @Column(name = "deviceType", length = 20)
+    private String deviceType;
+
+    @Column(name = "deviceTokenUpdatedAt")
+    private LocalDateTime deviceTokenUpdatedAt;
+
+    @Column(length = 64)
+    private String timezone;
+
+    @Column(length = 16)
+    private String language;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

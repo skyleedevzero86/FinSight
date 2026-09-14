@@ -1,13 +1,11 @@
 package com.sleekydz86.finsight.core.notification.adapter.persistence;
 
-import com.sleekydz86.finsight.core.notification.domain.EmailTemplate;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
+public interface EmailTemplateJpaRepository extends JpaRepository<EmailTemplateJpaEntity, Long> {
 
-public interface EmailTemplateJpaRepository extends JpaRepository<EmailTemplate, Long> {
+    Optional<EmailTemplateJpaEntity> findByNameAndActiveTrue(String name);
 
-    Optional<EmailTemplate> findByNameAndActiveTrue(String name);
-
-    Optional<EmailTemplate> findByName(String name);
+    Optional<EmailTemplateJpaEntity> findByName(String name);
 }

@@ -26,20 +26,24 @@ public class NotificationRepositoryImpl implements NotificationPersistencePort {
 
     @Override
     public Notification save(Notification notification) {
-        NotificationJpaEntity entity = notificationJpaMapper.toEntity(notification);
+        NotificationJpaEntity entity;
+        if (notification.getId() != null) {
+            entity = notificationJpaRepository.findById(notification.getId())
+                    .orElseGet(() -> notificationJpaMapper.toEntity(notification));
+            if (entity.getId() != null) {
+                notificationJpaMapper.updateEntity(entity, notification);
+            }
+        } else {
+            entity = notificationJpaMapper.toEntity(notification);
+        }
         NotificationJpaEntity savedEntity = notificationJpaRepository.save(entity);
-        return notificationJpaMapper.toDomain(savedEntity);
+        return hydrate(savedEntity, notification.getUser());
     }
 
     @Override
     public List<Notification> saveAll(List<Notification> notifications) {
-        List<NotificationJpaEntity> entities = notifications.stream()
-                .map(notificationJpaMapper::toEntity)
-                .collect(Collectors.toList());
-
-        List<NotificationJpaEntity> savedEntities = notificationJpaRepository.saveAll(entities);
-        return savedEntities.stream()
-                .map(notificationJpaMapper::toDomain)
+        return notifications.stream()
+                .map(this::save)
                 .collect(Collectors.toList());
     }
 
@@ -47,7 +51,7 @@ public class NotificationRepositoryImpl implements NotificationPersistencePort {
     @Transactional(readOnly = true)
     public Notification findById(Long id) {
         return notificationJpaRepository.findById(id)
-                .map(notificationJpaMapper::toDomain)
+                .map(entity -> hydrate(entity, null))
                 .orElse(null);
     }
 
@@ -57,14 +61,14 @@ public class NotificationRepositoryImpl implements NotificationPersistencePort {
         Page<NotificationJpaEntity> entityPage = notificationJpaRepository
                 .findByUserIdOrderByCreatedAtDesc(user.getId(), pageable);
 
-        return entityPage.map(notificationJpaMapper::toDomain);
+        return entityPage.map(entity -> hydrate(entity, user));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<Notification> findByStatus(NotificationStatus status) {
         return notificationJpaRepository.findByStatus(status).stream()
-                .map(notificationJpaMapper::toDomain)
+                .map(entity -> hydrate(entity, null))
                 .collect(Collectors.toList());
     }
 
@@ -73,7 +77,7 @@ public class NotificationRepositoryImpl implements NotificationPersistencePort {
     public List<Notification> findByScheduledAtBefore(LocalDateTime dateTime) {
         return notificationJpaRepository
                 .findByScheduledAtBeforeAndStatus(dateTime, NotificationStatus.PENDING).stream()
-                .map(notificationJpaMapper::toDomain)
+                .map(entity -> hydrate(entity, null))
                 .collect(Collectors.toList());
     }
 
@@ -82,7 +86,7 @@ public class NotificationRepositoryImpl implements NotificationPersistencePort {
     public List<Notification> findByFailedStatus() {
         return notificationJpaRepository
                 .findByStatusAndCreatedAtBefore(NotificationStatus.FAILED, LocalDateTime.now().minusDays(7)).stream()
-                .map(notificationJpaMapper::toDomain)
+                .map(entity -> hydrate(entity, null))
                 .collect(Collectors.toList());
     }
 
@@ -96,12 +100,20 @@ public class NotificationRepositoryImpl implements NotificationPersistencePort {
     @Transactional(readOnly = true)
     public List<Notification> findByDateRange(LocalDateTime start, LocalDateTime end) {
         return notificationJpaRepository.findByUserIdAndDateRange(0L, start, end).stream()
-                .map(notificationJpaMapper::toDomain)
+                .map(entity -> hydrate(entity, null))
                 .collect(Collectors.toList());
     }
 
     @Override
     public void deleteById(Long id) {
         notificationJpaRepository.deleteById(id);
+    }
+
+    private Notification hydrate(NotificationJpaEntity entity, User knownUser) {
+        User user = knownUser;
+        if (user == null && entity.getUserId() != null) {
+            user = userPersistencePort.findById(entity.getUserId()).orElse(null);
+        }
+        return notificationJpaMapper.toDomainWithReferences(entity, user, null);
     }
 }

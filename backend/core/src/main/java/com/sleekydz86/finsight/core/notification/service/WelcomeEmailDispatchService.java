@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.core.notification.service;
 
+import com.sleekydz86.finsight.core.notification.adapter.persistence.EmailPersistenceMapper;
+import com.sleekydz86.finsight.core.notification.adapter.persistence.WelcomeEmailJobJpaEntity;
 import com.sleekydz86.finsight.core.notification.adapter.persistence.WelcomeEmailJobJpaRepository;
 import com.sleekydz86.finsight.core.notification.domain.WelcomeEmailJob;
 import com.sleekydz86.finsight.core.notification.domain.WelcomeEmailJob.Status;
@@ -20,6 +22,7 @@ public class WelcomeEmailDispatchService {
     private static final Logger log = LoggerFactory.getLogger(WelcomeEmailDispatchService.class);
 
     private final WelcomeEmailJobJpaRepository welcomeEmailJobJpaRepository;
+    private final EmailPersistenceMapper emailPersistenceMapper;
     private final EmailNotificationService emailNotificationService;
     private final UserPersistencePort userPersistencePort;
 
@@ -34,9 +37,11 @@ public class WelcomeEmailDispatchService {
 
     public WelcomeEmailDispatchService(
             WelcomeEmailJobJpaRepository welcomeEmailJobJpaRepository,
+            EmailPersistenceMapper emailPersistenceMapper,
             EmailNotificationService emailNotificationService,
             UserPersistencePort userPersistencePort) {
         this.welcomeEmailJobJpaRepository = welcomeEmailJobJpaRepository;
+        this.emailPersistenceMapper = emailPersistenceMapper;
         this.emailNotificationService = emailNotificationService;
         this.userPersistencePort = userPersistencePort;
     }
@@ -59,7 +64,7 @@ public class WelcomeEmailDispatchService {
         }
 
         WelcomeEmailJob job = new WelcomeEmailJob(userId, registered, deadline, scheduled);
-        welcomeEmailJobJpaRepository.save(job);
+        welcomeEmailJobJpaRepository.save(emailPersistenceMapper.toEntity(job));
         log.info("회원가입 축하 메일 예약: userId={}, scheduledAt={}, deadlineAt={}",
                 userId, scheduled, deadline);
     }
@@ -69,40 +74,46 @@ public class WelcomeEmailDispatchService {
         LocalDateTime now = LocalDateTime.now();
         expireOverdue(now);
 
-        List<WelcomeEmailJob> due = welcomeEmailJobJpaRepository.findDuePending(Status.PENDING, now);
-        for (WelcomeEmailJob job : due) {
-            dispatch(job, now);
+        List<WelcomeEmailJobJpaEntity> due = welcomeEmailJobJpaRepository.findDuePending(Status.PENDING, now);
+        for (WelcomeEmailJobJpaEntity entity : due) {
+            dispatch(emailPersistenceMapper.toDomain(entity), entity, now);
         }
     }
 
     private void expireOverdue(LocalDateTime now) {
-        List<WelcomeEmailJob> expired = welcomeEmailJobJpaRepository.findExpiredPending(Status.PENDING, now);
-        for (WelcomeEmailJob job : expired) {
+        List<WelcomeEmailJobJpaEntity> expired =
+                welcomeEmailJobJpaRepository.findExpiredPending(Status.PENDING, now);
+        for (WelcomeEmailJobJpaEntity entity : expired) {
+            WelcomeEmailJob job = emailPersistenceMapper.toDomain(entity);
             job.markExpired();
-            welcomeEmailJobJpaRepository.save(job);
+            entity.apply(job);
+            welcomeEmailJobJpaRepository.save(entity);
             log.warn("회원가입 축하 메일 기한 만료: userId={}, deadlineAt={}",
                     job.getUserId(), job.getDeadlineAt());
         }
     }
 
-    private void dispatch(WelcomeEmailJob job, LocalDateTime now) {
+    private void dispatch(WelcomeEmailJob job, WelcomeEmailJobJpaEntity entity, LocalDateTime now) {
         if (job.getDeadlineAt().isBefore(now)) {
             job.markExpired();
-            welcomeEmailJobJpaRepository.save(job);
+            entity.apply(job);
+            welcomeEmailJobJpaRepository.save(entity);
             return;
         }
 
         User user = userPersistencePort.findById(job.getUserId()).orElse(null);
         if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
             job.markFailed("사용자를 찾을 수 없거나 이메일이 없습니다.");
-            welcomeEmailJobJpaRepository.save(job);
+            entity.apply(job);
+            welcomeEmailJobJpaRepository.save(entity);
             return;
         }
 
         try {
             emailNotificationService.sendWelcomeEmailSync(user);
             job.markSent();
-            welcomeEmailJobJpaRepository.save(job);
+            entity.apply(job);
+            welcomeEmailJobJpaRepository.save(entity);
             log.info("회원가입 축하 메일 발송 완료: userId={}", job.getUserId());
         } catch (Exception e) {
             String message = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
@@ -118,7 +129,8 @@ public class WelcomeEmailDispatchService {
                 log.warn("회원가입 축하 메일 재시도 예약: userId={}, retryAt={}, error={}",
                         job.getUserId(), retryAt, message);
             }
-            welcomeEmailJobJpaRepository.save(job);
+            entity.apply(job);
+            welcomeEmailJobJpaRepository.save(entity);
         }
     }
 }

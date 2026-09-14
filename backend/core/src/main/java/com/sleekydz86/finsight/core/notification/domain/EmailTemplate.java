@@ -1,61 +1,43 @@
 package com.sleekydz86.finsight.core.notification.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
-import jakarta.persistence.Table;
-
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "email_templates")
 public class EmailTemplate {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(nullable = false, unique = true)
     private String name;
-
-    @Column(nullable = false, length = 500)
     private String subject;
-
-    @Column(name = "html_content", columnDefinition = "LONGTEXT")
     private String htmlContent;
-
-    @Column(name = "text_content", columnDefinition = "TEXT")
     private String textContent;
-
-    @Column(name = "template_variables", columnDefinition = "JSON")
     private String templateVariables;
-
-    @Column(nullable = false)
     private Boolean active = true;
-
-    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @PrePersist
-    void prePersist() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
-        if (active == null) {
-            active = true;
-        }
+    public EmailTemplate() {
     }
 
-    @PreUpdate
-    void preUpdate() {
-        updatedAt = LocalDateTime.now();
+    public static EmailTemplate restore(
+            Long id,
+            String name,
+            String subject,
+            String htmlContent,
+            String textContent,
+            String templateVariables,
+            Boolean active,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt) {
+        EmailTemplate template = new EmailTemplate();
+        template.id = id;
+        template.name = name;
+        template.subject = subject;
+        template.htmlContent = htmlContent;
+        template.textContent = textContent;
+        template.templateVariables = templateVariables;
+        template.active = active != null ? active : true;
+        template.createdAt = createdAt;
+        template.updatedAt = updatedAt;
+        return template;
     }
 
     public Long getId() {
