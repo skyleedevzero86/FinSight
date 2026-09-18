@@ -165,3 +165,12 @@ bun run dev
 - Health: `/api/v1/health`, Actuator
 
 환경·보안 설정에 따라 경로/접근 정책이 달라질 수 있습니다.
+
+## 아키텍처
+### (운영서버)
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/e97fa7c9-2ca3-4bac-8186-e431e7682de1" />
+
+### (로컬)
+
+<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/18a38f1d-c507-4ee6-8dc6-dae050046d10" />
+
