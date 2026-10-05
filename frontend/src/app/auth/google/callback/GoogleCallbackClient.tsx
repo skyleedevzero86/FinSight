@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
-  consumeOAuthCode,
+  hasAuthSession,
+  runOAuthExchangeOnce,
   storeAuthSession,
+  writeAuthHintCookie,
   type AuthProvider,
 } from "@/lib/finsightToken"
 
@@ -20,6 +22,14 @@ function extractProvider(data: unknown): AuthProvider {
     return extractProvider(inner)
   }
   return "GOOGLE"
+}
+
+function readErrorMessage(data: unknown, fallback: string): string {
+  if (data && typeof data === "object" && "message" in data) {
+    const message = String((data as { message?: string }).message ?? "").trim()
+    if (message) return message
+  }
+  return fallback
 }
 
 export default function GoogleCallbackClient() {
@@ -40,9 +50,6 @@ export default function GoogleCallbackClient() {
       setMessage("구글 인가 코드가 없습니다.")
       return
     }
-    if (!consumeOAuthCode(code)) {
-      return
-    }
 
     const savedState = sessionStorage.getItem("google_oauth_state")
     if (savedState && state && savedState !== state) {
@@ -52,30 +59,33 @@ export default function GoogleCallbackClient() {
 
     void (async () => {
       try {
-        const res = await fetch("/api/v1/auth/oauth/google", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({ code, state }),
-        })
+        const res = await runOAuthExchangeOnce(`google:${code}`, () =>
+          fetch("/api/v1/auth/oauth/google", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ code, state }),
+            cache: "no-store",
+          }),
+        )
         const data = await res.json().catch(() => null)
         if (!res.ok) {
-          setMessage(
-            (data && typeof data === "object" && "message" in data
-              ? String((data as { message?: string }).message)
-              : null) || "구글 로그인에 실패했습니다.",
-          )
+          setMessage(readErrorMessage(data, "구글 로그인에 실패했습니다."))
           return
         }
 
-        const provider = extractProvider(data)
-        storeAuthSession({ authProvider: provider })
-        if (typeof document !== "undefined") {
-          document.cookie = "finsight_auth=1; Path=/; SameSite=Lax; Max-Age=3600"
-        }
+        writeAuthHintCookie()
+        storeAuthSession({ authProvider: extractProvider(data) })
         sessionStorage.removeItem("google_oauth_state")
+
+        if (!hasAuthSession()) {
+          writeAuthHintCookie()
+        }
+
+        setMessage("구글 로그인에 성공했습니다. 이동 중...")
         router.replace("/")
         router.refresh()
       } catch {

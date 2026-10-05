@@ -55,7 +55,11 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
       return
     }
     try {
-      const next = await fetchCurrentUser()
+      let next = await fetchCurrentUser()
+      if (!next && hasAuthSession()) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        next = await fetchCurrentUser()
+      }
       setUser(next)
       setHasToken(Boolean(next))
       if (!next) {

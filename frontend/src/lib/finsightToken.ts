@@ -12,11 +12,28 @@ export function emitAuthChanged() {
 export type AuthProvider = "WEB" | "KAKAO" | "NAVER" | "GOOGLE"
 
 const consumedOAuthCodes = new Set<string>()
+const oauthExchangeRuns = new Map<string, Promise<Response>>()
 
 export function consumeOAuthCode(code: string): boolean {
   if (!code || consumedOAuthCodes.has(code)) return false
   consumedOAuthCodes.add(code)
   return true
+}
+
+export function runOAuthExchangeOnce(
+  key: string,
+  run: () => Promise<Response>,
+): Promise<Response> {
+  const existing = oauthExchangeRuns.get(key)
+  if (existing) return existing
+  const promise = run()
+  oauthExchangeRuns.set(key, promise)
+  return promise
+}
+
+export function writeAuthHintCookie(maxAgeSec = 60 * 60 * 24 * 30) {
+  if (typeof document === "undefined") return
+  document.cookie = `${FINSIGHT_AUTH_HINT_COOKIE}=1; Path=/; SameSite=Lax; Max-Age=${Math.max(60, maxAgeSec)}`
 }
 
 function readCookie(name: string): string | null {
@@ -80,6 +97,7 @@ export function storeAuthSession(options: {
   } catch {
     void 0
   }
+  writeAuthHintCookie()
   emitAuthChanged()
 }
 

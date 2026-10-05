@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
-  consumeOAuthCode,
+  runOAuthExchangeOnce,
   storeAuthSession,
+  writeAuthHintCookie,
   type AuthProvider,
 } from "@/lib/finsightToken"
 
@@ -20,6 +21,14 @@ function extractProvider(data: unknown): AuthProvider {
     return extractProvider(inner)
   }
   return "KAKAO"
+}
+
+function readErrorMessage(data: unknown, fallback: string): string {
+  if (data && typeof data === "object" && "message" in data) {
+    const message = String((data as { message?: string }).message ?? "").trim()
+    if (message) return message
+  }
+  return fallback
 }
 
 export default function KakaoCallbackClient() {
@@ -40,9 +49,6 @@ export default function KakaoCallbackClient() {
       setMessage("카카오 인가 코드가 없습니다.")
       return
     }
-    if (!consumeOAuthCode(code)) {
-      return
-    }
 
     const savedState = sessionStorage.getItem("kakao_oauth_state")
     if (savedState && state && savedState !== state) {
@@ -52,27 +58,28 @@ export default function KakaoCallbackClient() {
 
     void (async () => {
       try {
-        const res = await fetch("/api/v1/auth/oauth/kakao", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({ code, state }),
-        })
+        const res = await runOAuthExchangeOnce(`kakao:${code}`, () =>
+          fetch("/api/v1/auth/oauth/kakao", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ code, state }),
+            cache: "no-store",
+          }),
+        )
         const data = await res.json().catch(() => null)
         if (!res.ok) {
-          setMessage(
-            (data && typeof data === "object" && "message" in data
-              ? String((data as { message?: string }).message)
-              : null) || "카카오 로그인에 실패했습니다.",
-          )
+          setMessage(readErrorMessage(data, "카카오 로그인에 실패했습니다."))
           return
         }
 
-        const provider = extractProvider(data)
-        storeAuthSession({ authProvider: provider })
+        writeAuthHintCookie()
+        storeAuthSession({ authProvider: extractProvider(data) })
         sessionStorage.removeItem("kakao_oauth_state")
+        setMessage("카카오 로그인에 성공했습니다. 이동 중...")
         router.replace("/")
         router.refresh()
       } catch {
