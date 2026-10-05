@@ -56,3 +56,6 @@ infra/docker-compose.yml
 docker-compose.yml
 test/
 *.ps1
+/SampleHtml
+화면인증001.png
+화면인증002.png
