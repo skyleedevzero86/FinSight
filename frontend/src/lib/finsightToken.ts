@@ -92,6 +92,18 @@ export function clearAuthSession(options?: { emit?: boolean }) {
   } catch {
     void 0
   }
+  if (typeof document !== "undefined") {
+    document.cookie = `${FINSIGHT_AUTH_HINT_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`
+  }
+  if (typeof window !== "undefined") {
+    void fetch("/api/v1/auth/logout", {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: "{}",
+      cache: "no-store",
+    }).catch(() => undefined)
+  }
   if (options?.emit !== false) {
     emitAuthChanged()
   }

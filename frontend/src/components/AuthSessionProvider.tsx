@@ -48,18 +48,22 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
 
   const refresh = useCallback(async () => {
     const hinted = hasAuthSession()
-    setHasToken(hinted)
     if (!hinted) {
       setUser(null)
+      setHasToken(false)
       setReady(true)
       return
     }
     try {
       const next = await fetchCurrentUser()
       setUser(next)
-      setHasToken(Boolean(next) || hasAuthSession())
+      setHasToken(Boolean(next))
+      if (!next) {
+        clearAuthSession({ emit: false })
+      }
     } catch {
       setUser(null)
+      setHasToken(false)
     } finally {
       setReady(true)
     }

@@ -67,15 +67,26 @@ export function authProviderLabel(provider: AuthProvider): string {
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
   if (!hasAuthSession()) return null
   try {
-    const res = await fetch("/api/v1/auth/me", {
+    let res = await fetch("/api/v1/auth/me", {
       headers: authHeadersJson(),
       credentials: "same-origin",
       cache: "no-store",
       signal: AbortSignal.timeout(4000),
     })
     if (res.status === 401 || res.status === 403) {
-      clearAuthSession({ emit: false })
-      return null
+      const refreshed = await refreshAuthSession()
+      if (refreshed) {
+        res = await fetch("/api/v1/auth/me", {
+          headers: authHeadersJson(),
+          credentials: "same-origin",
+          cache: "no-store",
+          signal: AbortSignal.timeout(4000),
+        })
+      }
+      if (res.status === 401 || res.status === 403) {
+        clearAuthSession({ emit: false })
+        return null
+      }
     }
     if (res.status === 502 || res.status === 503 || res.status === 504) {
       return null
@@ -100,5 +111,21 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     return user
   } catch {
     return null
+  }
+}
+
+export async function refreshAuthSession(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/v1/auth/refresh", {
+      method: "POST",
+      headers: authHeadersJson(),
+      credentials: "same-origin",
+      body: "{}",
+      cache: "no-store",
+      signal: AbortSignal.timeout(5000),
+    })
+    return res.ok
+  } catch {
+    return false
   }
 }

@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.history.domain.dto.HistoryPopularityDtos.Pop
 import com.sleekydz86.finsight.core.history.domain.dto.HistoryPopularityDtos.PopularityScore;
 import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodCommentJpaRepository;
 import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodFavoriteJpaRepository;
+import com.sleekydz86.finsight.core.media.livevod.adapter.persistence.LiveVodReactionJpaRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -30,14 +31,17 @@ public class HistoryPopularityService {
     private final BoardJpaRepository boardJpaRepository;
     private final LiveVodFavoriteJpaRepository liveVodFavoriteJpaRepository;
     private final LiveVodCommentJpaRepository liveVodCommentJpaRepository;
+    private final LiveVodReactionJpaRepository liveVodReactionJpaRepository;
 
     public HistoryPopularityService(
             BoardJpaRepository boardJpaRepository,
             LiveVodFavoriteJpaRepository liveVodFavoriteJpaRepository,
-            LiveVodCommentJpaRepository liveVodCommentJpaRepository) {
+            LiveVodCommentJpaRepository liveVodCommentJpaRepository,
+            LiveVodReactionJpaRepository liveVodReactionJpaRepository) {
         this.boardJpaRepository = boardJpaRepository;
         this.liveVodFavoriteJpaRepository = liveVodFavoriteJpaRepository;
         this.liveVodCommentJpaRepository = liveVodCommentJpaRepository;
+        this.liveVodReactionJpaRepository = liveVodReactionJpaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -106,6 +110,11 @@ public class HistoryPopularityService {
             scores.put(id, scores.getOrDefault(id, 0L) + count);
         }
         for (Object[] row : liveVodCommentJpaRepository.countByVideoIds(videoIds)) {
+            String id = (String) row[0];
+            long count = ((Number) row[1]).longValue();
+            scores.put(id, scores.getOrDefault(id, 0L) + count);
+        }
+        for (Object[] row : liveVodReactionJpaRepository.countLikesByVideoIds(videoIds)) {
             String id = (String) row[0];
             long count = ((Number) row[1]).longValue();
             scores.put(id, scores.getOrDefault(id, 0L) + count);

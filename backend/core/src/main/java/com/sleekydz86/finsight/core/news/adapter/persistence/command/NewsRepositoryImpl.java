@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsQueryRequest;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsSearchRequest;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -77,19 +78,17 @@ public class NewsRepositoryImpl implements NewsPersistencePort {
 
     @Override
     public Newses findPopularNews(int limit) {
-        List<NewsJpaEntity> entities = newsJpaRepository.findAll();
-        return new Newses(entities.stream()
+        int safeLimit = Math.max(1, limit);
+        return new Newses(newsJpaRepository.findPopularNews(PageRequest.of(0, safeLimit)).stream()
                 .map(newsJpaMapper::toDomain)
-                .limit(limit)
                 .toList());
     }
 
     @Override
     public Newses findLatestNews(int limit) {
-        List<NewsJpaEntity> entities = newsJpaRepository.findAll();
-        return new Newses(entities.stream()
+        int safeLimit = Math.max(1, limit);
+        return new Newses(newsJpaRepository.findLatestNews(PageRequest.of(0, safeLimit)).stream()
                 .map(newsJpaMapper::toDomain)
-                .limit(limit)
                 .toList());
     }
 

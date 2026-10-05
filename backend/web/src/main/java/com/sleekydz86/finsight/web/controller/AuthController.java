@@ -12,6 +12,7 @@ import com.sleekydz86.finsight.core.global.annotation.PerformanceMonitor;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.exception.AuthenticationFailedException;
 import com.sleekydz86.finsight.core.global.exception.BaseException;
+import com.sleekydz86.finsight.core.global.exception.InvalidTokenException;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.User;
@@ -22,6 +23,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -245,17 +247,42 @@ public class AuthController {
         }
     }
 
-    @Operation(summary = "토큰 갱신", description = "리프레시 토큰으로 새로운 액세스 토큰을 발급받습니다.")
+    @Operation(summary = "토큰 갱신", description = "리프레시 토큰(쿠키 또는 body)으로 새로운 액세스 토큰을 발급받습니다.")
     @PostMapping("/refresh")
     @LogExecution("토큰 갱신")
     @PerformanceMonitor(threshold = 1000, metricName = "token_refresh")
-    public ResponseEntity<ApiResponse<JwtToken>> refresh(@RequestBody @Valid RefreshTokenRequest request) {
+    public ResponseEntity<ApiResponse<JwtToken>> refresh(
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpRequest) {
         try {
-            JwtToken token = authenticationService.refresh(request);
+            String refreshToken = resolveRefreshToken(request, httpRequest);
+            if (refreshToken == null || refreshToken.isBlank()) {
+                throw new InvalidTokenException("REFRESH");
+            }
+            JwtToken token = authenticationService.refresh(new RefreshTokenRequest(refreshToken));
             return withAuthCookies(token, ApiResponse.success(stripJwtSecrets(token), "토큰 갱신에 성공했습니다"));
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("토큰 갱신 처리 중 오류가 발생했습니다: " + e.getMessage(), e);
         }
+    }
+
+    private String resolveRefreshToken(RefreshTokenRequest request, HttpServletRequest httpRequest) {
+        if (request != null && request.getRefreshToken() != null && !request.getRefreshToken().isBlank()) {
+            return request.getRefreshToken().trim();
+        }
+        if (httpRequest.getCookies() == null) {
+            return null;
+        }
+        for (var cookie : httpRequest.getCookies()) {
+            if (JwtCookieSupport.REFRESH_COOKIE.equals(cookie.getName())
+                    && cookie.getValue() != null
+                    && !cookie.getValue().isBlank()) {
+                return cookie.getValue().trim();
+            }
+        }
+        return null;
     }
 
     @Operation(summary = "사용자 로그아웃", description = "현재 사용자를 로그아웃합니다.")

@@ -152,47 +152,13 @@ public class NewsQueryService implements NewsQueryUseCase {
         @Override
         public Newses getPopularNews(int limit) {
                 log.info("인기 뉴스 조회 - 제한: {}", limit);
-
-                NewsQueryRequest request = new NewsQueryRequest(
-                        null, null, null, null, null, null);
-
-                Newses allNews = newsPersistencePort.findAllByFilters(request);
-                List<News> popularNews = allNews.getNewses().stream()
-                        .sorted((n1, n2) -> {
-                                if (n1.getNewsMeta() == null || n1.getNewsMeta().getNewsPublishedTime() == null)
-                                        return 1;
-                                if (n2.getNewsMeta() == null || n2.getNewsMeta().getNewsPublishedTime() == null)
-                                        return -1;
-                                return n2.getNewsMeta().getNewsPublishedTime()
-                                        .compareTo(n1.getNewsMeta().getNewsPublishedTime());
-                        })
-                        .limit(limit)
-                        .toList();
-
-                return new Newses(popularNews);
+                return newsPersistencePort.findPopularNews(Math.max(1, limit));
         }
 
         @Override
         public Newses getLatestNews(int limit) {
                 log.info("최신 뉴스 조회 - 제한: {}", limit);
-
-                NewsQueryRequest request = new NewsQueryRequest(
-                        null, null, null, null, null, null);
-
-                Newses allNews = newsPersistencePort.findAllByFilters(request);
-                List<News> latestNews = allNews.getNewses().stream()
-                        .sorted((n1, n2) -> {
-                                if (n1.getNewsMeta() == null || n1.getNewsMeta().getNewsPublishedTime() == null)
-                                        return 1;
-                                if (n2.getNewsMeta() == null || n2.getNewsMeta().getNewsPublishedTime() == null)
-                                        return -1;
-                                return n2.getNewsMeta().getNewsPublishedTime()
-                                        .compareTo(n1.getNewsMeta().getNewsPublishedTime());
-                        })
-                        .limit(limit)
-                        .toList();
-
-                return new Newses(latestNews);
+                return newsPersistencePort.findLatestNews(Math.max(1, limit));
         }
 
         @Override
