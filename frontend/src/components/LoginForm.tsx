@@ -9,9 +9,11 @@ import AuthCard from "@/components/auth/AuthCard"
 import SocialLoginRow from "@/components/auth/SocialLoginRow"
 import { postLogin } from "@/lib/authClient"
 import { useAuthSession } from "@/components/AuthSessionProvider"
+import { waitForSessionUser } from "@/lib/authSession"
 import {
   storeAuthSession,
   clearAuthSession,
+  writeAuthHintCookie,
   FINSIGHT_FORCE_PASSWORD_KEY,
   type AuthProvider,
 } from "@/lib/finsightToken"
@@ -126,7 +128,9 @@ export default function LoginForm() {
 
       const provider = extractProvider(result.data)
       const passwordRequired = extractPasswordChangeRequired(result.data)
+      let sessionOk = false
       try {
+        writeAuthHintCookie()
         storeAuthSession({
           authProvider: provider,
           remember,
@@ -134,9 +138,14 @@ export default function LoginForm() {
         if (passwordRequired && provider === "WEB") {
           sessionStorage.setItem(FINSIGHT_FORCE_PASSWORD_KEY, "1")
         }
+        sessionOk = await waitForSessionUser()
       } catch {
         void 0
       }
+      if (!sessionOk) {
+        setFormError("로그인은 됐지만 세션 확인에 실패했습니다. 잠시 후 새로고침해 주세요.")
+      }
+
       router.push(
         passwordRequired && provider === "WEB"
           ? "/myinfo/userinfo?password=required"

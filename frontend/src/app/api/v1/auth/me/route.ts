@@ -27,7 +27,7 @@ function hasAuthCredential(req: Request): boolean {
   const auth = req.headers.get("authorization")
   if (auth && auth.toLowerCase().startsWith("bearer ")) return true
   const cookie = req.headers.get("cookie") ?? ""
-  return /(?:^|;\s*)accessToken=[^;]+/.test(cookie)
+  return /(?:^|;\s*)accessToken=[^;\s]+/.test(cookie)
 }
 
 export async function GET(req: Request) {

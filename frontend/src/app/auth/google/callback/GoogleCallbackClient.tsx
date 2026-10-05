@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { waitForSessionUser } from "@/lib/authSession"
 import {
   hasAuthSession,
   runOAuthExchangeOnce,
@@ -30,6 +31,10 @@ function readErrorMessage(data: unknown, fallback: string): string {
     if (message) return message
   }
   return fallback
+}
+
+function isBusinessFailure(data: unknown): boolean {
+  return Boolean(data && typeof data === "object" && (data as { success?: boolean }).success === false)
 }
 
 export default function GoogleCallbackClient() {
@@ -72,7 +77,7 @@ export default function GoogleCallbackClient() {
           }),
         )
         const data = await res.json().catch(() => null)
-        if (!res.ok) {
+        if (!res.ok || isBusinessFailure(data)) {
           setMessage(readErrorMessage(data, "구글 로그인에 실패했습니다."))
           return
         }
@@ -80,12 +85,15 @@ export default function GoogleCallbackClient() {
         writeAuthHintCookie()
         storeAuthSession({ authProvider: extractProvider(data) })
         sessionStorage.removeItem("google_oauth_state")
+        if (!hasAuthSession()) writeAuthHintCookie()
 
-        if (!hasAuthSession()) {
-          writeAuthHintCookie()
-        }
-
-        setMessage("구글 로그인에 성공했습니다. 이동 중...")
+        setMessage("세션 확인 중...")
+        const ok = await waitForSessionUser()
+        setMessage(
+          ok
+            ? "구글 로그인에 성공했습니다. 이동 중..."
+            : "로그인은 됐지만 세션 확인에 실패했습니다. 홈에서 새로고침해 주세요.",
+        )
         router.replace("/")
         router.refresh()
       } catch {

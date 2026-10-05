@@ -2,6 +2,7 @@ import {
   authHeadersJson,
   clearAuthSession,
   hasAuthSession,
+  writeAuthHintCookie,
   type AuthProvider,
 } from "@/lib/finsightToken"
 
@@ -71,7 +72,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
       headers: authHeadersJson(),
       credentials: "include",
       cache: "no-store",
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(20_000),
     })
     if (res.status === 401 || res.status === 403) {
       const refreshed = await refreshAuthSession()
@@ -80,7 +81,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
           headers: authHeadersJson(),
           credentials: "include",
           cache: "no-store",
-          signal: AbortSignal.timeout(4000),
+          signal: AbortSignal.timeout(20_000),
         })
       }
       if (res.status === 401 || res.status === 403) {
@@ -103,7 +104,6 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
       return null
     }
     if (root?.data == null) {
-      clearAuthSession({ emit: false })
       return null
     }
 
@@ -113,9 +113,28 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
       return null
     }
     return user
-  } catch {
+  } catch (err) {
+    if (isAbortLike(err)) {
+      return null
+    }
     return null
   }
+}
+
+export async function waitForSessionUser(attempts = 4): Promise<boolean> {
+  for (let i = 0; i < attempts; i += 1) {
+    writeAuthHintCookie()
+    const user = await fetchCurrentUser()
+    if (user) return true
+    await new Promise((resolve) => setTimeout(resolve, 300 * (i + 1)))
+  }
+  return false
+}
+
+function isAbortLike(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  if (err.name === "AbortError" || err.name === "TimeoutError") return true
+  return /aborted|timeout/i.test(err.message)
 }
 
 export async function refreshAuthSession(): Promise<boolean> {
@@ -126,7 +145,7 @@ export async function refreshAuthSession(): Promise<boolean> {
       credentials: "include",
       body: "{}",
       cache: "no-store",
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(15_000),
     })
     return res.ok
   } catch {

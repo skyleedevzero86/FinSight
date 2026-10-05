@@ -194,18 +194,52 @@ function stripLoginTokens(payload: unknown): unknown {
   return payload
 }
 
-function appendUpstreamSetCookies(upstream: Response, response: NextResponse) {
+function extractTokensFromSetCookie(upstream: Response): {
+  accessToken: string | null
+  refreshToken: string | null
+} {
+  const cookies: string[] = []
   const setCookieAccessor = (
     upstream.headers as Headers & { getSetCookie?: () => string[] }
   ).getSetCookie
   if (typeof setCookieAccessor === "function") {
-    for (const cookie of setCookieAccessor.call(upstream.headers)) {
-      response.headers.append("Set-Cookie", cookie)
-    }
-    return
+    cookies.push(...setCookieAccessor.call(upstream.headers))
+  } else {
+    const single = upstream.headers.get("set-cookie")
+    if (single) cookies.push(single)
   }
-  const setCookie = upstream.headers.get("set-cookie")
-  if (setCookie) response.headers.append("Set-Cookie", setCookie)
+
+  let accessToken: string | null = null
+  let refreshToken: string | null = null
+  for (const raw of cookies) {
+    const first = raw.split(";")[0] ?? ""
+    const eq = first.indexOf("=")
+    if (eq < 0) continue
+    const name = first.slice(0, eq).trim()
+    let value = first.slice(eq + 1).trim()
+    if (value.startsWith('"') && value.endsWith('"') && value.length >= 2) {
+      value = value.slice(1, -1)
+    }
+    try {
+      value = decodeURIComponent(value)
+    } catch {
+      void 0
+    }
+    if (!value) continue
+    if (name === "accessToken") accessToken = value
+    if (name === "refreshToken") refreshToken = value
+  }
+  return { accessToken, refreshToken }
+}
+
+function mergeTokens(
+  fromBody: { accessToken: string | null; refreshToken: string | null },
+  fromCookie: { accessToken: string | null; refreshToken: string | null },
+) {
+  return {
+    accessToken: fromBody.accessToken ?? fromCookie.accessToken,
+    refreshToken: fromBody.refreshToken ?? fromCookie.refreshToken,
+  }
 }
 
 function applyAuthCookies(
@@ -287,17 +321,15 @@ export async function proxyAuthLoginToFinSight(
     const loginSucceeded =
       upstream.ok && root?.success !== false
     const tokens = loginSucceeded
-      ? extractLoginTokens(payload)
+      ? mergeTokens(extractLoginTokens(payload), extractTokensFromSetCookie(upstream))
       : { accessToken: null, refreshToken: null }
     const safePayload = stripLoginTokens(payload)
     const response = NextResponse.json(safePayload ?? { message: "응답을 해석하지 못했습니다." }, {
       status: upstream.status,
     })
     response.headers.set("Cache-Control", "no-store")
-    if (tokens.accessToken) {
+    if (loginSucceeded && tokens.accessToken) {
       applyAuthCookies(response, tokens)
-    } else if (loginSucceeded) {
-      appendUpstreamSetCookies(upstream, response)
     }
     return response
   } catch (err) {

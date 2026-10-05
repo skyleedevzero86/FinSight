@@ -142,13 +142,15 @@ export function isPopupInSchedule(item: PopupItem, now = new Date()): boolean {
 }
 
 const HIDE_PREFIX = "finsight_popup_hide_"
+const HIDE_ALL_KEY = "finsight_popup_hide_all"
 
 export function isPopupHiddenToday(id: string): boolean {
   if (typeof window === "undefined") return false
   try {
+    const today = new Date().toISOString().slice(0, 10)
+    if (localStorage.getItem(HIDE_ALL_KEY) === today) return true
     const raw = localStorage.getItem(`${HIDE_PREFIX}${id}`)
     if (!raw) return false
-    const today = new Date().toISOString().slice(0, 10)
     return raw === today
   } catch {
     return false
@@ -162,6 +164,37 @@ export function hidePopupToday(id: string): void {
     localStorage.setItem(`${HIDE_PREFIX}${id}`, today)
   } catch {
   }
+}
+
+export function hideAllPopupsToday(): void {
+  if (typeof window === "undefined") return
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    localStorage.setItem(HIDE_ALL_KEY, today)
+  } catch {
+  }
+}
+
+export function isAllPopupsHiddenToday(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    return localStorage.getItem(HIDE_ALL_KEY) === today
+  } catch {
+    return false
+  }
+}
+
+export function popupSlidePageSize(total: number): number {
+  if (total >= 3) return 3
+  if (total === 2) return 2
+  return Math.max(0, total)
+}
+
+export function formatPopupSlideCounter(current: number, total: number): string {
+  const cur = String(Math.max(1, current)).padStart(2, "0")
+  const tot = String(Math.max(0, total)).padStart(2, "0")
+  return `${cur} — ${tot}`
 }
 
 export async function uploadPopupImage(
