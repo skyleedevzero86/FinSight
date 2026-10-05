@@ -119,7 +119,9 @@ export default function OnAirSchedule() {
     <section className="bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 md:px-8">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-2xl md:text-3xl font-bold">인기뉴스</h3>
+          <h3 data-popup-anchor="popular-news" className="text-2xl md:text-3xl font-bold">
+            인기뉴스
+          </h3>
           <div className="flex gap-2">
             <button
               onClick={goPrev}

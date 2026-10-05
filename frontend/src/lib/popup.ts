@@ -191,6 +191,32 @@ export function popupSlidePageSize(total: number): number {
   return Math.max(0, total)
 }
 
+export function popupFrameSize(item: Pick<PopupItem, "widthSize" | "verticalSize">): {
+  width: number
+  height: number
+} {
+  const width = item.widthSize && item.widthSize > 0 ? item.widthSize : POPUP_DEFAULT_WIDTH
+  const height = item.verticalSize && item.verticalSize > 0 ? item.verticalSize : POPUP_DEFAULT_HEIGHT
+  return { width, height }
+}
+
+export function popupAllowsHideToday(item: Pick<PopupItem, "stopTodayHide">): boolean {
+  return item.stopTodayHide === "Y"
+}
+
+export function popupFitScale(
+  frames: { width: number; height: number }[],
+  boxWidth: number,
+  boxHeight: number,
+  gap: number,
+): number {
+  if (frames.length === 0 || boxWidth <= 0 || boxHeight <= 0) return 0.45
+  const totalWidth = frames.reduce((sum, frame) => sum + frame.width, 0) + gap * (frames.length - 1)
+  const maxHeight = frames.reduce((max, frame) => Math.max(max, frame.height), 0)
+  if (totalWidth <= 0 || maxHeight <= 0) return 1
+  return Math.min(1, boxWidth / totalWidth, boxHeight / maxHeight)
+}
+
 export function formatPopupSlideCounter(current: number, total: number): string {
   const cur = String(Math.max(1, current)).padStart(2, "0")
   const tot = String(Math.max(0, total)).padStart(2, "0")

@@ -1,20 +1,38 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useLayoutEffect, useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react"
 import { rewriteDummyAssetUrl, rewriteDummyLinkUrl } from "@/lib/dummyAssetUrl"
 import {
   fetchPublicPopupItems,
   formatPopupSlideCounter,
-  hideAllPopupsToday,
+  hidePopupToday,
   isAllPopupsHiddenToday,
   isPopupHiddenToday,
   isPopupInSchedule,
+  popupAllowsHideToday,
   popupSlidePageSize,
   type PopupItem,
 } from "@/lib/popup"
 
 const AUTO_MS = 4500
+const SLIDE_GAP = 12
+const POPUP_CARD_WIDTH = 480
+
+function readPopupCardSize(): { width: number; height: number; offsetTop: number } {
+  const layer = document.querySelector("[data-popup-layer]")
+  const mainImage = document.querySelector("[data-popup-anchor='main-image']")
+  const popular = document.querySelector("[data-popup-anchor='popular-news']")
+  if (!mainImage || !popular) return { width: POPUP_CARD_WIDTH, height: 560, offsetTop: 0 }
+  const imageTop = mainImage.getBoundingClientRect().top
+  const newsTop = popular.getBoundingClientRect().top
+  const layerTop = layer?.getBoundingClientRect().top ?? imageTop
+  return {
+    width: POPUP_CARD_WIDTH,
+    height: Math.max(160, Math.round(newsTop - imageTop)),
+    offsetTop: Math.round(imageTop - layerTop),
+  }
+}
 
 function visibleWindow(items: PopupItem[], start: number, size: number): PopupItem[] {
   if (items.length === 0 || size <= 0) return []
@@ -25,21 +43,37 @@ function visibleWindow(items: PopupItem[], start: number, size: number): PopupIt
   return out
 }
 
-function PopupCard({ item }: { item: PopupItem }) {
+function readMainBand(): { top: number; height: number } {
+  const header = document.querySelector("header")
+  const footer = document.querySelector("footer")
+  const headerH = header ? Math.ceil(header.getBoundingClientRect().height) : 0
+  const footerTop = footer ? footer.getBoundingClientRect().top : window.innerHeight
+  const bottom = Math.min(window.innerHeight, footerTop)
+  return { top: headerH, height: Math.max(180, bottom - headerH) }
+}
+
+function PopupCard({
+  item,
+  width,
+  height,
+}: {
+  item: PopupItem
+  width: number
+  height: number
+}) {
   const image = rewriteDummyAssetUrl(item.imgPath)
   const href = rewriteDummyLinkUrl(item.fileUrl)
   const target = item.linkTarget === "_self" ? "_self" : "_blank"
 
   const body = (
-    <div className="flex h-full min-h-[28rem] w-full flex-col overflow-hidden rounded-md bg-white shadow-[0_8px_28px_rgba(0,0,0,0.35)] sm:min-h-[32rem]">
+    <div
+      className="overflow-hidden rounded-md bg-white shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
+      style={{ width, height }}
+    >
       {image ? (
-        <img
-          src={image}
-          alt={item.title}
-          className="h-full w-full flex-1 object-cover object-top"
-        />
+        <img src={image} alt={item.title} className="h-full w-full object-cover" />
       ) : (
-        <div className="flex flex-1 items-center justify-center bg-slate-100 px-5 py-10 text-center text-base font-semibold text-slate-800">
+        <div className="flex h-full items-center justify-center px-4 text-center text-sm font-semibold text-slate-800">
           {item.title}
         </div>
       )}
@@ -52,7 +86,7 @@ function PopupCard({ item }: { item: PopupItem }) {
       href={href}
       target={target}
       rel={target === "_blank" ? "noopener noreferrer" : undefined}
-      className="block h-full w-full"
+      className="block shrink-0"
     >
       {body}
     </a>
@@ -64,6 +98,8 @@ export default function SitePopupLayer() {
   const [start, setStart] = useState(0)
   const [playing, setPlaying] = useState(true)
   const [open, setOpen] = useState(true)
+  const [band, setBand] = useState({ top: 96, height: 480 })
+  const [card, setCard] = useState({ width: POPUP_CARD_WIDTH, height: 560, offsetTop: 0 })
 
   useEffect(() => {
     let cancelled = false
@@ -95,6 +131,27 @@ export default function SitePopupLayer() {
     () => visibleWindow(items, start, pageSize),
     [items, start, pageSize],
   )
+  const showHideToday = slides.some(popupAllowsHideToday)
+
+  useEffect(() => {
+    if (!open || total === 0) return
+    const apply = () => setBand(readMainBand())
+    apply()
+    window.addEventListener("resize", apply)
+    window.addEventListener("scroll", apply, { passive: true })
+    return () => {
+      window.removeEventListener("resize", apply)
+      window.removeEventListener("scroll", apply)
+    }
+  }, [open, total])
+
+  useLayoutEffect(() => {
+    if (!open || total === 0) return
+    const apply = () => setCard(readPopupCardSize())
+    apply()
+    window.addEventListener("resize", apply)
+    return () => window.removeEventListener("resize", apply)
+  }, [open, total])
 
   useEffect(() => {
     if (!playing || total <= 1 || !open) return
@@ -119,103 +176,96 @@ export default function SitePopupLayer() {
   }
 
   function onHideToday() {
-    hideAllPopupsToday()
-    setOpen(false)
+    const targets = slides.filter(popupAllowsHideToday)
+    for (const item of targets) hidePopupToday(item.id)
+    const hidden = new Set(targets.map((item) => item.id))
+    const remaining = items.filter((item) => !hidden.has(item.id) && !isPopupHiddenToday(item.id))
+    setItems(remaining)
+    setStart(0)
+    if (remaining.length === 0) setOpen(false)
   }
 
-  function onClose() {
-    setOpen(false)
-  }
-
-  const gridClass =
-    pageSize >= 3
-      ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-      : pageSize === 2
-        ? "grid-cols-1 sm:grid-cols-2"
-        : "grid-cols-1"
+  const controlBtn =
+    "inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25"
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 p-4 sm:p-6">
+    <div className="pointer-events-none absolute inset-0 z-40">
       <div
-        className="flex w-full max-w-[72rem] flex-col gap-4"
+        className="pointer-events-auto sticky z-40 overflow-hidden bg-black/40 backdrop-blur-md"
+        style={{ top: band.top, height: band.height }}
+        data-popup-layer=""
         role="dialog"
         aria-modal="true"
         aria-label="finsight 알리미"
       >
-        <div className="relative flex items-center justify-center px-2 pt-1">
-          <h2 className="text-center text-[1.35rem] font-semibold tracking-tight text-white sm:text-[1.6rem]">
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-10 px-4">
+          <h2 className="text-center text-2xl font-semibold tracking-tight text-white sm:text-3xl">
             finsight 알리미
           </h2>
-          <div className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center gap-2 text-white sm:gap-3">
-            <span className="hidden font-medium tabular-nums tracking-wide sm:inline" aria-live="polite">
+          <div className="pointer-events-auto absolute right-4 top-1/2 flex -translate-y-1/2 items-center gap-2">
+            <span className="text-sm font-medium tabular-nums text-white" aria-live="polite">
               {counter}
             </span>
-            <div className="flex items-center gap-0.5">
-              <button
-                type="button"
-                className="rounded p-1.5 text-white/90 transition hover:bg-white/10 hover:text-white"
-                aria-label="이전 팝업"
-                onClick={goPrev}
-              >
-                <ChevronLeft className="h-5 w-5" strokeWidth={2.2} />
-              </button>
-              <button
-                type="button"
-                className="rounded p-1.5 text-white/90 transition hover:bg-white/10 hover:text-white"
-                aria-label={playing ? "자동 슬라이드 일시정지" : "자동 슬라이드 재생"}
-                onClick={() => setPlaying((v) => !v)}
-              >
-                {playing ? (
-                  <Pause className="h-5 w-5" strokeWidth={2.2} />
-                ) : (
-                  <Play className="h-5 w-5" strokeWidth={2.2} />
-                )}
-              </button>
-              <button
-                type="button"
-                className="rounded p-1.5 text-white/90 transition hover:bg-white/10 hover:text-white"
-                aria-label="다음 팝업"
-                onClick={goNext}
-              >
-                <ChevronRight className="h-5 w-5" strokeWidth={2.2} />
-              </button>
-            </div>
+            {total > 1 ? (
+              <>
+                <button type="button" className={controlBtn} aria-label="이전 팝업" onClick={goPrev}>
+                  <ChevronLeft className="h-6 w-6" strokeWidth={2.2} />
+                </button>
+                <button
+                  type="button"
+                  className={controlBtn}
+                  aria-label={playing ? "자동 슬라이드 일시정지" : "자동 슬라이드 재생"}
+                  onClick={() => setPlaying((v) => !v)}
+                >
+                  {playing ? (
+                    <Pause className="h-5 w-5" strokeWidth={2.2} />
+                  ) : (
+                    <Play className="h-5 w-5" strokeWidth={2.2} />
+                  )}
+                </button>
+                <button type="button" className={controlBtn} aria-label="다음 팝업" onClick={goNext}>
+                  <ChevronRight className="h-6 w-6" strokeWidth={2.2} />
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
 
-        <p className="text-center text-sm font-medium tabular-nums text-white/90 sm:hidden" aria-live="polite">
-          {counter}
-        </p>
-
-        <div className={`grid gap-3 sm:gap-4 ${gridClass}`}>
+        <div
+          className="absolute left-1/2 flex -translate-x-1/2 items-start justify-center"
+          style={{ top: card.offsetTop, gap: SLIDE_GAP }}
+        >
           {slides.map((item, idx) => (
-            <div key={`${item.id}-${start}-${idx}`} className="min-w-0">
-              <PopupCard item={item} />
-            </div>
+            <PopupCard
+              key={`${item.id}-${start}-${idx}`}
+              item={item}
+              width={card.width}
+              height={card.height}
+            />
           ))}
         </div>
 
-        <div className="mt-1 flex flex-wrap items-center justify-center gap-3 pb-1">
-          <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-full bg-[#1f6b66] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#1a5c58]"
-            onClick={onHideToday}
-          >
-            <span
-              className="flex h-4 w-4 items-center justify-center rounded-[2px] border border-white/80 text-[10px] leading-none"
-              aria-hidden
+        <div
+          className="absolute left-1/2 z-10 flex -translate-x-1/2 flex-wrap items-center justify-center gap-3"
+          style={{ top: card.offsetTop + card.height + 12 }}
+        >
+            {showHideToday ? (
+              <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-[#1f6b66] px-4 text-sm font-medium text-white">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 accent-white"
+                  onChange={onHideToday}
+                />
+                오늘 하루 열지 않기
+              </label>
+            ) : null}
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center rounded-full bg-[#1f6b66] px-8 text-sm font-medium text-white transition hover:bg-[#1a5c58]"
+              onClick={() => setOpen(false)}
             >
-              ✓
-            </span>
-            오늘 하루 열지 않기
-          </button>
-          <button
-            type="button"
-            className="rounded-full bg-[#1f6b66] px-8 py-2.5 text-sm font-medium text-white transition hover:bg-[#1a5c58]"
-            onClick={onClose}
-          >
-            닫기
-          </button>
+              닫기
+            </button>
         </div>
       </div>
     </div>

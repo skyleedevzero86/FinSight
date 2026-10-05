@@ -107,7 +107,10 @@ export default function MainSlider() {
   }
 
   return (
-    <div className="relative w-full h-[300px] md:h-[500px] lg:h-[600px] overflow-hidden bg-black">
+    <div
+      data-popup-anchor="main-image"
+      className="relative w-full h-[300px] md:h-[500px] lg:h-[600px] overflow-hidden bg-black"
+    >
       <div className="relative w-full h-full">
         {slides.map((slide, index) => (
           <div
