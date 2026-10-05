@@ -224,6 +224,22 @@ export default function Header() {
                 <>
                   <li>
                     <Link
+                      href="/myinfo"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      나의 메뉴
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/myinfo/userinfo"
+                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                    >
+                      나의 정보
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
                       href="/myinfo/history"
                       className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                     >

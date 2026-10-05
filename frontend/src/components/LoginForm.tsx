@@ -139,7 +139,7 @@ export default function LoginForm() {
       }
       router.push(
         passwordRequired && provider === "WEB"
-          ? "/myinfo?password=required"
+          ? "/myinfo/userinfo?password=required"
           : nextPath || "/",
       )
       router.refresh()

@@ -31,8 +31,8 @@ export default function PasswordExpiryGuard() {
         } catch {
           void 0
         }
-        if (!pathname.startsWith("/myinfo")) {
-          router.replace("/myinfo?password=required")
+        if (!pathname.startsWith("/myinfo/userinfo")) {
+          router.replace("/myinfo/userinfo?password=required")
         }
       } catch {
         void 0
