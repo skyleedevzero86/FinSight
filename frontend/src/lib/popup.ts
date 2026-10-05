@@ -217,6 +217,7 @@ export async function fetchAdminPopupItems(options?: {
   if (options?.domainId) params.set("domainId", options.domainId)
   const res = await fetch(`/api/v1/popup/items?${params.toString()}`, {
     headers: authHeadersJson(),
+    credentials: "same-origin",
     cache: "no-store",
   })
   const payload = await readJson(res)
@@ -232,6 +233,7 @@ export async function createPopupItem(
   const res = await fetch("/api/v1/popup/items", {
     method: "POST",
     headers: authHeadersJson(),
+    credentials: "same-origin",
     body: JSON.stringify(input),
     cache: "no-store",
   })
@@ -249,6 +251,7 @@ export async function updatePopupItem(
   const res = await fetch(`/api/v1/popup/items/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: authHeadersJson(),
+    credentials: "same-origin",
     body: JSON.stringify(input),
     cache: "no-store",
   })
@@ -265,6 +268,7 @@ export async function deletePopupItem(
   const res = await fetch(`/api/v1/popup/items/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: authHeadersJson(),
+    credentials: "same-origin",
     cache: "no-store",
   })
   const payload = await readJson(res)

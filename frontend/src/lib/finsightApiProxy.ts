@@ -93,6 +93,45 @@ function clientForwardHeaders(req: Request): Record<string, string> {
   return headers
 }
 
+function readCookieValue(cookieHeader: string, name: string): string | null {
+  const parts = cookieHeader.split(";")
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed.startsWith(`${name}=`)) continue
+    const raw = trimmed.slice(name.length + 1)
+    if (!raw) return null
+    try {
+      return decodeURIComponent(raw)
+    } catch {
+      return raw
+    }
+  }
+  return null
+}
+
+function applyCredentialHeaders(
+  req: Request,
+  headers: Record<string, string>,
+  forwardCredentials: boolean,
+): void {
+  if (!forwardCredentials) return
+
+  const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
+  const cookie = req.headers.get("cookie") ?? req.headers.get("Cookie")
+  if (cookie) headers.Cookie = cookie
+
+  if (auth) {
+    headers.Authorization = auth
+    return
+  }
+  if (!cookie) return
+
+  const accessToken = readCookieValue(cookie, "accessToken")
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`
+  }
+}
+
 export async function proxyJsonToFinSight(
   req: Request,
   backendPath: string,
@@ -115,20 +154,18 @@ export async function proxyJsonToFinSight(
     const timeoutMs = options?.timeoutMs ?? getProxyTimeoutMs()
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
     const forwardCredentials = options?.forwardCredentials !== false
-    const authHeader = req.headers.get("authorization")
-    const cookieHeader = req.headers.get("cookie")
+    const outboundHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...clientForwardHeaders(req),
+    }
+    applyCredentialHeaders(req, outboundHeaders, forwardCredentials)
 
     let upstream: Response
     try {
       upstream = await fetch(target, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          ...clientForwardHeaders(req),
-          ...(forwardCredentials && authHeader ? { Authorization: authHeader } : {}),
-          ...(forwardCredentials && cookieHeader ? { Cookie: cookieHeader } : {}),
-        },
+        headers: outboundHeaders,
         body,
         signal: controller.signal,
       })
@@ -188,12 +225,7 @@ export async function mirrorRequestToFinSight(
       Connection: "close",
       ...clientForwardHeaders(req),
     }
-    if (forwardCredentials) {
-      const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
-      if (auth) headers.Authorization = auth
-      const cookie = req.headers.get("cookie") ?? req.headers.get("Cookie")
-      if (cookie) headers.Cookie = cookie
-    }
+    applyCredentialHeaders(req, headers, forwardCredentials)
     const contentType = req.headers.get("content-type") ?? req.headers.get("Content-Type")
     const target = `${base}${backendPathAndQuery.startsWith("/") ? "" : "/"}${backendPathAndQuery}`
     const controller = new AbortController()
@@ -306,10 +338,7 @@ export async function mirrorBinaryRequestToFinSight(
       Accept: req.headers.get("accept") ?? "*/*",
       ...clientForwardHeaders(req),
     }
-    const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
-    if (auth) headers.Authorization = auth
-    const cookie = req.headers.get("cookie") ?? req.headers.get("Cookie")
-    if (cookie) headers.Cookie = cookie
+    applyCredentialHeaders(req, headers, true)
     const contentType = req.headers.get("content-type") ?? req.headers.get("Content-Type")
     if (
       contentType &&

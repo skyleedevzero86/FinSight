@@ -39,6 +39,7 @@ async function postOnce(
   const res = await fetch(`/api/editor/images${qs}`, {
     method: "POST",
     headers: { ...authHeaders() },
+    credentials: "same-origin",
     body: form,
     cache: "no-store",
   })

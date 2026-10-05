@@ -75,7 +75,11 @@ export default function AdminPopupClient() {
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const result = await fetchAdminPopupItems({ page, size: 20, activeOnly: false })
+    let result = await fetchAdminPopupItems({ page, size: 20, activeOnly: false })
+    if (!result.ok && /권한|로그인|인증/i.test(result.message)) {
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      result = await fetchAdminPopupItems({ page, size: 20, activeOnly: false })
+    }
     setLoading(false)
     if (!result.ok) {
       setRows([])
@@ -387,8 +391,8 @@ export default function AdminPopupClient() {
             {form.imgPath ? (
               <div className="space-y-1">
                 <p className="text-xs text-gray-600">
-                  미리보기 ({POPUP_DEFAULT_WIDTH}×{POPUP_DEFAULT_HEIGHT}px · {previewScale * 100}%
-                  축소)
+                  미리보기 ({POPUP_DEFAULT_WIDTH}×{POPUP_DEFAULT_HEIGHT}px ·{" "}
+                  {Math.round(previewScale * 100)}% 축소)
                 </p>
                 <div
                   className="overflow-hidden rounded border border-gray-200 bg-white shadow-sm"
@@ -453,8 +457,8 @@ export default function AdminPopupClient() {
                   setForm((f) => ({ ...f, noticeActive: e.target.value === "N" ? "N" : "Y" }))
                 }
               >
-                <option value="Y">Y · 사이트에 표시</option>
-                <option value="N">N · 숨김</option>
+                <option value="Y">사이트에 표시</option>
+                <option value="N">숨김</option>
               </select>
             </label>
             <label className="block text-xs text-gray-600">
@@ -466,8 +470,8 @@ export default function AdminPopupClient() {
                   setForm((f) => ({ ...f, stopTodayHide: e.target.value === "Y" ? "Y" : "N" }))
                 }
               >
-                <option value="Y">Y · 버튼 표시</option>
-                <option value="N">N · 버튼 숨김</option>
+                <option value="Y">버튼 표시</option>
+                <option value="N">버튼 숨김</option>
               </select>
             </label>
             <div className="flex gap-2 pt-1">

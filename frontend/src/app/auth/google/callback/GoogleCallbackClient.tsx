@@ -72,6 +72,9 @@ export default function GoogleCallbackClient() {
 
         const provider = extractProvider(data)
         storeAuthSession({ authProvider: provider })
+        if (typeof document !== "undefined") {
+          document.cookie = "finsight_auth=1; Path=/; SameSite=Lax; Max-Age=3600"
+        }
         sessionStorage.removeItem("google_oauth_state")
         router.replace("/")
         router.refresh()
