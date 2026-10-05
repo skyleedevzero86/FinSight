@@ -62,7 +62,7 @@ export default function GoogleCallbackClient() {
         const res = await runOAuthExchangeOnce(`google:${code}`, () =>
           fetch("/api/v1/auth/oauth/google", {
             method: "POST",
-            credentials: "same-origin",
+            credentials: "include",
             headers: {
               "Content-Type": "application/json",
               Accept: "application/json",

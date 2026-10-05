@@ -62,8 +62,8 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
       }
       setUser(next)
       setHasToken(Boolean(next))
-      if (!next) {
-        clearAuthSession({ emit: false })
+      if (!next && !hasAuthSession()) {
+        setHasToken(false)
       }
     } catch {
       setUser(null)
@@ -78,7 +78,7 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
       await fetch("/api/v1/auth/logout", {
         method: "POST",
         headers: { ...authHeadersJson(), "Content-Type": "application/json" },
-        credentials: "same-origin",
+        credentials: "include",
         body: "{}",
       })
     } catch {

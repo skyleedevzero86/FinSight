@@ -117,7 +117,7 @@ export function clearAuthSession(options?: { emit?: boolean }) {
     void fetch("/api/v1/auth/logout", {
       method: "POST",
       headers: { Accept: "application/json", "Content-Type": "application/json" },
-      credentials: "same-origin",
+      credentials: "include",
       body: "{}",
       cache: "no-store",
     }).catch(() => undefined)

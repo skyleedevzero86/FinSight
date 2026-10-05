@@ -64,7 +64,7 @@ public class AuthController {
         try {
             var session = authenticationService.loginWithUser(request);
             LoginResultResponse result = socialAuthService.toWebLoginResult(session.user(), session.token());
-            return withAuthCookies(session.token(), ApiResponse.success(stripTokenSecrets(result), "로그인에 성공했습니다"));
+            return withAuthCookies(session.token(), ApiResponse.success(result, "로그인에 성공했습니다"));
         } catch (AuthenticationFailedException e) {
             return ResponseEntity.ok(ApiResponse.error(e.getMessage(), 401));
         } catch (BaseException e) {
@@ -106,7 +106,7 @@ public class AuthController {
             @RequestBody @Valid SocialOAuthCodeRequest request) {
         LoginResultResponse result = socialAuthService.loginWithNaver(request.getCode(), request.getState());
         return withAuthCookies(result.getToken(),
-                ApiResponse.success(stripTokenSecrets(result), "네이버 로그인에 성공했습니다"));
+                ApiResponse.success(result, "네이버 로그인에 성공했습니다"));
     }
 
     @Operation(summary = "카카오 로그인", description = "카카오 인가 코드로 로그인합니다.")
@@ -117,7 +117,7 @@ public class AuthController {
             @RequestBody @Valid SocialOAuthCodeRequest request) {
         LoginResultResponse result = socialAuthService.loginWithKakao(request.getCode(), request.getState());
         return withAuthCookies(result.getToken(),
-                ApiResponse.success(stripTokenSecrets(result), "카카오 로그인에 성공했습니다"));
+                ApiResponse.success(result, "카카오 로그인에 성공했습니다"));
     }
 
     @Operation(summary = "구글 로그인", description = "구글 인가 코드로 로그인합니다.")
@@ -128,7 +128,7 @@ public class AuthController {
             @RequestBody @Valid SocialOAuthCodeRequest request) {
         LoginResultResponse result = socialAuthService.loginWithGoogle(request.getCode(), request.getState());
         return withAuthCookies(result.getToken(),
-                ApiResponse.success(stripTokenSecrets(result), "구글 로그인에 성공했습니다"));
+                ApiResponse.success(result, "구글 로그인에 성공했습니다"));
     }
 
     @Operation(summary = "네이버 연결 끊기 콜백", description = "네이버 연결 끊기 알림을 처리합니다.")
@@ -183,7 +183,7 @@ public class AuthController {
             ApiResponse<JwtToken> response = otpAuthenticationService.loginWithOtp(request);
             if (response != null && response.isSuccess() && response.getData() != null) {
                 return withAuthCookies(response.getData(),
-                        ApiResponse.success(stripJwtSecrets(response.getData()), response.getMessage()));
+                        ApiResponse.success(response.getData(), response.getMessage()));
             }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -260,7 +260,7 @@ public class AuthController {
                 throw new InvalidTokenException("REFRESH");
             }
             JwtToken token = authenticationService.refresh(new RefreshTokenRequest(refreshToken));
-            return withAuthCookies(token, ApiResponse.success(stripJwtSecrets(token), "토큰 갱신에 성공했습니다"));
+            return withAuthCookies(token, ApiResponse.success(token, "토큰 갱신에 성공했습니다"));
         } catch (BaseException e) {
             throw e;
         } catch (Exception e) {
@@ -311,23 +311,4 @@ public class AuthController {
         return ResponseEntity.ok().headers(headers).body(body);
     }
 
-    private LoginResultResponse stripTokenSecrets(LoginResultResponse result) {
-        if (result == null) {
-            return null;
-        }
-        result.setToken(stripJwtSecrets(result.getToken()));
-        return result;
-    }
-
-    private JwtToken stripJwtSecrets(JwtToken token) {
-        if (token == null) {
-            return null;
-        }
-        return JwtToken.builder()
-                .accessToken(null)
-                .refreshToken(null)
-                .expiresIn(token.getExpiresAt())
-                .tokenType(token.getTokenType())
-                .build();
-    }
 }

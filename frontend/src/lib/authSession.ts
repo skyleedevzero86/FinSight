@@ -69,7 +69,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
   try {
     let res = await fetch("/api/v1/auth/me", {
       headers: authHeadersJson(),
-      credentials: "same-origin",
+      credentials: "include",
       cache: "no-store",
       signal: AbortSignal.timeout(4000),
     })
@@ -78,7 +78,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
       if (refreshed) {
         res = await fetch("/api/v1/auth/me", {
           headers: authHeadersJson(),
-          credentials: "same-origin",
+          credentials: "include",
           cache: "no-store",
           signal: AbortSignal.timeout(4000),
         })
@@ -98,7 +98,11 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     if (root?.unavailable === true) {
       return null
     }
-    if (root?.sessionInvalid === true || root?.data == null) {
+    if (root?.sessionInvalid === true) {
+      clearAuthSession({ emit: false })
+      return null
+    }
+    if (root?.data == null) {
       clearAuthSession({ emit: false })
       return null
     }
@@ -119,7 +123,7 @@ export async function refreshAuthSession(): Promise<boolean> {
     const res = await fetch("/api/v1/auth/refresh", {
       method: "POST",
       headers: authHeadersJson(),
-      credentials: "same-origin",
+      credentials: "include",
       body: "{}",
       cache: "no-store",
       signal: AbortSignal.timeout(5000),

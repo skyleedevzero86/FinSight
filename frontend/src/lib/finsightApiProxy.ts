@@ -1,5 +1,9 @@
+import { NextResponse } from "next/server"
+
 const DEFAULT_PROXY_TIMEOUT_MS = 45_000
 const DEFAULT_API_BASE_URL = "http://localhost:8080"
+const ACCESS_COOKIE_MAX_AGE_SEC = 60 * 60
+const REFRESH_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 30
 
 export function getFinSightBaseUrl(): string | null {
   const base = process.env.FINSIGHT_API_BASE_URL?.replace(/\/$/, "")
@@ -129,6 +133,178 @@ function applyCredentialHeaders(
   const accessToken = readCookieValue(cookie, "accessToken")
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") return null
+  return value as Record<string, unknown>
+}
+
+function extractLoginTokens(payload: unknown): {
+  accessToken: string | null
+  refreshToken: string | null
+} {
+  const root = asRecord(payload)
+  if (root && root.success === false) {
+    return { accessToken: null, refreshToken: null }
+  }
+  const data = asRecord(root?.data) ?? root
+  const token = asRecord(data?.token) ?? data
+  const accessToken =
+    typeof token?.accessToken === "string" && token.accessToken.trim()
+      ? token.accessToken.trim()
+      : null
+  const refreshToken =
+    typeof token?.refreshToken === "string" && token.refreshToken.trim()
+      ? token.refreshToken.trim()
+      : null
+  return { accessToken, refreshToken }
+}
+
+function stripLoginTokens(payload: unknown): unknown {
+  const root = asRecord(payload)
+  if (!root) return payload
+  const data = asRecord(root.data)
+  if (!data) return payload
+  const token = asRecord(data.token)
+  if (token) {
+    return {
+      ...root,
+      data: {
+        ...data,
+        token: {
+          ...token,
+          accessToken: null,
+          refreshToken: null,
+        },
+      },
+    }
+  }
+  if ("accessToken" in data || "refreshToken" in data) {
+    return {
+      ...root,
+      data: {
+        ...data,
+        accessToken: null,
+        refreshToken: null,
+      },
+    }
+  }
+  return payload
+}
+
+function appendUpstreamSetCookies(upstream: Response, response: NextResponse) {
+  const setCookieAccessor = (
+    upstream.headers as Headers & { getSetCookie?: () => string[] }
+  ).getSetCookie
+  if (typeof setCookieAccessor === "function") {
+    for (const cookie of setCookieAccessor.call(upstream.headers)) {
+      response.headers.append("Set-Cookie", cookie)
+    }
+    return
+  }
+  const setCookie = upstream.headers.get("set-cookie")
+  if (setCookie) response.headers.append("Set-Cookie", setCookie)
+}
+
+function applyAuthCookies(
+  response: NextResponse,
+  tokens: { accessToken: string | null; refreshToken: string | null },
+) {
+  if (tokens.accessToken) {
+    response.cookies.set("accessToken", tokens.accessToken, {
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: ACCESS_COOKIE_MAX_AGE_SEC,
+    })
+    response.cookies.set("finsight_auth", "1", {
+      httpOnly: false,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: ACCESS_COOKIE_MAX_AGE_SEC,
+    })
+  }
+  if (tokens.refreshToken) {
+    response.cookies.set("refreshToken", tokens.refreshToken, {
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: REFRESH_COOKIE_MAX_AGE_SEC,
+    })
+  }
+}
+
+export async function proxyAuthLoginToFinSight(
+  req: Request,
+  backendPath: string,
+  options?: { timeoutMs?: number; forwardCredentials?: boolean },
+): Promise<Response> {
+  try {
+    const base = getFinSightBaseUrl()
+    if (!base) return finSightUnavailableResponse()
+
+    let body: string
+    try {
+      body = JSON.stringify(await req.json().catch(() => ({})))
+    } catch {
+      body = "{}"
+    }
+
+    const target = `${base}${backendPath.startsWith("/") ? "" : "/"}${backendPath}`
+    const controller = new AbortController()
+    const timeoutMs = options?.timeoutMs ?? getProxyTimeoutMs()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+    const outboundHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Connection: "close",
+      ...clientForwardHeaders(req),
+    }
+    applyCredentialHeaders(req, outboundHeaders, options?.forwardCredentials === true)
+
+    let upstream: Response
+    try {
+      upstream = await fetch(target, {
+        method: "POST",
+        headers: outboundHeaders,
+        body,
+        signal: controller.signal,
+        cache: "no-store",
+      })
+    } catch (err) {
+      return upstreamFailureResponse(err, isAbortError(err))
+    } finally {
+      clearTimeout(timeoutId)
+    }
+
+    const payload: unknown = await upstream.json().catch(() => null)
+    const root = asRecord(payload)
+    const loginSucceeded =
+      upstream.ok && root?.success !== false
+    const tokens = loginSucceeded
+      ? extractLoginTokens(payload)
+      : { accessToken: null, refreshToken: null }
+    const safePayload = stripLoginTokens(payload)
+    const response = NextResponse.json(safePayload ?? { message: "응답을 해석하지 못했습니다." }, {
+      status: upstream.status,
+    })
+    response.headers.set("Cache-Control", "no-store")
+    if (tokens.accessToken) {
+      applyAuthCookies(response, tokens)
+    } else if (loginSucceeded) {
+      appendUpstreamSetCookies(upstream, response)
+    }
+    return response
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("인증 프록시 처리 중 오류가 발생했습니다.", err)
+    }
+    return jsonResponse(500, "요청을 처리하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
   }
 }
 

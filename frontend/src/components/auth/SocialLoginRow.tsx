@@ -159,7 +159,7 @@ export default function SocialLoginRow() {
             title={button.label}
             disabled={loadingProvider === button.provider}
             onClick={() => void handleClick(button.provider)}
-            className={`flex h-13 w-13 items-center justify-center rounded-full shadow-sm transition hover:scale-[1.03] disabled:opacity-60 ${button.bgClass}`}
+            className={`flex h-13 w-13 items-center justify-center rounded-full transition hover:scale-[1.03] disabled:opacity-60 ${button.bgClass}`}
           >
             {button.content}
           </button>

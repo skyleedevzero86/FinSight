@@ -61,7 +61,7 @@ export default function NaverCallbackClient() {
         const res = await runOAuthExchangeOnce(`naver:${code}`, () =>
           fetch("/api/v1/auth/oauth/naver", {
             method: "POST",
-            credentials: "same-origin",
+            credentials: "include",
             headers: {
               "Content-Type": "application/json",
               Accept: "application/json",

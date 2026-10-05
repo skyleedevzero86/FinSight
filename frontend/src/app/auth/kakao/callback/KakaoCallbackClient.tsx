@@ -61,7 +61,7 @@ export default function KakaoCallbackClient() {
         const res = await runOAuthExchangeOnce(`kakao:${code}`, () =>
           fetch("/api/v1/auth/oauth/kakao", {
             method: "POST",
-            credentials: "same-origin",
+            credentials: "include",
             headers: {
               "Content-Type": "application/json",
               Accept: "application/json",
