@@ -21,7 +21,7 @@ export default function MyInfoShell({ children }: { children: React.ReactNode })
     return <div className="min-h-[50vh] w-full flex-1 bg-white" />
   }
 
-  const home = pathname === "/myinfo"
+  const home = pathname === "/myinfo" || pathname === "/myinfo/activity"
 
   return (
     <div className="flex min-h-[calc(100dvh-10.5rem)] w-full flex-1 bg-white">
