@@ -10,6 +10,8 @@ public interface YoutubeImportSourcePersistencePort {
 
     Optional<YoutubeImportSource> findById(Long sourceId);
 
+    Optional<YoutubeImportSource> lockById(Long sourceId);
+
     List<YoutubeImportSource> findAll();
 
     List<YoutubeImportSource> findActiveSources();

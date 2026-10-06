@@ -247,12 +247,20 @@ export async function changeAdminUserRole(
   return { ok: true, data: parsed }
 }
 
-export function canManageUsers(role: string | undefined): boolean {
-  if (!role) return false
+function normalizeRole(role: string | undefined): string {
+  if (!role) return ""
   let normalized = role.trim()
   if (normalized.toUpperCase().startsWith("ROLE_")) {
     normalized = normalized.slice(5)
   }
-  const upper = normalized.toUpperCase()
+  return normalized.toUpperCase()
+}
+
+export function isAdminRole(role: string | undefined): boolean {
+  return normalizeRole(role) === "ADMIN"
+}
+
+export function canManageUsers(role: string | undefined): boolean {
+  const upper = normalizeRole(role)
   return upper === "ADMIN" || upper === "MANAGER"
 }

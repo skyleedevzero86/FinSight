@@ -77,6 +77,30 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
     }
 
     @Override
+    public Page<YoutubeVideoMeta> searchAdmin(
+            YoutubeImportStatus importStatus,
+            String category,
+            String keyword,
+            String sourceValue,
+            Pageable pageable) {
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                newestFirstSort());
+        Page<YoutubeVideoMetaJpaEntity> page = youtubeVideoMetaJpaRepository.searchAdmin(
+                importStatus != null,
+                importStatus == null ? YoutubeImportStatus.DRAFT : importStatus,
+                category == null ? "" : category,
+                keyword == null ? "" : keyword,
+                sourceValue == null ? "" : sourceValue,
+                sortedPageable);
+        List<YoutubeVideoMeta> content = page.getContent().stream()
+                .map(this::toDomain)
+                .toList();
+        return new PageImpl<>(content, sortedPageable, page.getTotalElements());
+    }
+
+    @Override
     public Page<YoutubeVideoMeta> searchBySource(
             YoutubeImportSourceType sourceType,
             String sourceValue,
@@ -173,6 +197,7 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
                 .editorComment(entity.getEditorComment())
                 .keyPoints(entity.getKeyPoints())
                 .aiGeneratedAt(entity.getAiGeneratedAt())
+                .aiFailedAt(entity.getAiFailedAt())
                 .importStatus(entity.getImportStatus())
                 .syncedAt(entity.getSyncedAt())
                 .createdAt(entity.getCreatedAt())
@@ -200,6 +225,7 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
         entity.setEditorComment(videoMeta.getEditorComment());
         entity.setKeyPoints(videoMeta.getKeyPoints());
         entity.setAiGeneratedAt(videoMeta.getAiGeneratedAt());
+        entity.setAiFailedAt(videoMeta.getAiFailedAt());
         entity.setImportStatus(videoMeta.getImportStatus());
         entity.setSyncedAt(videoMeta.getSyncedAt());
         entity.setCreatedAt(videoMeta.getCreatedAt());

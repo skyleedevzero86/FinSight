@@ -8,6 +8,7 @@ import {
   Briefcase,
   ChevronUp,
   ClipboardList,
+  Film,
   ImageIcon,
   Link2,
   Mail,
@@ -22,7 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import { useAuthSession } from "@/components/AuthSessionProvider"
-import { canManageUsers } from "@/lib/adminUsers"
+import { canManageUsers, isAdminRole } from "@/lib/adminUsers"
 
 type MenuLink = {
   href: string
@@ -60,8 +61,11 @@ function isActivePath(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
+const MEDIA_MENU_ITEM: MenuLink = { href: "/admin/media", label: "영상 관리", icon: Film }
+
 function isSystemPath(pathname: string): boolean {
-  return SYSTEM_MENU_ITEMS.some((item) => isActivePath(pathname, item.href))
+  return isActivePath(pathname, MEDIA_MENU_ITEM.href)
+    || SYSTEM_MENU_ITEMS.some((item) => isActivePath(pathname, item.href))
 }
 
 function MenuItemLink({
@@ -106,6 +110,10 @@ export default function MyInfoSidebar() {
   const pathname = usePathname()
   const { user } = useAuthSession()
   const isAdmin = canManageUsers(user?.role)
+  const siteAdmin = isAdminRole(user?.role)
+  const systemItems = siteAdmin
+    ? [SYSTEM_MENU_ITEMS[0], MEDIA_MENU_ITEM, ...SYSTEM_MENU_ITEMS.slice(1)]
+    : SYSTEM_MENU_ITEMS
   const [systemOpen, setSystemOpen] = useState(() => isSystemPath(pathname))
 
   useEffect(() => {
@@ -151,7 +159,7 @@ export default function MyInfoSidebar() {
             </button>
             {systemOpen ? (
               <div className="flex flex-col gap-0.5 pb-1" role="group" aria-label="시스템 관리 하위 메뉴">
-                {SYSTEM_MENU_ITEMS.map((item) => (
+                {systemItems.map((item) => (
                   <MenuItemLink key={item.href} item={item} pathname={pathname} nested />
                 ))}
               </div>

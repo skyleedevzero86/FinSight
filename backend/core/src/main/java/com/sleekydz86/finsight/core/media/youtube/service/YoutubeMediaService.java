@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.board.domain.port.in.dto.BoardNavigationResp
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 import com.sleekydz86.finsight.core.global.exception.BoardNotFoundException;
+import com.sleekydz86.finsight.core.global.exception.YoutubeSourceNotFoundException;
 import com.sleekydz86.finsight.core.media.youtube.adapter.requester.YoutubeAiContentRequester;
 import com.sleekydz86.finsight.core.media.youtube.adapter.requester.YoutubeApiClient;
 import com.sleekydz86.finsight.core.media.youtube.adapter.requester.properties.YoutubeApiProperties;
@@ -24,6 +25,7 @@ import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeAiEn
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeImportSourceCreateRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeImportSourceResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeManualImportRequest;
+import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceActiveRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceReviewRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceReviewResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSyncSummaryResponse;
@@ -538,10 +540,17 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
 
     @Override
     public PaginationResponse<YoutubeVideoListResponse> getAdminVideos(YoutubeAdminVideoSearchRequest request) {
+        String sourceValue = resolveAdminSourceValue(request.getSourceId());
+        if (request.getSourceId() != null && sourceValue == null) {
+            return emptyAdminVideos(request);
+        }
+
         PageRequest pageable = PageRequest.of(safePage(request.getPage()), safeSize(request.getSize()));
-        Page<YoutubeVideoMeta> page = youtubeVideoMetaPersistencePort.search(
+        Page<YoutubeVideoMeta> page = youtubeVideoMetaPersistencePort.searchAdmin(
                 parseImportStatus(request.getImportStatus()),
                 normalizeText(request.getCategory()),
+                normalizeText(request.getKeyword()),
+                sourceValue,
                 pageable);
 
         return toPaginationResponse(page);
@@ -609,12 +618,25 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .sourceValue(request.getSourceValue().trim())
                 .category(normalizeText(request.getCategory()))
                 .active(request.isActive())
+                .rejected(false)
                 .autoPublish(request.isAutoPublish())
                 .build();
 
         YoutubeImportSource savedSource = youtubeImportSourcePersistencePort.save(source);
         log.info("YouTube 가져오기 소스 {} 생성 - 관리자: {}", savedSource.getId(), adminEmail);
         return toSourceResponse(savedSource);
+    }
+
+    @Override
+    @Transactional
+    public YoutubeImportSourceResponse updateSourceState(Long sourceId, YoutubeSourceActiveRequest request) {
+        YoutubeImportSource source = youtubeImportSourcePersistencePort.findById(sourceId)
+                .orElseThrow(() -> new YoutubeSourceNotFoundException(sourceId));
+        boolean active = Boolean.TRUE.equals(request.getActive());
+        boolean rejected = active ? false : request.isRejected();
+        YoutubeImportSource saved = youtubeImportSourcePersistencePort.save(copySource(source, active, rejected, source.getLastSyncedAt()));
+        log.info("YouTube 수집 소스 {} 상태 변경 - 활성: {}, 거부: {}", sourceId, active, rejected);
+        return toSourceResponse(saved);
     }
 
     @Override
@@ -732,6 +754,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 summary = summary.merge(YoutubeAiEnrichmentSummaryResponse.builder().enrichedCount(1).build());
             } catch (Exception e) {
                 log.error("YouTube 초안 게시글 {} AI 보강 실패", meta.getBoardId(), e);
+                saveAiFailure(meta);
                 summary = summary.merge(YoutubeAiEnrichmentSummaryResponse.builder().failedCount(1).build());
             }
         }
@@ -740,25 +763,17 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
     }
 
     private YoutubeSyncSummaryResponse syncSingleSource(YoutubeImportSource source) {
-        List<YoutubeApiClient.FetchedYoutubeVideo> fetchedVideos = youtubeApiClient.fetchBySource(source);
+        YoutubeImportSource locked = youtubeImportSourcePersistencePort.lockById(source.getId())
+                .orElseThrow(() -> new YoutubeSourceNotFoundException(source.getId()));
+        List<YoutubeApiClient.FetchedYoutubeVideo> fetchedVideos = youtubeApiClient.fetchBySource(locked);
         YoutubeSyncSummaryResponse summary = upsertVideos(
                 fetchedVideos,
-                source.isAutoPublish(),
+                locked.isAutoPublish(),
                 SYSTEM_AUTHOR_EMAIL,
-                normalizeHashtags(List.of(), source.getCategory()),
+                normalizeHashtags(List.of(), locked.getCategory()),
                 1);
 
-        youtubeImportSourcePersistencePort.save(YoutubeImportSource.builder()
-                .id(source.getId())
-                .sourceType(source.getSourceType())
-                .sourceValue(source.getSourceValue())
-                .category(source.getCategory())
-                .active(source.isActive())
-                .autoPublish(source.isAutoPublish())
-                .lastSyncedAt(LocalDateTime.now())
-                .createdAt(source.getCreatedAt())
-                .updatedAt(source.getUpdatedAt())
-                .build());
+        youtubeImportSourcePersistencePort.save(copySource(locked, locked.isActive(), locked.isRejected(), LocalDateTime.now()));
 
         return YoutubeSyncSummaryResponse.builder()
                 .sourceCount(summary.getSourceCount())
@@ -887,6 +902,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .importStatus(meta.getImportStatus())
                 .hashtags(board.getHashtags())
                 .aiGeneratedAt(meta.getAiGeneratedAt())
+                .aiFailedAt(meta.getAiFailedAt())
+                .aiStatus(meta.resolveAiStatus())
                 .createdAt(board.getCreatedAt())
                 .updatedAt(board.getUpdatedAt())
                 .build();
@@ -935,6 +952,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .editorComment(meta.getEditorComment())
                 .keyPoints(meta.getKeyPoints())
                 .aiGeneratedAt(meta.getAiGeneratedAt())
+                .aiFailedAt(meta.getAiFailedAt())
+                .aiStatus(meta.resolveAiStatus())
                 .importStatus(meta.getImportStatus())
                 .syncedAt(meta.getSyncedAt())
                 .createdAt(resolvedBoard.getCreatedAt())
@@ -1003,6 +1022,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .editorComment(currentMeta != null ? currentMeta.getEditorComment() : null)
                 .keyPoints(currentMeta != null ? currentMeta.getKeyPoints() : List.of())
                 .aiGeneratedAt(currentMeta != null ? currentMeta.getAiGeneratedAt() : null)
+                .aiFailedAt(currentMeta != null ? currentMeta.getAiFailedAt() : null)
                 .importStatus(importStatus)
                 .syncedAt(LocalDateTime.now())
                 .createdAt(createdAt)
@@ -1029,6 +1049,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .editorComment(meta.getEditorComment())
                 .keyPoints(meta.getKeyPoints())
                 .aiGeneratedAt(meta.getAiGeneratedAt())
+                .aiFailedAt(meta.getAiFailedAt())
                 .importStatus(status)
                 .syncedAt(LocalDateTime.now())
                 .createdAt(meta.getCreatedAt())
@@ -1056,6 +1077,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .editorComment(trimNullableToLength(generatedContent.getEditorComment(), 2000))
                 .keyPoints(limitKeyPoints(generatedContent.getKeyPoints()))
                 .aiGeneratedAt(LocalDateTime.now())
+                .aiFailedAt(null)
                 .importStatus(meta.getImportStatus())
                 .syncedAt(meta.getSyncedAt())
                 .createdAt(meta.getCreatedAt())
@@ -1070,6 +1092,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .sourceValue(source.getSourceValue())
                 .category(source.getCategory())
                 .active(source.isActive())
+                .rejected(source.isRejected())
+                .reviewStatus(reviewStatus(source))
                 .autoPublish(source.isAutoPublish())
                 .lastSyncedAt(source.getLastSyncedAt())
                 .totalVideoCount(youtubeVideoMetaPersistencePort.countBySource(source.getSourceType(), source.getSourceValue()))
@@ -1138,6 +1162,89 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
     private YoutubeVideoMeta loadVideoMetaByBoardId(Long boardId) {
         return youtubeVideoMetaPersistencePort.findByBoardId(boardId)
                 .orElseThrow(() -> new IllegalArgumentException("YouTube video meta not found: " + boardId));
+    }
+
+    private void saveAiFailure(YoutubeVideoMeta meta) {
+        try {
+            youtubeVideoMetaPersistencePort.save(markAiFailed(meta));
+        } catch (RuntimeException saveError) {
+            log.error("YouTube 초안 게시글 {} AI 실패 시각 저장 실패", meta.getBoardId(), saveError);
+        }
+    }
+
+    private YoutubeVideoMeta markAiFailed(YoutubeVideoMeta meta) {
+        return YoutubeVideoMeta.builder()
+                .id(meta.getId())
+                .boardId(meta.getBoardId())
+                .videoId(meta.getVideoId())
+                .channelId(meta.getChannelId())
+                .channelTitle(meta.getChannelTitle())
+                .sourceType(meta.getSourceType())
+                .sourceValue(meta.getSourceValue())
+                .category(meta.getCategory())
+                .youtubeTitle(meta.getYoutubeTitle())
+                .youtubeDescription(meta.getYoutubeDescription())
+                .thumbnailUrl(meta.getThumbnailUrl())
+                .publishedAt(meta.getPublishedAt())
+                .duration(meta.getDuration())
+                .embedUrl(meta.getEmbedUrl())
+                .summary(meta.getSummary())
+                .editorComment(meta.getEditorComment())
+                .keyPoints(meta.getKeyPoints())
+                .aiGeneratedAt(meta.getAiGeneratedAt())
+                .aiFailedAt(LocalDateTime.now())
+                .importStatus(meta.getImportStatus())
+                .syncedAt(meta.getSyncedAt())
+                .createdAt(meta.getCreatedAt())
+                .updatedAt(meta.getUpdatedAt())
+                .build();
+    }
+
+    private YoutubeImportSource copySource(
+            YoutubeImportSource source,
+            boolean active,
+            boolean rejected,
+            LocalDateTime lastSyncedAt) {
+        return YoutubeImportSource.builder()
+                .id(source.getId())
+                .sourceType(source.getSourceType())
+                .sourceValue(source.getSourceValue())
+                .category(source.getCategory())
+                .active(active)
+                .rejected(rejected)
+                .autoPublish(source.isAutoPublish())
+                .lastSyncedAt(lastSyncedAt)
+                .createdAt(source.getCreatedAt())
+                .updatedAt(source.getUpdatedAt())
+                .build();
+    }
+
+    private String reviewStatus(YoutubeImportSource source) {
+        if (source.isActive()) {
+            return "ACTIVE";
+        }
+        if (source.isRejected() || source.getLastSyncedAt() != null) {
+            return "STOPPED";
+        }
+        return "PENDING";
+    }
+
+    private String resolveAdminSourceValue(Long sourceId) {
+        if (sourceId == null) {
+            return null;
+        }
+        return youtubeImportSourcePersistencePort.findById(sourceId)
+                .map(YoutubeImportSource::getSourceValue)
+                .orElse(null);
+    }
+
+    private PaginationResponse<YoutubeVideoListResponse> emptyAdminVideos(YoutubeAdminVideoSearchRequest request) {
+        return PaginationResponse.<YoutubeVideoListResponse>builder()
+                .content(List.of())
+                .page(safePage(request.getPage()))
+                .size(safeSize(request.getSize()))
+                .totalElements(0)
+                .build();
     }
 
     private YoutubeImportStatus parseImportStatus(String value) {

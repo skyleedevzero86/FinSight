@@ -12,4 +12,6 @@ public class YoutubeAdminVideoSearchRequest {
     private int size = 20;
     private String category;
     private String importStatus;
+    private String keyword;
+    private Long sourceId;
 }

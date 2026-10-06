@@ -18,6 +18,8 @@ public class YoutubeImportSourceResponse {
     private String sourceValue;
     private String category;
     private boolean active;
+    private boolean rejected;
+    private String reviewStatus;
     private boolean autoPublish;
     private LocalDateTime lastSyncedAt;
     private long totalVideoCount;

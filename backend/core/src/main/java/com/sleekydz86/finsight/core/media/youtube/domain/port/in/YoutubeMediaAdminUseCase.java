@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeAiEn
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeImportSourceCreateRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeImportSourceResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeManualImportRequest;
+import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceActiveRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceReviewRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceReviewResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSyncSummaryResponse;
@@ -25,6 +26,8 @@ public interface YoutubeMediaAdminUseCase {
     YoutubeSourceReviewResponse getSourceReview(Long sourceId, YoutubeSourceReviewRequest request);
 
     YoutubeImportSourceResponse createImportSource(String adminEmail, YoutubeImportSourceCreateRequest request);
+
+    YoutubeImportSourceResponse updateSourceState(Long sourceId, YoutubeSourceActiveRequest request);
 
     YoutubeSyncSummaryResponse importManualUrls(String adminEmail, YoutubeManualImportRequest request);
 

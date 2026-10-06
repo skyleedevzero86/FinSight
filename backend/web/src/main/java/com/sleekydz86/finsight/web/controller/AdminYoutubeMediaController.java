@@ -10,6 +10,7 @@ import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeAiEn
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeImportSourceCreateRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeImportSourceResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeManualImportRequest;
+import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceActiveRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceReviewRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceReviewResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSyncSummaryResponse;
@@ -89,6 +90,16 @@ public class AdminYoutubeMediaController {
         YoutubeImportSourceResponse response = youtubeMediaAdminUseCase.createImportSource(currentUser.getEmail(), request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "YouTube 수집 소스를 성공적으로 생성했습니다."));
+    }
+
+    @Operation(summary = "수집 소스 상태 변경", description = "YouTube 수집 소스를 승인하거나 거부합니다.")
+    @PostMapping("/sources/{sourceId}/active")
+    public ResponseEntity<ApiResponse<YoutubeImportSourceResponse>> updateSourceState(
+            @PathVariable Long sourceId,
+            @RequestBody @Valid YoutubeSourceActiveRequest request,
+            @CurrentUser AuthenticatedUser currentUser) {
+        YoutubeImportSourceResponse response = youtubeMediaAdminUseCase.updateSourceState(sourceId, request);
+        return ResponseEntity.ok(ApiResponse.success(response, "YouTube 수집 소스 상태를 변경했습니다."));
     }
 
     @Operation(summary = "소스 동기화", description = "지정한 YouTube 소스를 동기화합니다.")

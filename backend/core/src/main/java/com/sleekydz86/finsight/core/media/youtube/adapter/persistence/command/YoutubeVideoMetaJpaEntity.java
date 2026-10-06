@@ -89,6 +89,9 @@ public class YoutubeVideoMetaJpaEntity {
     @Column(name = "ai_generated_at")
     private LocalDateTime aiGeneratedAt;
 
+    @Column(name = "ai_failed_at")
+    private LocalDateTime aiFailedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "import_status", nullable = false, length = 30)
     private YoutubeImportStatus importStatus;

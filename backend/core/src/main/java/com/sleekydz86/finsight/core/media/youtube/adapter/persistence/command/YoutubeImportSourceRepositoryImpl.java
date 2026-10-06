@@ -29,6 +29,11 @@ public class YoutubeImportSourceRepositoryImpl implements YoutubeImportSourcePer
     }
 
     @Override
+    public Optional<YoutubeImportSource> lockById(Long sourceId) {
+        return youtubeImportSourceJpaRepository.findByIdForUpdate(sourceId).map(this::toDomain);
+    }
+
+    @Override
     public List<YoutubeImportSource> findAll() {
         return youtubeImportSourceJpaRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(this::toDomain)
@@ -49,6 +54,7 @@ public class YoutubeImportSourceRepositoryImpl implements YoutubeImportSourcePer
                 .sourceValue(entity.getSourceValue())
                 .category(entity.getCategory())
                 .active(entity.isActive())
+                .rejected(entity.isRejected())
                 .autoPublish(entity.isAutoPublish())
                 .lastSyncedAt(entity.getLastSyncedAt())
                 .createdAt(entity.getCreatedAt())
@@ -63,6 +69,7 @@ public class YoutubeImportSourceRepositoryImpl implements YoutubeImportSourcePer
         entity.setSourceValue(source.getSourceValue());
         entity.setCategory(source.getCategory());
         entity.setActive(source.isActive());
+        entity.setRejected(source.isRejected());
         entity.setAutoPublish(source.isAutoPublish());
         entity.setLastSyncedAt(source.getLastSyncedAt());
         entity.setCreatedAt(source.getCreatedAt());
