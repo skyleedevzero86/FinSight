@@ -24,12 +24,12 @@ export default function MyInfoShell({ children }: { children: React.ReactNode })
   const home = pathname === "/myinfo" || pathname === "/myinfo/activity"
 
   return (
-    <div className="flex h-full min-h-full w-full flex-1 bg-white">
+    <div className="flex min-h-full w-full flex-1 bg-white">
       <section
         className={
           home
-            ? "flex h-full min-h-full min-w-0 flex-1 flex-col bg-[#f4f7fb]"
-            : "flex h-full min-h-full min-w-0 flex-1 flex-col bg-white"
+            ? "flex min-h-full min-w-0 flex-1 flex-col bg-[#f4f7fb]"
+            : "flex min-h-full min-w-0 flex-1 flex-col bg-white"
         }
         aria-label="나의 메뉴 본문"
       >

@@ -1,6 +1,9 @@
 import { fetchAdminEmailLogs, type AdminEmailLog, type EmailStatus } from "@/lib/adminEmailLogs"
+import { fetchAdminUsers } from "@/lib/adminUsers"
 import {
   fetchAdminOpsHome,
+  fetchAdminStatsChart,
+  fetchAdminStatsOverview,
   type AdminStatsChart,
   type AdminStatsOverview,
 } from "@/lib/adminStats"
@@ -37,6 +40,14 @@ export type OpsTrendSeries = {
   points: number[]
 }
 
+export type OpsTask = {
+  key: string
+  label: string
+  title: string
+  href: string
+  urgent: boolean
+}
+
 export type AdminOpsHomeData = {
   serviceOk: boolean
   serviceLabel: string
@@ -58,6 +69,7 @@ export type AdminOpsHomeData = {
   trendLabels: string[]
   trend: OpsTrendSeries[]
   memberSlices: OpsSlice[]
+  tasks: OpsTask[]
 }
 
 type ReportHit = {
@@ -348,6 +360,7 @@ function toOpsHome(bundle: OpsBundle): AdminOpsHomeData {
     trendLabels: trend.labels,
     trend: trend.series,
     memberSlices: memberSlices(bundle.overview),
+    tasks: [],
   }
 }
 
@@ -361,6 +374,46 @@ const EMPTY_EXTRAS = {
   failedTotal: 0,
   mailToday: "오늘 0건",
   reports: [] as ReportHit[],
+  tasks: [] as OpsTask[],
+}
+
+async function pendingApprovals(): Promise<OpsTask[]> {
+  const result = await fetchAdminUsers({
+    page: 0,
+    size: 3,
+    status: "PENDING",
+    keyword: "",
+    reveal: [],
+  })
+  if (!result.ok) return []
+  return result.data.content.map((user) => ({
+    key: `pending-${user.id}`,
+    label: "승인 대기",
+    title: user.nickname || user.email || user.username || `회원 #${user.id}`,
+    href: "/admin/users",
+    urgent: false,
+  }))
+}
+
+function buildTasks(pending: OpsTask[], reports: ReportHit[], mails: AdminEmailLog[]): OpsTask[] {
+  const urgentReports = reports.filter((item) => item.reportCount >= URGENT_REPORTS)
+  const reportTasks = [...urgentReports, ...reports.filter((item) => item.reportCount < URGENT_REPORTS)]
+    .slice(0, 2)
+    .map((item, index) => ({
+      key: `report-${index}-${item.title}`,
+      label: item.reportCount >= URGENT_REPORTS ? "긴급 신고" : "신고",
+      title: item.title,
+      href: "/admin/moderation",
+      urgent: item.reportCount >= URGENT_REPORTS,
+    }))
+  const mailTasks = mails.slice(0, 2).map((item) => ({
+    key: `mail-${item.id}`,
+    label: "메일 실패",
+    title: item.subject || item.errorMessage || "발송 실패",
+    href: "/admin/email-logs",
+    urgent: true,
+  }))
+  return [...pending.slice(0, 2), ...reportTasks, ...mailTasks].slice(0, 5)
 }
 
 let coreFlight: Promise<AdminOpsHomeData> | null = null
@@ -378,16 +431,50 @@ function emptyOpsHome(message: string): AdminOpsHomeData {
   }
 }
 
+function homeFromParts(
+  overview: AdminStatsOverview | null,
+  signups: AdminStatsChart | null,
+  logins: AdminStatsChart | null,
+  content: AdminStatsChart | null,
+): AdminOpsHomeData {
+  return toOpsHome({
+    overview,
+    signups,
+    logins,
+    content,
+    ...EMPTY_EXTRAS,
+  })
+}
+
+async function fetchLegacyOpsHome(): Promise<AdminOpsHomeData | null> {
+  const [overview, signups, logins, content] = await Promise.all([
+    fetchAdminStatsOverview(),
+    fetchAdminStatsChart("signups", { days: 7 }),
+    fetchAdminStatsChart("logins", { days: 7 }),
+    fetchAdminStatsChart("content", { days: 7 }),
+  ])
+  if (!overview.ok) return null
+  return homeFromParts(
+    overview.data,
+    signups.ok ? signups.data : null,
+    logins.ok ? logins.data : null,
+    content.ok ? content.data : null,
+  )
+}
+
 async function fetchOpsCore(): Promise<AdminOpsHomeData> {
   const packed = await fetchAdminOpsHome()
   if (packed.ok) {
-    return toOpsHome({
-      overview: packed.data.overview,
-      signups: packed.data.signups,
-      logins: packed.data.logins,
-      content: packed.data.content,
-      ...EMPTY_EXTRAS,
-    })
+    return homeFromParts(
+      packed.data.overview,
+      packed.data.signups,
+      packed.data.logins,
+      packed.data.content,
+    )
+  }
+  if (packed.missing) {
+    const legacy = await fetchLegacyOpsHome()
+    if (legacy) return legacy
   }
   console.error("운영 현황을 불러오지 못했습니다.", packed.message)
   return emptyOpsHome(packed.message)
@@ -403,7 +490,7 @@ export function loadAdminOpsCore(): Promise<AdminOpsHomeData> {
 }
 
 export async function loadAdminOpsExtras(base: AdminOpsHomeData): Promise<AdminOpsHomeData> {
-  const [notices, mainimgLive, popupLive, ulinkCount, failedMails, sentTotal, failedTotal, mailToday, boardReports, commentReports] =
+  const [notices, mainimgLive, popupLive, ulinkCount, failedMails, sentTotal, failedTotal, mailToday, boardReports, commentReports, pending] =
     await Promise.all([
       loadNoticeCards(5),
       countOf(() => fetchAdminMainimgItems({ page: 0, size: 1, reflectOnly: true })),
@@ -415,6 +502,7 @@ export async function loadAdminOpsExtras(base: AdminOpsHomeData): Promise<AdminO
       mailTodayLabel(),
       reportHits("/api/v1/admin/boards/maintenance/candidates?reportThreshold=1"),
       reportHits("/api/v1/admin/comments/maintenance/candidates?reportThreshold=1"),
+      pendingApprovals(),
     ])
   const reports = [...boardReports, ...commentReports]
   const extraLogs = [
@@ -441,5 +529,6 @@ export async function loadAdminOpsExtras(base: AdminOpsHomeData): Promise<AdminO
     ulinkCount,
     mailTodayLabel: mailToday,
     notices,
+    tasks: buildTasks(pending, reports, failedMails),
   }
 }

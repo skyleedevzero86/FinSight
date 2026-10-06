@@ -242,7 +242,7 @@ export default function MyInfoHomeClient() {
   }, [])
 
   return (
-    <div className="flex h-full min-h-full flex-1 flex-col gap-4 px-4 py-4 md:px-5 md:py-5">
+    <div className="flex flex-col gap-4 px-4 py-4 md:px-5 md:py-5">
       <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)]">
         <Panel title="공지사항 / 운영 알림" href="/community/notice">
           {loading ? <EmptyCopy>공지를 불러오는 중입니다.</EmptyCopy> : <NoticeList items={data.notices} />}
