@@ -1,5 +1,9 @@
-const DEFAULT_PROXY_TIMEOUT_MS = 30_000
+import { NextResponse } from "next/server"
+
+const DEFAULT_PROXY_TIMEOUT_MS = 45_000
 const DEFAULT_API_BASE_URL = "http://localhost:8080"
+const ACCESS_COOKIE_MAX_AGE_SEC = 60 * 60
+const REFRESH_COOKIE_MAX_AGE_SEC = 60 * 60 * 24 * 30
 
 export function getFinSightBaseUrl(): string | null {
   const base = process.env.FINSIGHT_API_BASE_URL?.replace(/\/$/, "")
@@ -93,6 +97,249 @@ function clientForwardHeaders(req: Request): Record<string, string> {
   return headers
 }
 
+function readCookieValue(cookieHeader: string, name: string): string | null {
+  const parts = cookieHeader.split(";")
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed.startsWith(`${name}=`)) continue
+    const raw = trimmed.slice(name.length + 1)
+    if (!raw) return null
+    try {
+      return decodeURIComponent(raw)
+    } catch {
+      return raw
+    }
+  }
+  return null
+}
+
+function applyCredentialHeaders(
+  req: Request,
+  headers: Record<string, string>,
+  forwardCredentials: boolean,
+): void {
+  if (!forwardCredentials) return
+
+  const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
+  const cookie = req.headers.get("cookie") ?? req.headers.get("Cookie")
+  if (cookie) headers.Cookie = cookie
+
+  if (auth) {
+    headers.Authorization = auth
+    return
+  }
+  if (!cookie) return
+
+  const accessToken = readCookieValue(cookie, "accessToken")
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object") return null
+  return value as Record<string, unknown>
+}
+
+function extractLoginTokens(payload: unknown): {
+  accessToken: string | null
+  refreshToken: string | null
+} {
+  const root = asRecord(payload)
+  if (root && root.success === false) {
+    return { accessToken: null, refreshToken: null }
+  }
+  const data = asRecord(root?.data) ?? root
+  const token = asRecord(data?.token) ?? data
+  const accessToken =
+    typeof token?.accessToken === "string" && token.accessToken.trim()
+      ? token.accessToken.trim()
+      : null
+  const refreshToken =
+    typeof token?.refreshToken === "string" && token.refreshToken.trim()
+      ? token.refreshToken.trim()
+      : null
+  return { accessToken, refreshToken }
+}
+
+function stripLoginTokens(payload: unknown): unknown {
+  const root = asRecord(payload)
+  if (!root) return payload
+  const data = asRecord(root.data)
+  if (!data) return payload
+  const token = asRecord(data.token)
+  if (token) {
+    return {
+      ...root,
+      data: {
+        ...data,
+        token: {
+          ...token,
+          accessToken: null,
+          refreshToken: null,
+        },
+      },
+    }
+  }
+  if ("accessToken" in data || "refreshToken" in data) {
+    return {
+      ...root,
+      data: {
+        ...data,
+        accessToken: null,
+        refreshToken: null,
+      },
+    }
+  }
+  return payload
+}
+
+function extractTokensFromSetCookie(upstream: Response): {
+  accessToken: string | null
+  refreshToken: string | null
+} {
+  const cookies: string[] = []
+  const setCookieAccessor = (
+    upstream.headers as Headers & { getSetCookie?: () => string[] }
+  ).getSetCookie
+  if (typeof setCookieAccessor === "function") {
+    cookies.push(...setCookieAccessor.call(upstream.headers))
+  } else {
+    const single = upstream.headers.get("set-cookie")
+    if (single) cookies.push(single)
+  }
+
+  let accessToken: string | null = null
+  let refreshToken: string | null = null
+  for (const raw of cookies) {
+    const first = raw.split(";")[0] ?? ""
+    const eq = first.indexOf("=")
+    if (eq < 0) continue
+    const name = first.slice(0, eq).trim()
+    let value = first.slice(eq + 1).trim()
+    if (value.startsWith('"') && value.endsWith('"') && value.length >= 2) {
+      value = value.slice(1, -1)
+    }
+    try {
+      value = decodeURIComponent(value)
+    } catch {
+      void 0
+    }
+    if (!value) continue
+    if (name === "accessToken") accessToken = value
+    if (name === "refreshToken") refreshToken = value
+  }
+  return { accessToken, refreshToken }
+}
+
+function mergeTokens(
+  fromBody: { accessToken: string | null; refreshToken: string | null },
+  fromCookie: { accessToken: string | null; refreshToken: string | null },
+) {
+  return {
+    accessToken: fromBody.accessToken ?? fromCookie.accessToken,
+    refreshToken: fromBody.refreshToken ?? fromCookie.refreshToken,
+  }
+}
+
+function applyAuthCookies(
+  response: NextResponse,
+  tokens: { accessToken: string | null; refreshToken: string | null },
+) {
+  if (tokens.accessToken) {
+    response.cookies.set("accessToken", tokens.accessToken, {
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: ACCESS_COOKIE_MAX_AGE_SEC,
+    })
+    response.cookies.set("finsight_auth", "1", {
+      httpOnly: false,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: ACCESS_COOKIE_MAX_AGE_SEC,
+    })
+  }
+  if (tokens.refreshToken) {
+    response.cookies.set("refreshToken", tokens.refreshToken, {
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: REFRESH_COOKIE_MAX_AGE_SEC,
+    })
+  }
+}
+
+export async function proxyAuthLoginToFinSight(
+  req: Request,
+  backendPath: string,
+  options?: { timeoutMs?: number; forwardCredentials?: boolean },
+): Promise<Response> {
+  try {
+    const base = getFinSightBaseUrl()
+    if (!base) return finSightUnavailableResponse()
+
+    let body: string
+    try {
+      body = JSON.stringify(await req.json().catch(() => ({})))
+    } catch {
+      body = "{}"
+    }
+
+    const target = `${base}${backendPath.startsWith("/") ? "" : "/"}${backendPath}`
+    const controller = new AbortController()
+    const timeoutMs = options?.timeoutMs ?? getProxyTimeoutMs()
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+    const outboundHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Connection: "close",
+      ...clientForwardHeaders(req),
+    }
+    applyCredentialHeaders(req, outboundHeaders, options?.forwardCredentials === true)
+
+    let upstream: Response
+    try {
+      upstream = await fetch(target, {
+        method: "POST",
+        headers: outboundHeaders,
+        body,
+        signal: controller.signal,
+        cache: "no-store",
+      })
+    } catch (err) {
+      return upstreamFailureResponse(err, isAbortError(err))
+    } finally {
+      clearTimeout(timeoutId)
+    }
+
+    const payload: unknown = await upstream.json().catch(() => null)
+    const root = asRecord(payload)
+    const loginSucceeded =
+      upstream.ok && root?.success !== false
+    const tokens = loginSucceeded
+      ? mergeTokens(extractLoginTokens(payload), extractTokensFromSetCookie(upstream))
+      : { accessToken: null, refreshToken: null }
+    const safePayload = stripLoginTokens(payload)
+    const response = NextResponse.json(safePayload ?? { message: "응답을 해석하지 못했습니다." }, {
+      status: upstream.status,
+    })
+    response.headers.set("Cache-Control", "no-store")
+    if (loginSucceeded && tokens.accessToken) {
+      applyAuthCookies(response, tokens)
+    }
+    return response
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("인증 프록시 처리 중 오류가 발생했습니다.", err)
+    }
+    return jsonResponse(500, "요청을 처리하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.")
+  }
+}
+
 export async function proxyJsonToFinSight(
   req: Request,
   backendPath: string,
@@ -115,20 +362,18 @@ export async function proxyJsonToFinSight(
     const timeoutMs = options?.timeoutMs ?? getProxyTimeoutMs()
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
     const forwardCredentials = options?.forwardCredentials !== false
-    const authHeader = req.headers.get("authorization")
-    const cookieHeader = req.headers.get("cookie")
+    const outboundHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...clientForwardHeaders(req),
+    }
+    applyCredentialHeaders(req, outboundHeaders, forwardCredentials)
 
     let upstream: Response
     try {
       upstream = await fetch(target, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          ...clientForwardHeaders(req),
-          ...(forwardCredentials && authHeader ? { Authorization: authHeader } : {}),
-          ...(forwardCredentials && cookieHeader ? { Cookie: cookieHeader } : {}),
-        },
+        headers: outboundHeaders,
         body,
         signal: controller.signal,
       })
@@ -174,6 +419,7 @@ export async function mirrorRequestToFinSight(
     body?: BodyInit | null
     timeoutMs?: number
     forwardCredentials?: boolean
+    cache?: RequestCache
   },
 ): Promise<Response> {
   try {
@@ -187,12 +433,7 @@ export async function mirrorRequestToFinSight(
       Connection: "close",
       ...clientForwardHeaders(req),
     }
-    if (forwardCredentials) {
-      const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
-      if (auth) headers.Authorization = auth
-      const cookie = req.headers.get("cookie") ?? req.headers.get("Cookie")
-      if (cookie) headers.Cookie = cookie
-    }
+    applyCredentialHeaders(req, headers, forwardCredentials)
     const contentType = req.headers.get("content-type") ?? req.headers.get("Content-Type")
     const target = `${base}${backendPathAndQuery.startsWith("/") ? "" : "/"}${backendPathAndQuery}`
     const controller = new AbortController()
@@ -252,7 +493,7 @@ export async function mirrorRequestToFinSight(
         headers,
         body,
         signal: controller.signal,
-        cache: "no-store",
+        cache: init?.cache ?? "no-store",
       })
     } catch (err) {
       const aborted = isAbortError(err)
@@ -305,10 +546,7 @@ export async function mirrorBinaryRequestToFinSight(
       Accept: req.headers.get("accept") ?? "*/*",
       ...clientForwardHeaders(req),
     }
-    const auth = req.headers.get("authorization") ?? req.headers.get("Authorization")
-    if (auth) headers.Authorization = auth
-    const cookie = req.headers.get("cookie") ?? req.headers.get("Cookie")
-    if (cookie) headers.Cookie = cookie
+    applyCredentialHeaders(req, headers, true)
     const contentType = req.headers.get("content-type") ?? req.headers.get("Content-Type")
     if (
       contentType &&

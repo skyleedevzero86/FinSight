@@ -9,6 +9,8 @@ import {
   formatAuthor,
   formatBoardDate,
   likeBoard,
+  scrapBoard,
+  unscrapBoard,
   unwrapApiData,
 } from "@/lib/boardApi"
 import { authHeadersJson } from "@/lib/finsightToken"
@@ -16,6 +18,7 @@ import { useAuthSession } from "@/components/AuthSessionProvider"
 import CommunityMarkdownPreview from "@/components/community/markdown/CommunityMarkdownPreview"
 import CommunityBoardComments from "@/components/community/CommunityBoardComments"
 import { MODERATION_RESTRICTED_MESSAGE } from "@/lib/boardModeration"
+import { recordBoardBrowseView } from "@/lib/browseHistory"
 
 type Props = {
   detail: BoardDetail
@@ -36,7 +39,9 @@ export default function CommunityBoardDetail({
   const { user, ready } = useAuthSession()
   const [liked, setLiked] = useState(false)
   const [disliked, setDisliked] = useState(false)
+  const [scrapped, setScrapped] = useState(false)
   const [reactionBusy, setReactionBusy] = useState(false)
+  const [scrapBusy, setScrapBusy] = useState(false)
   const [reactionError, setReactionError] = useState<string | null>(null)
 
   const role = (user?.role ?? "").toUpperCase().replace(/^ROLE_/, "")
@@ -90,6 +95,18 @@ export default function CommunityBoardDetail({
   }, [initialDetail])
 
   useEffect(() => {
+    if (accessError) return
+    if (!detail?.id || !detail.title) return
+    recordBoardBrowseView({
+      boardId: detail.id,
+      title: detail.title,
+      boardType: detail.boardType,
+      basePath,
+      content: detail.content,
+    })
+  }, [accessError, detail.id, detail.title, detail.boardType, detail.content, basePath])
+
+  useEffect(() => {
     let cancelled = false
     const run = async () => {
       try {
@@ -123,6 +140,7 @@ export default function CommunityBoardDetail({
     if (!ready || !user) {
       setLiked(false)
       setDisliked(false)
+      setScrapped(false)
       return
     }
     let cancelled = false
@@ -131,12 +149,34 @@ export default function CommunityBoardDetail({
       if (cancelled || !status) return
       setLiked(status.liked)
       setDisliked(status.disliked)
+      setScrapped(status.scrapped)
     }
     void run()
     return () => {
       cancelled = true
     }
   }, [ready, user, initialDetail.id])
+
+  async function onToggleScrap() {
+    if (!ready || scrapBusy || isRestricted) return
+    if (!user) {
+      setReactionError("로그인 후 즐겨찾기할 수 있습니다.")
+      return
+    }
+    setScrapBusy(true)
+    setReactionError(null)
+    const prev = scrapped
+    setScrapped(!prev)
+    try {
+      const result = prev ? await unscrapBoard(detail.id) : await scrapBoard(detail.id)
+      if (!result.ok) {
+        setScrapped(prev)
+        setReactionError(result.message)
+      }
+    } finally {
+      setScrapBusy(false)
+    }
+  }
 
   if (accessError) {
     return (
@@ -214,6 +254,15 @@ export default function CommunityBoardDetail({
               onClick={() => void onBoardReaction("DISLIKE")}
             >
               싫어요 {detail.dislikeCount}
+            </button>
+            <button
+              type="button"
+              className={`fcb-md-reaction-btn${scrapped ? " is-on" : ""}`}
+              disabled={scrapBusy}
+              aria-pressed={scrapped}
+              onClick={() => void onToggleScrap()}
+            >
+              {scrapped ? "즐겨찾기됨" : "즐겨찾기"}
             </button>
           </div>
           {reactionError ? (

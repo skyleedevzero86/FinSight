@@ -9,9 +9,11 @@ import AuthCard from "@/components/auth/AuthCard"
 import SocialLoginRow from "@/components/auth/SocialLoginRow"
 import { postLogin } from "@/lib/authClient"
 import { useAuthSession } from "@/components/AuthSessionProvider"
+import { waitForSessionUser } from "@/lib/authSession"
 import {
   storeAuthSession,
   clearAuthSession,
+  writeAuthHintCookie,
   FINSIGHT_FORCE_PASSWORD_KEY,
   type AuthProvider,
 } from "@/lib/finsightToken"
@@ -26,22 +28,6 @@ function normalizeLoginId(raw: string): string {
   if (!trimmed) return ""
   if (trimmed.toLowerCase() === "system2") return DEFAULT_LOGIN_ID
   return trimmed
-}
-
-function extractToken(data: unknown): string | null {
-  if (!data || typeof data !== "object") return null
-  const o = data as Record<string, unknown>
-  if (typeof o.accessToken === "string") return o.accessToken
-  const token = o.token
-  if (token && typeof token === "object") {
-    const t = token as Record<string, unknown>
-    if (typeof t.accessToken === "string") return t.accessToken
-  }
-  const inner = o.data
-  if (inner && typeof inner === "object") {
-    return extractToken(inner)
-  }
-  return null
 }
 
 function extractPasswordChangeRequired(data: unknown): boolean {
@@ -140,30 +126,29 @@ export default function LoginForm() {
         return
       }
 
-      const token = extractToken(result.data)
       const provider = extractProvider(result.data)
       const passwordRequired = extractPasswordChangeRequired(result.data)
-      if (!token) {
-        setFormError(
-          "로그인 응답이 올바르지 않습니다. 잠시 후 다시 시도해 주세요.",
-        )
-        return
-      }
+      let sessionOk = false
       try {
+        writeAuthHintCookie()
         storeAuthSession({
-          accessToken: token,
           authProvider: provider,
           remember,
         })
         if (passwordRequired && provider === "WEB") {
           sessionStorage.setItem(FINSIGHT_FORCE_PASSWORD_KEY, "1")
         }
+        sessionOk = await waitForSessionUser()
       } catch {
         void 0
       }
+      if (!sessionOk) {
+        setFormError("로그인은 됐지만 세션 확인에 실패했습니다. 잠시 후 새로고침해 주세요.")
+      }
+
       router.push(
         passwordRequired && provider === "WEB"
-          ? "/myinfo?password=required"
+          ? "/myinfo/userinfo?password=required"
           : nextPath || "/",
       )
       router.refresh()

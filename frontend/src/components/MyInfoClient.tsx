@@ -348,7 +348,7 @@ export default function MyInfoClient() {
       const status = await fetchPasswordStatus()
       setPasswordStatus(status)
       if (forcePassword) {
-        router.replace("/myinfo")
+        router.replace("/myinfo/userinfo")
       }
       setFormOk("비밀번호가 변경되었습니다.")
     } finally {

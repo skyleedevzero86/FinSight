@@ -1,11 +1,11 @@
 import type { Metadata } from "next"
-import MyInfoClient from "@/components/MyInfoClient"
+import MyInfoHomeGate from "@/components/myinfo/MyInfoHomeGate"
 
 export const metadata: Metadata = {
-  title: "내정보 | finsight",
-  description: "finsight 내정보",
+  title: "나의 메뉴 | finsight",
+  description: "finsight 나의 메뉴",
 }
 
 export default function MyInfoPage() {
-  return <MyInfoClient />
+  return <MyInfoHomeGate />
 }

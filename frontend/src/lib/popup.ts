@@ -142,13 +142,15 @@ export function isPopupInSchedule(item: PopupItem, now = new Date()): boolean {
 }
 
 const HIDE_PREFIX = "finsight_popup_hide_"
+const HIDE_ALL_KEY = "finsight_popup_hide_all"
 
 export function isPopupHiddenToday(id: string): boolean {
   if (typeof window === "undefined") return false
   try {
+    const today = new Date().toISOString().slice(0, 10)
+    if (localStorage.getItem(HIDE_ALL_KEY) === today) return true
     const raw = localStorage.getItem(`${HIDE_PREFIX}${id}`)
     if (!raw) return false
-    const today = new Date().toISOString().slice(0, 10)
     return raw === today
   } catch {
     return false
@@ -162,6 +164,63 @@ export function hidePopupToday(id: string): void {
     localStorage.setItem(`${HIDE_PREFIX}${id}`, today)
   } catch {
   }
+}
+
+export function hideAllPopupsToday(): void {
+  if (typeof window === "undefined") return
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    localStorage.setItem(HIDE_ALL_KEY, today)
+  } catch {
+  }
+}
+
+export function isAllPopupsHiddenToday(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    const today = new Date().toISOString().slice(0, 10)
+    return localStorage.getItem(HIDE_ALL_KEY) === today
+  } catch {
+    return false
+  }
+}
+
+export function popupSlidePageSize(total: number): number {
+  if (total >= 3) return 3
+  if (total === 2) return 2
+  return Math.max(0, total)
+}
+
+export function popupFrameSize(item: Pick<PopupItem, "widthSize" | "verticalSize">): {
+  width: number
+  height: number
+} {
+  const width = item.widthSize && item.widthSize > 0 ? item.widthSize : POPUP_DEFAULT_WIDTH
+  const height = item.verticalSize && item.verticalSize > 0 ? item.verticalSize : POPUP_DEFAULT_HEIGHT
+  return { width, height }
+}
+
+export function popupAllowsHideToday(item: Pick<PopupItem, "stopTodayHide">): boolean {
+  return item.stopTodayHide === "Y"
+}
+
+export function popupFitScale(
+  frames: { width: number; height: number }[],
+  boxWidth: number,
+  boxHeight: number,
+  gap: number,
+): number {
+  if (frames.length === 0 || boxWidth <= 0 || boxHeight <= 0) return 0.45
+  const totalWidth = frames.reduce((sum, frame) => sum + frame.width, 0) + gap * (frames.length - 1)
+  const maxHeight = frames.reduce((max, frame) => Math.max(max, frame.height), 0)
+  if (totalWidth <= 0 || maxHeight <= 0) return 1
+  return Math.min(1, boxWidth / totalWidth, boxHeight / maxHeight)
+}
+
+export function formatPopupSlideCounter(current: number, total: number): string {
+  const cur = String(Math.max(1, current)).padStart(2, "0")
+  const tot = String(Math.max(0, total)).padStart(2, "0")
+  return `${cur} — ${tot}`
 }
 
 export async function uploadPopupImage(
@@ -217,6 +276,7 @@ export async function fetchAdminPopupItems(options?: {
   if (options?.domainId) params.set("domainId", options.domainId)
   const res = await fetch(`/api/v1/popup/items?${params.toString()}`, {
     headers: authHeadersJson(),
+    credentials: "same-origin",
     cache: "no-store",
   })
   const payload = await readJson(res)
@@ -232,6 +292,7 @@ export async function createPopupItem(
   const res = await fetch("/api/v1/popup/items", {
     method: "POST",
     headers: authHeadersJson(),
+    credentials: "same-origin",
     body: JSON.stringify(input),
     cache: "no-store",
   })
@@ -249,6 +310,7 @@ export async function updatePopupItem(
   const res = await fetch(`/api/v1/popup/items/${encodeURIComponent(id)}`, {
     method: "PUT",
     headers: authHeadersJson(),
+    credentials: "same-origin",
     body: JSON.stringify(input),
     cache: "no-store",
   })
@@ -265,6 +327,7 @@ export async function deletePopupItem(
   const res = await fetch(`/api/v1/popup/items/${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: authHeadersJson(),
+    credentials: "same-origin",
     cache: "no-store",
   })
   const payload = await readJson(res)

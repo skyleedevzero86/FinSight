@@ -1,7 +1,8 @@
 import {
   authHeadersJson,
   clearAuthSession,
-  readUsableAccessToken,
+  hasAuthSession,
+  writeAuthHintCookie,
   type AuthProvider,
 } from "@/lib/finsightToken"
 
@@ -65,16 +66,28 @@ export function authProviderLabel(provider: AuthProvider): string {
 }
 
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
-  if (!readUsableAccessToken()) return null
+  if (!hasAuthSession()) return null
   try {
-    const res = await fetch("/api/v1/auth/me", {
+    let res = await fetch("/api/v1/auth/me", {
       headers: authHeadersJson(),
+      credentials: "include",
       cache: "no-store",
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(20_000),
     })
     if (res.status === 401 || res.status === 403) {
-      clearAuthSession({ emit: false })
-      return null
+      const refreshed = await refreshAuthSession()
+      if (refreshed) {
+        res = await fetch("/api/v1/auth/me", {
+          headers: authHeadersJson(),
+          credentials: "include",
+          cache: "no-store",
+          signal: AbortSignal.timeout(20_000),
+        })
+      }
+      if (res.status === 401 || res.status === 403) {
+        clearAuthSession({ emit: false })
+        return null
+      }
     }
     if (res.status === 502 || res.status === 503 || res.status === 504) {
       return null
@@ -86,8 +99,11 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     if (root?.unavailable === true) {
       return null
     }
-    if (root?.sessionInvalid === true || root?.data == null) {
+    if (root?.sessionInvalid === true) {
       clearAuthSession({ emit: false })
+      return null
+    }
+    if (root?.data == null) {
       return null
     }
 
@@ -97,7 +113,42 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
       return null
     }
     return user
-  } catch {
+  } catch (err) {
+    if (isAbortLike(err)) {
+      return null
+    }
     return null
+  }
+}
+
+export async function waitForSessionUser(attempts = 4): Promise<boolean> {
+  for (let i = 0; i < attempts; i += 1) {
+    writeAuthHintCookie()
+    const user = await fetchCurrentUser()
+    if (user) return true
+    await new Promise((resolve) => setTimeout(resolve, 300 * (i + 1)))
+  }
+  return false
+}
+
+function isAbortLike(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  if (err.name === "AbortError" || err.name === "TimeoutError") return true
+  return /aborted|timeout/i.test(err.message)
+}
+
+export async function refreshAuthSession(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/v1/auth/refresh", {
+      method: "POST",
+      headers: authHeadersJson(),
+      credentials: "include",
+      body: "{}",
+      cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+    })
+    return res.ok
+  } catch {
+    return false
   }
 }

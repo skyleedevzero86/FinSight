@@ -57,7 +57,7 @@ export default function CommunityMarkdownPreview({
   const showSideTableOfContents = showTableOfContents && tableOfContents.length > 0
 
   const renderHeading = (tagName: HeadingTag) => {
-    return ({ children, node, ...props }: MarkdownHeadingProps) => {
+    const Heading = ({ children, node, ...props }: MarkdownHeadingProps) => {
       const line = node?.position?.start?.line ?? undefined
       const heading = line ? headingDefinitionByLine.get(line) : undefined
       const TagName = tagName
@@ -68,6 +68,8 @@ export default function CommunityMarkdownPreview({
         </TagName>
       )
     }
+    Heading.displayName = `MarkdownHeading(${tagName})`
+    return Heading
   }
 
   const handleTableOfContentsSelect = (headingId: string) => {

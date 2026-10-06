@@ -1,3 +1,4 @@
+import { rewriteDummyAssetUrl } from "@/lib/dummyAssetUrl"
 import { authHeadersJson } from "@/lib/finsightToken"
 import { prepareImageForUpload, uploadEditorAsset } from "@/lib/editorUpload"
 
@@ -114,7 +115,8 @@ function parseOne(raw: unknown): MainimgItem | null {
 }
 
 export function resolveMainimgUrl(item: Pick<MainimgItem, "image" | "imageFile">): string {
-  return (item.image || item.imageFile || "").trim()
+  const raw = (item.image || item.imageFile || "").trim()
+  return rewriteDummyAssetUrl(raw)
 }
 
 export async function uploadMainimgFile(

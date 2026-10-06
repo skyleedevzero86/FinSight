@@ -46,6 +46,29 @@ public final class LiveVodEngagementDtos {
     ) {
     }
 
+    public record MyFavoriteItemResponse(
+            String videoId,
+            String title,
+            String channelTitle,
+            String thumbnailUrl,
+            String savedAt
+    ) {
+    }
+
+    public record MyFavoritePageResponse(
+            List<MyFavoriteItemResponse> items,
+            int page,
+            int size,
+            long totalElements,
+            int totalPages,
+            boolean hasNext,
+            boolean hasPrevious
+    ) {
+        public MyFavoritePageResponse {
+            items = items == null ? List.of() : List.copyOf(items);
+        }
+    }
+
     public record CommentCreateRequest(
             String content,
             Long parentId

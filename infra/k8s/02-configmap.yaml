@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: finsight-config
+  namespace: finsight-k8s
+data:
+  SPRING_PROFILES_ACTIVE: "prod"
+  DB_HOST: "mysql"
+  DB_PORT: "3306"
+  DB_NAME: "finsight"
+  SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/finsight?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&useUnicode=true&characterEncoding=utf8"
+  SPRING_DATA_REDIS_HOST: "redis"
+  SPRING_DATA_REDIS_PORT: "6379"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  FINSIGHT_EDITOR_MINIO_ENABLED: "true"
+  FINSIGHT_EDITOR_MINIO_ENDPOINT: "http://minio:9000"
+  APP_FRONTEND_URL: "http://finsight.local"
+  FINSIGHT_API_BASE_URL: "http://web:8080"
+  FINSIGHT_API_PROXY_TIMEOUT_MS: "45000"
+  MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+  STORAGE_CLASS: "local-path"
+  OBJECT_STORAGE_PROVIDER: "minio"

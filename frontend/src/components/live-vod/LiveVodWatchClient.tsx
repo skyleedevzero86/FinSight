@@ -13,6 +13,7 @@ import {
 } from "@/lib/liveVod"
 import { toggleLiveVodFavorite } from "@/lib/liveVodFavorites"
 import { recordLiveVodWatch } from "@/lib/liveVodHistory"
+import { recordLiveVodBrowseView } from "@/lib/browseHistory"
 import {
   fetchLiveVodEngagement,
   toggleLiveVodFavoriteApi,
@@ -208,13 +209,22 @@ function LiveVodWatchBody() {
 
   useEffect(() => {
     if (!videoId || !title || title === PLACEHOLDER_TITLE) return
+    const thumb = thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+    const nextTab = tab === "FAVORITES" || tab === "HISTORY" ? "ALL" : tab
     recordLiveVodWatch({
       videoId,
       title,
       channelTitle: channel,
-      thumbnailUrl: thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
-      tab: tab === "FAVORITES" || tab === "HISTORY" ? "ALL" : tab,
+      thumbnailUrl: thumb,
+      tab: nextTab,
       watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
+    })
+    recordLiveVodBrowseView({
+      videoId,
+      title,
+      channelTitle: channel,
+      thumbnailUrl: thumb,
+      tab: nextTab,
     })
   }, [videoId, title, channel, tab, thumbnailUrl])
 

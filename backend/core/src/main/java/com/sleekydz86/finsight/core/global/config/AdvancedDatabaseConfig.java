@@ -32,7 +32,7 @@ public class AdvancedDatabaseConfig {
     @Value("${spring.datasource.driver-class-name:com.mysql.cj.jdbc.Driver}")
     private String driverClassName;
 
-    @Value("${spring.jpa.hibernate.ddl-auto:update}")
+    @Value("${spring.jpa.hibernate.ddl-auto:validate}")
     private String ddlAuto;
 
     @Value("${hibernate.cache.enabled:true}")

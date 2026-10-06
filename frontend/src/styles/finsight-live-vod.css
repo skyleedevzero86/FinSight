@@ -321,6 +321,49 @@
   align-items: center;
 }
 
+.finsight-live-vod-page .flv-fav-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 4px;
+  margin: 8px 0 20px;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.finsight-live-vod-page .flv-fav-tab {
+  border: 0;
+  background: transparent;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #777;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.finsight-live-vod-page .flv-fav-tab:hover {
+  color: #1f444b;
+}
+
+.finsight-live-vod-page .flv-fav-tab.is-active {
+  color: #1f444b;
+  border-bottom-color: #1f444b;
+}
+
+.finsight-live-vod-page .flv-history-links .flv-back-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.finsight-live-vod-page .flv-history-links .flv-back-link.is-active {
+  color: #1f444b;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .finsight-live-vod-page .flv-history-heading {
   display: flex;
   align-items: center;

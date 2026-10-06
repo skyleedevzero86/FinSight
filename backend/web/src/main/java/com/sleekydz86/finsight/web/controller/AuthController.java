@@ -5,12 +5,14 @@ import com.sleekydz86.finsight.core.auth.dto.*;
 import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
 import com.sleekydz86.finsight.core.auth.service.OtpAuthenticationService;
 import com.sleekydz86.finsight.core.auth.service.SocialAuthService;
+import com.sleekydz86.finsight.core.auth.util.JwtCookieSupport;
 import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
 import com.sleekydz86.finsight.core.global.annotation.LogExecution;
 import com.sleekydz86.finsight.core.global.annotation.PerformanceMonitor;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.exception.AuthenticationFailedException;
 import com.sleekydz86.finsight.core.global.exception.BaseException;
+import com.sleekydz86.finsight.core.global.exception.InvalidTokenException;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.user.domain.AuthProvider;
 import com.sleekydz86.finsight.core.user.domain.User;
@@ -21,6 +23,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,17 +40,20 @@ public class AuthController {
     private final OtpAuthenticationService otpAuthenticationService;
     private final SocialAuthService socialAuthService;
     private final UserPersistencePort userPersistencePort;
+    private final JwtCookieSupport jwtCookieSupport;
 
     public AuthController(AuthenticationService authenticationService,
             UserService userService,
             OtpAuthenticationService otpAuthenticationService,
             SocialAuthService socialAuthService,
-            UserPersistencePort userPersistencePort) {
+            UserPersistencePort userPersistencePort,
+            JwtCookieSupport jwtCookieSupport) {
         this.authenticationService = authenticationService;
         this.userService = userService;
         this.otpAuthenticationService = otpAuthenticationService;
         this.socialAuthService = socialAuthService;
         this.userPersistencePort = userPersistencePort;
+        this.jwtCookieSupport = jwtCookieSupport;
     }
 
     @Operation(summary = "사용자 로그인", description = "이메일과 비밀번호로 로그인합니다.")
@@ -57,7 +64,7 @@ public class AuthController {
         try {
             var session = authenticationService.loginWithUser(request);
             LoginResultResponse result = socialAuthService.toWebLoginResult(session.user(), session.token());
-            return ResponseEntity.ok(ApiResponse.success(result, "로그인에 성공했습니다"));
+            return withAuthCookies(session.token(), ApiResponse.success(result, "로그인에 성공했습니다"));
         } catch (AuthenticationFailedException e) {
             return ResponseEntity.ok(ApiResponse.error(e.getMessage(), 401));
         } catch (BaseException e) {
@@ -98,7 +105,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResultResponse>> loginWithNaver(
             @RequestBody @Valid SocialOAuthCodeRequest request) {
         LoginResultResponse result = socialAuthService.loginWithNaver(request.getCode(), request.getState());
-        return ResponseEntity.ok(ApiResponse.success(result, "네이버 로그인에 성공했습니다"));
+        return withAuthCookies(result.getToken(),
+                ApiResponse.success(result, "네이버 로그인에 성공했습니다"));
     }
 
     @Operation(summary = "카카오 로그인", description = "카카오 인가 코드로 로그인합니다.")
@@ -108,7 +116,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResultResponse>> loginWithKakao(
             @RequestBody @Valid SocialOAuthCodeRequest request) {
         LoginResultResponse result = socialAuthService.loginWithKakao(request.getCode(), request.getState());
-        return ResponseEntity.ok(ApiResponse.success(result, "카카오 로그인에 성공했습니다"));
+        return withAuthCookies(result.getToken(),
+                ApiResponse.success(result, "카카오 로그인에 성공했습니다"));
     }
 
     @Operation(summary = "구글 로그인", description = "구글 인가 코드로 로그인합니다.")
@@ -118,7 +127,8 @@ public class AuthController {
     public ResponseEntity<ApiResponse<LoginResultResponse>> loginWithGoogle(
             @RequestBody @Valid SocialOAuthCodeRequest request) {
         LoginResultResponse result = socialAuthService.loginWithGoogle(request.getCode(), request.getState());
-        return ResponseEntity.ok(ApiResponse.success(result, "구글 로그인에 성공했습니다"));
+        return withAuthCookies(result.getToken(),
+                ApiResponse.success(result, "구글 로그인에 성공했습니다"));
     }
 
     @Operation(summary = "네이버 연결 끊기 콜백", description = "네이버 연결 끊기 알림을 처리합니다.")
@@ -171,6 +181,10 @@ public class AuthController {
     public ResponseEntity<ApiResponse<JwtToken>> loginWithOtp(@RequestBody @Valid OtpLoginRequest request) {
         try {
             ApiResponse<JwtToken> response = otpAuthenticationService.loginWithOtp(request);
+            if (response != null && response.isSuccess() && response.getData() != null) {
+                return withAuthCookies(response.getData(),
+                        ApiResponse.success(response.getData(), response.getMessage()));
+            }
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             throw new RuntimeException("OTP 로그인 처리 중 오류가 발생했습니다: " + e.getMessage(), e);
@@ -233,30 +247,52 @@ public class AuthController {
         }
     }
 
-    @Operation(summary = "토큰 갱신", description = "리프레시 토큰으로 새로운 액세스 토큰을 발급받습니다.")
+    @Operation(summary = "토큰 갱신", description = "리프레시 토큰(쿠키 또는 body)으로 새로운 액세스 토큰을 발급받습니다.")
     @PostMapping("/refresh")
     @LogExecution("토큰 갱신")
     @PerformanceMonitor(threshold = 1000, metricName = "token_refresh")
-    public ResponseEntity<ApiResponse<JwtToken>> refresh(@RequestBody @Valid RefreshTokenRequest request) {
+    public ResponseEntity<ApiResponse<JwtToken>> refresh(
+            @RequestBody(required = false) RefreshTokenRequest request,
+            HttpServletRequest httpRequest) {
         try {
-            JwtToken token = authenticationService.refresh(request);
-            return ResponseEntity.ok(ApiResponse.success(token, "토큰 갱신에 성공했습니다"));
+            String refreshToken = resolveRefreshToken(request, httpRequest);
+            if (refreshToken == null || refreshToken.isBlank()) {
+                throw new InvalidTokenException("REFRESH");
+            }
+            JwtToken token = authenticationService.refresh(new RefreshTokenRequest(refreshToken));
+            return withAuthCookies(token, ApiResponse.success(token, "토큰 갱신에 성공했습니다"));
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("토큰 갱신 처리 중 오류가 발생했습니다: " + e.getMessage(), e);
         }
     }
 
+    private String resolveRefreshToken(RefreshTokenRequest request, HttpServletRequest httpRequest) {
+        if (request != null && request.getRefreshToken() != null && !request.getRefreshToken().isBlank()) {
+            return request.getRefreshToken().trim();
+        }
+        if (httpRequest.getCookies() == null) {
+            return null;
+        }
+        for (var cookie : httpRequest.getCookies()) {
+            if (JwtCookieSupport.REFRESH_COOKIE.equals(cookie.getName())
+                    && cookie.getValue() != null
+                    && !cookie.getValue().isBlank()) {
+                return cookie.getValue().trim();
+            }
+        }
+        return null;
+    }
+
     @Operation(summary = "사용자 로그아웃", description = "현재 사용자를 로그아웃합니다.")
-    @SecurityRequirement(name = "BearerAuth")
     @PostMapping("/logout")
     @LogExecution("사용자 로그아웃")
     @PerformanceMonitor(threshold = 500, metricName = "user_logout")
-    public ResponseEntity<ApiResponse<Void>> logout(@CurrentUser AuthenticatedUser currentUser) {
-        try {
-            return ResponseEntity.ok(ApiResponse.success(null, "로그아웃에 성공했습니다"));
-        } catch (Exception e) {
-            throw new RuntimeException("로그아웃 처리 중 오류가 발생했습니다: " + e.getMessage(), e);
-        }
+    public ResponseEntity<ApiResponse<Void>> logout() {
+        HttpHeaders headers = new HttpHeaders();
+        jwtCookieSupport.clearAuthCookies(headers);
+        return ResponseEntity.ok().headers(headers).body(ApiResponse.success(null, "로그아웃에 성공했습니다"));
     }
 
     @Operation(summary = "현재 사용자 정보 조회", description = "현재 로그인한 사용자의 정보를 조회합니다.")
@@ -268,4 +304,11 @@ public class AuthController {
             @CurrentUser AuthenticatedUser currentUser) {
         return ResponseEntity.ok(ApiResponse.success(currentUser, "현재 사용자 정보를 성공적으로 조회했습니다"));
     }
+
+    private <T> ResponseEntity<ApiResponse<T>> withAuthCookies(JwtToken token, ApiResponse<T> body) {
+        HttpHeaders headers = new HttpHeaders();
+        jwtCookieSupport.writeAuthCookies(headers, token);
+        return ResponseEntity.ok().headers(headers).body(body);
+    }
+
 }

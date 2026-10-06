@@ -1,0 +1,6 @@
+# S3: 프로젝트 완성 후 MinIO 디렉터리 전체를 루트 resources 에서 제거한다.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - service.yaml
+  - statefulset.yaml

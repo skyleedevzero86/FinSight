@@ -1,4 +1,4 @@
-import { authHeadersJson, readAccessToken } from "@/lib/finsightToken"
+import { authHeadersJson } from "@/lib/finsightToken"
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
@@ -119,7 +119,6 @@ function parseSettings(payload: unknown): InboxSettings {
 }
 
 export async function fetchInboxUnreadCount(): Promise<number | null> {
-  if (!readAccessToken()) return 0
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
     return null
   }
@@ -133,8 +132,12 @@ export async function fetchInboxUnreadCount(): Promise<number | null> {
     const payload = await readJson(res)
     const root = asRecord(payload)
     const data = asRecord(root?.data)
-    const count = data?.unreadCount
-    return typeof count === "number" ? count : 0
+    const count = data?.unreadCount ?? root?.unreadCount
+    if (typeof count === "number" && Number.isFinite(count)) return count
+    if (typeof count === "string" && count.trim() && Number.isFinite(Number(count))) {
+      return Number(count)
+    }
+    return 0
   } catch {
     return null
   }

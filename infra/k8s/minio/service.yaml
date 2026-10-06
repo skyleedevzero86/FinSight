@@ -1,0 +1,19 @@
+# S3: 프로젝트 완성 후 MinIO 대체 시 이 Service 를 제거한다.
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: finsight-k8s
+  labels:
+    app: minio
+spec:
+  clusterIP: None
+  selector:
+    app: minio
+  ports:
+    - name: api
+      port: 9000
+      targetPort: 9000
+    - name: console
+      port: 9001
+      targetPort: 9001

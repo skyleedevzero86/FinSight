@@ -14,7 +14,7 @@ import {
   authHeadersJson,
   clearAuthSession,
   FINSIGHT_AUTH_CHANGED_EVENT,
-  readUsableAccessToken,
+  hasAuthSession,
 } from "@/lib/finsightToken"
 
 type AuthSessionValue = {
@@ -47,19 +47,27 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
   const [hasToken, setHasToken] = useState(false)
 
   const refresh = useCallback(async () => {
-    const token = readUsableAccessToken()
-    setHasToken(Boolean(token))
-    if (!token) {
+    const hinted = hasAuthSession()
+    if (!hinted) {
       setUser(null)
+      setHasToken(false)
       setReady(true)
       return
     }
     try {
-      const next = await fetchCurrentUser()
+      let next = await fetchCurrentUser()
+      if (!next && hasAuthSession()) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        next = await fetchCurrentUser()
+      }
       setUser(next)
-      setHasToken(Boolean(next) || Boolean(readUsableAccessToken()))
+      setHasToken(Boolean(next))
+      if (!next && !hasAuthSession()) {
+        setHasToken(false)
+      }
     } catch {
       setUser(null)
+      setHasToken(false)
     } finally {
       setReady(true)
     }
@@ -67,13 +75,12 @@ export default function AuthSessionProvider({ children }: { children: ReactNode 
 
   const logout = useCallback(async () => {
     try {
-      if (readUsableAccessToken()) {
-        await fetch("/api/v1/auth/logout", {
-          method: "POST",
-          headers: { ...authHeadersJson(), "Content-Type": "application/json" },
-          body: "{}",
-        })
-      }
+      await fetch("/api/v1/auth/logout", {
+        method: "POST",
+        headers: { ...authHeadersJson(), "Content-Type": "application/json" },
+        credentials: "include",
+        body: "{}",
+      })
     } catch {
       void 0
     }

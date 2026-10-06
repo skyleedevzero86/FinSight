@@ -36,8 +36,14 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
     @Query("SELECT n FROM NewsJpaEntity n ORDER BY n.viewCount DESC")
     List<NewsJpaEntity> findPopularNews();
 
+    @Query("SELECT n FROM NewsJpaEntity n ORDER BY n.viewCount DESC")
+    Page<NewsJpaEntity> findPopularNews(Pageable pageable);
+
     @Query("SELECT n FROM NewsJpaEntity n ORDER BY n.newsPublishedTime DESC")
     List<NewsJpaEntity> findLatestNews();
+
+    @Query("SELECT n FROM NewsJpaEntity n ORDER BY n.newsPublishedTime DESC")
+    Page<NewsJpaEntity> findLatestNews(Pageable pageable);
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.id != :newsId AND n.targetCategories LIKE %:category%")
     List<NewsJpaEntity> findRelatedNews(@Param("newsId") Long newsId, @Param("category") String category);

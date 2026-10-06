@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.core.media.livevod.adapter.persistence;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,4 +23,8 @@ public interface LiveVodFavoriteJpaRepository extends JpaRepository<LiveVodFavor
     List<Object[]> countByVideoIds(@Param("videoIds") Collection<String> videoIds);
 
     List<LiveVodFavoriteJpaEntity> findByUserEmailOrderByCreatedAtDesc(String userEmail);
+
+    Page<LiveVodFavoriteJpaEntity> findByUserEmailOrderByCreatedAtDesc(String userEmail, Pageable pageable);
+
+    long countByUserEmail(String userEmail);
 }

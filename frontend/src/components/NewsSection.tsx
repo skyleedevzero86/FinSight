@@ -1,6 +1,17 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { Clock, Maximize2 } from "lucide-react"
+import {
+  fetchLiveVodFeed,
+  flattenLiveVodFeedItems,
+  liveVodWatchHref,
+  shuffleLiveVodItems,
+  stashLiveVodMetaHint,
+  type LiveVodItem,
+} from "@/lib/liveVod"
 
 const mainNews = [
   {
@@ -59,60 +70,64 @@ const replayPrograms = [
     circleClass: "bg-[#e85d04]",
     circleLines: ["장르만", "여의도"],
     label: "시장브리핑",
+    href: "/live-vod?tab=MARKET",
   },
   {
     id: "p2",
     circleClass: "bg-[#c026d3]",
     circleLines: ["백브", "RE핑"],
     label: "테마분석",
+    href: "/live-vod?tab=THEME",
   },
   {
     id: "p3",
     circleClass: "bg-[#16a34a]",
     circleLines: ["부글", "터뷰"],
     label: "종목분석",
+    href: "/live-vod?tab=THEME",
   },
   {
     id: "p4",
     circleClass: "bg-[#7c3aed]",
     circleLines: ["유기자의", "알탭"],
     label: "실적/기업이슈",
+    href: "/live-vod?tab=THEME",
   },
   {
     id: "p5",
     circleClass: "bg-[#2563eb]",
     circleLines: ["투자", "상식"],
     label: "투자상식",
+    href: "/live-vod",
   },
   {
     id: "p6",
     circleClass: "bg-[#0d9488]",
     circleLines: ["글로벌", "매크로"],
     label: "글로벌매크로",
+    href: "/live-vod?tab=MACRO",
   },
 ] as const
-
-const replayList = [
-  {
-    id: "r1",
-    title: "4월 10일 (금) 장르가 머니 …",
-    subtitle: "장르가 머니",
-    duration: "50:48",
-    thumb: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=320&h=180&fit=crop",
-  },
-  {
-    id: "r2",
-    title: "4월 9일 (목) 백브리핑 하이라이트",
-    subtitle: "백브RE핑",
-    duration: "26:23",
-    thumb: "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?w=320&h=180&fit=crop",
-  },
-]
 
 const featuredPair = mainNews.slice(0, 2)
 const smallQuad = mainNews.slice(2, 6)
 
 export default function NewsSection() {
+  const [replayItems, setReplayItems] = useState<LiveVodItem[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const result = await fetchLiveVodFeed("ALL")
+      if (cancelled || !result.ok) return
+      const picked = shuffleLiveVodItems(flattenLiveVodFeedItems(result.data)).slice(0, 2)
+      setReplayItems(picked)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <section className="border-t border-[#ebebeb] bg-[#f9f9f9] py-10 md:py-12">
       <div className="mx-auto max-w-7xl px-4 md:px-8">
@@ -122,7 +137,7 @@ export default function NewsSection() {
           </h2>
           <div className="mt-3 text-center md:mt-0">
             <Link
-              href="#"
+              href="/live-vod"
               className="text-sm font-medium text-[#3c3e40] hover:text-finsight-primary hover:underline md:absolute md:right-0 md:top-1/2 md:mt-0 md:inline md:-translate-y-1/2"
             >
               더보기 →
@@ -192,7 +207,7 @@ export default function NewsSection() {
           <aside className="w-full shrink-0 border border-[#d6d6d6] bg-white p-4 shadow-sm lg:w-[280px] xl:w-[300px]">
             <div className="mb-4 text-right">
               <Link
-                href="#"
+                href="/live-vod"
                 className="inline-block text-base font-bold tracking-tight text-[#231f20] hover:text-finsight-primary"
               >
                 다시보기 &gt;
@@ -203,7 +218,7 @@ export default function NewsSection() {
               {replayPrograms.map((p) => (
                 <Link
                   key={p.id}
-                  href="#"
+                  href={p.href}
                   className="flex min-w-0 flex-col items-center gap-2 text-center"
                 >
                   <span
@@ -221,38 +236,45 @@ export default function NewsSection() {
             </div>
 
             <div className="border border-[#ebebeb] bg-white">
-              {replayList.map((item, idx) => (
-                <div
-                  key={item.id}
-                  className={`flex gap-3 p-3 md:gap-4 md:p-4 ${idx > 0 ? "border-t border-[#ebebeb]" : ""}`}
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold leading-snug text-[#231f20] line-clamp-2 md:text-[15px]">
-                      {item.title}
-                    </p>
-                    <p className="mt-1 text-xs text-[#737475]">{item.subtitle}</p>
-                  </div>
-                  <Link
-                    href="#"
-                    aria-label={`${item.title} 영상 보기`}
-                    className="group/thumb relative h-[4.5rem] w-[7.5rem] shrink-0 overflow-hidden rounded-md bg-[#eee] md:h-[4.75rem] md:w-[8rem]"
-                  >
-                    <Image
-                      src={item.thumb}
-                      alt=""
-                      fill
-                      className="object-cover transition group-hover/thumb:opacity-95"
-                      sizes="128px"
-                    />
-                    <span className="absolute right-1 top-1 rounded bg-black/45 p-0.5 text-white">
-                      <Maximize2 className="h-3 w-3" aria-hidden />
-                    </span>
-                    <span className="absolute bottom-1 right-1 rounded bg-black/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-white">
-                      {item.duration}
-                    </span>
-                  </Link>
-                </div>
-              ))}
+              {replayItems.length === 0 ? (
+                <p className="p-4 text-center text-xs text-[#737475]">유튜브 영상을 불러오는 중…</p>
+              ) : (
+                replayItems.map((item, idx) => {
+                  const href = liveVodWatchHref(item, "ALL")
+                  return (
+                    <div
+                      key={item.videoId}
+                      className={`flex gap-3 p-3 md:gap-4 md:p-4 ${idx > 0 ? "border-t border-[#ebebeb]" : ""}`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-bold leading-snug text-[#231f20] line-clamp-2 md:text-[15px]">
+                          {item.title}
+                        </p>
+                        <p className="mt-1 text-xs text-[#737475]">
+                          {item.channelTitle || "YouTube"}
+                        </p>
+                      </div>
+                      <Link
+                        href={href}
+                        aria-label={`${item.title} 영상 보기`}
+                        className="group/thumb relative h-[4.5rem] w-[7.5rem] shrink-0 overflow-hidden rounded-md bg-[#eee] md:h-[4.75rem] md:w-[8rem]"
+                        onClick={() => stashLiveVodMetaHint(item)}
+                      >
+                        <Image
+                          src={item.thumbnailUrl}
+                          alt=""
+                          fill
+                          className="object-cover transition group-hover/thumb:opacity-95"
+                          sizes="128px"
+                        />
+                        <span className="absolute right-1 top-1 rounded bg-black/45 p-0.5 text-white">
+                          <Maximize2 className="h-3 w-3" aria-hidden />
+                        </span>
+                      </Link>
+                    </div>
+                  )
+                })
+              )}
             </div>
           </aside>
         </div>

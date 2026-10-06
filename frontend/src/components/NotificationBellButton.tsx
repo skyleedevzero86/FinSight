@@ -1,21 +1,18 @@
 "use client"
 
+import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
-import NotificationInboxPanel from "@/components/NotificationInboxPanel"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import { fetchInboxUnreadCount } from "@/lib/inbox"
-import { readUsableAccessToken } from "@/lib/finsightToken"
 
 export default function NotificationBellButton() {
   const { user } = useAuthSession()
-  const [open, setOpen] = useState(false)
   const [unread, setUnread] = useState(0)
-  const wrapRef = useRef<HTMLDivElement | null>(null)
   const failStreakRef = useRef(0)
   const cooldownUntilRef = useRef(0)
 
   const refreshUnread = useCallback(async () => {
-    if (!user || !readUsableAccessToken()) {
+    if (!user) {
       setUnread(0)
       return
     }
@@ -69,39 +66,13 @@ export default function NotificationBellButton() {
     }
   }, [refreshUnread])
 
-  useEffect(() => {
-    if (!open) return
-    function onDocClick(e: MouseEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false)
-    }
-    document.addEventListener("mousedown", onDocClick)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onDocClick)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [open])
-
   return (
-    <div ref={wrapRef} className="relative">
-      <button
-        type="button"
-        className="relative hover:text-finsight-secondary transition"
-        aria-expanded={open}
-        aria-label="알림함 보기"
-        onClick={() => {
-          setOpen((v) => !v)
-          if (!open) {
-            failStreakRef.current = 0
-            cooldownUntilRef.current = 0
-            void refreshUnread()
-          }
-        }}
+    <div className="relative">
+      <Link
+        href="/myinfo/activity"
+        className={`relative block transition ${unread > 0 ? "text-red-500" : "hover:text-finsight-secondary"}`}
+        aria-label={unread > 0 ? `내 활동 보기, 읽지 않은 알림 ${unread}건` : "내 활동 보기"}
+        title="내 활동"
       >
         <svg
           width="20"
@@ -125,26 +96,11 @@ export default function NotificationBellButton() {
           </g>
         </svg>
         {unread > 0 ? (
-          <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white">
+          <span className="absolute -right-2 -top-2 flex h-[18px] min-w-[18px] items-center justify-center bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
             {unread > 99 ? "99+" : unread}
           </span>
         ) : null}
-      </button>
-      <NotificationInboxPanel
-        open={open}
-        onClose={() => setOpen(false)}
-        onUnreadChange={(v) => {
-          if (v === 0) {
-            setUnread(0)
-            return
-          }
-          if (v < 0) {
-            setUnread((c) => Math.max(0, c + v))
-            return
-          }
-          setUnread(v)
-        }}
-      />
+      </Link>
     </div>
   )
 }

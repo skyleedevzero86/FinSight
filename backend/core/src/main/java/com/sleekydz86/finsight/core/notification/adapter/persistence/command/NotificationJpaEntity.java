@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.notification.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.global.BaseTimeEntity;
 import com.sleekydz86.finsight.core.notification.domain.NotificationChannel;
+import com.sleekydz86.finsight.core.notification.domain.NotificationPriority;
 import com.sleekydz86.finsight.core.notification.domain.NotificationStatus;
 import com.sleekydz86.finsight.core.user.domain.NotificationType;
 import jakarta.persistence.*;
@@ -47,6 +48,10 @@ public class NotificationJpaEntity extends BaseTimeEntity {
     @Column(nullable = false)
     private NotificationChannel channel;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NotificationPriority priority = NotificationPriority.NORMAL;
+
     @Column(name = "external_id")
     private String externalId;
 
@@ -68,8 +73,8 @@ public class NotificationJpaEntity extends BaseTimeEntity {
     @Builder
     public NotificationJpaEntity(Long userId, Long newsId, NotificationType type, String title,
                                  String content, NotificationStatus status, NotificationChannel channel,
-                                 String externalId, LocalDateTime scheduledAt, LocalDateTime sentAt,
-                                 String failureReason, Map<String, String> metadata) {
+                                 NotificationPriority priority, String externalId, LocalDateTime scheduledAt,
+                                 LocalDateTime sentAt, String failureReason, Map<String, String> metadata) {
         this.userId = userId;
         this.newsId = newsId;
         this.type = type;
@@ -77,6 +82,7 @@ public class NotificationJpaEntity extends BaseTimeEntity {
         this.content = content;
         this.status = status;
         this.channel = channel;
+        this.priority = priority != null ? priority : NotificationPriority.NORMAL;
         this.externalId = externalId;
         this.scheduledAt = scheduledAt;
         this.sentAt = sentAt;

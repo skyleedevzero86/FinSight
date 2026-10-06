@@ -4,7 +4,11 @@ import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.AiOverview;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
+import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class NewsJpaMapper {
@@ -26,7 +30,7 @@ public class NewsJpaMapper {
                     newsJpaEntity.getOverview(),
                     newsJpaEntity.getSentimentType(),
                     newsJpaEntity.getSentimentScore(),
-                    newsJpaEntity.getTargetCategories()
+                    copyCategories(newsJpaEntity.getTargetCategories())
             );
         }
 
@@ -47,6 +51,13 @@ public class NewsJpaMapper {
                 translatedContent,
                 aiOverview
         );
+    }
+
+    private List<TargetCategory> copyCategories(List<TargetCategory> source) {
+        if (source == null || source.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(source);
     }
 
     public NewsJpaEntity toEntity(News news) {

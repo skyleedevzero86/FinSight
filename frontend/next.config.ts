@@ -1,3 +1,5 @@
+import type { NextConfig } from "next"
+
 const YOUTUBE_ORIGINS =
   '(self "https://www.youtube-nocookie.com" "https://www.youtube.com")'
 
@@ -12,7 +14,14 @@ const LIVE_VOD_PERMISSIONS_POLICY = [
   `clipboard-write=${YOUTUBE_ORIGINS}`,
 ].join(", ")
 
-const nextConfig = {
+const nextConfig: NextConfig = {
+  output: "standalone",
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
   images: {
     remotePatterns: [
       {

@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: finsight-batch
+  namespace: finsight-k8s
+  labels:
+    app: batch
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app: batch
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: batch
+              image: finsight-batch:latest
+              imagePullPolicy: IfNotPresent
+              envFrom:
+                - configMapRef:
+                    name: finsight-config
+                - secretRef:
+                    name: finsight-secrets
+              env:
+                - name: SPRING_DATASOURCE_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: finsight-secrets
+                      key: MYSQL_USER
+                - name: SPRING_DATASOURCE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: finsight-secrets
+                      key: MYSQL_PASSWORD
+                - name: DB_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: finsight-secrets
+                      key: MYSQL_USER
+                - name: DB_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: finsight-secrets
+                      key: MYSQL_PASSWORD
+                - name: SPRING_DATA_REDIS_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: finsight-secrets
+                      key: REDIS_PASSWORD
+                - name: REDIS_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: finsight-secrets
+                      key: REDIS_PASSWORD
+              volumeMounts:
+                - name: work
+                  mountPath: /tmp/work
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 512Mi
+                limits:
+                  memory: 1536Mi
+          volumes:
+            - name: work
+              emptyDir: {}

@@ -1,4 +1,4 @@
-import { authHeadersJson, readAccessToken } from "@/lib/finsightToken"
+import { authHeadersJson } from "@/lib/finsightToken"
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
@@ -241,14 +241,11 @@ export async function fetchSmsStats(): Promise<
 export async function uploadSmsImage(
   file: File
 ): Promise<{ ok: true; imageId: string } | { ok: false; message: string }> {
-  const token = readAccessToken()
   const form = new FormData()
   form.append("file", file)
-  const headers: HeadersInit = {}
-  if (token) headers.Authorization = `Bearer ${token}`
   const res = await fetch("/api/v1/admin/sms/upload-image", {
     method: "POST",
-    headers,
+    credentials: "same-origin",
     body: form,
   })
   const payload = await readJson(res)

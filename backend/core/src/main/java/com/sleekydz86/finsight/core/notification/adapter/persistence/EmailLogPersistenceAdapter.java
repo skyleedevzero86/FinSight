@@ -18,27 +18,33 @@ import java.util.Optional;
 public class EmailLogPersistenceAdapter implements EmailLogPersistencePort {
 
     private final EmailLogJpaRepository emailLogJpaRepository;
+    private final EmailPersistenceMapper emailPersistenceMapper;
 
-    public EmailLogPersistenceAdapter(EmailLogJpaRepository emailLogJpaRepository) {
+    public EmailLogPersistenceAdapter(
+            EmailLogJpaRepository emailLogJpaRepository,
+            EmailPersistenceMapper emailPersistenceMapper) {
         this.emailLogJpaRepository = emailLogJpaRepository;
+        this.emailPersistenceMapper = emailPersistenceMapper;
     }
 
     @Override
     public EmailLog save(EmailLog emailLog) {
-        return emailLogJpaRepository.save(emailLog);
+        EmailLogJpaEntity saved = emailLogJpaRepository.save(emailPersistenceMapper.toEntity(emailLog));
+        return emailPersistenceMapper.toDomain(saved);
     }
 
     @Override
     public Optional<EmailLog> findById(Long id) {
-        return emailLogJpaRepository.findById(id);
+        return emailLogJpaRepository.findById(id).map(emailPersistenceMapper::toDomain);
     }
 
     @Override
     public Page<EmailLog> search(EmailLogSearchCriteria criteria, Pageable pageable) {
-        return emailLogJpaRepository.findAll(toSpecification(criteria), pageable);
+        return emailLogJpaRepository.findAll(toSpecification(criteria), pageable)
+                .map(emailPersistenceMapper::toDomain);
     }
 
-    private Specification<EmailLog> toSpecification(EmailLogSearchCriteria criteria) {
+    private Specification<EmailLogJpaEntity> toSpecification(EmailLogSearchCriteria criteria) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 

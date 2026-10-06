@@ -35,7 +35,9 @@ export async function postLogin(body: {
     const res = await fetch("/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
+      credentials: "include",
       body: JSON.stringify(body),
+      cache: "no-store",
     })
     let data: unknown
     try {

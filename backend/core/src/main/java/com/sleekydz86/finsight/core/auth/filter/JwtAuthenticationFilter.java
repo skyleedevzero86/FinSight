@@ -72,7 +72,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private String extractTokenFromRequest(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
+            return bearerToken.substring(7).trim();
         }
 
         Cookie[] cookies = request.getCookies();
@@ -89,6 +89,29 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
         }
 
+        return extractAccessTokenFromCookieHeader(request.getHeader("Cookie"));
+    }
+
+    private String extractAccessTokenFromCookieHeader(String cookieHeader) {
+        if (!StringUtils.hasText(cookieHeader)) {
+            return null;
+        }
+        String[] parts = cookieHeader.split(";");
+        for (String part : parts) {
+            String trimmed = part.trim();
+            if (!trimmed.startsWith("accessToken=")) {
+                continue;
+            }
+            String value = trimmed.substring("accessToken=".length()).trim();
+            if (!StringUtils.hasText(value)) {
+                return null;
+            }
+            try {
+                return java.net.URLDecoder.decode(value, java.nio.charset.StandardCharsets.UTF_8);
+            } catch (Exception ignored) {
+                return value;
+            }
+        }
         return null;
     }
 

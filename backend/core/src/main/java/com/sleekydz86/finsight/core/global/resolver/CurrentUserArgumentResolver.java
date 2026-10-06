@@ -102,11 +102,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             }
         }
 
-        String bearer = webRequest.getHeader("Authorization");
-        if (!StringUtils.hasText(bearer) || !bearer.startsWith("Bearer ")) {
-            return null;
-        }
-        String token = bearer.substring(7).trim();
+        String token = extractAccessToken(webRequest);
         if (!StringUtils.hasText(token) || !jwtTokenUtil.validateToken(token)) {
             return null;
         }
@@ -115,6 +111,47 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
             return null;
         }
         return jwtTokenUtil.getEmailFromToken(token);
+    }
+
+    private String extractAccessToken(NativeWebRequest webRequest) {
+        String bearer = webRequest.getHeader("Authorization");
+        if (StringUtils.hasText(bearer) && bearer.startsWith("Bearer ")) {
+            String token = bearer.substring(7).trim();
+            if (StringUtils.hasText(token)) {
+                return token;
+            }
+        }
+
+        jakarta.servlet.http.HttpServletRequest request =
+                webRequest.getNativeRequest(jakarta.servlet.http.HttpServletRequest.class);
+        if (request == null) {
+            return null;
+        }
+        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie cookie : cookies) {
+                if ("accessToken".equals(cookie.getName()) && StringUtils.hasText(cookie.getValue())) {
+                    return cookie.getValue().trim();
+                }
+            }
+        }
+
+        String cookieHeader = request.getHeader("Cookie");
+        if (!StringUtils.hasText(cookieHeader)) {
+            return null;
+        }
+        for (String part : cookieHeader.split(";")) {
+            String trimmed = part.trim();
+            if (!trimmed.startsWith("accessToken=")) {
+                continue;
+            }
+            String value = trimmed.substring("accessToken=".length()).trim();
+            if (value.startsWith("\"") && value.endsWith("\"") && value.length() >= 2) {
+                value = value.substring(1, value.length() - 1);
+            }
+            return value.isBlank() ? null : value;
+        }
+        return null;
     }
 
     private boolean isAuthenticatedPrincipal(Authentication authentication) {

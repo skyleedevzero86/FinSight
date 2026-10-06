@@ -1,7 +1,7 @@
-import { proxyJsonToFinSight } from "@/lib/finsightApiProxy"
+import { proxyAuthLoginToFinSight } from "@/lib/finsightApiProxy"
 
 export async function POST(req: Request) {
-  return proxyJsonToFinSight(req, "/api/v1/auth/oauth/naver", {
-    forwardCredentials: false,
+  return proxyAuthLoginToFinSight(req, "/api/v1/auth/oauth/naver", {
+    timeoutMs: 90_000,
   })
 }

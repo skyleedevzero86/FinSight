@@ -8,7 +8,6 @@ import HeaderSearchOverlay from "@/components/HeaderSearchOverlay"
 import BrandLogo from "@/components/BrandLogo"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import NotificationBellButton from "@/components/NotificationBellButton"
-import { canManageUsers } from "@/lib/adminUsers"
 
 function HeaderAvatar({ src }: { src: string | null }) {
   const [broken, setBroken] = useState(false)
@@ -62,62 +61,6 @@ export default function Header() {
         <HeaderAvatar src={user.profileImageUrl} />
         <span className="truncate">{user.nickname}</span>
       </Link>
-      <span className="text-gray-400">|</span>
-      <Link href="/myinfo/history" className="hover:text-finsight-secondary transition">
-        시청 기록
-      </Link>
-      <span className="text-gray-400">|</span>
-      <Link href="/myinfo/favorites" className="hover:text-finsight-secondary transition">
-        나의 즐겨찾기
-      </Link>
-      <span className="text-gray-400">|</span>
-      <Link href="/myinfo/posts" className="hover:text-finsight-secondary transition">
-        나의 게시글
-      </Link>
-      {canManageUsers(user.role) ? (
-        <>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/stats" className="hover:text-finsight-secondary transition">
-            통계
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/health" className="hover:text-finsight-secondary transition">
-            서버상황
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/mainimg" className="hover:text-finsight-secondary transition">
-            메인이미지
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/popup" className="hover:text-finsight-secondary transition">
-            팝업
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/ulink" className="hover:text-finsight-secondary transition">
-            통합링크
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/moderation" className="hover:text-finsight-secondary transition">
-            신고 관리
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/users" className="hover:text-finsight-secondary transition">
-            사용자 관리
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/email-logs" className="hover:text-finsight-secondary transition">
-            메일 이력
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/notifications" className="hover:text-finsight-secondary transition">
-            알림
-          </Link>
-          <span className="text-gray-400">|</span>
-          <Link href="/admin/sms" className="hover:text-finsight-secondary transition">
-            SMS
-          </Link>
-        </>
-      ) : null}
       <span className="text-gray-400">|</span>
       <button
         type="button"
@@ -225,116 +168,14 @@ export default function Header() {
                 </Link>
               </li>
               {ready && user ? (
-                <>
-                  <li>
-                    <Link
-                      href="/myinfo/history"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      시청 기록
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/myinfo/favorites"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      나의 즐겨찾기
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/myinfo/posts"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      나의 게시글
-                    </Link>
-                  </li>
-                </>
-              ) : null}
-              {ready && user && canManageUsers(user.role) ? (
-                <>
-                  <li>
-                    <Link
-                      href="/admin/stats"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      통계
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/health"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      서버상황
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/mainimg"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      메인이미지
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/popup"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      팝업
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/ulink"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      통합링크
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/moderation"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      신고 관리
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/users"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      사용자 관리
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/email-logs"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      메일 이력
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/notifications"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      알림
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/admin/sms"
-                      className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
-                    >
-                      SMS
-                    </Link>
-                  </li>
-                </>
+                <li>
+                  <Link
+                    href="/myinfo"
+                    className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
+                  >
+                    나의 메뉴
+                  </Link>
+                </li>
               ) : null}
             </ul>
           </div>

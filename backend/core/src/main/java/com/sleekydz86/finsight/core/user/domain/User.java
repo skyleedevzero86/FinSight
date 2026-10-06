@@ -3,7 +3,6 @@ package com.sleekydz86.finsight.core.user.domain;
 import com.sleekydz86.finsight.core.global.BaseTimeEntity;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.notification.domain.NotificationChannel;
-import jakarta.persistence.*;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
@@ -15,8 +14,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-@Entity
-@Table(name = "users")
 @Getter
 @Setter
 @Builder
@@ -28,183 +25,123 @@ public class User extends BaseTimeEntity {
     public static final int PASSWORD_EXPIRY_DAYS = 90;
     public static final int PASSWORD_RECOMMEND_DAYS = 75;
 
-    @Column(unique = true, nullable = false)
     private String username;
 
-    @Column(nullable = false)
     private String password;
 
-    @Column(length = 50, nullable = false)
     private String nickname;
 
-    @Column(unique = true, nullable = false)
     private String email;
 
-    @Column(unique = true)
     private String apiKey;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "auth_provider", length = 20)
     @Builder.Default
     private AuthProvider authProvider = AuthProvider.WEB;
 
-    @Column(name = "naver_id", unique = true, length = 100)
     private String naverId;
 
-    @Column(name = "google_id", unique = true, length = 100)
     private String googleId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     @Builder.Default
     private UserStatus status = UserStatus.PENDING;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
     @Builder.Default
     private UserRole role = UserRole.USER;
 
-    @Column
     private LocalDateTime lastLoginAt;
 
-    @Column(nullable = false)
     @Builder.Default
     private Integer loginFailCount = 0;
 
-    @Column
     private LocalDateTime accountLockedAt;
 
-    @Column
     private Long approvedBy;
 
-    @Column
     private LocalDateTime approvedAt;
 
-    @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
 
-    @Column(name = "password_change_count", nullable = false)
     @Builder.Default
     private Integer passwordChangeCount = 0;
 
-    @Column(name = "last_password_change_date")
     private LocalDate lastPasswordChangeDate;
 
-    @Column(name = "password_expiry_notified_at")
     private LocalDateTime passwordExpiryNotifiedAt;
 
-    @ElementCollection(targetClass = TargetCategory.class)
-    @Enumerated(EnumType.STRING)
-    @CollectionTable(name = "user_watchlist", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "category")
     @Builder.Default
     private List<TargetCategory> watchlist = new ArrayList<>();
 
-    @ElementCollection(targetClass = NotificationType.class)
-    @Enumerated(EnumType.STRING)
-    @CollectionTable(name = "user_notification_preferences", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "notification_type")
     @Builder.Default
     private List<NotificationType> notificationPreferences = new ArrayList<>();
 
-    @Column(name = "otp_secret")
     private String otpSecret;
 
-    @Column(name = "otp_enabled", nullable = false)
     @Builder.Default
     private Boolean otpEnabled = false;
 
-    @Column(name = "otp_verified", nullable = false)
     @Builder.Default
     private Boolean otpVerified = false;
 
-    @Column(length = 1000)
     private String deviceToken;
 
-    @Column
     private String deviceType;
 
-    @Column
     private LocalDateTime deviceTokenUpdatedAt;
 
-    @Column(nullable = false)
     @Builder.Default
     private Boolean pushNotificationEnabled = true;
 
-    @Column(nullable = false)
     @Builder.Default
     private Boolean emailNotificationEnabled = true;
 
-    @Column(nullable = false)
     @Builder.Default
     private Boolean smsNotificationEnabled = false;
 
-    @Column(name = "phone_number")
     private String phoneNumber;
 
-    @Column(name = "profile_image_url")
     private String profileImageUrl;
 
-    @Column
     private String timezone;
 
-    @Column
     private String language;
 
-    @Column(name = "kakao_user_id")
     private String kakaoUserId;
 
-    @Column(name = "kakao_access_token")
     private String kakaoAccessToken;
 
-    @Column(name = "kakao_token_expires_at")
     private LocalDateTime kakaoTokenExpiresAt;
 
-    @Column(name = "kakao_refresh_token")
     private String kakaoRefreshToken;
 
-    @Column(name = "kakao_notification_enabled", nullable = false)
     @Builder.Default
     private Boolean kakaoNotificationEnabled = false;
 
-    @Column
     private String telegramUserId;
 
-    @Column
     private String telegramChatId;
 
-    @Column(nullable = false)
     @Builder.Default
     private Boolean telegramNotificationEnabled = false;
 
-    @Column
     private String slackUserId;
 
-    @Column
     private String slackChannelId;
 
-    @Column(nullable = false)
     @Builder.Default
     private Boolean slackNotificationEnabled = false;
 
-    @Column
     private String discordUserId;
 
-    @Column(nullable = false)
     @Builder.Default
     private Boolean discordNotificationEnabled = false;
 
-    @Column
     private String lineUserId;
 
-    @Column(nullable = false)
     @Builder.Default
     private Boolean lineNotificationEnabled = false;
 
-    @Column(length = 1000)
     private String webhookUrl;
 
-    @Column(nullable = false)
     @Builder.Default
     private Boolean webhookNotificationEnabled = false;
 

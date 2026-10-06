@@ -2,27 +2,13 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import { waitForSessionUser } from "@/lib/authSession"
 import {
-  consumeOAuthCode,
+  runOAuthExchangeOnce,
   storeAuthSession,
+  writeAuthHintCookie,
   type AuthProvider,
 } from "@/lib/finsightToken"
-
-function extractToken(data: unknown): string | null {
-  if (!data || typeof data !== "object") return null
-  const o = data as Record<string, unknown>
-  if (typeof o.accessToken === "string") return o.accessToken
-  const token = o.token
-  if (token && typeof token === "object") {
-    const t = token as Record<string, unknown>
-    if (typeof t.accessToken === "string") return t.accessToken
-  }
-  const inner = o.data
-  if (inner && typeof inner === "object") {
-    return extractToken(inner)
-  }
-  return null
-}
 
 function extractProvider(data: unknown): AuthProvider {
   if (!data || typeof data !== "object") return "NAVER"
@@ -36,6 +22,18 @@ function extractProvider(data: unknown): AuthProvider {
     return extractProvider(inner)
   }
   return "NAVER"
+}
+
+function readErrorMessage(data: unknown, fallback: string): string {
+  if (data && typeof data === "object" && "message" in data) {
+    const message = String((data as { message?: string }).message ?? "").trim()
+    if (message) return message
+  }
+  return fallback
+}
+
+function isBusinessFailure(data: unknown): boolean {
+  return Boolean(data && typeof data === "object" && (data as { success?: boolean }).success === false)
 }
 
 export default function NaverCallbackClient() {
@@ -56,9 +54,6 @@ export default function NaverCallbackClient() {
       setMessage("네이버 인가 코드가 없습니다.")
       return
     }
-    if (!consumeOAuthCode(code)) {
-      return
-    }
 
     const savedState = sessionStorage.getItem("naver_oauth_state")
     if (savedState && state && savedState !== state) {
@@ -68,33 +63,34 @@ export default function NaverCallbackClient() {
 
     void (async () => {
       try {
-        const res = await fetch("/api/v1/auth/oauth/naver", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({ code, state }),
-        })
+        const res = await runOAuthExchangeOnce(`naver:${code}`, () =>
+          fetch("/api/v1/auth/oauth/naver", {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({ code, state }),
+            cache: "no-store",
+          }),
+        )
         const data = await res.json().catch(() => null)
-        if (!res.ok) {
-          setMessage(
-            (data && typeof data === "object" && "message" in data
-              ? String((data as { message?: string }).message)
-              : null) || "네이버 로그인에 실패했습니다.",
-          )
+        if (!res.ok || isBusinessFailure(data)) {
+          setMessage(readErrorMessage(data, "네이버 로그인에 실패했습니다."))
           return
         }
 
-        const token = extractToken(data)
-        const provider = extractProvider(data)
-        if (!token) {
-          setMessage("로그인 토큰을 받지 못했습니다.")
-          return
-        }
-
-        storeAuthSession({ accessToken: token, authProvider: provider })
+        writeAuthHintCookie()
+        storeAuthSession({ authProvider: extractProvider(data) })
         sessionStorage.removeItem("naver_oauth_state")
+        setMessage("세션 확인 중...")
+        const ok = await waitForSessionUser()
+        setMessage(
+          ok
+            ? "네이버 로그인에 성공했습니다. 이동 중..."
+            : "로그인은 됐지만 세션 확인에 실패했습니다. 홈에서 새로고침해 주세요.",
+        )
         router.replace("/")
         router.refresh()
       } catch {
