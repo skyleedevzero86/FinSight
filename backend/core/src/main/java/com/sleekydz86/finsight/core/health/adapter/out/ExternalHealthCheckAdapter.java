@@ -37,7 +37,7 @@ public class ExternalHealthCheckAdapter implements ExternalHealthCheckPort {
     @Override
     public HealthStatus checkDatabaseHealth() {
         try (Connection connection = dataSource.getConnection()) {
-            if (connection.isValid(5)) {
+            if (connection.isValid(1)) {
                 return new HealthStatus("UP", "DB가 정상입니다");
             }
             return new HealthStatus("DOWN", "DB 연결 검증에 실패했습니다");

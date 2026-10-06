@@ -114,7 +114,7 @@ export default function MyInfoSidebar() {
 
   return (
     <aside
-      className="flex w-[13.75rem] shrink-0 flex-col self-stretch bg-[#1a1f2e] text-white md:w-60"
+      className="flex min-h-full w-[13.75rem] shrink-0 flex-col self-stretch bg-[#1a1f2e] text-white md:w-60"
       aria-label="나의메뉴"
     >
       <div className="px-6 pb-4 pt-10">

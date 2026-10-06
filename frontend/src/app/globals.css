@@ -64,6 +64,11 @@
     @apply border-border;
   }
 
+  html,
+  body {
+    min-height: 100%;
+  }
+
   body {
     @apply bg-white text-foreground;
     font-family: 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, sans-serif;

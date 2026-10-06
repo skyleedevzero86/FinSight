@@ -31,7 +31,7 @@ export default function ClientBody({
   return (
     <AuthSessionProvider>
       <PasswordExpiryGuard />
-      <div className="antialiased">{children}</div>
+      <div className="flex min-h-screen flex-col antialiased">{children}</div>
     </AuthSessionProvider>
   );
 }

@@ -11,6 +11,7 @@ import com.sleekydz86.finsight.core.health.domain.vo.SystemMetrics;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaRepository;
 import com.sleekydz86.finsight.core.user.adapter.persistence.command.UserJpaRepository;
 import com.sleekydz86.finsight.core.user.domain.UserStatus;
+import com.sleekydz86.finsight.core.user.domain.port.in.dto.admin.AdminOpsHomeResponse;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.admin.AdminStatsChartResponse;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.admin.AdminStatsNamedSeries;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.admin.AdminStatsOverviewResponse;
@@ -18,6 +19,7 @@ import com.sleekydz86.finsight.core.user.domain.port.in.dto.admin.AdminStatsSeri
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Date;
@@ -50,21 +52,105 @@ public class AdminStatsService {
     private final HealthQueryUseCase healthQueryUseCase;
     private final HealthCommandUseCase healthCommandUseCase;
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AdminStatsOverviewResponse overview() {
         log.info("관리자 통계 개요 조회");
+        long totalUsers = userJpaRepository.count();
+        long approvedUsers = userJpaRepository.countByStatus(UserStatus.APPROVED);
+        long pendingUsers = userJpaRepository.countByStatus(UserStatus.PENDING);
+        long suspendedUsers = userJpaRepository.countByStatus(UserStatus.SUSPENDED);
+        long withdrawnUsers = userJpaRepository.countByStatus(UserStatus.WITHDRAWN);
+        long totalBoards = boardJpaRepository.count();
+        long totalComments = commentJpaRepository.count();
+        long totalNews = newsJpaRepository.count();
         Map<String, Object> healthSnapshot = buildHealthSnapshot();
         Map<String, Object> metricsSnapshot = buildMetricsSnapshot();
         return new AdminStatsOverviewResponse(
-                userJpaRepository.count(),
-                userJpaRepository.countByStatus(UserStatus.APPROVED),
-                userJpaRepository.countByStatus(UserStatus.PENDING),
-                userJpaRepository.countByStatus(UserStatus.SUSPENDED),
-                userJpaRepository.countByStatus(UserStatus.WITHDRAWN),
-                boardJpaRepository.count(),
-                commentJpaRepository.count(),
-                newsJpaRepository.count(),
+                totalUsers,
+                approvedUsers,
+                pendingUsers,
+                suspendedUsers,
+                withdrawnUsers,
+                totalBoards,
+                totalComments,
+                totalNews,
                 healthSnapshot,
                 metricsSnapshot);
+    }
+
+    private volatile AdminOpsHomeResponse opsHomeCache;
+    private volatile long opsHomeCachedAt;
+
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public AdminOpsHomeResponse opsHome() {
+        long now = System.currentTimeMillis();
+        AdminOpsHomeResponse cached = opsHomeCache;
+        if (cached != null && now - opsHomeCachedAt < 15_000L) {
+            return cached;
+        }
+        log.info("관리자 운영 현황 조회");
+        AdminOpsHomeResponse fresh = loadOpsHome();
+        opsHomeCache = fresh;
+        opsHomeCachedAt = now;
+        return fresh;
+    }
+
+    private AdminOpsHomeResponse loadOpsHome() {
+        Map<String, Long> byStatus = loadStatusCounts();
+        LocalDate to = LocalDate.now();
+        LocalDate from = to.minusDays(DEFAULT_DAYS - 1L);
+        LocalDateTime fromDateTime = from.atStartOfDay();
+        LocalDateTime toExclusive = to.plusDays(1).atStartOfDay();
+        long approved = byStatus.getOrDefault("APPROVED", 0L);
+        long pending = byStatus.getOrDefault("PENDING", 0L);
+        long suspended = byStatus.getOrDefault("SUSPENDED", 0L);
+        long withdrawn = byStatus.getOrDefault("WITHDRAWN", 0L);
+        long total = byStatus.values().stream().mapToLong(Long::longValue).sum();
+        return new AdminOpsHomeResponse(
+                total,
+                approved,
+                pending,
+                suspended,
+                withdrawn,
+                0L,
+                0L,
+                0L,
+                safeRuntimeHealth(),
+                buildMetricsSnapshot(),
+                dailyChart("signups", "신규 가입", "명", "signups", "신규 가입", from, to,
+                        userJpaRepository.countSignupsByDay(fromDateTime, toExclusive)),
+                dailyChart("logins", "활동 사용자", "명", "logins", "일간 로그인", from, to,
+                        userJpaRepository.countLoginsByDay(fromDateTime, toExclusive)),
+                dailyChart("content", "게시글", "건", "boards", "게시글", from, to,
+                        boardJpaRepository.countCreatedByDay(fromDateTime, toExclusive)));
+    }
+
+    private AdminStatsChartResponse dailyChart(
+            String chartKey,
+            String title,
+            String unit,
+            String seriesName,
+            String seriesLabel,
+            LocalDate from,
+            LocalDate to,
+            List<Object[]> rows) {
+        return buildDailyChart(chartKey, title, unit, from, to, List.of(
+                namedDailySeries(seriesName, seriesLabel, from, to, toDayCountMap(rows))));
+    }
+
+    private Map<String, Object> safeRuntimeHealth() {
+        try {
+            return buildRuntimeHealthSnapshot();
+        } catch (RuntimeException exception) {
+            log.warn("운영 현황 헬스 조회 실패", exception);
+            Map<String, Object> down = Map.of("status", "DOWN", "message", "상태를 확인하지 못했습니다.");
+            Map<String, Object> snapshot = new LinkedHashMap<>();
+            snapshot.put("overall", down);
+            snapshot.put("database", down);
+            snapshot.put("redis", down);
+            snapshot.put("externalApis", Map.of());
+            return snapshot;
+        }
     }
 
     public AdminStatsChartResponse chart(String chartKey, Integer days) {
@@ -400,6 +486,37 @@ public class AdminStatsService {
                 "status", nullSafeStatus(redis),
                 "message", nullSafeMessage(redis)));
         snapshot.put("externalApis", externalSnapshot);
+        return snapshot;
+    }
+
+    private Map<String, Long> loadStatusCounts() {
+        Map<String, Long> counts = new HashMap<>();
+        for (Object[] row : userJpaRepository.countGroupedByStatus()) {
+            if (row == null || row.length < 2 || row[0] == null) {
+                continue;
+            }
+            String status = stringify(row[0]);
+            if (status == null || status.isBlank()) {
+                continue;
+            }
+            counts.put(status.toUpperCase(Locale.ROOT), toLong(row[1]));
+        }
+        return counts;
+    }
+
+    private Map<String, Object> buildRuntimeHealthSnapshot() {
+        HealthStatus database = healthQueryUseCase.getDatabaseHealth();
+        HealthStatus redis = healthQueryUseCase.getRedisHealth();
+        boolean up = "UP".equals(nullSafeStatus(database)) && "UP".equals(nullSafeStatus(redis));
+        HealthStatus overall = up
+                ? new HealthStatus("UP", "시스템이 정상입니다", Map.of("database", "UP", "redis", "UP"))
+                : new HealthStatus("DOWN", "일부 구성 요소에 장애가 있습니다",
+                Map.of("database", nullSafeStatus(database), "redis", nullSafeStatus(redis)));
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("overall", Map.of("status", nullSafeStatus(overall), "message", nullSafeMessage(overall)));
+        snapshot.put("database", Map.of("status", nullSafeStatus(database), "message", nullSafeMessage(database)));
+        snapshot.put("redis", Map.of("status", nullSafeStatus(redis), "message", nullSafeMessage(redis)));
+        snapshot.put("externalApis", Map.of());
         return snapshot;
     }
 
