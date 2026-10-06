@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import MyInfoHomeClient from "@/components/myinfo/MyInfoHomeClient"
 
 export const metadata: Metadata = {
   title: "나의 메뉴 | finsight",
@@ -6,5 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function MyInfoPage() {
-  return <div className="h-full min-h-full w-full bg-white" aria-hidden />
+  return <MyInfoHomeClient />
 }

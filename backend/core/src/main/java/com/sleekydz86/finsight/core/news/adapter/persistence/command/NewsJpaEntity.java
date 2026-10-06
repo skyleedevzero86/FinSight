@@ -4,6 +4,7 @@ import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +58,7 @@ public class NewsJpaEntity {
     @Column(name = "view_count", nullable = false)
     private int viewCount = 0;
 
+    @BatchSize(size = 50)
     @ElementCollection(targetClass = TargetCategory.class)
     @CollectionTable(name = "news_target_categories", joinColumns = @JoinColumn(name = "news_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT)))
     @Enumerated(EnumType.STRING)

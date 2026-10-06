@@ -21,9 +21,14 @@ export default function MyInfoShell({ children }: { children: React.ReactNode })
     return <div className="min-h-[50vh] w-full flex-1 bg-white" />
   }
 
+  const home = pathname === "/myinfo"
+
   return (
     <div className="flex min-h-[calc(100dvh-10.5rem)] w-full flex-1 bg-white">
-      <section className="min-h-full min-w-0 flex-1 bg-white" aria-label="나의 메뉴 본문">
+      <section
+        className={home ? "min-h-full min-w-0 flex-1 bg-[#f4f7fb]" : "min-h-full min-w-0 flex-1 bg-white"}
+        aria-label="나의 메뉴 본문"
+      >
         {children}
       </section>
       <MyInfoSidebar />
