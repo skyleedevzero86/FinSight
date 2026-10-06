@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import MyInfoHomeClient from "@/components/myinfo/MyInfoHomeClient"
+import MyInfoHomeGate from "@/components/myinfo/MyInfoHomeGate"
 
 export const metadata: Metadata = {
   title: "나의 메뉴 | finsight",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function MyInfoPage() {
-  return <MyInfoHomeClient />
+  return <MyInfoHomeGate />
 }

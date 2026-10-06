@@ -118,7 +118,7 @@ async function readPayload(path: string): Promise<unknown | null> {
   }
 }
 
-function parseNotices(payload: unknown): MyInfoNotice[] {
+function parseNotices(payload: unknown, limit: number): MyInfoNotice[] {
   return contentRows(payload)
     .map((row) => {
       const id = Number(row.id)
@@ -133,7 +133,11 @@ function parseNotices(payload: unknown): MyInfoNotice[] {
       }
     })
     .filter((row): row is MyInfoNotice => Boolean(row))
-    .slice(0, 5)
+    .slice(0, limit)
+}
+
+export async function loadNoticeCards(limit = 5): Promise<MyInfoNotice[]> {
+  return parseNotices(await readPayload(`/api/v1/boards?boardType=NOTICE&page=0&size=${limit}`), limit)
 }
 
 function newsFields(row: Record<string, unknown>): {
@@ -253,9 +257,9 @@ function vodThumbs(
 }
 
 export async function loadMyInfoHome(): Promise<MyInfoHomeData> {
-  const [noticePayload, personalPayload, latestPayload, inboxPayload, boardPayload, vod] =
+  const [notices, personalPayload, latestPayload, inboxPayload, boardPayload, vod] =
     await Promise.all([
-      readPayload("/api/v1/boards?boardType=NOTICE&page=0&size=5"),
+      loadNoticeCards(),
       readPayload("/api/v1/news/personalized?limit=6"),
       readPayload("/api/v1/news/latest?limit=6"),
       readPayload("/api/v1/inbox?page=0&size=3"),
@@ -272,7 +276,7 @@ export async function loadMyInfoHome(): Promise<MyInfoHomeData> {
   const uniqueNews = news.filter((item, index) => news.findIndex((row) => row.title === item.title) === index)
 
   return {
-    notices: parseNotices(noticePayload),
+    notices,
     continueItems,
     interestItems: vodThumbs(interestPool.slice(0, 3), "VOD"),
     activities: parseActivities(inboxPayload, boardPayload),
