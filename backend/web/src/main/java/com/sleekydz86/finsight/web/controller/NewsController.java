@@ -4,6 +4,7 @@ import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.Newses;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsCommandUseCase;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsQueryUseCase;
+import com.sleekydz86.finsight.core.news.service.NewsAiAvailability;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsDetailResponse;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsQueryRequest;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsSearchRequest;
@@ -33,10 +34,14 @@ public class NewsController {
 
     private final NewsCommandUseCase newsCommandUseCase;
     private final NewsQueryUseCase newsQueryUseCase;
+    private final NewsAiAvailability newsAiAvailability;
 
-    public NewsController(NewsCommandUseCase newsCommandUseCase, NewsQueryUseCase newsQueryUseCase) {
+    public NewsController(NewsCommandUseCase newsCommandUseCase,
+                          NewsQueryUseCase newsQueryUseCase,
+                          NewsAiAvailability newsAiAvailability) {
         this.newsCommandUseCase = newsCommandUseCase;
         this.newsQueryUseCase = newsQueryUseCase;
+        this.newsAiAvailability = newsAiAvailability;
     }
 
     @Operation(summary = "뉴스 스크래핑", description = "뉴스를 스크래핑합니다.")
@@ -130,6 +135,13 @@ public class NewsController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error("인기 뉴스 조회 중 오류가 발생했습니다.", 500));
         }
+    }
+
+    @Operation(summary = "뉴스 AI 상태", description = "AI 키와 연결 상태를 확인합니다.")
+    @GetMapping("/ai-status")
+    public ResponseEntity<ApiResponse<NewsAiAvailability.Status>> newsAiStatus() {
+        NewsAiAvailability.Status status = newsAiAvailability.status();
+        return ResponseEntity.ok(ApiResponse.success(status, status.available() ? "뉴스 AI를 사용할 수 있습니다" : status.message()));
     }
 
     @Operation(summary = "최신 뉴스 조회", description = "최신 뉴스 목록을 조회합니다.")

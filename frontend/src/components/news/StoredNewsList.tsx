@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react"
 import { fetchWatchlist } from "@/lib/myAccount"
 import {
   categoryLabel,
+  fetchNewsAiDown,
   fetchStoredNews,
   NEWS_ADMIN_NOTICE,
   recommendTargetCategories,
@@ -24,6 +25,7 @@ export default function StoredNewsList() {
   const [rows, setRows] = useState<StoredNewsCard[] | null>(null)
   const [failed, setFailed] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
+  const [aiDown, setAiDown] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -36,6 +38,9 @@ export default function StoredNewsList() {
       }
       setFailed(false)
       setRows(items)
+    })
+    fetchNewsAiDown().then((down) => {
+      if (alive) setAiDown(down)
     })
     fetchWatchlist()
       .then((categories) => {
@@ -66,6 +71,7 @@ export default function StoredNewsList() {
   return (
     <section className="mx-auto max-w-3xl px-4 py-6">
       <h1 className="mb-4 text-xl font-semibold">뉴스</h1>
+      {aiDown || visible.some((item) => !item.aiReady) ? <AdminAlarm /> : null}
       <CategoryRecommendation recommendation={recommendation} />
       {visible.length === 0 ? (
         <p className="px-4 py-10 text-center text-sm text-gray-700">표시할 뉴스가 없습니다.</p>
@@ -78,7 +84,11 @@ export default function StoredNewsList() {
               <Link href={`/news/${item.id}`} className="block px-1 py-4 hover:bg-gray-50">
                 <h2 className="text-base font-semibold leading-6 text-gray-900">{item.title}</h2>
                 <p className="mt-1 text-sm leading-6 text-gray-600">{item.summary}</p>
-                <p className="mt-2 text-sm text-gray-800">{mood ?? NEWS_ADMIN_NOTICE}</p>
+                {item.aiReady ? (
+                  <p className="mt-2 text-sm text-gray-800">{mood ?? NEWS_ADMIN_NOTICE}</p>
+                ) : (
+                  <AdminAlarm />
+                )}
               </Link>
             </li>
           )
@@ -86,6 +96,14 @@ export default function StoredNewsList() {
       </ul>
       )}
     </section>
+  )
+}
+
+function AdminAlarm() {
+  return (
+    <p role="alert" className="mb-4 border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-gray-900">
+      {NEWS_ADMIN_NOTICE}
+    </p>
   )
 }
 

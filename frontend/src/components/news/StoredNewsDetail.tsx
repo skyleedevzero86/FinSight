@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useEffect, useState } from "react"
 import {
+  fetchNewsAiDown,
   fetchStoredNewsDetail,
   NEWS_ADMIN_NOTICE,
   sentimentExpression,
@@ -13,9 +14,13 @@ export default function StoredNewsDetail({ newsId }: { newsId: string }) {
   const [detail, setDetail] = useState<StoredNewsDetail | null>(null)
   const [missing, setMissing] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [aiDown, setAiDown] = useState(false)
 
   useEffect(() => {
     let alive = true
+    fetchNewsAiDown().then((down) => {
+      if (alive) setAiDown(down)
+    })
     fetchStoredNewsDetail(newsId).then((result) => {
       if (!alive) return
       if (result === "missing") {
@@ -52,6 +57,11 @@ export default function StoredNewsDetail({ newsId }: { newsId: string }) {
           뉴스 목록
         </Link>
       </p>
+      {aiDown || !detail.aiReady ? (
+        <p role="alert" className="mb-4 border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-gray-900">
+          {NEWS_ADMIN_NOTICE}
+        </p>
+      ) : null}
       <h1 className="text-2xl font-semibold leading-8 text-gray-900">{detail.title}</h1>
       <p className="mt-3 text-sm leading-6 text-gray-600">{detail.summary}</p>
       <p className="mt-6 whitespace-pre-wrap text-base leading-7 text-gray-900">{detail.body}</p>

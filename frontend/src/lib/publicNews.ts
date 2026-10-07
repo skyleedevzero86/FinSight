@@ -29,10 +29,10 @@ function text(value: unknown): string {
 }
 
 function koreanOrNotice(translated: string, original: string): { value: string; ready: boolean } {
-  if (!translated || translated === original) {
-    return { value: NEWS_ADMIN_NOTICE, ready: false }
+  if (translated && translated !== original) {
+    return { value: translated, ready: true }
   }
-  return { value: translated, ready: true }
+  return { value: original || "제목 없음", ready: false }
 }
 
 function categoriesOf(value: unknown): string[] {
@@ -59,7 +59,7 @@ export function cardFromNews(row: Json): StoredNewsCard | null {
   return {
     id,
     title: title.value,
-    summary: title.ready && summaryText ? summaryText : NEWS_ADMIN_NOTICE,
+    summary: title.ready && summaryText ? summaryText : text(original?.content),
     categories: categoriesOf(overview?.targetCategories),
     publishedAt: publishedOf(row),
     sentiment: text(overview?.sentimentType) || null,
@@ -81,8 +81,8 @@ export function detailFromPayload(row: Json): StoredNewsDetail | null {
   return {
     id,
     title: title.value,
-    summary: title.ready && overview ? overview : NEWS_ADMIN_NOTICE,
-    body: title.ready && body.ready ? body.value : NEWS_ADMIN_NOTICE,
+    summary: title.ready && overview ? overview : text(row.originalContent),
+    body: title.ready && body.ready ? body.value : text(row.originalContent),
     sentiment: sentiment || null,
     categories: categoriesOf(row.categories),
     publishedAt: text(row.publishedTime) || null,
@@ -94,6 +94,17 @@ function payloadOf(body: unknown): unknown {
   const root = asRecord(body)
   if (!root) return null
   return root.data ?? root
+}
+
+export async function fetchNewsAiDown(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/v1/news/ai-status", { cache: "no-store" })
+    if (!res.ok) return true
+    const data = asRecord(payloadOf(await res.json()))
+    return data?.available !== true
+  } catch {
+    return true
+  }
 }
 
 export async function fetchStoredNews(limit = 20): Promise<StoredNewsCard[] | null> {
