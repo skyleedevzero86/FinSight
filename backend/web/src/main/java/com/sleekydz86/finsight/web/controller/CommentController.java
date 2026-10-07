@@ -72,6 +72,40 @@ public class CommentController {
         }
     }
 
+    @Operation(summary = "뉴스 댓글 목록 조회", description = "뉴스 ID로 댓글 목록을 조회합니다. 작성자는 공개하지 않습니다.")
+    @GetMapping("/news/{newsId}")
+    @LogExecution("뉴스 댓글 조회")
+    public ResponseEntity<ApiResponse<Comments>> getCommentsByNews(
+            @PathVariable Long newsId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        try {
+            validateCommentPage(newsId, page, size);
+            Comments comments = commentQueryUseCase.getCommentsByTargetIdWithPagination(
+                    newsId, CommentType.NEWS, page, size);
+            List<Comment> hidden = comments.getComments().stream().map(Comment::hideAuthor).toList();
+            return ResponseEntity.ok(ApiResponse.success(
+                    new Comments(hidden, comments.getTotalElements()),
+                    "댓글 목록을 성공적으로 조회했습니다"));
+        } catch (ValidationException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SystemException("댓글 목록 조회 중 오류가 발생했습니다", "COMMENT_LIST_ERROR", e);
+        }
+    }
+
+    private void validateCommentPage(Long targetId, int page, int size) {
+        if (targetId == null || targetId <= 0) {
+            throw new ValidationException("유효하지 않은 대상 ID입니다", List.of("INVALID_TARGET_ID"));
+        }
+        if (page < 0) {
+            throw new ValidationException("페이지 번호는 0 이상이어야 합니다", List.of("INVALID_PAGE"));
+        }
+        if (size <= 0 || size > 100) {
+            throw new ValidationException("페이지 크기는 1-100 사이여야 합니다", List.of("INVALID_SIZE"));
+        }
+    }
+
     @Operation(summary = "댓글 상세 조회", description = "댓글 ID로 상세 정보를 조회합니다.")
     @GetMapping("/{commentId}")
     @LogExecution("댓글 상세 조회")

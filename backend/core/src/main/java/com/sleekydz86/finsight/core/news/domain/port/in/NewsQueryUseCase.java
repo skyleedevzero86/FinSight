@@ -19,6 +19,8 @@ public interface NewsQueryUseCase {
 
     Newses getLatestNews(int limit);
 
+    Newses getLatestNewsByProvider(String provider, int limit);
+
     Newses getNewsByCategory(String category, int limit);
 
     Newses getPersonalizedNews(String userEmail, int limit);

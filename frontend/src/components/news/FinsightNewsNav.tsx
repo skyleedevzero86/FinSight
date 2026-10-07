@@ -7,7 +7,7 @@ import { usePathname, useSearchParams } from "next/navigation"
 type NavItem = { label: string; href: string; category: string }
 
 const NAV_TARGET_ITEMS: NavItem[] = [
-  { label: "전체기사", category: "ALL", href: "/news" },
+  { label: "전체", category: "ALL", href: "/news" },
   { label: "SPY", category: "SPY", href: "/news?category=SPY" },
   { label: "QQQ", category: "QQQ", href: "/news?category=QQQ" },
   { label: "BTC", category: "BTC", href: "/news?category=BTC" },
@@ -17,7 +17,7 @@ const NAV_TARGET_ITEMS: NavItem[] = [
   { label: "GOOGL", category: "GOOGL", href: "/news?category=GOOGL" },
   { label: "META", category: "META", href: "/news?category=META" },
   { label: "TSLA", category: "TSLA", href: "/news?category=TSLA" },
-  { label: "기타", category: "NONE", href: "/news?category=NONE" },
+  { label: "OTHER", category: "NONE", href: "/news?category=NONE" },
 ]
 
 function navItemActive(pathname: string, categoryParam: string | null, itemCategory: string): boolean {

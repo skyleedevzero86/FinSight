@@ -4,7 +4,8 @@ import Link from "next/link"
 import VodThumbnail from "@/components/VodThumbnail"
 import { useEffect, useState } from "react"
 import { Maximize2 } from "lucide-react"
-import { HOME_LATEST_NEWS } from "@/data/finsightNewsMainData"
+import { newsImageSrc } from "@/lib/newsImage"
+import { fetchStoredNews, type StoredNewsCard } from "@/lib/publicNews"
 import {
   fetchLiveVodFeed,
   flattenLiveVodFeedItems,
@@ -12,6 +13,10 @@ import {
   stashLiveVodMetaHint,
   type LiveVodItem,
 } from "@/lib/liveVod"
+
+function cardSource(provider: string | null): string {
+  return provider === "ALPHA_VANTAGE" ? "Alpha Vantage" : "Yahoo Finance"
+}
 
 const replayPrograms = [
   {
@@ -61,6 +66,8 @@ const replayPrograms = [
 export default function NewsSection() {
   const [items, setItems] = useState<LiveVodItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [cards, setCards] = useState<StoredNewsCard[]>([])
+  const [cardsReady, setCardsReady] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -79,8 +86,23 @@ export default function NewsSection() {
     }
   }, [])
 
-  const featuredPair = HOME_LATEST_NEWS.slice(0, 2)
-  const smallQuad = HOME_LATEST_NEWS.slice(2, 6)
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const yahoo = await fetchStoredNews(6, "YAHOO_FINANCE")
+      const alpha = yahoo && yahoo.length >= 6 ? [] : await fetchStoredNews(6, "ALPHA_VANTAGE")
+      if (cancelled) return
+      const merged = [...(yahoo ?? []), ...(alpha ?? [])].slice(0, 6)
+      setCards(merged)
+      setCardsReady(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const featuredPair = cards.slice(0, 2)
+  const smallQuad = cards.slice(2, 6)
   const replayItems = items.slice(0, 2)
 
   return (
@@ -102,21 +124,23 @@ export default function NewsSection() {
 
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
           <div className="min-w-0 flex-1 lg:max-w-[calc(100%-20rem)]">
-            {featuredPair.length === 0 ? (
+            {!cardsReady ? (
+              <p className="text-sm text-[#737475]">뉴스를 불러오는 중입니다.</p>
+            ) : featuredPair.length === 0 ? (
               <p className="text-sm text-[#737475]">표시할 뉴스가 없습니다.</p>
             ) : (
               <>
                 <div className="mb-5 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-4">
                   {featuredPair.map((item) => (
                     <Link
-                      key={item.title}
-                      href={item.href}
+                      key={item.id}
+                      href={`/news/${item.id}`}
                       className="group block overflow-hidden border border-[#ebebeb] bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:shadow-md"
                     >
                       <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#f0f0f0]">
                         <img
-                          src={item.image}
-                          alt={item.alt || item.title}
+                          src={newsImageSrc(item.imageUrl)}
+                          alt={item.title}
                           className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
                         />
                       </div>
@@ -124,7 +148,7 @@ export default function NewsSection() {
                         <h3 className="text-[15px] font-bold leading-snug tracking-tight text-[#231f20] line-clamp-2 md:text-base group-hover:text-finsight-primary">
                           {item.title}
                         </h3>
-                        <p className="mt-3 text-xs text-[#737475]">뉴스</p>
+                        <p className="mt-3 text-xs text-[#737475]">{cardSource(item.provider)}</p>
                       </div>
                     </Link>
                   ))}
@@ -133,21 +157,21 @@ export default function NewsSection() {
                   <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
                     {smallQuad.map((item) => (
                       <Link
-                        key={item.title}
-                        href={item.href}
+                        key={item.id}
+                        href={`/news/${item.id}`}
                         className="group block"
                       >
                         <div className="relative mb-2 aspect-video overflow-hidden border border-[#ebebeb] bg-[#f5f5f5]">
                           <img
-                            src={item.image}
-                            alt={item.alt || item.title}
+                            src={newsImageSrc(item.imageUrl)}
+                            alt={item.title}
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           />
                         </div>
                         <h3 className="line-clamp-2 text-xs font-bold leading-snug text-[#231f20] md:text-[13px] group-hover:text-finsight-primary">
                           {item.title}
                         </h3>
-                        <p className="mt-1 text-[10px] text-[#737475] md:text-xs">뉴스</p>
+                        <p className="mt-1 text-[10px] text-[#737475] md:text-xs">{cardSource(item.provider)}</p>
                       </Link>
                     ))}
                   </div>

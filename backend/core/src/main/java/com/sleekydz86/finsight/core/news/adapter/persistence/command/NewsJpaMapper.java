@@ -47,7 +47,7 @@ public class NewsJpaMapper {
                 new Content(
                         newsJpaEntity.getOriginalTitle(),
                         newsJpaEntity.getOriginalContent()
-                ),
+                ).withImageUrl(newsJpaEntity.getImageUrl()),
                 translatedContent,
                 aiOverview
         );
@@ -61,7 +61,7 @@ public class NewsJpaMapper {
     }
 
     public NewsJpaEntity toEntity(News news) {
-        return new NewsJpaEntity(
+        NewsJpaEntity entity = new NewsJpaEntity(
                 news.getId() == 0L ? null : news.getId(),
                 news.getNewsMeta().getNewsProvider(),
                 news.getNewsMeta().getNewsPublishedTime(),
@@ -77,5 +77,16 @@ public class NewsJpaMapper {
                 0,
                 news.getAiOverView() != null ? news.getAiOverView().getTargetCategories() : java.util.Collections.emptyList()
         );
+        if (news.getOriginalContent() != null) {
+            entity.setImageUrl(clipImageUrl(news.getOriginalContent().getImageUrl()));
+        }
+        return entity;
+    }
+
+    private String clipImageUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return null;
+        }
+        return imageUrl.length() <= 1000 ? imageUrl : imageUrl.substring(0, 1000);
     }
 }

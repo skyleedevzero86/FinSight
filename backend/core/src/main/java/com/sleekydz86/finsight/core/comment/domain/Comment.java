@@ -55,6 +55,15 @@ public class Comment {
         this.replies = replies != null ? replies : new ArrayList<>();
     }
 
+    public Comment hideAuthor() {
+        List<Comment> hiddenReplies = new ArrayList<>();
+        for (Comment reply : replies) {
+            hiddenReplies.add(reply.hideAuthor());
+        }
+        return new Comment(id, content, "작성자", commentType, targetId, parentId, status,
+                likeCount, dislikeCount, reportCount, createdAt, updatedAt, hiddenReplies);
+    }
+
     public Comment addReply(Comment reply) {
         List<Comment> newReplies = new ArrayList<>(this.replies);
         newReplies.add(reply);

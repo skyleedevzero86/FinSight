@@ -6,7 +6,9 @@ import java.util.List;
 public enum NewsProvider {
     ALL,
     BLOOMBERG,
-    MARKETAUX;
+    MARKETAUX,
+    ALPHA_VANTAGE,
+    YAHOO_FINANCE;
 
     public static List<NewsProvider> getAllProviders() {
         return Arrays.asList(values());

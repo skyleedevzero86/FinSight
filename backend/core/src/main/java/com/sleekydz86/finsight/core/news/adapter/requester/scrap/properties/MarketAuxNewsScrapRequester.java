@@ -77,7 +77,7 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                     publishedTime.toLocalDateTime(),
                     item.url);
 
-            Content originalContent = new Content(item.title, item.description);
+            Content originalContent = new Content(item.title, item.description).withImageUrl(item.image_url);
 
             return News.createWithoutAI(newsMeta, originalContent);
         } catch (Exception e) {
@@ -89,7 +89,8 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                     item.url != null ? item.url : "https://api.marketaux.com");
             Content fallbackContent = new Content(
                     item.title != null ? item.title : "제목 없음",
-                    item.description != null ? item.description : "설명 없음");
+                    item.description != null ? item.description : "설명 없음")
+                    .withImageUrl(item.image_url);
 
             return News.createWithoutAI(fallbackMeta, fallbackContent);
         }
@@ -112,6 +113,9 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
 
         @JsonProperty("url")
         public String url;
+
+        @JsonProperty("image_url")
+        public String image_url;
 
         @JsonProperty("published_at")
         public String published_at;

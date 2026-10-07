@@ -50,7 +50,10 @@ public class AdvancedNewsCommandService implements NewsCommandUseCase {
     @CacheEvict(value = "newsCache", allEntries = true)
     @Transactional(isolation = Isolation.READ_COMMITTED, propagation = Propagation.REQUIRES_NEW)
     public CompletableFuture<Newses> scrapNewses() {
-        List<NewsProvider> providers = List.of(NewsProvider.MARKETAUX);
+        List<NewsProvider> providers = List.of(
+                NewsProvider.MARKETAUX,
+                NewsProvider.ALPHA_VANTAGE,
+                NewsProvider.YAHOO_FINANCE);
 
         List<CompletableFuture<List<News>>> futures = providers.stream()
                 .map(provider -> CompletableFuture.supplyAsync(() ->

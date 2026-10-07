@@ -52,8 +52,8 @@
 
 .pc_nav .nav_d1 ul li {
   float: left;
-  padding: 0 13.5px;
-  background: url(//image.imnews.imbc.com/page/include/images/nav_bar.jpg) right center no-repeat;
+  padding: 0 12px;
+  background: none;
 }
 
 .pc_nav .nav_d1 ul li:first-child {
@@ -61,8 +61,8 @@
 }
 
 .pc_nav .nav_d1 ul li:last-child {
-  padding-right: 23px;
-  background: url(//image.imnews.imbc.com/page/include/images/arr_more.png) right center no-repeat;
+  padding-right: 12px;
+  background: none;
 }
 
 .pc_nav .nav_d1 ul li a,
@@ -71,7 +71,7 @@
   padding: 20px 0;
   font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
   line-height: 32px;
-  font-size: 19.5px;
+  font-size: 16px;
   position: relative;
   cursor: pointer;
 }

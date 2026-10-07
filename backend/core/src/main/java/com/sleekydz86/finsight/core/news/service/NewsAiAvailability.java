@@ -4,6 +4,7 @@ import com.sleekydz86.finsight.core.news.adapter.requester.overview.properties.O
 import com.sleekydz86.finsight.core.news.adapter.requester.overview.properties.OpenAiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
@@ -23,6 +24,7 @@ public class NewsAiAvailability {
     private final OllamaProperties ollamaProperties;
     private final HttpClient httpClient;
 
+    @Autowired
     public NewsAiAvailability(OpenAiProperties openAiProperties, OllamaProperties ollamaProperties) {
         this(openAiProperties, ollamaProperties, HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(2))

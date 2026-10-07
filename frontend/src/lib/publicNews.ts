@@ -4,15 +4,18 @@ export type StoredNewsCard = {
   id: number
   title: string
   summary: string
+  imageUrl: string | null
   categories: string[]
   publishedAt: string | null
   sentiment: string | null
   aiReady: boolean
+  provider: string | null
 }
 
 export type StoredNewsDetail = StoredNewsCard & {
   body: string
   sentiment: string | null
+  sourceUrl: string | null
 }
 
 type Json = Record<string, unknown>
@@ -29,10 +32,12 @@ function text(value: unknown): string {
 }
 
 function koreanOrNotice(translated: string, original: string): { value: string; ready: boolean } {
-  if (translated && translated !== original) {
-    return { value: translated, ready: true }
+  const fixedTranslated = repairText(translated)
+  const fixedOriginal = repairText(original)
+  if (fixedTranslated && fixedTranslated !== fixedOriginal) {
+    return { value: fixedTranslated, ready: true }
   }
-  return { value: original || "제목 없음", ready: false }
+  return { value: fixedOriginal || "제목 없음", ready: false }
 }
 
 function categoriesOf(value: unknown): string[] {
@@ -40,10 +45,50 @@ function categoriesOf(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string" && item.trim() !== "")
 }
 
+function dateText(value: unknown): string {
+  if (typeof value === "string") return value.trim()
+  if (!Array.isArray(value) || value.length < 3) return ""
+  const [year, month, day, hour = 0, minute = 0, second = 0] = value
+  if (typeof year !== "number" || typeof month !== "number" || typeof day !== "number") return ""
+  const pad = (part: unknown) => String(part).padStart(2, "0")
+  return `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:${pad(second)}`
+}
+
 function publishedOf(row: Json): string | null {
   const meta = asRecord(row.newsMeta)
-  const raw = text(meta?.newsPublishedTime) || text(meta?.publishedTime) || text(row.publishedTime)
+  const raw = dateText(meta?.newsPublishedTime) || dateText(meta?.publishedTime) || dateText(row.publishedTime)
   return raw || null
+}
+
+function repairText(value: string): string {
+  if (!value) return value
+  let text = value.replace(/\\\\/g, "\\")
+  text = text.replace(/S\\udc5e0?(?=\s*500)/gi, "S&P")
+  text = text.replace(/\\u([0-9a-fA-F]{4})/g, (_match, hex: string) => {
+    const code = Number.parseInt(hex, 16)
+    if (!Number.isFinite(code) || (code >= 0xd800 && code <= 0xdfff)) return ""
+    return String.fromCharCode(code)
+  })
+  return text.replace(/[\uD800-\uDFFF]/g, "")
+}
+
+function readable(value: string): string {
+  const trimmed = repairText(value).trim()
+  if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) return trimmed
+  const parts = trimmed
+    .slice(1, -1)
+    .split(/,\s*(?=['"])/)
+    .map((part) => part.trim().replace(/^['"]|['"]$/g, ""))
+    .filter(Boolean)
+  return parts.length > 0 ? parts.join(" ") : trimmed
+}
+
+function pickKorean(overview: string, translated: string, original: string): string {
+  const koreanOverview = readable(overview)
+  const koreanBody = readable(translated)
+  if (koreanOverview && koreanOverview !== original) return koreanOverview
+  if (koreanBody && koreanBody !== original) return koreanBody
+  return original
 }
 
 export function cardFromNews(row: Json): StoredNewsCard | null {
@@ -56,14 +101,18 @@ export function cardFromNews(row: Json): StoredNewsCard | null {
   const translatedTitle = text(translated?.title)
   const title = koreanOrNotice(translatedTitle, originalTitle)
   const summaryText = text(overview?.overview)
+  const translatedBody = text(translated?.content)
+  const originalBody = text(original?.content)
   return {
     id,
     title: title.value,
-    summary: title.ready && summaryText ? summaryText : text(original?.content),
+    summary: pickKorean(summaryText, translatedBody, originalBody),
+    imageUrl: text(original?.imageUrl) || null,
     categories: categoriesOf(overview?.targetCategories),
     publishedAt: publishedOf(row),
     sentiment: text(overview?.sentimentType) || null,
     aiReady: title.ready,
+    provider: text(row.newsProvider) || null,
   }
 }
 
@@ -81,12 +130,15 @@ export function detailFromPayload(row: Json): StoredNewsDetail | null {
   return {
     id,
     title: title.value,
-    summary: title.ready && overview ? overview : text(row.originalContent),
-    body: title.ready && body.ready ? body.value : text(row.originalContent),
+    summary: pickKorean(overview, translatedBody, originalBody),
+    body: readable(title.ready && body.ready ? body.value : originalBody),
     sentiment: sentiment || null,
     categories: categoriesOf(row.categories),
-    publishedAt: text(row.publishedTime) || null,
+    publishedAt: dateText(row.publishedTime) || null,
+    imageUrl: text(row.imageUrl) || null,
+    sourceUrl: text(row.sourceUrl) || null,
     aiReady: title.ready,
+    provider: text(row.newsProvider) || null,
   }
 }
 
@@ -107,9 +159,10 @@ export async function fetchNewsAiDown(): Promise<boolean> {
   }
 }
 
-export async function fetchStoredNews(limit = 20): Promise<StoredNewsCard[] | null> {
+export async function fetchStoredNews(limit = 20, provider?: string): Promise<StoredNewsCard[] | null> {
   try {
-    const res = await fetch(`/api/v1/news/latest?limit=${limit}`, { cache: "no-store" })
+    const providerQuery = provider ? `&provider=${encodeURIComponent(provider)}` : ""
+    const res = await fetch(`/api/v1/news/latest?limit=${limit}${providerQuery}`, { cache: "no-store" })
     if (!res.ok) return null
     const data = payloadOf(await res.json())
     const record = asRecord(data)
