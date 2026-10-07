@@ -61,7 +61,8 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
-public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMediaAdminUseCase, YoutubeMediaImportUseCase {
+public class YoutubeMediaService
+        implements YoutubeMediaQueryUseCase, YoutubeMediaAdminUseCase, YoutubeMediaImportUseCase {
 
     private static final Logger log = LoggerFactory.getLogger(YoutubeMediaService.class);
     private static final String SYSTEM_AUTHOR_EMAIL = "media-batch@finsight.local";
@@ -200,7 +201,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
             case "GOMHEE" -> source.contains("gomhee");
             case "SYUKA" -> source.contains("syuka");
             case "BOOTYFUL" -> source.contains("money-multiple");
-            case "MARKET" -> source.contains("hankyung") || source.contains("gomhee") || source.contains("money-multiple");
+            case "MARKET" ->
+                source.contains("hankyung") || source.contains("gomhee") || source.contains("money-multiple");
             case "THEME" -> source.contains("3protv") || source.contains("money-multiple") || source.contains("gomhee");
             case "MACRO" -> source.contains("syuka") || source.contains("hankyung") || source.contains("gomhee");
             default -> false;
@@ -283,8 +285,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
             String tab,
             String category) {
         LinkedHashMap<String, YoutubeApiClient.FetchedYoutubeVideo> merged = new LinkedHashMap<>();
-        for (YoutubeApiProperties.TopicChannelSource source
-                : youtubeApiProperties.resolveTopicChannels(tab)) {
+        for (YoutubeApiProperties.TopicChannelSource source : youtubeApiProperties.resolveTopicChannels(tab)) {
             try {
                 List<YoutubeApiClient.FetchedYoutubeVideo> videos = youtubeApiClient.fetchChannelUploads(
                         source.getHandle(),
@@ -527,8 +528,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
             existingIds.add(featuredVideoId);
         }
 
-        for (YoutubeApiProperties.MoreChannelSource channel
-                : youtubeApiProperties.resolveMoreChannels()) {
+        for (YoutubeApiProperties.MoreChannelSource channel : youtubeApiProperties.resolveMoreChannels()) {
             if (!channel.matchesTab(tab)) {
                 continue;
             }
@@ -620,7 +620,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .active(source.isActive())
                 .autoPublish(source.isAutoPublish())
                 .lastSyncedAt(source.getLastSyncedAt())
-                .totalVideoCount(youtubeVideoMetaPersistencePort.countBySource(source.getSourceType(), source.getSourceValue()))
+                .totalVideoCount(
+                        youtubeVideoMetaPersistencePort.countBySource(source.getSourceType(), source.getSourceValue()))
                 .draftVideoCount(youtubeVideoMetaPersistencePort.countBySourceAndImportStatus(
                         source.getSourceType(),
                         source.getSourceValue(),
@@ -666,7 +667,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .orElseThrow(() -> new YoutubeSourceNotFoundException(sourceId));
         boolean active = Boolean.TRUE.equals(request.getActive());
         boolean rejected = active ? false : request.isRejected();
-        YoutubeImportSource saved = youtubeImportSourcePersistencePort.save(copySource(source, active, rejected, source.getLastSyncedAt()));
+        YoutubeImportSource saved = youtubeImportSourcePersistencePort
+                .save(copySource(source, active, rejected, source.getLastSyncedAt()));
         log.info("YouTube 수집 소스 {} 상태 변경 - 활성: {}, 거부: {}", sourceId, active, rejected);
         return toSourceResponse(saved);
     }
@@ -715,7 +717,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
 
     @Override
     @Transactional
-    public YoutubeVideoDetailResponse publishVideo(Long boardId, String adminEmail, YoutubeVideoPublishRequest request) {
+    public YoutubeVideoDetailResponse publishVideo(Long boardId, String adminEmail,
+            YoutubeVideoPublishRequest request) {
         Board board = loadBoard(boardId);
         YoutubeVideoMeta meta = loadVideoMetaByBoardId(boardId);
 
@@ -797,6 +800,21 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
         return summary;
     }
 
+    @Override
+    @Transactional
+    public YoutubeVideoDetailResponse enrichVideo(Long boardId) {
+        YoutubeVideoMeta meta = loadVideoMetaByBoardId(boardId);
+        Board board = loadBoard(boardId);
+        try {
+            YoutubeGeneratedContent generatedContent = youtubeAiContentRequester.generate(meta, board);
+            youtubeVideoMetaPersistencePort.save(enrichMeta(meta, generatedContent));
+        } catch (RuntimeException exception) {
+            log.error("YouTube 게시글 {} AI 보강 실패", boardId, exception);
+            saveAiFailure(meta);
+        }
+        return getVideoDetail(boardId, false);
+    }
+
     private YoutubeSyncSummaryResponse syncSingleSource(YoutubeImportSource source) {
         YoutubeImportSource locked = youtubeImportSourcePersistencePort.lockById(source.getId())
                 .orElseThrow(() -> new YoutubeSourceNotFoundException(source.getId()));
@@ -808,7 +826,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 normalizeHashtags(List.of(), locked.getCategory()),
                 1);
 
-        youtubeImportSourcePersistencePort.save(copySource(locked, locked.isActive(), locked.isRejected(), LocalDateTime.now()));
+        youtubeImportSourcePersistencePort
+                .save(copySource(locked, locked.isActive(), locked.isRejected(), LocalDateTime.now()));
         liveVodFeedCache.clear();
 
         return YoutubeSyncSummaryResponse.builder()
@@ -838,7 +857,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
 
         for (YoutubeApiClient.FetchedYoutubeVideo fetchedVideo : fetchedVideos) {
             try {
-                Optional<YoutubeVideoMeta> existingMeta = youtubeVideoMetaPersistencePort.findByVideoId(fetchedVideo.videoId());
+                Optional<YoutubeVideoMeta> existingMeta = youtubeVideoMetaPersistencePort
+                        .findByVideoId(fetchedVideo.videoId());
                 if (existingMeta.isPresent()) {
                     YoutubeVideoMeta currentMeta = existingMeta.get();
                     Board currentBoard = loadBoard(currentMeta.getBoardId());
@@ -868,7 +888,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                             : YoutubeImportStatus.DRAFT;
                     Board savedBoard = boardPersistencePort.save(Board.builder()
                             .title(trimToLength(fetchedVideo.youtubeTitle(), TITLE_MAX_LENGTH))
-                            .content(trimToLength(defaultContent(fetchedVideo.youtubeDescription()), CONTENT_MAX_LENGTH))
+                            .content(
+                                    trimToLength(defaultContent(fetchedVideo.youtubeDescription()), CONTENT_MAX_LENGTH))
                             .authorEmail(authorEmail)
                             .boardType(BoardType.MEDIA)
                             .status(boardStatus)
@@ -926,7 +947,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
         return YoutubeVideoListResponse.builder()
                 .boardId(board.getId())
                 .title(board.getTitle())
-                .previewContent(toPreview(firstNonBlank(meta.getSummary(), board.getContent(), meta.getYoutubeDescription())))
+                .previewContent(
+                        toPreview(firstNonBlank(meta.getSummary(), board.getContent(), meta.getYoutubeDescription())))
                 .authorEmail(board.getAuthorEmail())
                 .boardStatus(board.getStatus())
                 .videoId(meta.getVideoId())
@@ -953,7 +975,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
         Board board = loadBoard(boardId);
         YoutubeVideoMeta meta = loadVideoMetaByBoardId(boardId);
 
-        if (publishedOnly && (board.getStatus() != BoardStatus.ACTIVE || meta.getImportStatus() != YoutubeImportStatus.PUBLISHED)) {
+        if (publishedOnly && (board.getStatus() != BoardStatus.ACTIVE
+                || meta.getImportStatus() != YoutubeImportStatus.PUBLISHED)) {
             throw new BoardNotFoundException(boardId);
         }
 
@@ -1021,17 +1044,17 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
         return new BoardNavigationResponse(
                 previous != null
                         ? new BoardNavigationResponse.BoardNavigationItem(
-                        previous.getId(),
-                        previous.getTitle(),
-                        previous.getAuthorEmail(),
-                        previous.getCreatedAt().toString())
+                                previous.getId(),
+                                previous.getTitle(),
+                                previous.getAuthorEmail(),
+                                previous.getCreatedAt().toString())
                         : null,
                 next != null
                         ? new BoardNavigationResponse.BoardNavigationItem(
-                        next.getId(),
-                        next.getTitle(),
-                        next.getAuthorEmail(),
-                        next.getCreatedAt().toString())
+                                next.getId(),
+                                next.getTitle(),
+                                next.getAuthorEmail(),
+                                next.getCreatedAt().toString())
                         : null);
     }
 
@@ -1136,7 +1159,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .reviewStatus(reviewStatus(source))
                 .autoPublish(source.isAutoPublish())
                 .lastSyncedAt(source.getLastSyncedAt())
-                .totalVideoCount(youtubeVideoMetaPersistencePort.countBySource(source.getSourceType(), source.getSourceValue()))
+                .totalVideoCount(
+                        youtubeVideoMetaPersistencePort.countBySource(source.getSourceType(), source.getSourceValue()))
                 .draftVideoCount(youtubeVideoMetaPersistencePort.countBySourceAndImportStatus(
                         source.getSourceType(),
                         source.getSourceValue(),

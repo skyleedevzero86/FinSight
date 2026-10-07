@@ -1,10 +1,9 @@
 import { useState, type ReactNode } from "react"
+import { toPrivacyEmbedUrl, YOUTUBE_EMBED_ALLOW } from "@/lib/liveVod"
 import {
   MEDIA_CATEGORIES,
   MEDIA_SOURCE_TYPES,
-  aiStatusLabel,
   categoryLabel,
-  formatMediaDate,
   importStatusLabel,
   mediaButtonClass,
   mediaFieldClass,
@@ -175,14 +174,13 @@ export function AdminMediaDetailDrawer({
   onClose: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-40 flex justify-end bg-black/40" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[60] flex justify-end bg-black/40" onMouseDown={onClose}>
       <aside
-        className="h-full w-full max-w-md overflow-y-auto border-l border-[#e7edf5] bg-white p-4"
+        className="h-full w-full max-w-2xl overflow-y-auto border-l border-[#e7edf5] bg-white p-5"
         aria-label="영상 상세"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-base font-semibold text-gray-900">영상 상세</h2>
+        <div className="mb-4 flex items-center justify-end">
           <button type="button" className={mediaButtonClass} onClick={onClose}>
             닫기
           </button>
@@ -190,52 +188,141 @@ export function AdminMediaDetailDrawer({
         {loading || !detail ? (
           <p className="text-sm text-gray-500">불러오는 중...</p>
         ) : (
-          <div className="flex flex-col gap-4 text-sm text-gray-800">
-            <section>
-              <h3 className="mb-2 font-semibold text-gray-900">원본</h3>
-              <DetailLine label="제목" value={detail.youtubeTitle || detail.title} />
-              <DetailLine label="채널" value={detail.channelTitle || detail.sourceValue || "-"} />
-              <DetailLine label="카테고리" value={categoryLabel(detail.category)} />
-              <DetailLine label="상태" value={importStatusLabel(detail.importStatus)} />
-              <p className="mt-2 whitespace-pre-wrap text-gray-700">{detail.youtubeDescription || "원본 설명이 없습니다."}</p>
-            </section>
-            <section>
-              <h3 className="mb-2 font-semibold text-gray-900">AI 보강</h3>
-              <DetailLine label="상태" value={aiStatusLabel(detail.aiStatus)} />
-              <DetailLine label="실패 시각" value={formatMediaDate(detail.aiFailedAt)} />
-              <DetailLine label="요약" value={detail.summary || "-"} />
-              <DetailLine label="편집 코멘트" value={detail.editorComment || "-"} />
-              {detail.keyPoints.length > 0 ? (
-                <ul className="mt-2 list-disc pl-4">
-                  {detail.keyPoints.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500">핵심 포인트가 없습니다.</p>
-              )}
-            </section>
-            {detail.videoId ? (
-              <a
-                className="text-sky-700 underline"
-                href={`/live-vod/watch/${detail.videoId}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                /live-vod/watch/{detail.videoId} 미리보기
-              </a>
-            ) : null}
-          </div>
+          <DetailBody detail={detail} />
         )}
       </aside>
     </div>
   )
 }
 
-function DetailLine({ label, value }: { label: string; value: string }) {
+function DetailBody({ detail }: { detail: AdminMediaVideoDetail }) {
+  const titleText = detail.youtubeTitle || detail.title
+  const embedSrc = detail.videoId ? toPrivacyEmbedUrl(detail.videoId) : ""
+  const watchHref = detail.videoId ? `/live-vod/watch/${detail.videoId}` : ""
+  const content = contentRow(detail)
   return (
-    <p className="mt-1">
-      <span className="text-gray-500">{label}</span> {value}
-    </p>
+    <div className="flex flex-col gap-4">
+      {embedSrc ? (
+        <div className="aspect-video w-full bg-black">
+          <iframe
+            className="h-full w-full"
+            title={titleText}
+            src={embedSrc}
+            referrerPolicy="strict-origin-when-cross-origin"
+            allow={YOUTUBE_EMBED_ALLOW}
+            allowFullScreen
+          />
+        </div>
+      ) : null}
+      <DetailTable
+        rows={[
+          {
+            label: "제목",
+            value: watchHref ? (
+              <a className="text-sky-700 underline" href={watchHref}>
+                {titleText}
+              </a>
+            ) : (
+              titleText
+            ),
+          },
+          { label: "채널", value: detail.channelTitle || detail.sourceValue || "-" },
+          { label: "카테고리", value: categoryLabel(detail.category) },
+          { label: "상태", value: importStatusLabel(detail.importStatus) },
+          ...(content ? [{ label: "내용", value: content }] : []),
+        ]}
+      />
+    </div>
   )
+}
+
+function contentRow(detail: AdminMediaVideoDetail) {
+  if (detail.summary || detail.editorComment || detail.keyPoints.length > 0) {
+    return <EnrichmentBody detail={detail} />
+  }
+  if (detail.aiFailedAt) return "관리자에게 문의주세요."
+  return null
+}
+
+function EnrichmentBody({ detail }: { detail: AdminMediaVideoDetail }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {detail.summary ? <EnrichmentBlock label="요약" text={detail.summary} /> : null}
+      {detail.editorComment ? <EnrichmentBlock label="편집 코멘트" text={detail.editorComment} /> : null}
+      {detail.keyPoints.length > 0 ? (
+        <div>
+          <p className="font-semibold text-gray-900">핵심 포인트</p>
+          <ul className="mt-1 list-disc pl-4">
+            {detail.keyPoints.map((point) => (
+              <li key={point}>
+                <LinkedText text={point} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function EnrichmentBlock({ label, text }: { label: string; text: string }) {
+  return (
+    <div>
+      <p className="font-semibold text-gray-900">{label}</p>
+      <p className="mt-1">
+        <LinkedText text={text} />
+      </p>
+    </div>
+  )
+}
+
+function DetailTable({ rows }: { rows: { label: string; value: ReactNode }[] }) {
+  return (
+    <table className="w-full border-collapse text-left text-sm">
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.label}>
+            <th className="w-28 border border-[#e7edf5] bg-[#f6f8fb] px-4 py-3 align-top font-medium text-gray-500">
+              {row.label}
+            </th>
+            <td className="border border-[#e7edf5] px-4 py-3 align-top text-gray-800">{row.value}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function LinkedText({ text }: { text: string }) {
+  const nodes: ReactNode[] = []
+  const pattern = /https?:\/\/[^\s<>"']+/g
+  let cursor = 0
+  for (const found of text.matchAll(pattern)) {
+    const raw = found[0]
+    const start = found.index ?? 0
+    const href = raw.replace(/[),.;]+$/g, "")
+    const tail = raw.slice(href.length)
+    if (start > cursor) nodes.push(text.slice(cursor, start))
+    nodes.push(<TextLink key={`${start}-${href}`} href={href} label={readableUrl(href)} />)
+    if (tail) nodes.push(tail)
+    cursor = start + raw.length
+  }
+  if (cursor < text.length) nodes.push(text.slice(cursor))
+  return <span className="whitespace-pre-wrap break-words">{nodes}</span>
+}
+
+function TextLink({ href, label }: { href: string; label?: string }) {
+  return (
+    <a className="break-all text-sky-700 underline" href={href} target="_blank" rel="noreferrer">
+      {label ?? href}
+    </a>
+  )
+}
+
+function readableUrl(href: string) {
+  try {
+    return decodeURI(href)
+  } catch {
+    return href
+  }
 }

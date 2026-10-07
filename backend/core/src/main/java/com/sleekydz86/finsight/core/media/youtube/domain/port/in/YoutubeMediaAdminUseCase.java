@@ -37,6 +37,8 @@ public interface YoutubeMediaAdminUseCase {
 
     YoutubeAiEnrichmentSummaryResponse enrichPendingDraftVideos();
 
+    YoutubeVideoDetailResponse enrichVideo(Long boardId);
+
     YoutubeVideoDetailResponse publishVideo(Long boardId, String adminEmail, YoutubeVideoPublishRequest request);
 
     YoutubeVideoDetailResponse hideVideo(Long boardId);

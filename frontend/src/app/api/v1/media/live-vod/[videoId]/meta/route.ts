@@ -64,7 +64,7 @@ async function fetchOEmbed(videoId: string): Promise<MetaPayload | null> {
     const thumbnailUrl =
       typeof data.thumbnail_url === "string" && data.thumbnail_url
         ? data.thumbnail_url
-        : displayYoutubeThumbnail(videoId, ""),
+        : displayYoutubeThumbnail(videoId, "")
     return {
       videoId,
       title,

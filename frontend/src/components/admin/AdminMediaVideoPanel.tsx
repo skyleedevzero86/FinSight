@@ -10,11 +10,10 @@ import {
   aiStatusLabel,
   buildPublishBody,
   categoryLabel,
-  enrichAdminMediaVideos,
+  enrichAdminMediaVideo,
   fetchAdminMediaSources,
   fetchAdminMediaVideo,
   fetchAdminMediaVideos,
-  formatEnrichMessage,
   formatSyncMessage,
   hideAdminMediaVideo,
   importAdminMediaUrls,
@@ -106,16 +105,23 @@ export default function AdminMediaVideoPanel({ onNotice, onForbidden }: Props) {
     }
   }, [drawerId, fail])
 
-  async function runEnrich() {
+  async function runEnrich(boardId: number) {
     if (busy) return
     setBusy(true)
-    const result = await enrichAdminMediaVideos()
+    const result = await enrichAdminMediaVideo(boardId)
     setBusy(false)
     if (!result.ok) {
-      fail(result)
+      if (result.forbidden) onForbidden()
+      else if (result.unauthorized) router.replace("/login")
+      else onNotice({ tone: "ok", text: "관리자에게 문의주세요." })
       return
     }
-    onNotice({ tone: "ok", text: formatEnrichMessage(result.data) })
+    setDetail(result.data)
+    setDrawerId(boardId)
+    onNotice({
+      tone: "ok",
+      text: result.data.aiStatus === "FAILED" ? "관리자에게 문의주세요." : "요약, 편집 코멘트, 핵심 포인트를 만들었습니다.",
+    })
     await load()
   }
 
@@ -302,7 +308,7 @@ export default function AdminMediaVideoPanel({ onNotice, onForbidden }: Props) {
                   <div className="flex flex-wrap gap-1">
                     <button type="button" className={mediaButtonClass} disabled={busy || row.importStatus === "PUBLISHED"} onClick={() => void runRow("publish", row.boardId)}>게시</button>
                     <button type="button" className={mediaButtonClass} disabled={busy || row.importStatus === "HIDDEN"} onClick={() => void runRow("hide", row.boardId)}>숨김</button>
-                    <button type="button" className={mediaButtonClass} disabled={busy} onClick={() => void runEnrich()}>AI 보강</button>
+                    <button type="button" className={mediaButtonClass} disabled={busy} onClick={() => void runEnrich(row.boardId)}>AI 보강</button>
                     <button type="button" className={mediaButtonClass} onClick={() => { setDetail(null); setDrawerId(row.boardId) }}>상세</button>
                   </div>
                 </td>
@@ -311,7 +317,7 @@ export default function AdminMediaVideoPanel({ onNotice, onForbidden }: Props) {
           </tbody>
         </table>
       </div>
-      <div className="flex items-center gap-2 text-sm text-gray-600">
+      <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
         <button type="button" className={mediaButtonClass} disabled={page <= 0 || loading} onClick={() => setPage((current) => current - 1)}>이전</button>
         <span>{page + 1} / {totalPages}</span>
         <button type="button" className={mediaButtonClass} disabled={page + 1 >= totalPages || loading} onClick={() => setPage((current) => current + 1)}>다음</button>

@@ -212,6 +212,14 @@ export function hideAdminMediaVideo(boardId: number): Promise<MediaCall<AdminMed
   ).then((result) => mapDetail(result, "영상은 숨겼지만 응답을 해석하지 못했습니다."))
 }
 
+export function enrichAdminMediaVideo(boardId: number): Promise<MediaCall<AdminMediaVideoDetail>> {
+  return requestJson(
+    `/api/v1/admin/media/videos/${boardId}/enrich`,
+    { method: "POST", body: "{}" },
+    "관리자에게 문의주세요.",
+  ).then((result) => mapDetail(result, "보강은 끝났지만 응답을 해석하지 못했습니다."))
+}
+
 export function enrichAdminMediaVideos(): Promise<MediaCall<MediaEnrichSummary>> {
   return requestJson("/api/v1/admin/media/import/enrich", { method: "POST", body: "{}" }, "AI 보강에 실패했습니다.").then(
     (result) => (result.ok ? { ok: true, data: parseEnrich(unwrapData(result.data)) } : result),

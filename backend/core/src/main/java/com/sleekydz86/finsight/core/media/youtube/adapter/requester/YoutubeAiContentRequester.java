@@ -3,22 +3,26 @@ package com.sleekydz86.finsight.core.media.youtube.adapter.requester;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sleekydz86.finsight.core.board.domain.Board;
+import com.sleekydz86.finsight.core.global.exception.AiAnalysisFailedException;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeGeneratedContent;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeVideoMeta;
+import com.sleekydz86.finsight.core.news.adapter.requester.overview.properties.OllamaProperties;
 import com.sleekydz86.finsight.core.news.adapter.requester.overview.properties.OpenAiProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 @Component
@@ -30,94 +34,183 @@ public class YoutubeAiContentRequester {
     private static final int KEY_POINT_MAX_LENGTH = 300;
 
     private final WebClient webClient;
+    private final WebClient ollamaWebClient;
     private final OpenAiProperties openAiProperties;
+    private final OllamaProperties ollamaProperties;
     private final ObjectMapper objectMapper;
+    private final String aiProvider;
 
     public YoutubeAiContentRequester(
-            WebClient webClient,
+            @Qualifier("webClient") WebClient webClient,
+            @Qualifier("ollamaWebClient") WebClient ollamaWebClient,
             OpenAiProperties openAiProperties,
-            ObjectMapper objectMapper) {
+            OllamaProperties ollamaProperties,
+            ObjectMapper objectMapper,
+            @Value("${youtube.ai.provider:openai}") String aiProvider) {
         this.webClient = webClient;
+        this.ollamaWebClient = ollamaWebClient;
         this.openAiProperties = openAiProperties;
+        this.ollamaProperties = ollamaProperties;
         this.objectMapper = objectMapper;
+        this.aiProvider = aiProvider == null ? "openai" : aiProvider.trim();
     }
 
     public YoutubeGeneratedContent generate(YoutubeVideoMeta videoMeta, Board board) {
-        if (!isRemoteGenerationAvailable()) {
-            return createFallbackContent(videoMeta, board);
+        String prompt = buildPrompt(videoMeta, board);
+        if (usesLocalLlama()) {
+            return generateWithOllama(prompt);
         }
-
-        try {
-            Map<String, Object> requestBody = Map.of(
-                    "model", openAiProperties.getModel(),
-                    "messages", List.of(
-                            Map.of("role", "system", "content", "You are a Korean financial media editor."),
-                            Map.of("role", "user", "content", buildPrompt(videoMeta, board))
-                    ),
-                    "temperature", 0.2
-            );
-
-            Map<String, Object> responseBody = webClient.post()
-                    .uri(openAiProperties.getBaseUrl())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .header("Authorization", "Bearer " + openAiProperties.getApiKey())
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
-                    .timeout(Duration.ofSeconds(30))
-                    .block();
-
-            if (responseBody == null) {
-                return createFallbackContent(videoMeta, board);
+        RuntimeException lastFailure = null;
+        if (openAiProperties.isConfigured()) {
+            try {
+                return readModelContent(callOpenAi(prompt), "openai");
+            } catch (RuntimeException exception) {
+                log.warn("게시글 {} OpenAI 보강 실패: {}", board.getId(), exception.getMessage());
+                lastFailure = exception;
             }
+        }
+        if (ollamaProperties.isEnabled()) {
+            try {
+                return readModelContent(callOllama(prompt), "ollama");
+            } catch (RuntimeException exception) {
+                log.warn("게시글 {} Ollama 보강 실패: {}", board.getId(), exception.getMessage());
+                lastFailure = exception;
+            }
+        }
+        if (lastFailure != null) {
+            throw new AiAnalysisFailedException(activeModelName(), "영상 보강 문장을 만들지 못했습니다.", lastFailure);
+        }
+        throw new AiAnalysisFailedException("NONE", "OpenAI 키 또는 Ollama가 설정되어 있지 않습니다.");
+    }
 
-            return parseResponse(responseBody, videoMeta, board);
-        } catch (Exception e) {
-            log.warn("게시글 {}에 대한 YouTube AI 콘텐츠 생성 실패: {}", board.getId(), e.getMessage());
-            return createFallbackContent(videoMeta, board);
+    private boolean usesLocalLlama() {
+        return "ollama".equalsIgnoreCase(aiProvider) || "llama".equalsIgnoreCase(aiProvider);
+    }
+
+    private YoutubeGeneratedContent generateWithOllama(String prompt) {
+        if (!ollamaProperties.isEnabled()) {
+            throw new AiAnalysisFailedException("ollama", "로컬 AI 보강은 Ollama가 켜져 있어야 합니다.");
+        }
+        try {
+            return readModelContent(callOllama(prompt), "ollama");
+        } catch (AiAnalysisFailedException exception) {
+            throw exception;
+        } catch (WebClientResponseException exception) {
+            throw ollamaHttpFailure(exception);
         }
     }
 
-    private YoutubeGeneratedContent parseResponse(
-            Map<String, Object> responseBody,
-            YoutubeVideoMeta videoMeta,
-            Board board) throws Exception {
+    private AiAnalysisFailedException ollamaHttpFailure(WebClientResponseException exception) {
+        String model = ollamaProperties.getModel();
+        if (exception.getStatusCode().value() == 404) {
+            return new AiAnalysisFailedException(
+                    model,
+                    "Ollama에 " + model + " 모델이 없습니다. ollama pull " + model + " 를 실행하세요.",
+                    exception);
+        }
+        return new AiAnalysisFailedException(model, "Ollama 호출에 실패했습니다.", exception);
+    }
 
-        String content = extractContent(responseBody);
-        String normalizedContent = stripCodeFence(content);
-        YoutubeAiResponse response = objectMapper.readValue(normalizedContent, YoutubeAiResponse.class);
-        return normalizeResponse(response, videoMeta, board);
+    private String callOpenAi(String prompt) {
+        Map<String, Object> responseBody = webClient.post()
+                .uri(openAiProperties.getBaseUrl())
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("Authorization", "Bearer " + openAiProperties.getApiKey())
+                .bodyValue(chatBody(openAiProperties.getModel(), prompt))
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .timeout(Duration.ofSeconds(30))
+                .block();
+        if (responseBody == null) {
+            throw new AiAnalysisFailedException(openAiProperties.getModel(), "OpenAI 응답이 비어 있습니다.");
+        }
+        return openAiContent(responseBody);
+    }
+
+    private String callOllama(String prompt) {
+        String baseUrl = ollamaProperties.getBaseUrl() == null ? "" : ollamaProperties.getBaseUrl().replaceAll("/+$", "");
+        Map<String, Object> responseBody = ollamaWebClient.post()
+                .uri(baseUrl + "/api/chat")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of(
+                        "model", ollamaProperties.getModel(),
+                        "messages", List.of(
+                                Map.of("role", "system", "content", "You are a Korean financial media editor. Reply with JSON only."),
+                                Map.of("role", "user", "content", prompt)
+                        ),
+                        "stream", false,
+                        "options", Map.of("temperature", 0.2, "num_ctx", 2048, "num_predict", 400)
+                ))
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                .timeout(Duration.ofSeconds(Math.max(ollamaProperties.getTimeoutSeconds(), 30)))
+                .block();
+        if (responseBody == null) {
+            throw new AiAnalysisFailedException(ollamaProperties.getModel(), "Ollama 응답이 비어 있습니다.");
+        }
+        return ollamaContent(responseBody);
+    }
+
+    private Map<String, Object> chatBody(String model, String prompt) {
+        return Map.of(
+                "model", model,
+                "messages", List.of(
+                        Map.of("role", "system", "content", "You are a Korean financial media editor. Reply with JSON only."),
+                        Map.of("role", "user", "content", prompt)
+                ),
+                "temperature", 0.2
+        );
+    }
+
+    private YoutubeGeneratedContent readModelContent(String content, String provider) {
+        try {
+            YoutubeAiResponse response = objectMapper.readValue(extractJsonObject(content), YoutubeAiResponse.class);
+            return requireGenerated(response, provider);
+        } catch (AiAnalysisFailedException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new AiAnalysisFailedException(provider, "보강 JSON을 읽지 못했습니다.", exception);
+        }
     }
 
     @SuppressWarnings("unchecked")
-    private String extractContent(Map<String, Object> responseBody) {
+    private String openAiContent(Map<String, Object> responseBody) {
         List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
         if (choices == null || choices.isEmpty()) {
-            throw new IllegalStateException("OpenAI 응답 choices가 비어 있습니다");
+            throw new AiAnalysisFailedException(openAiProperties.getModel(), "OpenAI 응답 choices가 비어 있습니다.");
         }
-
-        Map<String, Object> firstChoice = choices.get(0);
-        Map<String, Object> message = (Map<String, Object>) firstChoice.get("message");
+        Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
         if (message == null) {
-            throw new IllegalStateException("OpenAI 응답 message가 누락되었습니다");
+            throw new AiAnalysisFailedException(openAiProperties.getModel(), "OpenAI 응답 message가 없습니다.");
         }
-
         String content = (String) message.get("content");
         if (content == null || content.isBlank()) {
-            throw new IllegalStateException("OpenAI 응답 content가 비어 있습니다");
+            throw new AiAnalysisFailedException(openAiProperties.getModel(), "OpenAI 응답 content가 비어 있습니다.");
         }
-
         return content;
     }
 
-    private String buildPrompt(YoutubeVideoMeta videoMeta, Board board) {
+    @SuppressWarnings("unchecked")
+    private String ollamaContent(Map<String, Object> responseBody) {
+        Map<String, Object> message = (Map<String, Object>) responseBody.get("message");
+        if (message == null) {
+            throw new AiAnalysisFailedException(ollamaProperties.getModel(), "Ollama 응답 message가 없습니다.");
+        }
+        String content = (String) message.get("content");
+        if (content == null || content.isBlank()) {
+            throw new AiAnalysisFailedException(ollamaProperties.getModel(), "Ollama 응답 content가 비어 있습니다.");
+        }
+        return content;
+    }
+
+    String buildPrompt(YoutubeVideoMeta videoMeta, Board board) {
         String title = defaultText(videoMeta.getYoutubeTitle(), board.getTitle());
-        String description = defaultText(videoMeta.getYoutubeDescription(), board.getContent());
         String category = defaultText(videoMeta.getCategory(), "금융 시장");
         String channelTitle = defaultText(videoMeta.getChannelTitle(), "알 수 없는 채널");
 
         return String.join("\n",
-                "다음 유튜브 금융 영상 메타데이터를 바탕으로 게시판 초안용 편집 보조 데이터를 생성해 주세요.",
+                "다음 유튜브 금융 영상의 제목, 채널, 카테고리만으로 편집 보조 데이터를 생성해 주세요.",
+                "영상 설명문은 광고가 많아 입력하지 않습니다. 설명문을 추측하거나 인용하지 마세요.",
                 "",
                 "반드시 JSON 객체만 반환해 주세요. 설명 문장, 마크다운, 코드블록은 금지입니다.",
                 "",
@@ -131,12 +224,11 @@ public class YoutubeAiContentRequester {
                 "- summary는 사용자가 리스트 카드에서 읽는다고 가정하고 간결하게 작성합니다.",
                 "- editorComment는 상세 페이지 본문 위에 들어갈 편집자 해설처럼 작성합니다.",
                 "- keyPoints는 짧은 문장으로 작성하고 중복 없이 3개를 반환합니다.",
-                "- 원문에 없는 사실은 단정하지 말고, 메타데이터 범위 안에서만 정리합니다.",
+                "- 제목에 없는 수치, 종목, 사실은 단정하지 않습니다.",
                 "",
                 "입력 데이터:",
                 "{",
                 "  \"title\": \"" + escapeJson(title) + "\",",
-                "  \"description\": \"" + escapeJson(description) + "\",",
                 "  \"category\": \"" + escapeJson(category) + "\",",
                 "  \"channelTitle\": \"" + escapeJson(channelTitle) + "\"",
                 "}",
@@ -149,58 +241,13 @@ public class YoutubeAiContentRequester {
                 "}");
     }
 
-    private YoutubeGeneratedContent normalizeResponse(
-            YoutubeAiResponse response,
-            YoutubeVideoMeta videoMeta,
-            Board board) {
-
-        YoutubeGeneratedContent fallback = createFallbackContent(videoMeta, board);
-
-        String summary = trimToLength(defaultText(response != null ? response.summary() : null, fallback.getSummary()), SUMMARY_MAX_LENGTH);
-        String editorComment = trimToLength(
-                defaultText(response != null ? response.editorComment() : null, fallback.getEditorComment()),
-                EDITOR_COMMENT_MAX_LENGTH);
-        List<String> keyPoints = normalizeKeyPoints(
-                response != null ? response.keyPoints() : null,
-                fallback.getKeyPoints());
-
-        return YoutubeGeneratedContent.builder()
-                .summary(summary)
-                .editorComment(editorComment)
-                .keyPoints(keyPoints)
-                .build();
-    }
-
-    private YoutubeGeneratedContent createFallbackContent(YoutubeVideoMeta videoMeta, Board board) {
-        String title = defaultText(videoMeta.getYoutubeTitle(), board.getTitle());
-        String description = defaultText(videoMeta.getYoutubeDescription(), board.getContent());
-        String category = defaultText(videoMeta.getCategory(), "금융 시장");
-        String channelTitle = defaultText(videoMeta.getChannelTitle(), "해당 채널");
-
-        String summary = trimToLength(
-                defaultText(extractPreview(description, 2),
-                        title + "를 중심으로 " + category + " 흐름을 빠르게 파악할 수 있는 영상입니다."),
-                SUMMARY_MAX_LENGTH);
-
-        String editorComment = trimToLength(
-                channelTitle + " 채널의 이 영상은 " + category + " 이슈를 짧은 시간 안에 훑어보기에 적합합니다. " +
-                        "관리자는 이 초안을 바탕으로 본문과 태그를 다듬어 서비스형 콘텐츠로 발행하면 됩니다.",
-                EDITOR_COMMENT_MAX_LENGTH);
-
-        Set<String> points = new LinkedHashSet<>();
-        points.add(trimToLength(title + "와 관련된 핵심 흐름을 먼저 확인할 수 있습니다.", KEY_POINT_MAX_LENGTH));
-        points.add(trimToLength(category + " 관점에서 관련 뉴스와 함께 보면 이해하기 좋습니다.", KEY_POINT_MAX_LENGTH));
-        if (description != null && !description.isBlank()) {
-            points.add(trimToLength(extractPreview(description, 1), KEY_POINT_MAX_LENGTH));
+    private YoutubeGeneratedContent requireGenerated(YoutubeAiResponse response, String provider) {
+        String summary = trimToLength(normalizeText(response != null ? response.summary() : null), SUMMARY_MAX_LENGTH);
+        String editorComment = trimToLength(normalizeText(response != null ? response.editorComment() : null), EDITOR_COMMENT_MAX_LENGTH);
+        List<String> keyPoints = normalizeKeyPoints(response != null ? response.keyPoints() : null);
+        if (summary == null || editorComment == null || keyPoints.size() < 3) {
+            throw new AiAnalysisFailedException(provider, "요약, 편집 코멘트, 핵심 포인트 3개가 필요합니다.");
         }
-        points.add(trimToLength(channelTitle + " 채널 맥락까지 함께 참고할 수 있습니다.", KEY_POINT_MAX_LENGTH));
-
-        List<String> keyPoints = points.stream()
-                .filter(Objects::nonNull)
-                .filter(value -> !value.isBlank())
-                .limit(3)
-                .toList();
-
         return YoutubeGeneratedContent.builder()
                 .summary(summary)
                 .editorComment(editorComment)
@@ -208,7 +255,17 @@ public class YoutubeAiContentRequester {
                 .build();
     }
 
-    private List<String> normalizeKeyPoints(List<String> keyPoints, List<String> fallbackKeyPoints) {
+    private String activeModelName() {
+        if (openAiProperties.isConfigured()) {
+            return openAiProperties.getModel();
+        }
+        if (ollamaProperties.isEnabled()) {
+            return ollamaProperties.getModel();
+        }
+        return "NONE";
+    }
+
+    private List<String> normalizeKeyPoints(List<String> keyPoints) {
         Set<String> normalized = new LinkedHashSet<>();
         if (keyPoints != null) {
             for (String keyPoint : keyPoints) {
@@ -218,20 +275,17 @@ public class YoutubeAiContentRequester {
                 }
             }
         }
-
-        if (normalized.size() < 3 && fallbackKeyPoints != null) {
-            for (String fallbackKeyPoint : fallbackKeyPoints) {
-                String value = trimToLength(normalizeText(fallbackKeyPoint), KEY_POINT_MAX_LENGTH);
-                if (value != null) {
-                    normalized.add(value);
-                }
-                if (normalized.size() >= 3) {
-                    break;
-                }
-            }
-        }
-
         return new ArrayList<>(normalized).stream().limit(3).toList();
+    }
+
+    private String extractJsonObject(String content) {
+        String trimmed = stripCodeFence(content);
+        int start = trimmed.indexOf('{');
+        int end = trimmed.lastIndexOf('}');
+        if (start < 0 || end <= start) {
+            throw new AiAnalysisFailedException(activeModelName(), "보강 응답에서 JSON 객체를 찾지 못했습니다.");
+        }
+        return trimmed.substring(start, end + 1);
     }
 
     private String stripCodeFence(String content) {
@@ -241,18 +295,6 @@ public class YoutubeAiContentRequester {
             trimmed = trimmed.replaceFirst("\\s*```$", "");
         }
         return trimmed.trim();
-    }
-
-    private boolean isRemoteGenerationAvailable() {
-        return hasText(openAiProperties.getBaseUrl())
-                && hasText(openAiProperties.getApiKey())
-                && hasText(openAiProperties.getModel())
-                && !openAiProperties.getApiKey().contains("placeholder")
-                && !openAiProperties.getApiKey().startsWith("local-");
-    }
-
-    private boolean hasText(String value) {
-        return value != null && !value.isBlank();
     }
 
     private String normalizeText(String value) {
@@ -276,30 +318,6 @@ public class YoutubeAiContentRequester {
             return value;
         }
         return value.substring(0, maxLength);
-    }
-
-    private String extractPreview(String value, int sentenceLimit) {
-        String normalized = normalizeText(value);
-        if (normalized == null) {
-            return null;
-        }
-
-        String[] parts = normalized.split("(?<=[.!?。！？])\\s+");
-        List<String> selected = new ArrayList<>();
-        for (String part : parts) {
-            String trimmed = normalizeText(part);
-            if (trimmed != null) {
-                selected.add(trimmed);
-            }
-            if (selected.size() >= sentenceLimit) {
-                break;
-            }
-        }
-
-        if (selected.isEmpty()) {
-            return trimToLength(normalized, 220);
-        }
-        return String.join(" ", selected);
     }
 
     private String escapeJson(String value) {
