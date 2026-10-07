@@ -15,6 +15,7 @@ import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeGeneratedContent
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportSource;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportSourceType;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportStatus;
+import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeThumbnailUrl;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeVideoMeta;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.YoutubeMediaAdminUseCase;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.YoutubeMediaImportUseCase;
@@ -158,22 +159,52 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
     }
 
     private LiveVodFeedResponse buildLiveVodFeedForTab(String normalizedTab) {
+        List<YoutubeVideoListResponse> published = loadPublishedForTab(normalizedTab);
+        if (published.isEmpty()) {
+            return new LiveVodFeedResponse(
+                    resolveFeedTitle(normalizedTab),
+                    normalizedTab,
+                    null,
+                    null,
+                    null,
+                    List.of());
+        }
         String category = "ALL".equals(normalizedTab) ? null : normalizedTab;
+        return toLiveVodFeedFromPublished(normalizedTab, published, category);
+    }
 
-        if ("ALL".equals(normalizedTab)) {
-            return buildAllTabFeed(category);
-        }
-        if ("LIVE".equals(normalizedTab)) {
-            return buildLiveTabFeed(category);
-        }
+    private List<YoutubeVideoListResponse> loadPublishedForTab(String tab) {
+        Page<YoutubeVideoMeta> page = youtubeVideoMetaPersistencePort.search(
+                YoutubeImportStatus.PUBLISHED,
+                null,
+                PageRequest.of(0, 200));
+        return toPaginationResponse(page).getContent().stream()
+                .filter(video -> YoutubeThumbnailUrl.isVideoId(video.getVideoId()))
+                .filter(video -> matchesPublishedTab(tab, video))
+                .toList();
+    }
 
-        Optional<YoutubeApiProperties.MoreChannelSource> channelTab =
-                resolveChannelTabSource(normalizedTab);
-        if (channelTab.isPresent()) {
-            return buildChannelOnlyFeed(normalizedTab, category, channelTab.get());
+    private boolean matchesPublishedTab(String tab, YoutubeVideoListResponse video) {
+        if ("ALL".equals(tab)) {
+            return true;
         }
-
-        return buildTopicOnlyFeed(normalizedTab, category);
+        String category = video.getCategory() == null ? "" : video.getCategory().trim().toUpperCase();
+        String source = video.getSourceValue() == null ? "" : video.getSourceValue().trim().toLowerCase();
+        if ("LIVE".equals(tab)) {
+            return "LIVE".equals(category);
+        }
+        if (tab.equals(category)) {
+            return true;
+        }
+        return switch (tab) {
+            case "GOMHEE" -> source.contains("gomhee");
+            case "SYUKA" -> source.contains("syuka");
+            case "BOOTYFUL" -> source.contains("money-multiple");
+            case "MARKET" -> source.contains("hankyung") || source.contains("gomhee") || source.contains("money-multiple");
+            case "THEME" -> source.contains("3protv") || source.contains("money-multiple") || source.contains("gomhee");
+            case "MACRO" -> source.contains("syuka") || source.contains("hankyung") || source.contains("gomhee");
+            default -> false;
+        };
     }
 
     private LiveVodFeedResponse buildLiveTabFeed(String category) {
@@ -355,7 +386,8 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 featured.getTitle(),
                 featured.getThumbnailUrl(),
                 items,
-                category);
+                category,
+                false);
     }
 
     private LiveVodFeedResponse toLiveVodFeedFromFetched(
@@ -655,6 +687,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 adminEmail,
                 normalizeHashtags(request.getHashtags(), request.getCategory()),
                 0);
+        liveVodFeedCache.clear();
 
         return YoutubeSyncSummaryResponse.builder()
                 .sourceCount(summary.getSourceCount())
@@ -696,6 +729,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
 
         boardPersistencePort.save(publishedBoard);
         youtubeVideoMetaPersistencePort.save(rebuildMeta(meta, publishedBoard.getId(), YoutubeImportStatus.PUBLISHED));
+        liveVodFeedCache.clear();
 
         return getVideoDetail(boardId, false);
     }
@@ -716,6 +750,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
 
         boardPersistencePort.save(hiddenBoard);
         youtubeVideoMetaPersistencePort.save(rebuildMeta(meta, hiddenBoard.getId(), YoutubeImportStatus.HIDDEN));
+        liveVodFeedCache.clear();
 
         return getVideoDetail(boardId, false);
     }
@@ -774,6 +809,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 1);
 
         youtubeImportSourcePersistencePort.save(copySource(locked, locked.isActive(), locked.isRejected(), LocalDateTime.now()));
+        liveVodFeedCache.clear();
 
         return YoutubeSyncSummaryResponse.builder()
                 .sourceCount(summary.getSourceCount())
@@ -826,12 +862,16 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
 
                     summary = summary.merge(YoutubeSyncSummaryResponse.builder().updatedCount(1).build());
                 } else {
+                    BoardStatus boardStatus = autoPublish ? BoardStatus.ACTIVE : BoardStatus.DRAFT;
+                    YoutubeImportStatus importStatus = autoPublish
+                            ? YoutubeImportStatus.PUBLISHED
+                            : YoutubeImportStatus.DRAFT;
                     Board savedBoard = boardPersistencePort.save(Board.builder()
                             .title(trimToLength(fetchedVideo.youtubeTitle(), TITLE_MAX_LENGTH))
                             .content(trimToLength(defaultContent(fetchedVideo.youtubeDescription()), CONTENT_MAX_LENGTH))
                             .authorEmail(authorEmail)
                             .boardType(BoardType.MEDIA)
-                            .status(BoardStatus.DRAFT)
+                            .status(boardStatus)
                             .hashtags(hashtags)
                             .build());
 
@@ -840,7 +880,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                             savedBoard.getId(),
                             fetchedVideo,
                             normalizeText(fetchedVideo.category()),
-                            YoutubeImportStatus.DRAFT,
+                            importStatus,
                             null));
 
                     summary = summary.merge(YoutubeSyncSummaryResponse.builder().importedCount(1).build());
@@ -895,7 +935,7 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .sourceType(meta.getSourceType())
                 .sourceValue(meta.getSourceValue())
                 .category(meta.getCategory())
-                .thumbnailUrl(meta.getThumbnailUrl())
+                .thumbnailUrl(YoutubeThumbnailUrl.displayUrl(meta.getVideoId(), meta.getThumbnailUrl()))
                 .publishedAt(meta.getPublishedAt())
                 .duration(meta.getDuration())
                 .summary(meta.getSummary())
@@ -944,13 +984,13 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
                 .category(meta.getCategory())
                 .youtubeTitle(meta.getYoutubeTitle())
                 .youtubeDescription(meta.getYoutubeDescription())
-                .thumbnailUrl(meta.getThumbnailUrl())
+                .thumbnailUrl(YoutubeThumbnailUrl.displayUrl(meta.getVideoId(), meta.getThumbnailUrl()))
                 .embedUrl(meta.getEmbedUrl())
                 .publishedAt(meta.getPublishedAt())
                 .duration(meta.getDuration())
                 .summary(meta.getSummary())
                 .editorComment(meta.getEditorComment())
-                .keyPoints(meta.getKeyPoints())
+                .keyPoints(copyDetachedKeyPoints(meta.getKeyPoints()))
                 .aiGeneratedAt(meta.getAiGeneratedAt())
                 .aiFailedAt(meta.getAiFailedAt())
                 .aiStatus(meta.resolveAiStatus())
@@ -1334,6 +1374,19 @@ public class YoutubeMediaService implements YoutubeMediaQueryUseCase, YoutubeMed
             normalized.add(normalizedCategory.replace("#", "").replace(' ', '-'));
         }
         return new ArrayList<>(normalized);
+    }
+
+    private static List<String> copyDetachedKeyPoints(List<String> keyPoints) {
+        if (keyPoints == null || keyPoints.isEmpty()) {
+            return List.of();
+        }
+        List<String> copied = new ArrayList<>();
+        for (String keyPoint : keyPoints) {
+            if (keyPoint != null && !keyPoint.isBlank()) {
+                copied.add(keyPoint);
+            }
+        }
+        return List.copyOf(copied);
     }
 
     private List<String> limitKeyPoints(List<String> keyPoints) {

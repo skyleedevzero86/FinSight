@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import {
   fetchLiveVodFeed,
   liveVodWatchHref,
+  displayYoutubeThumbnail,
   stashLiveVodMetaHint,
   toPrivacyEmbedUrl,
   YOUTUBE_EMBED_ALLOW,
@@ -88,7 +89,9 @@ function LiveVodBody({ tab }: { tab: string }) {
           <section key={`section-${sectionIndex}-${sec.heading || "list"}`} className="flv-relate">
             {sec.heading ? <h3>{sec.heading}</h3> : null}
             <ul>
-              {sec.items.map((it, itemIndex) => (
+              {sec.items.map((it, itemIndex) => {
+                const thumb = displayYoutubeThumbnail(it.videoId, it.thumbnailUrl)
+                return (
                 <li key={`${it.videoId}-${itemIndex}`}>
                   <Link
                     href={liveVodWatchHref(it, tab)}
@@ -96,7 +99,7 @@ function LiveVodBody({ tab }: { tab: string }) {
                     onClick={() => stashLiveVodMetaHint(it)}
                   >
                     <div className="flv-thumb-wrap">
-                      <img src={it.thumbnailUrl} alt="" />
+                      {thumb ? <img src={thumb} alt="" /> : <div className="flv-thumb-empty" />}
                       <div className="flv-thumb-meta" aria-label="참여 수">
                         <span title="즐겨찾기">♡ {it.favoriteCount}</span>
                         <span title="댓글">💬 {it.commentCount}</span>
@@ -105,7 +108,8 @@ function LiveVodBody({ tab }: { tab: string }) {
                     <div className="flv-vod-title">{it.title}</div>
                   </Link>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           </section>
         ))}

@@ -1,4 +1,5 @@
 import { authHeadersJson } from "@/lib/finsightToken"
+import { displayYoutubeThumbnail } from "@/lib/liveVod"
 import {
   unscrapBoard as unscrapBoardApi,
   unwrapApiData,
@@ -60,10 +61,10 @@ export async function fetchMyLiveVodFavorites(
         videoId: o.videoId,
         title: typeof o.title === "string" ? o.title : "VOD",
         channelTitle: typeof o.channelTitle === "string" ? o.channelTitle : null,
-        thumbnailUrl:
-          typeof o.thumbnailUrl === "string" && o.thumbnailUrl
-            ? o.thumbnailUrl
-            : `https://i.ytimg.com/vi/${o.videoId}/hqdefault.jpg`,
+        thumbnailUrl: displayYoutubeThumbnail(
+          o.videoId,
+          typeof o.thumbnailUrl === "string" ? o.thumbnailUrl : "",
+        ),
         savedAt: typeof o.savedAt === "string" ? o.savedAt : null,
       }
     })

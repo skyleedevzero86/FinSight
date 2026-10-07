@@ -1,68 +1,17 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
+import VodThumbnail from "@/components/VodThumbnail"
 import { useEffect, useState } from "react"
-import { Clock, Maximize2 } from "lucide-react"
+import { Maximize2 } from "lucide-react"
+import { HOME_LATEST_NEWS } from "@/data/finsightNewsMainData"
 import {
   fetchLiveVodFeed,
   flattenLiveVodFeedItems,
   liveVodWatchHref,
-  shuffleLiveVodItems,
   stashLiveVodMetaHint,
   type LiveVodItem,
 } from "@/lib/liveVod"
-
-const mainNews = [
-  {
-    id: 1,
-    title: "함수본 '전재수 785만원 까르띠에 수수 의심, 시효…",
-    image: "https://images.unsplash.com/photo-1495020689067-958852a7765e?w=800&h=450&fit=crop",
-    timeAgo: "2시간 전",
-    duration: "02:14",
-    category: "정치",
-  },
-  {
-    id: 2,
-    title: "유석열은 '딥 그림자'라더니…김건희 스스로 '달빛'",
-    image: "https://images.unsplash.com/photo-1529078155058-5d716f45d604?w=800&h=450&fit=crop",
-    timeAgo: "2시간 전",
-    duration: "01:33",
-    category: "정치",
-  },
-  {
-    id: 3,
-    title: "특검권 포기? 성역인 권 형님들…'제로동의안'",
-    image: "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=600&h=338&fit=crop",
-    timeAgo: "1시간 전",
-    duration: "02:33",
-    category: "정치",
-  },
-  {
-    id: 4,
-    title: "[단독] '외유성 출장' 추사 설인데…또 '누구 부부'",
-    image: "https://images.unsplash.com/photo-1593113598332-cd288d649433?w=600&h=338&fit=crop",
-    timeAgo: "1시간 전",
-    duration: "02:46",
-    category: "사회",
-  },
-  {
-    id: 5,
-    title: "이란 전역 대통령 부부 묻었다…윤석열 이어 김건희 조문",
-    image: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=600&h=338&fit=crop",
-    timeAgo: "3시간 전",
-    duration: "02:05",
-    category: "정치",
-  },
-  {
-    id: 6,
-    title: "방송3법 개정안 처리 임박…여야 대치 격화",
-    image: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&h=338&fit=crop",
-    timeAgo: "4시간 전",
-    duration: "01:52",
-    category: "사회",
-  },
-]
 
 const replayPrograms = [
   {
@@ -109,24 +58,30 @@ const replayPrograms = [
   },
 ] as const
 
-const featuredPair = mainNews.slice(0, 2)
-const smallQuad = mainNews.slice(2, 6)
-
 export default function NewsSection() {
-  const [replayItems, setReplayItems] = useState<LiveVodItem[]>([])
+  const [items, setItems] = useState<LiveVodItem[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
     void (async () => {
       const result = await fetchLiveVodFeed("ALL")
-      if (cancelled || !result.ok) return
-      const picked = shuffleLiveVodItems(flattenLiveVodFeedItems(result.data)).slice(0, 2)
-      setReplayItems(picked)
+      if (cancelled) return
+      setLoading(false)
+      if (!result.ok) {
+        setItems([])
+        return
+      }
+      setItems(flattenLiveVodFeedItems(result.data))
     })()
     return () => {
       cancelled = true
     }
   }, [])
+
+  const featuredPair = HOME_LATEST_NEWS.slice(0, 2)
+  const smallQuad = HOME_LATEST_NEWS.slice(2, 6)
+  const replayItems = items.slice(0, 2)
 
   return (
     <section className="border-t border-[#ebebeb] bg-[#f9f9f9] py-10 md:py-12">
@@ -137,7 +92,7 @@ export default function NewsSection() {
           </h2>
           <div className="mt-3 text-center md:mt-0">
             <Link
-              href="/live-vod"
+              href="/news"
               className="text-sm font-medium text-[#3c3e40] hover:text-finsight-primary hover:underline md:absolute md:right-0 md:top-1/2 md:mt-0 md:inline md:-translate-y-1/2"
             >
               더보기 →
@@ -147,61 +102,58 @@ export default function NewsSection() {
 
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-10">
           <div className="min-w-0 flex-1 lg:max-w-[calc(100%-20rem)]">
-            <div className="mb-5 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-4">
-              {featuredPair.map((news) => (
-                <Link
-                  key={news.id}
-                  href="#"
-                  className="group block overflow-hidden border border-[#ebebeb] bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:shadow-md"
-                >
-                  <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#f0f0f0]">
-                    <Image
-                      src={news.image}
-                      alt={news.title}
-                      fill
-                      className="object-cover transition duration-300 group-hover:scale-[1.02]"
-                      sizes="(max-width: 768px) 100vw, 50vw"
-                    />
-                    {news.duration ? (
-                      <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded bg-black/75 px-2 py-0.5 text-xs font-medium text-white">
-                        <Clock className="h-3 w-3" aria-hidden />
-                        {news.duration}
+            {featuredPair.length === 0 ? (
+              <p className="text-sm text-[#737475]">표시할 뉴스가 없습니다.</p>
+            ) : (
+              <>
+                <div className="mb-5 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-4">
+                  {featuredPair.map((item) => (
+                    <Link
+                      key={item.title}
+                      href={item.href}
+                      className="group block overflow-hidden border border-[#ebebeb] bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition hover:shadow-md"
+                    >
+                      <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#f0f0f0]">
+                        <img
+                          src={item.image}
+                          alt={item.alt || item.title}
+                          className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                        />
                       </div>
-                    ) : null}
+                      <div className="p-4 md:p-5">
+                        <h3 className="text-[15px] font-bold leading-snug tracking-tight text-[#231f20] line-clamp-2 md:text-base group-hover:text-finsight-primary">
+                          {item.title}
+                        </h3>
+                        <p className="mt-3 text-xs text-[#737475]">뉴스</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+                {smallQuad.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
+                    {smallQuad.map((item) => (
+                      <Link
+                        key={item.title}
+                        href={item.href}
+                        className="group block"
+                      >
+                        <div className="relative mb-2 aspect-video overflow-hidden border border-[#ebebeb] bg-[#f5f5f5]">
+                          <img
+                            src={item.image}
+                            alt={item.alt || item.title}
+                            className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                          />
+                        </div>
+                        <h3 className="line-clamp-2 text-xs font-bold leading-snug text-[#231f20] md:text-[13px] group-hover:text-finsight-primary">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1 text-[10px] text-[#737475] md:text-xs">뉴스</p>
+                      </Link>
+                    ))}
                   </div>
-                  <div className="p-4 md:p-5">
-                    <h3 className="text-[15px] font-bold leading-snug tracking-tight text-[#231f20] line-clamp-2 md:text-base group-hover:text-finsight-primary">
-                      {news.title}
-                    </h3>
-                    <p className="mt-3 text-xs text-[#737475]">{news.timeAgo}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-              {smallQuad.map((news) => (
-                <Link key={news.id} href="#" className="group block">
-                  <div className="relative mb-2 aspect-video overflow-hidden border border-[#ebebeb] bg-[#f5f5f5]">
-                    <Image
-                      src={news.image}
-                      alt={news.title}
-                      fill
-                      className="object-cover transition duration-300 group-hover:scale-105"
-                      sizes="(max-width: 1024px) 50vw, 25vw"
-                    />
-                    <div className="absolute bottom-1.5 right-1.5 flex items-center gap-0.5 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-medium text-white md:text-xs">
-                      <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" aria-hidden />
-                      {news.duration}
-                    </div>
-                  </div>
-                  <h3 className="line-clamp-2 text-xs font-bold leading-snug text-[#231f20] md:text-[13px] group-hover:text-finsight-primary">
-                    {news.title}
-                  </h3>
-                  <p className="mt-1 text-[10px] text-[#737475] md:text-xs">{news.timeAgo}</p>
-                </Link>
-              ))}
-            </div>
+                ) : null}
+              </>
+            )}
           </div>
 
           <aside className="w-full shrink-0 border border-[#d6d6d6] bg-white p-4 shadow-sm lg:w-[280px] xl:w-[300px]">
@@ -237,7 +189,9 @@ export default function NewsSection() {
 
             <div className="border border-[#ebebeb] bg-white">
               {replayItems.length === 0 ? (
-                <p className="p-4 text-center text-xs text-[#737475]">유튜브 영상을 불러오는 중…</p>
+                <p className="p-4 text-center text-xs text-[#737475]">
+                  {loading ? "영상을 불러오는 중…" : "유튜브 영상을 불러오지 못했습니다."}
+                </p>
               ) : (
                 replayItems.map((item, idx) => {
                   const href = liveVodWatchHref(item, "ALL")
@@ -260,10 +214,10 @@ export default function NewsSection() {
                         className="group/thumb relative h-[4.5rem] w-[7.5rem] shrink-0 overflow-hidden rounded-md bg-[#eee] md:h-[4.75rem] md:w-[8rem]"
                         onClick={() => stashLiveVodMetaHint(item)}
                       >
-                        <Image
-                          src={item.thumbnailUrl}
+                        <VodThumbnail
+                          videoId={item.videoId}
+                          thumbnailUrl={item.thumbnailUrl}
                           alt=""
-                          fill
                           className="object-cover transition group-hover/thumb:opacity-95"
                           sizes="128px"
                         />

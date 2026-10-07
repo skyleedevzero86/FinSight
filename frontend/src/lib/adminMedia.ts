@@ -1,5 +1,6 @@
 import { LIVE_VOD_NAV_ITEMS } from "@/data/liveVodNavData"
 import { authHeadersJson, clearAuthSession } from "@/lib/finsightToken"
+import { displayYoutubeThumbnail } from "@/lib/liveVod"
 
 export const mediaFieldClass =
   "w-full border border-[#d7dee8] bg-white px-3 py-2 text-sm text-gray-900 outline-none"
@@ -345,7 +346,7 @@ function parseVideo(raw: unknown): AdminMediaVideo | null {
     channelTitle: readString(row.channelTitle) || null,
     sourceValue: readString(row.sourceValue) || null,
     category: readString(row.category) || null,
-    thumbnailUrl: readString(row.thumbnailUrl) || null,
+    thumbnailUrl: displayYoutubeThumbnail(readString(row.videoId), readString(row.thumbnailUrl)) || null,
     importStatus: readImportStatus(row.importStatus),
     aiStatus: readAiStatus(row),
     publishedAt: readString(row.publishedAt) || null,
