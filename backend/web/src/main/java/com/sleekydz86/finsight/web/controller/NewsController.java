@@ -14,6 +14,7 @@ import com.sleekydz86.finsight.core.global.annotation.SecurityAudit;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
+import com.sleekydz86.finsight.core.global.exception.NewsNotFoundException;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -61,17 +62,16 @@ public class NewsController {
     @LogExecution("뉴스 상세 조회 API")
     @PerformanceMonitor(threshold = 1000, metricName = "api.news.detail")
     @SecurityAudit(action = "NEWS_DETAIL_API", resource = "NEWS_API", level = SecurityAudit.SecurityLevel.INFO)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
-    public ResponseEntity<ApiResponse<NewsDetailResponse>> getNewsDetail(
-            @PathVariable Long newsId,
-            @CurrentUser AuthenticatedUser currentUser) {
+    public ResponseEntity<ApiResponse<NewsDetailResponse>> getNewsDetail(@PathVariable Long newsId) {
         try {
             NewsDetailResponse news = newsQueryUseCase.getNewsDetail(newsId);
             return ResponseEntity.ok(ApiResponse.success(news, "뉴스 상세 조회에 성공했습니다"));
+        } catch (NewsNotFoundException e) {
+            return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage(), 404));
         } catch (SystemException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ApiResponse.error("뉴스 조회 중 오류가 발생했습니다.", 500));
+            return ResponseEntity.internalServerError().body(ApiResponse.error("관리자에게 문의주세요.", 500));
         }
     }
 
@@ -137,17 +137,15 @@ public class NewsController {
     @LogExecution("최신 뉴스 조회 API")
     @PerformanceMonitor(threshold = 1000, metricName = "api.news.latest")
     @SecurityAudit(action = "NEWS_LATEST_API", resource = "NEWS_API", level = SecurityAudit.SecurityLevel.INFO)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
     public ResponseEntity<ApiResponse<Newses>> getLatestNews(
-            @RequestParam(defaultValue = "10") int limit,
-            @CurrentUser AuthenticatedUser currentUser) {
+            @RequestParam(defaultValue = "10") int limit) {
         try {
             Newses newses = newsQueryUseCase.getLatestNews(limit);
             return ResponseEntity.ok(ApiResponse.success(newses, "최신 뉴스 조회에 성공했습니다"));
         } catch (SystemException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ApiResponse.error("최신 뉴스 조회 중 오류가 발생했습니다.", 500));
+            return ResponseEntity.internalServerError().body(ApiResponse.error("관리자에게 문의주세요.", 500));
         }
     }
 

@@ -44,9 +44,7 @@ public class NotificationService {
         String categoriesLabel = newsCategories == null || newsCategories.isEmpty()
                 ? ""
                 : newsCategories.stream().map(Enum::name).reduce((a, b) -> a + ", " + b).orElse("");
-        String newsTitle = news.getOriginalContent() != null && news.getOriginalContent().getTitle() != null
-                ? news.getOriginalContent().getTitle()
-                : "관심 종목 뉴스";
+        String newsTitle = alertTitle(news);
         String title = "[관심종목] " + newsTitle + (categoriesLabel.isBlank() ? "" : " (" + categoriesLabel + ")");
         String link = news.getId() != null ? "/news/" + news.getId() : "/news";
 
@@ -76,5 +74,21 @@ public class NotificationService {
         } catch (Exception e) {
             log.warn("뉴스 인앱 알림 생성 실패 - error={}", e.getMessage());
         }
+    }
+
+    static String alertTitle(News news) {
+        if (news.getTranslatedContent() != null) {
+            String translated = news.getTranslatedContent().getTitle();
+            if (translated != null && !translated.isBlank()) {
+                return translated;
+            }
+        }
+        if (news.getOriginalContent() != null) {
+            String original = news.getOriginalContent().getTitle();
+            if (original != null && !original.isBlank()) {
+                return original;
+            }
+        }
+        return "관심 종목 뉴스";
     }
 }

@@ -1,29 +1,20 @@
-import type { Metadata } from "next"
-import { Suspense } from "react"
 import FinsightNewsNav from "@/components/news/FinsightNewsNav"
-import StoredNewsList from "@/components/news/StoredNewsList"
+import StoredNewsDetail from "@/components/news/StoredNewsDetail"
 import { VODBannersBar } from "@/components/VODBannersBar"
 import "@/styles/finsight-news-nav.css"
-import "@/styles/finsight-news-pc-main.css"
-import "@/styles/finsight-news-slick.css"
 
-export const metadata: Metadata = {
-  title: "finsight 뉴스",
-  description: "finsight 뉴스 메인",
-}
+type PageProps = { params: Promise<{ id: string }> }
 
-export default function NewsPage() {
+export default async function NewsDetailPage({ params }: PageProps) {
+  const { id } = await params
   return (
     <>
       <div className="finsight-news-root bg-white text-[#1e1e1e]">
         <div id="wrap" className="main">
           <FinsightNewsNav />
-
           <div id="container">
             <div id="content">
-              <Suspense fallback={<p className="px-4 py-10 text-center text-sm text-gray-500">뉴스를 불러오는 중입니다.</p>}>
-                <StoredNewsList />
-              </Suspense>
+              <StoredNewsDetail newsId={id} />
             </div>
           </div>
         </div>

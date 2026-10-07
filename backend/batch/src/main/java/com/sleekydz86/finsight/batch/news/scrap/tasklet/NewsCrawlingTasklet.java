@@ -3,7 +3,10 @@ package com.sleekydz86.finsight.batch.news.scrap.tasklet;
 import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.adapter.requester.NewsScrapRequester;
 import com.sleekydz86.finsight.core.news.domain.News;
+import com.sleekydz86.finsight.core.news.domain.Newses;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
+import com.sleekydz86.finsight.core.news.service.NewsAiProcessingService;
+import com.sleekydz86.finsight.core.news.service.NewsNotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.StepContribution;
@@ -27,6 +30,8 @@ public class NewsCrawlingTasklet implements Tasklet {
 
     private final Map<NewsProvider, NewsScrapRequester> newsScrapRequesters;
     private final NewsPersistencePort newsPersistencePort;
+    private final NewsAiProcessingService newsAiProcessingService;
+    private final NewsNotificationService newsNotificationService;
 
     private final ConcurrentHashMap<NewsProvider, AtomicInteger> scrapedNewsCount = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<NewsProvider, AtomicInteger> errorCount = new ConcurrentHashMap<>();
@@ -34,13 +39,17 @@ public class NewsCrawlingTasklet implements Tasklet {
 
     public NewsCrawlingTasklet(
             List<NewsScrapRequester> newsScrapRequesters,
-            NewsPersistencePort newsPersistencePort) {
+            NewsPersistencePort newsPersistencePort,
+            NewsAiProcessingService newsAiProcessingService,
+            NewsNotificationService newsNotificationService) {
         this.newsScrapRequesters = newsScrapRequesters.stream()
                 .collect(Collectors.toMap(
                         NewsScrapRequester::supports,
                         requester -> requester
                 ));
         this.newsPersistencePort = newsPersistencePort;
+        this.newsAiProcessingService = newsAiProcessingService;
+        this.newsNotificationService = newsNotificationService;
     }
 
     @Override
@@ -81,7 +90,9 @@ public class NewsCrawlingTasklet implements Tasklet {
 
             if (!allScrapedNews.isEmpty()) {
                 log.info("스크래핑한 뉴스 {}건 저장 시작", allScrapedNews.size());
-                newsPersistencePort.saveAllNews(allScrapedNews);
+                List<News> analyzed = newsAiProcessingService.processNewsWithAI(allScrapedNews);
+                Newses saved = newsPersistencePort.saveAllNews(analyzed);
+                newsNotificationService.sendNotificationsForImportantNews(saved.getNewses());
                 log.info("스크래핑한 뉴스 저장 완료");
             } else {
                 log.warn("스크래핑된 뉴스가 없습니다");

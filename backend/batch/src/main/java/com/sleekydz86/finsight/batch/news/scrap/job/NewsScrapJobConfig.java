@@ -88,7 +88,7 @@ public class NewsScrapJobConfig {
                     }
                 })
                 .start(newsCrawlingStep())
-                .next(aiAnalysisStep())
+                .next(sentimentAnalysisStep())
                 .build();
     }
 

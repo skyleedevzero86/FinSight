@@ -28,6 +28,9 @@ public class MarketAuxProperties {
     }
 
     public String getBaseUrl() {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            return "https://api.marketaux.com/v1/news/all";
+        }
         return baseUrl;
     }
 
