@@ -42,6 +42,7 @@ public class BoardJpaMapper {
                 .files(files)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .highlighted(entity.isHighlighted())
                 .build();
     }
 
@@ -65,6 +66,7 @@ public class BoardJpaMapper {
                 .files(List.of())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .highlighted(entity.isHighlighted())
                 .build();
     }
 
@@ -96,6 +98,7 @@ public class BoardJpaMapper {
                 board.getUpdatedAt()
         );
         entity.setFiles(files);
+        entity.setHighlighted(board.isHighlighted());
         return entity;
     }
 

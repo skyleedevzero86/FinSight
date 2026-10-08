@@ -16,6 +16,7 @@ export type BoardListItem = {
   timeAgo: string
   createdAt: string
   updatedAt: string
+  highlighted?: boolean
 }
 
 export type BoardPagination = {
@@ -48,6 +49,7 @@ export type BoardDetail = {
   files: unknown[]
   createdAt: string
   updatedAt: string
+  highlighted?: boolean
   navigation: {
     previous: {
       id: number
@@ -102,6 +104,104 @@ export type BoardReactionStatus = {
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
   return value as Record<string, unknown>
+}
+
+export type PopularBoardCard = {
+  id: number
+  title: string
+  boardType: BoardTypeCode
+  timeAgo: string
+}
+
+const BOARD_TYPES: BoardTypeCode[] = ["NOTICE", "FREE", "QNA", "COMMUNITY", "MEDIA"]
+
+function asBoardType(value: unknown): BoardTypeCode | null {
+  const code = typeof value === "string" ? value.toUpperCase() : ""
+  return BOARD_TYPES.find((item) => item === code) ?? null
+}
+
+export function boardDetailPath(boardType: string, id: number): string {
+  const t = boardType.toUpperCase()
+  if (t === "NOTICE") return `/community/notice/${id}`
+  if (t === "FREE") return `/community/free/${id}`
+  return `/community/qna/${id}`
+}
+
+export function boardListPath(boardType: string): string {
+  const t = boardType.toUpperCase()
+  if (t === "NOTICE") return "/community/notice"
+  if (t === "FREE") return "/community/free"
+  if (t === "QNA") return "/community/qna"
+  return "/community/notice"
+}
+
+function parsePopularCards(data: unknown): Array<PopularBoardCard & { viewCount: number }> {
+  if (!Array.isArray(data)) return []
+  const cards: Array<PopularBoardCard & { viewCount: number }> = []
+  for (const row of data) {
+    const record = asRecord(row)
+    const id = Number(record?.id)
+    const boardType = asBoardType(record?.boardType)
+    if (!record || !Number.isFinite(id) || id <= 0 || !boardType) continue
+    cards.push({
+      id,
+      title: typeof record.title === "string" ? record.title : "",
+      boardType,
+      timeAgo: typeof record.timeAgo === "string" ? record.timeAgo : "",
+      viewCount: Number(record.viewCount) || 0,
+    })
+  }
+  return cards
+}
+
+async function fetchPopularFromLists(limit: number): Promise<PopularBoardCard[]> {
+  const pages = await Promise.all(
+    BOARD_TYPES.map(async (boardType) => {
+      try {
+        const res = await fetch(`/api/v1/boards?boardType=${boardType}&page=0&size=50`, {
+          cache: "no-store",
+        })
+        if (!res.ok) return []
+        const payload: unknown = await res.json().catch(() => null)
+        const data = asRecord(unwrapApiData(payload))
+        return parsePopularCards(data?.content)
+      } catch {
+        return []
+      }
+    }),
+  )
+  return pages
+    .flat()
+    .sort((a, b) => b.viewCount - a.viewCount || b.id - a.id)
+    .slice(0, limit)
+    .map((card) => ({
+      id: card.id,
+      title: card.title,
+      boardType: card.boardType,
+      timeAgo: card.timeAgo,
+    }))
+}
+
+export async function fetchPopularBoardCards(limit = 3): Promise<PopularBoardCard[]> {
+  const size = Math.min(100, Math.max(1, limit))
+  try {
+    const res = await fetch(`/api/v1/boards/popular?limit=${size}`, { cache: "no-store" })
+    if (res.ok) {
+      const payload: unknown = await res.json().catch(() => null)
+      const cards = parsePopularCards(unwrapApiData(payload))
+      if (cards.length > 0) {
+        return cards.slice(0, size).map((card) => ({
+          id: card.id,
+          title: card.title,
+          boardType: card.boardType,
+          timeAgo: card.timeAgo,
+        }))
+      }
+    }
+  } catch {
+    return fetchPopularFromLists(size)
+  }
+  return fetchPopularFromLists(size)
 }
 
 export async function fetchBoardReactionStatus(

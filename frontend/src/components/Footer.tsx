@@ -14,7 +14,7 @@ const DEFAULT_SERVICE: UlinkItem[] = [
   { id: "d1", domainId: null, sectionCode: "FOOTER_TEXT", linkGroup: null, linkName: "뉴스", linkUrl: "/news", linkTarget: "_self", description: null, imgPath: null, sortOrder: 1, openYn: "Y", createdAt: null, updatedAt: null },
   { id: "d2", domainId: null, sectionCode: "FOOTER_TEXT", linkGroup: null, linkName: "경제PICK", linkUrl: "/economy-pick", linkTarget: "_self", description: null, imgPath: null, sortOrder: 2, openYn: "Y", createdAt: null, updatedAt: null },
   { id: "d3", domainId: null, sectionCode: "FOOTER_TEXT", linkGroup: null, linkName: "실시간VOD", linkUrl: "/live-vod", linkTarget: "_self", description: null, imgPath: null, sortOrder: 3, openYn: "Y", createdAt: null, updatedAt: null },
-  { id: "d4", domainId: null, sectionCode: "FOOTER_TEXT", linkGroup: null, linkName: "커뮤니티", linkUrl: "/community", linkTarget: "_self", description: null, imgPath: null, sortOrder: 4, openYn: "Y", createdAt: null, updatedAt: null },
+  { id: "d4", domainId: null, sectionCode: "FOOTER_TEXT", linkGroup: null, linkName: "커뮤니티", linkUrl: "/community/notice", linkTarget: "_self", description: null, imgPath: null, sortOrder: 4, openYn: "Y", createdAt: null, updatedAt: null },
 ]
 
 const DEFAULT_POLICY: UlinkItem[] = [

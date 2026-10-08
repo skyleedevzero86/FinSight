@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState, type ReactNode } from "react"
+import { FcbNumberPager } from "@/components/community/FcbManageShell"
 import { useRouter } from "next/navigation"
 import { AdminMediaDetailDrawer, AdminMediaUrlModal } from "@/components/admin/AdminMediaDialogs"
 import type { MediaNotice } from "@/components/admin/AdminMediaClient"
@@ -45,6 +46,7 @@ export default function AdminMediaVideoPanel({ onNotice, onForbidden }: Props) {
   const [rows, setRows] = useState<AdminMediaVideo[]>([])
   const [sources, setSources] = useState<AdminMediaSource[]>([])
   const [totalPages, setTotalPages] = useState(1)
+  const [totalElements, setTotalElements] = useState(0)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
   const [selected, setSelected] = useState<number[]>([])
@@ -73,6 +75,7 @@ export default function AdminMediaVideoPanel({ onNotice, onForbidden }: Props) {
     }
     setRows(result.data.content)
     setTotalPages(result.data.totalPages)
+    setTotalElements(result.data.totalElements)
     setSelected([])
   }, [page, status, category, sourceId, keyword, fail])
 
@@ -248,8 +251,19 @@ export default function AdminMediaVideoPanel({ onNotice, onForbidden }: Props) {
           일괄 숨김
         </button>
       </div>
-      <div className="overflow-x-auto border border-[#e7edf5] bg-white">
-        <table className="min-w-full text-left text-sm">
+      <div className="bbs bbs_list bbs_basic">
+        <div className="bbs_leadin">
+          <div className="bbs_count">
+            <span className="list-count">
+              전체 <strong>{totalElements}</strong>건
+            </span>
+            <span className="page-count">
+              <b>{page + 1}</b> / {Math.max(1, totalPages)}page
+            </span>
+          </div>
+        </div>
+        <div className="bbs_listing">
+        <table className="table">
           <thead className="border-b border-[#e7edf5] text-gray-500">
             <tr>
               <th className="px-3 py-2">
@@ -316,11 +330,14 @@ export default function AdminMediaVideoPanel({ onNotice, onForbidden }: Props) {
             ))}
           </tbody>
         </table>
-      </div>
-      <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
-        <button type="button" className={mediaButtonClass} disabled={page <= 0 || loading} onClick={() => setPage((current) => current - 1)}>이전</button>
-        <span>{page + 1} / {totalPages}</span>
-        <button type="button" className={mediaButtonClass} disabled={page + 1 >= totalPages || loading} onClick={() => setPage((current) => current + 1)}>다음</button>
+        </div>
+        <FcbNumberPager
+          page={page + 1}
+          totalPages={totalPages}
+          disabled={loading}
+          label="영상 페이지"
+          onPage={(next) => setPage(next - 1)}
+        />
       </div>
       {urlOpen ? (
         <AdminMediaUrlModal busy={busy} onClose={() => setUrlOpen(false)} onSubmit={(urls, nextCategory) => void runImport(urls, nextCategory)} />

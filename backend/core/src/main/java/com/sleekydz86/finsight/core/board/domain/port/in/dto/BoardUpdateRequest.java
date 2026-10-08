@@ -21,15 +21,22 @@ public class BoardUpdateRequest {
 
     private final BoardStatus status;
 
+    private final boolean highlighted;
+
     public BoardUpdateRequest() {
         this.title = "";
         this.content = "";
         this.hashtags = List.of();
         this.status = null;
+        this.highlighted = false;
     }
 
     public BoardUpdateRequest(String title, String content, List<String> hashtags) {
-        this(title, content, hashtags, null);
+        this(title, content, hashtags, null, false);
+    }
+
+    public BoardUpdateRequest(String title, String content, List<String> hashtags, BoardStatus status) {
+        this(title, content, hashtags, status, false);
     }
 
     @JsonCreator
@@ -37,17 +44,20 @@ public class BoardUpdateRequest {
             @JsonProperty("title") String title,
             @JsonProperty("content") String content,
             @JsonProperty("hashtags") List<String> hashtags,
-            @JsonProperty("status") BoardStatus status) {
+            @JsonProperty("status") BoardStatus status,
+            @JsonProperty("highlighted") Boolean highlighted) {
         this.title = title;
         this.content = content;
         this.hashtags = hashtags != null ? hashtags : List.of();
         this.status = status;
+        this.highlighted = Boolean.TRUE.equals(highlighted);
     }
 
     public String getTitle() { return title; }
     public String getContent() { return content; }
     public List<String> getHashtags() { return hashtags; }
     public BoardStatus getStatus() { return status; }
+    public boolean isHighlighted() { return highlighted; }
 
     @Override
     public String toString() {

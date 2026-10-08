@@ -16,6 +16,7 @@ export type BoardRow = {
   hits: number
   hasFile?: boolean
   privatePost?: boolean
+  emphasized?: boolean
 }
 
 export const NOTICE_CATEGORY_TABS = [

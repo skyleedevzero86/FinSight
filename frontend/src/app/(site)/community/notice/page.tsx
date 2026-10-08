@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import CommunityBoardLayout from "@/components/community/CommunityBoardLayout"
 import CommunityBoardList from "@/components/community/CommunityBoardList"
-import CommunityWriteButton from "@/components/community/CommunityWriteButton"
 import { COMMUNITY_SECTION_BOARD_TYPE } from "@/data/communityBoardConfig"
 import {
   fetchBoardListServer,
@@ -64,14 +63,7 @@ export default async function CommunityNoticePage({ searchParams }: PageProps) {
         rows={rows}
         initialSearchType={searchType}
         initialSearchValue={searchValue}
-        showWriteButton
-        writeButton={
-          <CommunityWriteButton
-            href={`${basePath}/write`}
-            requireAdmin
-            label="공지 작성"
-          />
-        }
+        showWriteButton={false}
       />
     </CommunityBoardLayout>
   )

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import AdminDateField from "@/components/admin/AdminDateField"
+import { FcbManageShell, FcbNumberPager } from "@/components/community/FcbManageShell"
 import { canManageUsers } from "@/lib/adminUsers"
 import {
   createMainimgItem,
@@ -44,11 +45,6 @@ const emptyForm: FormState = {
   noticeBegin: "",
   noticeEnd: "",
   reflectYn: "Y",
-}
-
-function formatDate(value: string | null): string {
-  if (!value) return "-"
-  return value.replace("T", " ").slice(0, 16)
 }
 
 function digitsOnly(value: string): string {
@@ -235,19 +231,17 @@ export default function AdminMainimgClient() {
   const previewUrl = form.imageFile
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">메인이미지 관리</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            순번·제목·클릭 URL·이미지·설명·노출 기간을 관리합니다. 반영(Y)이고 기간 안인 항목만 메인에
-            표시됩니다.
-          </p>
+    <FcbManageShell
+      title="메인이미지"
+      description="순번·제목·클릭 URL·이미지·설명·노출 기간을 관리합니다. 반영(Y)이고 기간 안인 항목만 메인에 표시됩니다."
+      toolbar={
+        <div className="mb-4 flex justify-end">
+          <button type="button" className={buttonClass} onClick={startCreate}>
+            새 항목
+          </button>
         </div>
-        <button type="button" className={buttonClass} onClick={startCreate}>
-          새 항목
-        </button>
-      </div>
+      }
+    >
 
       {error ? (
         <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -261,96 +255,81 @@ export default function AdminMainimgClient() {
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded border border-gray-200 bg-white">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <h2 className="text-sm font-semibold text-gray-800">목록 ({totalElements})</h2>
+        <section className="bbs bbs_list bbs_basic">
+          <div className="bbs_leadin">
+            <div className="bbs_count">
+              <span className="list-count">
+                전체 <strong>{totalElements}</strong>건
+              </span>
+              <span className="page-count">
+                <b>{page + 1}</b> / {totalPages}page
+              </span>
+            </div>
             <button type="button" className={buttonClass} disabled={loading} onClick={() => void load()}>
               새로고침
             </button>
           </div>
-          {loading ? (
-            <div className="px-4 py-12 text-center text-sm text-gray-500">불러오는 중…</div>
-          ) : rows.length === 0 ? (
-            <div className="px-4 py-12 text-center text-sm text-gray-500">등록된 메인이미지가 없습니다.</div>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {rows.map((item) => {
-                const url = resolveMainimgUrl(item)
-                return (
-                  <li key={item.id} className="flex gap-3 px-4 py-3">
-                    <div className="flex h-16 w-10 shrink-0 flex-col items-center justify-center rounded bg-gray-50 text-xs font-semibold text-gray-700">
-                      {item.sortOrder > 0 ? item.sortOrder : "-"}
-                    </div>
-                    <div className="h-16 w-28 shrink-0 overflow-hidden rounded bg-gray-100">
-                      {url ? (
-                        <img src={url} alt={item.imageName} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-[11px] text-gray-400">
-                          없음
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate font-medium text-gray-900">{item.imageName}</span>
-                        <span
-                          className={
-                            item.reflectYn === "Y"
-                              ? "rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] text-emerald-700"
-                              : "rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-600"
-                          }
-                        >
-                          {item.reflectYn === "Y" ? "반영" : "숨김"}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 truncate text-xs text-gray-500">
-                        {item.description || item.linkUrl || item.id}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-gray-400">
-                        {(item.noticeBegin || "-") + " ~ " + (item.noticeEnd || "-")}
-                        {" · "}
-                        {formatDate(item.updatedAt || item.createdAt)}
-                      </p>
-                      <div className="mt-2 flex gap-2">
-                        <button type="button" className={buttonClass} onClick={() => startEdit(item)}>
-                          수정
-                        </button>
-                        <button
-                          type="button"
-                          className={buttonClass}
-                          disabled={saving}
-                          onClick={() => void onDelete(item)}
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-          <div className="flex items-center justify-between border-t border-gray-100 px-4 py-3 text-sm">
-            <button
-              type="button"
-              className={buttonClass}
-              disabled={page <= 0 || loading}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              이전
-            </button>
-            <span className="text-gray-500">
-              {page + 1} / {totalPages}
-            </span>
-            <button
-              type="button"
-              className={buttonClass}
-              disabled={page + 1 >= totalPages || loading}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              다음
-            </button>
+          <div className="bbs_listing">
+            <table className="table">
+              <caption>메인이미지 목록</caption>
+              <thead>
+                <tr>
+                  <th className="td_num">순번</th>
+                  <th className="td_file">이미지</th>
+                  <th className="td_subject">제목</th>
+                  <th className="td_name">반영</th>
+                  <th className="td_date">기간</th>
+                  <th className="td_action">관리</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td className="td_subject" colSpan={6}>불러오는 중…</td>
+                  </tr>
+                ) : rows.length === 0 ? (
+                  <tr>
+                    <td className="td_subject" colSpan={6}>등록된 메인이미지가 없습니다.</td>
+                  </tr>
+                ) : (
+                  rows.map((item) => {
+                    const url = resolveMainimgUrl(item)
+                    return (
+                      <tr key={item.id}>
+                        <td className="td_num">{item.sortOrder > 0 ? item.sortOrder : "-"}</td>
+                        <td className="td_file">
+                          {url ? <img src={url} alt="" className="mx-auto h-10 w-16 object-cover" /> : null}
+                        </td>
+                        <td className="td_subject">
+                          {item.imageName}
+                          <div className="truncate text-xs text-gray-500">{item.description || item.linkUrl || item.id}</div>
+                        </td>
+                        <td className="td_name">{item.reflectYn === "Y" ? "반영" : "숨김"}</td>
+                        <td className="td_date">{(item.noticeBegin || "-") + " ~ " + (item.noticeEnd || "-")}</td>
+                        <td className="td_action">
+                          <div className="flex flex-wrap justify-center gap-1">
+                            <button type="button" className={buttonClass} onClick={() => startEdit(item)}>
+                              수정
+                            </button>
+                            <button type="button" className={buttonClass} disabled={saving} onClick={() => void onDelete(item)}>
+                              삭제
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
+          <FcbNumberPager
+            page={page + 1}
+            totalPages={totalPages}
+            disabled={loading}
+            label="메인이미지 페이지"
+            onPage={(next) => setPage(next - 1)}
+          />
         </section>
 
         <section className="rounded border border-gray-200 bg-white p-4">
@@ -490,6 +469,6 @@ export default function AdminMainimgClient() {
           </form>
         </section>
       </div>
-    </div>
+    </FcbManageShell>
   )
 }

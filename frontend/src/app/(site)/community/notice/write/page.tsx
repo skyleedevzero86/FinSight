@@ -1,24 +1,11 @@
 import type { Metadata } from "next"
-import CommunityBoardLayout from "@/components/community/CommunityBoardLayout"
-import CommunityBoardEditorForm from "@/components/community/CommunityBoardEditorForm"
-import { COMMUNITY_SECTION_BOARD_TYPE } from "@/data/communityBoardConfig"
+import { redirect } from "next/navigation"
 
 export const metadata: Metadata = {
-  title: "글쓰기 | 공지사항 | finsight",
-  description: "finsight 공지사항 글쓰기",
+  title: "공지 작성 | finsight",
+  description: "공지사항은 관리자 메뉴에서 작성합니다.",
 }
 
 export default function CommunityNoticeWritePage() {
-  return (
-    <CommunityBoardLayout
-      heading="공지사항"
-      description="센터 소식과 운영 안내를 전해 드립니다."
-    >
-      <CommunityBoardEditorForm
-        mode="create"
-        boardType={COMMUNITY_SECTION_BOARD_TYPE.notice}
-        basePath="/community/notice"
-      />
-    </CommunityBoardLayout>
-  )
+  redirect("/admin/notifications")
 }

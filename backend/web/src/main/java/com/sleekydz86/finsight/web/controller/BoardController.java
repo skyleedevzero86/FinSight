@@ -286,7 +286,7 @@ public class BoardController {
     @LogExecution("내 스크랩 목록 조회")
     @PerformanceMonitor(threshold = 2000, operation = "my_scraps")
     @Retryable(maxAttempts = 3, delay = 1000, retryFor = { Exception.class })
-    public ResponseEntity<ApiResponse<List<BoardListResponse>>> getMyScraps(
+    public ResponseEntity<ApiResponse<PaginationResponse<BoardListResponse>>> getMyScraps(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @CurrentUser AuthenticatedUser currentUser) {
@@ -297,7 +297,7 @@ public class BoardController {
             if (size <= 0 || size > 100) {
                 throw new ValidationException("페이지 크기는 1-100 사이여야 합니다", Arrays.asList("size는 1-100 사이의 값이어야 합니다"));
             }
-            List<BoardListResponse> response = boardQueryUseCase.getMyScrappedBoards(currentUser.getEmail(), page, size);
+            PaginationResponse<BoardListResponse> response = boardQueryUseCase.getMyScrappedBoards(currentUser.getEmail(), page, size);
             return ResponseEntity.ok(ApiResponse.success(response, "내 스크랩 목록을 성공적으로 조회했습니다"));
         } catch (ValidationException e) {
             throw e;
@@ -527,6 +527,11 @@ public class BoardController {
     }
 
     private void applyViewerContext(BoardSearchRequest request, AuthenticatedUser currentUser) {
+        if (request.getBoardType() == com.sleekydz86.finsight.core.board.domain.BoardType.NOTICE) {
+            request.setViewerEmail(null);
+            request.setStaffViewer(false);
+            return;
+        }
         if (currentUser == null || currentUser.getEmail() == null || currentUser.getEmail().isBlank()) {
             request.setViewerEmail(null);
             request.setStaffViewer(false);

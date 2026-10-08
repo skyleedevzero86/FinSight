@@ -26,7 +26,12 @@ export default async function CommunityNoticeDetailPage({ params }: Props) {
       heading="공지사항"
       description="센터 소식과 운영 안내를 전해 드립니다."
     >
-      <CommunityBoardDetail detail={detail} basePath="/community/notice" />
+      <CommunityBoardDetail
+        detail={detail}
+        basePath="/community/notice"
+        showReactions={false}
+        showEdit={false}
+      />
     </CommunityBoardLayout>
   )
 }

@@ -476,7 +476,10 @@ async function fetchOpsCore(): Promise<AdminOpsHomeData> {
     const legacy = await fetchLegacyOpsHome()
     if (legacy) return legacy
   }
-  console.error("운영 현황을 불러오지 못했습니다.", packed.message)
+  const expired = /로그인이 만료|유효하지 않습니다/.test(packed.message ?? "")
+  if (!expired) {
+    console.error("운영 현황을 불러오지 못했습니다.", packed.message)
+  }
   return emptyOpsHome(packed.message)
 }
 

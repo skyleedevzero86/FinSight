@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import { authProviderLabel } from "@/lib/authSession"
+import { FcbManageShell, FcbNumberPager } from "@/components/community/FcbManageShell"
 import { validatePassword } from "@/lib/registration"
 import {
   approveAdminUser,
@@ -159,11 +160,11 @@ export default function AdminUsersClient() {
   }
 
   return (
-    <section className="w-full px-4 py-12 md:px-8 md:py-16">
-      <div className="mx-auto w-full max-w-6xl">
-        <h1 className="mb-8 text-2xl font-bold text-gray-900">사용자 관리</h1>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4 md:p-6">
+    <FcbManageShell
+      title="사용자 관리"
+      description="회원 상태·권한·로그인 정보를 확인하고 승인, 정지, 복구를 처리합니다."
+    >
+        <div className="rounded border border-gray-200 bg-white p-4 md:p-6">
           <div className="flex flex-col gap-3 md:flex-row md:items-end">
             <select
               aria-label="상태"
@@ -249,8 +250,19 @@ export default function AdminUsersClient() {
             </p>
           ) : null}
 
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
+          <div className="bbs bbs_list bbs_basic mt-4">
+            <div className="bbs_leadin">
+              <div className="bbs_count">
+                <span className="list-count">
+                  전체 <strong>{totalElements}</strong>건
+                </span>
+                <span className="page-count">
+                  <b>{page + 1}</b> / {totalPages}page
+                </span>
+              </div>
+            </div>
+            <div className="bbs_listing">
+            <table className="table">
               <thead>
                 <tr className="border-b border-gray-200 text-gray-500">
                   <th className="px-2 py-2 font-medium">닉네임</th>
@@ -457,33 +469,16 @@ export default function AdminUsersClient() {
                 )}
               </tbody>
             </table>
-          </div>
-
-          <div className="mt-4 flex items-center justify-end text-sm text-gray-600">
-            <div className="flex gap-2">
-              <button
-                type="button"
-                disabled={page <= 0 || loading}
-                className="rounded border border-gray-300 px-3 py-1 disabled:opacity-40"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-              >
-                이전
-              </button>
-              <span className="px-2 py-1">
-                {page + 1} / {totalPages}
-              </span>
-              <button
-                type="button"
-                disabled={page + 1 >= totalPages || loading}
-                className="rounded border border-gray-300 px-3 py-1 disabled:opacity-40"
-                onClick={() => setPage((p) => p + 1)}
-              >
-                다음
-              </button>
             </div>
+            <FcbNumberPager
+              page={page + 1}
+              totalPages={totalPages}
+              disabled={loading}
+              label="사용자 페이지"
+              onPage={(next) => setPage(next - 1)}
+            />
           </div>
         </div>
-      </div>
 
       {passwordUser ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -526,6 +521,6 @@ export default function AdminUsersClient() {
           </div>
         </div>
       ) : null}
-    </section>
+    </FcbManageShell>
   )
 }

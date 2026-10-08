@@ -1,10 +1,17 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { ChevronRight, Search, X } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useAuthSession } from "@/components/AuthSessionProvider"
+import {
+  boardDetailPath,
+  boardListPath,
+  fetchPopularBoardCards,
+  type PopularBoardCard,
+} from "@/lib/boardApi"
+import { BOARD_HISTORY_PLACEHOLDER } from "@/lib/browseHistory"
 
 type PopularTab = "broadcast" | "news"
 
@@ -47,37 +54,6 @@ const SUGGESTED_TAGS: string[] = [
   "22년 지방선거",
 ]
 
-const MOST_VIEWED_ARTICLES: {
-  id: string
-  title: string
-  timeAgo: string
-  duration?: string
-  thumb: string
-  cornerBadge?: string
-}[] = [
-  {
-    id: "mv1",
-    title:
-      "'불쾌감' 드러냈던 이 대통령…\"누 끼쳤다\" 정청래 사과로 '사진 금지령' 논란 …",
-    timeAgo: "27분 전",
-    duration: "01:59",
-    thumb: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=400&h=225&fit=crop",
-    cornerBadge: "지금 이 뉴스",
-  },
-  {
-    id: "mv2",
-    title: "트럼프도 모르게…멜라니아, 깜짝 성명 '엡스타인 연루설' 부인",
-    timeAgo: "3시간 전",
-    thumb: "https://images.unsplash.com/photo-1529107386315-e1a2ed48a620?w=400&h=225&fit=crop",
-  },
-  {
-    id: "mv3",
-    title: "하정우 \"이 대통령 '작업' 발언, 액면 그대로 지시하신대로 봐야\"",
-    timeAgo: "55분 전",
-    thumb: "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=400&h=225&fit=crop",
-  },
-]
-
 function formatPopularTimestamp(): string {
   const d = new Date()
   const y = d.getFullYear()
@@ -96,11 +72,17 @@ type HeaderSearchOverlayProps = {
 
 export default function HeaderSearchOverlay({ open, onClose }: HeaderSearchOverlayProps) {
   const router = useRouter()
+  const { user } = useAuthSession()
   const mobileInputRef = useRef<HTMLInputElement>(null)
   const desktopInputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState("")
   const [popularTab, setPopularTab] = useState<PopularTab>("broadcast")
   const [stamp] = useState(() => formatPopularTimestamp())
+  const [popularPosts, setPopularPosts] = useState<PopularBoardCard[]>([])
+  const [popularReady, setPopularReady] = useState(false)
+  const moreHref = user
+    ? "/myinfo/history"
+    : boardListPath(popularPosts[0]?.boardType ?? "NOTICE")
 
   const popularList = popularTab === "broadcast" ? POPULAR_BROADCAST : POPULAR_NEWS
 
@@ -111,6 +93,19 @@ export default function HeaderSearchOverlay({ open, onClose }: HeaderSearchOverl
     setQuery("")
     onClose()
   }, [query, router, onClose])
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    void fetchPopularBoardCards(3).then((rows) => {
+      if (cancelled) return
+      setPopularPosts(rows)
+      setPopularReady(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -296,48 +291,42 @@ export default function HeaderSearchOverlay({ open, onClose }: HeaderSearchOverl
 
             <div className="mt-8">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-bold text-[#231f20]">많이 본 기사</h3>
+                <h3 className="text-lg font-bold text-[#231f20]">많이 본 게시물</h3>
                 <Link
-                  href="#"
+                  href={moreHref}
+                  onClick={onClose}
                   className="text-[#231f20] transition hover:text-finsight-secondary"
-                  aria-label="많이 본 기사 더보기"
+                  aria-label="많이 본 게시물 더보기"
                 >
                   <ChevronRight className="h-6 w-6" strokeWidth={2} aria-hidden />
                 </Link>
               </div>
-              <div className="grid grid-cols-3 divide-x divide-[#ebebeb]">
-                {MOST_VIEWED_ARTICLES.map((article) => (
-                  <Link
-                    key={article.id}
-                    href="#"
-                    className="group block min-w-0 px-3 md:px-4"
-                  >
-                    <div className="relative mb-3 aspect-video overflow-hidden rounded-lg bg-[#eee]">
-                      <Image
-                        src={article.thumb}
-                        alt=""
-                        fill
-                        className="object-cover transition group-hover:opacity-95"
-                        sizes="(max-width: 768px) 0px, 200px"
-                      />
-                      {article.cornerBadge ? (
-                        <span className="absolute left-2 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium leading-tight text-white">
-                          {article.cornerBadge}
-                        </span>
-                      ) : null}
-                      {article.duration ? (
-                        <span className="absolute bottom-2 right-2 rounded bg-black/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-white">
-                          {article.duration}
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="text-sm font-bold leading-snug text-[#231f20] line-clamp-2 group-hover:text-finsight-secondary md:text-[15px]">
-                      {article.title}
-                    </p>
-                    <p className="mt-2 text-xs text-[#9a9a9a]">{article.timeAgo}</p>
-                  </Link>
-                ))}
-              </div>
+              {!popularReady ? null : popularPosts.length === 0 ? (
+                <p className="text-sm text-[#9a9a9a]">아직 조회된 게시물이 없습니다.</p>
+              ) : (
+                <div className="grid grid-cols-3 divide-x divide-[#ebebeb]">
+                  {popularPosts.map((post) => (
+                    <Link
+                      key={post.id}
+                      href={boardDetailPath(post.boardType, post.id)}
+                      onClick={onClose}
+                      className="group block min-w-0 px-3 md:px-4"
+                    >
+                      <div className="relative mb-3 aspect-video overflow-hidden rounded-lg bg-[#eee]">
+                        <img
+                          src={BOARD_HISTORY_PLACEHOLDER}
+                          alt=""
+                          className="absolute inset-0 h-full w-full object-cover transition group-hover:opacity-95"
+                        />
+                      </div>
+                      <p className="text-sm font-bold leading-snug text-[#231f20] line-clamp-2 group-hover:text-finsight-secondary md:text-[15px]">
+                        {post.title}
+                      </p>
+                      <p className="mt-2 text-xs text-[#9a9a9a]">{post.timeAgo}</p>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

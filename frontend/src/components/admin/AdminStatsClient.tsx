@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import { AdminStatsBarChart, AdminStatsLineChart } from "@/components/admin/AdminStatsCharts"
+import { FcbManageShell, FcbTabList } from "@/components/community/FcbManageShell"
 import { canManageUsers } from "@/lib/adminUsers"
 import {
   fetchAdminStatsChart,
@@ -106,48 +107,35 @@ export default function AdminStatsClient() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="overflow-hidden border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-[#3d4654] px-5 py-3 text-white">
-          <h1 className="text-base font-medium tracking-tight">
-            관리자 통계 <span className="text-[#7CFC00]">FinSight</span>
-          </h1>
-          <div className="flex items-center gap-2 text-xs text-gray-200">
-            <span className="inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-1">
-              <span className="h-1.5 w-1.5 animate-pulse bg-[#7CFC00]" />
-              실시간 30초
-            </span>
-            {updatedAt ? <span>갱신 {updatedAt}</span> : null}
-            <button
-              type="button"
-              onClick={() => void load()}
-              disabled={loading}
-              className="border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
-            >
-              새로고침
-            </button>
-          </div>
+    <FcbManageShell
+      title="통계"
+      description="회원·게시글·뉴스 추이를 차트와 집계 수치로 확인합니다."
+      toolbar={
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-2 text-sm text-gray-600">
+          <span className="inline-flex items-center gap-1.5 border border-gray-300 bg-white px-2.5 py-1">
+            <span className="h-1.5 w-1.5 animate-pulse bg-[#03c75a]" />
+            실시간 30초
+          </span>
+          {updatedAt ? <span>갱신 {updatedAt}</span> : null}
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="rounded border border-gray-300 bg-white px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
+          >
+            새로고침
+          </button>
         </div>
+      }
+    >
+      <FcbTabList
+        label="통계 차트"
+        activeKey={tab}
+        onSelect={(key) => setTab(key as AdminStatsChartKey)}
+        items={TABS.map((item) => ({ key: item.key, label: item.label }))}
+      />
 
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-gray-200 px-5 py-3 text-sm">
-          {TABS.map((item) => {
-            const active = item.key === tab
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setTab(item.key)}
-                className={
-                  active ? "font-semibold text-[#03c75a]" : "text-gray-600 hover:text-gray-900"
-                }
-              >
-                {item.label}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-4 border-b border-gray-100 px-5 py-3">
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-4 border border-gray-200 bg-white px-5 py-3">
           {PERIOD_OPTIONS.map((option) => {
             const active = days === option.days
             return (
@@ -210,7 +198,6 @@ export default function AdminStatsClient() {
             <div className="py-24 text-center text-sm text-gray-500">표시할 데이터가 없습니다.</div>
           )}
         </div>
-      </div>
-    </div>
+    </FcbManageShell>
   )
 }

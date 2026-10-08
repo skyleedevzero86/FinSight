@@ -30,7 +30,7 @@ public interface BoardQueryUseCase {
 
     List<BoardListResponse> getBoardsByCategory(BoardType boardType, int limit);
 
-    List<BoardListResponse> getMyScrappedBoards(String userEmail, int page, int size);
+    PaginationResponse<BoardListResponse> getMyScrappedBoards(String userEmail, int page, int size);
 
     PaginationResponse<BoardListResponse> getMyBoards(String userEmail, int page, int size);
 

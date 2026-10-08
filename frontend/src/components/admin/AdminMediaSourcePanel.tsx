@@ -124,8 +124,9 @@ export default function AdminMediaSourcePanel({ onNotice, onForbidden }: Props) 
           소스 등록
         </button>
       </div>
-      <div className="overflow-x-auto border border-[#e7edf5] bg-white">
-        <table className="min-w-full text-left text-sm">
+      <div className="bbs bbs_list bbs_basic">
+        <div className="bbs_listing">
+        <table className="table">
           <thead className="border-b border-[#e7edf5] text-gray-500">
             <tr>
               <th className="px-3 py-2 font-medium">채널명</th>
@@ -168,6 +169,7 @@ export default function AdminMediaSourcePanel({ onNotice, onForbidden }: Props) 
             ))}
           </tbody>
         </table>
+        </div>
       </div>
       {createOpen ? (
         <AdminMediaSourceModal busy={busy} onClose={() => setCreateOpen(false)} onSubmit={(body) => void runCreate(body)} />

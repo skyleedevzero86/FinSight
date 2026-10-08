@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import { canManageUsers } from "@/lib/adminUsers"
+import { FcbManageShell, FcbNumberPager } from "@/components/community/FcbManageShell"
 import {
   EMAIL_ACTOR_OPTIONS,
   EMAIL_PURPOSE_OPTIONS,
@@ -145,16 +146,10 @@ export default function AdminEmailLogsClient() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">메일 발송 이력</h1>
-          <p className="mt-1 text-sm text-gray-600">
-            언제·누구에게·어떤 용도로 메일이 나갔는지 확인합니다. 비로그인 요청은 IP로 추적합니다.
-          </p>
-        </div>
-        <p className="text-sm text-gray-500">총 {totalElements.toLocaleString()}건</p>
-      </div>
+    <FcbManageShell
+      title="메일 이력"
+      description="언제·누구에게·어떤 용도로 메일이 나갔는지 확인합니다. 비로그인 요청은 IP로 추적합니다."
+    >
 
       <div className="mb-4 flex flex-wrap gap-2">
         <input
@@ -227,8 +222,19 @@ export default function AdminEmailLogsClient() {
         </p>
       ) : null}
 
-      <div className="overflow-x-auto rounded border border-gray-200 bg-white">
-        <table className="min-w-full text-left text-sm">
+      <div className="bbs bbs_list bbs_basic">
+        <div className="bbs_leadin">
+          <div className="bbs_count">
+            <span className="list-count">
+              전체 <strong>{totalElements.toLocaleString()}</strong>건
+            </span>
+            <span className="page-count">
+              <b>{page + 1}</b> / {totalPages}page
+            </span>
+          </div>
+        </div>
+        <div className="bbs_listing">
+        <table className="table">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
             <tr>
               <th className="px-3 py-3">시각</th>
@@ -283,28 +289,13 @@ export default function AdminEmailLogsClient() {
             )}
           </tbody>
         </table>
-      </div>
-
-      <div className="mt-4 flex items-center justify-between">
-        <button
-          type="button"
-          disabled={page <= 0}
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-40"
-        >
-          이전
-        </button>
-        <span className="text-sm text-gray-600">
-          {page + 1} / {totalPages}
-        </span>
-        <button
-          type="button"
-          disabled={page + 1 >= totalPages}
-          onClick={() => setPage((p) => p + 1)}
-          className="rounded border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-40"
-        >
-          다음
-        </button>
+        </div>
+        <FcbNumberPager
+          page={page + 1}
+          totalPages={totalPages}
+          label="메일 이력 페이지"
+          onPage={(next) => setPage(next - 1)}
+        />
       </div>
 
       {selected ? (
@@ -357,6 +348,6 @@ export default function AdminEmailLogsClient() {
           </div>
         </div>
       ) : null}
-    </div>
+    </FcbManageShell>
   )
 }

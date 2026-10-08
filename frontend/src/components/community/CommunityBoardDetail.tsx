@@ -25,6 +25,8 @@ type Props = {
   basePath: string
   enableComments?: boolean
   commentsAuthorOnly?: boolean
+  showReactions?: boolean
+  showEdit?: boolean
 }
 
 export default function CommunityBoardDetail({
@@ -32,6 +34,8 @@ export default function CommunityBoardDetail({
   basePath,
   enableComments = false,
   commentsAuthorOnly = false,
+  showReactions = true,
+  showEdit = true,
 }: Props) {
   const [detail, setDetail] = useState(initialDetail)
   const [accessError, setAccessError] = useState<string | null>(null)
@@ -199,8 +203,9 @@ export default function CommunityBoardDetail({
     isRestricted ? "게시 중단" : null,
     formatAuthor(detail.authorEmail),
     `조회 ${detail.viewCount}`,
-    `추천 ${detail.likeCount}`,
-    `비추천 ${detail.dislikeCount}`,
+    ...(showReactions
+      ? [`추천 ${detail.likeCount}`, `비추천 ${detail.dislikeCount}`]
+      : []),
     `댓글 ${commentCount}`,
     formatBoardDate(detail.createdAt),
   ]
@@ -236,25 +241,33 @@ export default function CommunityBoardDetail({
 
       {!isRestricted ? (
         <>
-          <div className="fcb-md-reaction-row" role="group" aria-label="게시글 좋아요 싫어요">
-            <button
-              type="button"
-              className={`fcb-md-reaction-btn${liked ? " is-on" : ""}`}
-              disabled={reactionBusy}
-              aria-pressed={liked}
-              onClick={() => void onBoardReaction("LIKE")}
-            >
-              좋아요 {detail.likeCount}
-            </button>
-            <button
-              type="button"
-              className={`fcb-md-reaction-btn${disliked ? " is-on" : ""}`}
-              disabled={reactionBusy}
-              aria-pressed={disliked}
-              onClick={() => void onBoardReaction("DISLIKE")}
-            >
-              싫어요 {detail.dislikeCount}
-            </button>
+          <div
+            className="fcb-md-reaction-row"
+            role="group"
+            aria-label={showReactions ? "게시글 좋아요 싫어요" : "게시글 즐겨찾기"}
+          >
+            {showReactions ? (
+              <>
+                <button
+                  type="button"
+                  className={`fcb-md-reaction-btn${liked ? " is-on" : ""}`}
+                  disabled={reactionBusy}
+                  aria-pressed={liked}
+                  onClick={() => void onBoardReaction("LIKE")}
+                >
+                  좋아요 {detail.likeCount}
+                </button>
+                <button
+                  type="button"
+                  className={`fcb-md-reaction-btn${disliked ? " is-on" : ""}`}
+                  disabled={reactionBusy}
+                  aria-pressed={disliked}
+                  onClick={() => void onBoardReaction("DISLIKE")}
+                >
+                  싫어요 {detail.dislikeCount}
+                </button>
+              </>
+            ) : null}
             <button
               type="button"
               className={`fcb-md-reaction-btn${scrapped ? " is-on" : ""}`}
@@ -307,7 +320,7 @@ export default function CommunityBoardDetail({
         <Link href={basePath} className="fcb-md-action fcb-md-action--ghost">
           목록
         </Link>
-        {canEdit && !isRestricted ? (
+        {showEdit && canEdit && !isRestricted ? (
           <Link href={`${basePath}/${detail.id}/edit`} className="fcb-md-action fcb-md-action--ghost">
             수정
           </Link>

@@ -49,6 +49,9 @@ public class BoardJpaEntity extends BaseEntity {
     @Column(name = "report_count", nullable = false)
     private int reportCount = 0;
 
+    @Column(name = "highlighted", nullable = false)
+    private boolean highlighted = false;
+
     @ElementCollection
     @CollectionTable(name = "board_hashtags", joinColumns = @JoinColumn(name = "board_id"))
     @Column(name = "hashtag")
@@ -170,6 +173,14 @@ public class BoardJpaEntity extends BaseEntity {
 
     public void setReportCount(int reportCount) {
         this.reportCount = reportCount;
+    }
+
+    public boolean isHighlighted() {
+        return highlighted;
+    }
+
+    public void setHighlighted(boolean highlighted) {
+        this.highlighted = highlighted;
     }
 
     public List<String> getHashtags() {

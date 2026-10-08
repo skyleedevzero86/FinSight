@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import AdminDateField from "@/components/admin/AdminDateField"
+import FcbBoardFrame from "@/components/community/FcbBoardFrame"
 import {
   unwrapApiData,
   formatBoardDate,
@@ -61,7 +62,7 @@ type PageState<T> = {
   totalElements: number
 }
 
-const PAGE_SIZE = 10
+const PAGE_SIZE = 20
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: "boards", label: "작성한 글" },
@@ -69,6 +70,15 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "boardReactions", label: "글에 남긴 좋아요·싫어요" },
   { key: "commentReactions", label: "댓글에 남긴 좋아요·싫어요" },
 ]
+
+function boardTypeLabel(boardType: string | null | undefined): string {
+  if (boardType === "NOTICE") return "공지"
+  if (boardType === "QNA") return "Q&A"
+  if (boardType === "FREE") return "포트폴리오"
+  if (boardType === "MEDIA") return "미디어"
+  if (boardType === "COMMUNITY") return "커뮤니티"
+  return boardType || "-"
+}
 
 function boardHref(boardType: string | null | undefined, id: number): string {
   if (boardType === "NOTICE") return `/community/notice/${id}`
@@ -117,7 +127,6 @@ function parsePaged<T>(payload: unknown): PageState<T> {
   }
 }
 
-const squareBox = "border border-slate-300 bg-white"
 const squareBtn =
   "border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50"
 const squareBtnActive = "border border-slate-900 bg-slate-900 px-3 py-2 text-sm text-white"
@@ -274,14 +283,37 @@ export default function MyPostsClient() {
           ? boardReactions.totalPages
           : commentReactions.totalPages
 
-  return (
-    <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-900">나의 게시글</h1>
-        <p className="mt-1 text-sm text-slate-600">내가 쓴 글·댓글·반응 기록을 확인합니다.</p>
-      </header>
+  const listCaption =
+    tab === "boards"
+      ? "작성한 글"
+      : tab === "comments"
+        ? "작성한 댓글"
+        : tab === "boardReactions"
+          ? "글에 남긴 반응"
+          : "댓글에 남긴 반응"
+  const listTotal =
+    tab === "boards"
+      ? boards.totalElements
+      : tab === "comments"
+        ? comments.totalElements
+        : tab === "boardReactions"
+          ? boardReactions.totalElements
+          : commentReactions.totalElements
+  const rowNo = (index: number) => page * PAGE_SIZE + index + 1
 
-      <section className={`${squareBox} p-4`}>
+  return (
+    <FcbBoardFrame
+      boardId="bbs_my_posts"
+      heading="나의 게시글"
+      description="내가 쓴 글·댓글·반응 기록을 확인합니다."
+      caption={listCaption}
+      totalCount={listTotal}
+      currentPage={page + 1}
+      totalPages={currentTotalPages}
+      onPage={(next) => setPage(Math.max(0, next - 1))}
+      beforeList={
+        <>
+      <section className="mb-2">
         <div className="mb-3 flex flex-wrap gap-2">
           {(
             [
@@ -335,32 +367,27 @@ export default function MyPostsClient() {
         {statsLoading ? (
           <p className="text-sm text-slate-500">통계 불러오는 중…</p>
         ) : stats ? (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-100 text-left text-slate-700">
-                <th className="border border-slate-300 px-3 py-2 font-semibold">구분</th>
-                <th className="border border-slate-300 px-3 py-2 font-semibold">건수</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="border border-slate-300 px-3 py-2">작성한 글</td>
-                <td className="border border-slate-300 px-3 py-2">{stats.boardCount}</td>
-              </tr>
-              <tr>
-                <td className="border border-slate-300 px-3 py-2">작성한 댓글</td>
-                <td className="border border-slate-300 px-3 py-2">{stats.commentCount}</td>
-              </tr>
-              <tr>
-                <td className="border border-slate-300 px-3 py-2">글에 남긴 좋아요·싫어요</td>
-                <td className="border border-slate-300 px-3 py-2">{stats.boardReactionCount}</td>
-              </tr>
-              <tr>
-                <td className="border border-slate-300 px-3 py-2">댓글에 남긴 좋아요·싫어요</td>
-                <td className="border border-slate-300 px-3 py-2">{stats.commentReactionCount}</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="bbs_listing">
+            <table className="table">
+              <caption>활동 집계</caption>
+              <thead>
+                <tr>
+                  <th>작성한 글</th>
+                  <th>작성한 댓글</th>
+                  <th>글 반응</th>
+                  <th>댓글 반응</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{stats.boardCount}</td>
+                  <td>{stats.commentCount}</td>
+                  <td>{stats.boardReactionCount}</td>
+                  <td>{stats.commentReactionCount}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="text-sm text-slate-500">통계를 불러오지 못했습니다.</p>
         )}
@@ -371,201 +398,168 @@ export default function MyPostsClient() {
         ) : null}
       </section>
 
-      <div className="flex flex-wrap gap-0 border border-slate-300">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            className={
-              tab === t.key
-                ? "border-r border-slate-300 bg-slate-900 px-4 py-2 text-sm text-white last:border-r-0"
-                : "border-r border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 last:border-r-0"
-            }
-            onClick={() => selectTab(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
+      <div className="bbs_cate tablist fcb-tablist">
+        <ul className="tablist_3d fcb-tablist-3d">
+          {TABS.map((t) => (
+            <li key={t.key} className={tab === t.key ? "on fcb-on" : undefined}>
+              <button type="button" onClick={() => selectTab(t.key)}>
+                {t.label}
+              </button>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {error ? (
-        <p className="border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="mb-3 border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
       ) : null}
-      {loading ? <p className="text-sm text-slate-500">불러오는 중…</p> : null}
-
+      {loading ? <p className="mb-3 text-sm text-slate-500">불러오는 중…</p> : null}
+        </>
+      }
+    >
       {!loading && tab === "boards" ? (
-        boards.items.length === 0 ? (
-          <p className="text-sm text-slate-500">작성한 글이 없습니다.</p>
-        ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-100 text-left">
-                <th className="border border-slate-300 px-3 py-2">제목</th>
-                <th className="border border-slate-300 px-3 py-2">유형</th>
-                <th className="border border-slate-300 px-3 py-2">작성일</th>
+        <>
+          <thead>
+            <tr>
+              <th className="td_num">번호</th>
+              <th className="td_subject">제목</th>
+              <th className="td_name">유형</th>
+              <th className="td_date">작성일</th>
+              <th className="td_hit">조회</th>
+            </tr>
+          </thead>
+          <tbody>
+            {boards.items.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="td_subject">
+                  작성한 글이 없습니다.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {boards.items.map((b) => (
-                <tr key={b.id} className="hover:bg-slate-50">
-                  <td className="border border-slate-300 px-3 py-2">
-                    <Link
-                      href={boardHref(b.boardType, b.id)}
-                      className="font-medium text-finsight-primary hover:underline"
-                    >
-                      {b.title}
-                    </Link>
+            ) : (
+              boards.items.map((b, index) => (
+                <tr key={b.id}>
+                  <td className="td_num">{rowNo(index)}</td>
+                  <td className="td_subject">
+                    <Link href={boardHref(b.boardType, b.id)}>{b.title}</Link>
                   </td>
-                  <td className="border border-slate-300 px-3 py-2">{b.boardType}</td>
-                  <td className="border border-slate-300 px-3 py-2">
-                    {formatBoardDate(b.createdAt)}
-                  </td>
+                  <td className="td_name">{boardTypeLabel(b.boardType)}</td>
+                  <td className="td_date">{formatBoardDate(b.createdAt)}</td>
+                  <td className="td_hit">{b.viewCount}</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )
+              ))
+            )}
+          </tbody>
+        </>
       ) : null}
 
       {!loading && tab === "comments" ? (
-        comments.items.length === 0 ? (
-          <p className="text-sm text-slate-500">작성한 댓글이 없습니다.</p>
-        ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-100 text-left">
-                <th className="border border-slate-300 px-3 py-2">내용</th>
-                <th className="border border-slate-300 px-3 py-2">작성일</th>
-                <th className="border border-slate-300 px-3 py-2">이동</th>
+        <>
+          <thead>
+            <tr>
+              <th className="td_num">번호</th>
+              <th className="td_subject">내용</th>
+              <th className="td_date">작성일</th>
+              <th className="td_name">이동</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comments.items.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="td_subject">
+                  작성한 댓글이 없습니다.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {comments.items.map((c) => (
-                <tr key={c.id} className="hover:bg-slate-50">
-                  <td className="border border-slate-300 px-3 py-2 whitespace-pre-wrap">
-                    {c.content}
-                  </td>
-                  <td className="border border-slate-300 px-3 py-2">
-                    {c.createdAt ? formatBoardDate(c.createdAt) : "-"}
-                  </td>
-                  <td className="border border-slate-300 px-3 py-2">
+            ) : (
+              comments.items.map((c, index) => (
+                <tr key={c.id}>
+                  <td className="td_num">{rowNo(index)}</td>
+                  <td className="td_subject">{c.content}</td>
+                  <td className="td_date">{c.createdAt ? formatBoardDate(c.createdAt) : "-"}</td>
+                  <td className="td_name">
                     {c.commentType === "BOARD" && c.targetId ? (
-                      <Link
-                        href={boardHref(c.boardType, c.targetId)}
-                        className="text-finsight-primary hover:underline"
-                      >
-                        글 보기
-                      </Link>
+                      <Link href={boardHref(c.boardType, c.targetId)}>글 보기</Link>
                     ) : (
                       "-"
                     )}
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )
+              ))
+            )}
+          </tbody>
+        </>
       ) : null}
 
       {!loading && tab === "boardReactions" ? (
-        boardReactions.items.length === 0 ? (
-          <p className="text-sm text-slate-500">글에 남긴 반응 기록이 없습니다.</p>
-        ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-100 text-left">
-                <th className="border border-slate-300 px-3 py-2">글 제목</th>
-                <th className="border border-slate-300 px-3 py-2">반응</th>
-                <th className="border border-slate-300 px-3 py-2">일시</th>
+        <>
+          <thead>
+            <tr>
+              <th className="td_num">번호</th>
+              <th className="td_subject">글 제목</th>
+              <th className="td_name">반응</th>
+              <th className="td_date">일시</th>
+            </tr>
+          </thead>
+          <tbody>
+            {boardReactions.items.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="td_subject">
+                  글에 남긴 반응 기록이 없습니다.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {boardReactions.items.map((r, idx) => (
-                <tr key={`br-${r.boardId}-${idx}`} className="hover:bg-slate-50">
-                  <td className="border border-slate-300 px-3 py-2">
-                    <Link
-                      href={boardHref(r.boardType, r.boardId)}
-                      className="font-medium text-finsight-primary hover:underline"
-                    >
-                      {r.title}
-                    </Link>
+            ) : (
+              boardReactions.items.map((r, index) => (
+                <tr key={`br-${r.boardId}-${index}`}>
+                  <td className="td_num">{rowNo(index)}</td>
+                  <td className="td_subject">
+                    <Link href={boardHref(r.boardType, r.boardId)}>{r.title}</Link>
                   </td>
-                  <td className="border border-slate-300 px-3 py-2">
-                    {reactionLabel(r.reactionType)}
-                  </td>
-                  <td className="border border-slate-300 px-3 py-2">
-                    {r.createdAt ? formatBoardDate(r.createdAt) : "-"}
-                  </td>
+                  <td className="td_name">{reactionLabel(r.reactionType)}</td>
+                  <td className="td_date">{r.createdAt ? formatBoardDate(r.createdAt) : "-"}</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )
+              ))
+            )}
+          </tbody>
+        </>
       ) : null}
 
       {!loading && tab === "commentReactions" ? (
-        commentReactions.items.length === 0 ? (
-          <p className="text-sm text-slate-500">댓글에 남긴 반응 기록이 없습니다.</p>
-        ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="bg-slate-100 text-left">
-                <th className="border border-slate-300 px-3 py-2">댓글 내용</th>
-                <th className="border border-slate-300 px-3 py-2">반응</th>
-                <th className="border border-slate-300 px-3 py-2">일시</th>
-                <th className="border border-slate-300 px-3 py-2">이동</th>
+        <>
+          <thead>
+            <tr>
+              <th className="td_num">번호</th>
+              <th className="td_subject">댓글 내용</th>
+              <th className="td_name">반응</th>
+              <th className="td_date">일시</th>
+              <th className="td_hit">이동</th>
+            </tr>
+          </thead>
+          <tbody>
+            {commentReactions.items.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="td_subject">
+                  댓글에 남긴 반응 기록이 없습니다.
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {commentReactions.items.map((r, idx) => (
-                <tr key={`cr-${r.commentId}-${idx}`} className="hover:bg-slate-50">
-                  <td className="border border-slate-300 px-3 py-2">{r.content}</td>
-                  <td className="border border-slate-300 px-3 py-2">
-                    {reactionLabel(r.reactionType)}
-                  </td>
-                  <td className="border border-slate-300 px-3 py-2">
-                    {r.createdAt ? formatBoardDate(r.createdAt) : "-"}
-                  </td>
-                  <td className="border border-slate-300 px-3 py-2">
+            ) : (
+              commentReactions.items.map((r, index) => (
+                <tr key={`cr-${r.commentId}-${index}`}>
+                  <td className="td_num">{rowNo(index)}</td>
+                  <td className="td_subject">{r.content}</td>
+                  <td className="td_name">{reactionLabel(r.reactionType)}</td>
+                  <td className="td_date">{r.createdAt ? formatBoardDate(r.createdAt) : "-"}</td>
+                  <td className="td_hit">
                     {r.targetId ? (
-                      <Link
-                        href={boardHref(r.boardType, r.targetId)}
-                        className="text-finsight-primary hover:underline"
-                      >
-                        글 보기
-                      </Link>
+                      <Link href={boardHref(r.boardType, r.targetId)}>글 보기</Link>
                     ) : (
                       "-"
                     )}
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )
+              ))
+            )}
+          </tbody>
+        </>
       ) : null}
-
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <button
-          type="button"
-          className={squareBtn}
-          disabled={page <= 0 || loading}
-          onClick={() => setPage((p) => Math.max(0, p - 1))}
-        >
-          이전
-        </button>
-        <span className="text-slate-600">
-          {page + 1} / {currentTotalPages}
-        </span>
-        <button
-          type="button"
-          className={squareBtn}
-          disabled={page + 1 >= currentTotalPages || loading}
-          onClick={() => setPage((p) => p + 1)}
-        >
-          다음
-        </button>
-      </div>
-    </div>
+    </FcbBoardFrame>
   )
 }

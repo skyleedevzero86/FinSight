@@ -81,8 +81,10 @@ export async function fetchMyLiveVodFavorites(
   }
 }
 
-export async function fetchMyBoardScraps(page = 0, size = 15): Promise<{
+export async function fetchMyBoardScraps(page = 0, size = 20): Promise<{
   items: BoardListItem[]
+  totalElements: number
+  totalPages: number
   hasNext: boolean
 }> {
   const res = await fetch(`/api/v1/boards/my-scraps?page=${page}&size=${size}`, {
@@ -94,9 +96,24 @@ export async function fetchMyBoardScraps(page = 0, size = 15): Promise<{
     const root = asRecord(json)
     throw new Error(typeof root?.message === "string" ? root.message : "스크랩을 불러오지 못했습니다.")
   }
-  const data = unwrapApiData<BoardListItem[]>(json)
-  const items = Array.isArray(data) ? data : []
-  return { items, hasNext: items.length >= size }
+  const data = unwrapApiData<BoardListItem[] | { content?: BoardListItem[]; totalElements?: number; totalPages?: number; hasNext?: boolean }>(json)
+  if (Array.isArray(data)) {
+    return {
+      items: data,
+      totalElements: data.length,
+      totalPages: 1,
+      hasNext: data.length >= size,
+    }
+  }
+  const items = Array.isArray(data?.content) ? data.content : []
+  const totalElements = Number(data?.totalElements) || items.length
+  const totalPages = Math.max(1, Number(data?.totalPages) || 1)
+  return {
+    items,
+    totalElements,
+    totalPages,
+    hasNext: data?.hasNext === true || page + 1 < totalPages,
+  }
 }
 
 export async function unscrapBoard(boardId: number): Promise<boolean> {

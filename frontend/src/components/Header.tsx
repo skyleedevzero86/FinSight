@@ -104,7 +104,7 @@ export default function Header() {
               실시간 VOD
             </Link>
             <Link
-              href="/community"
+              href="/community/notice"
               className="text-sm hover:text-finsight-secondary transition hidden md:block"
             >
               커뮤니티
@@ -161,7 +161,7 @@ export default function Header() {
               </li>
               <li>
                 <Link
-                  href="/community"
+                  href="/community/notice"
                   className="block rounded-md px-2 py-2.5 text-sm hover:bg-white/5 hover:text-finsight-secondary transition"
                 >
                   커뮤니티

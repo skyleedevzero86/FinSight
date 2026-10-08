@@ -6,6 +6,7 @@ import { useAuthSession } from "@/components/AuthSessionProvider"
 import { isAdminRole } from "@/lib/adminUsers"
 import AdminMediaSourcePanel from "@/components/admin/AdminMediaSourcePanel"
 import AdminMediaVideoPanel from "@/components/admin/AdminMediaVideoPanel"
+import { FcbManageShell, FcbTabList } from "@/components/community/FcbManageShell"
 
 export type MediaNotice = { tone: "ok" | "error"; text: string } | null
 
@@ -42,16 +43,19 @@ export default function AdminMediaClient() {
   }
 
   return (
-    <div className="flex flex-col gap-4 px-4 py-4 md:px-5 md:py-5">
-      <h1 className="text-lg font-semibold text-gray-900">영상 관리</h1>
-      <div className="flex gap-2 border-b border-[#e7edf5]" role="tablist" aria-label="영상 관리 탭">
-        <TabButton active={tab === "videos"} onClick={() => setTab("videos")}>
-          영상
-        </TabButton>
-        <TabButton active={tab === "sources"} onClick={() => setTab("sources")}>
-          수집 소스
-        </TabButton>
-      </div>
+    <FcbManageShell
+      title="영상 관리"
+      description="수집한 영상과 소스를 게시·숨김·동기화합니다."
+    >
+      <FcbTabList
+        label="영상 관리 탭"
+        activeKey={tab}
+        onSelect={(key) => setTab(key as "videos" | "sources")}
+        items={[
+          { key: "videos", label: "영상" },
+          { key: "sources", label: "수집 소스" },
+        ]}
+      />
       {notice ? (
         <p
           className={[
@@ -68,31 +72,6 @@ export default function AdminMediaClient() {
       ) : (
         <AdminMediaSourcePanel onNotice={setNotice} onForbidden={() => setBlocked(true)} />
       )}
-    </div>
-  )
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: string
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      className={[
-        "border-b-2 px-3 py-2 text-sm",
-        active ? "border-[#1a1f2e] font-semibold text-gray-900" : "border-transparent text-gray-500",
-      ].join(" ")}
-      onClick={onClick}
-    >
-      {children}
-    </button>
+    </FcbManageShell>
   )
 }

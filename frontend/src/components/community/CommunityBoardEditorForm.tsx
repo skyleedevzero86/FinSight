@@ -29,9 +29,12 @@ type Props = {
   initialTitle?: string
   initialContent?: string
   initialTags?: string
+  initialHighlighted?: boolean
   initialStatus?: "ACTIVE" | "PRIVATE"
   enableVisibility?: boolean
   enableCommentsHint?: boolean
+  onSaved?: () => void
+  onCancel?: () => void
 }
 
 export default function CommunityBoardEditorForm({
@@ -43,8 +46,11 @@ export default function CommunityBoardEditorForm({
   initialTitle = "",
   initialContent = "",
   initialTags = "",
+  initialHighlighted = false,
   initialStatus = "ACTIVE",
   enableVisibility = false,
+  onSaved,
+  onCancel,
 }: Props) {
   const router = useRouter()
   const { user, ready, hasToken } = useAuthSession()
@@ -60,6 +66,7 @@ export default function CommunityBoardEditorForm({
   const [visibility, setVisibility] = useState<"ACTIVE" | "PRIVATE">(
     initialStatus === "PRIVATE" ? "PRIVATE" : "ACTIVE"
   )
+  const [highlighted, setHighlighted] = useState(initialHighlighted)
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -310,12 +317,14 @@ export default function CommunityBoardEditorForm({
             boardType,
             hashtags,
             ...(status ? { status } : {}),
+            ...(boardType === "NOTICE" ? { highlighted } : {}),
           })
         : JSON.stringify({
             title: t,
             content: c,
             hashtags,
             ...(status ? { status } : {}),
+            ...(boardType === "NOTICE" ? { highlighted } : {}),
           })
     const res = await fetch(path, {
       method: mode === "create" ? "POST" : "PUT",
@@ -341,6 +350,10 @@ export default function CommunityBoardEditorForm({
     if (mode === "create" && payload && typeof payload === "object") {
       const data = (payload as { data?: { id?: number } }).data
       if (data?.id != null) newId = data.id
+    }
+    if (onSaved) {
+      onSaved()
+      return
     }
     if (saveAsDraft) router.push(basePath)
     else if (newId != null) router.push(`${basePath}/${newId}`)
@@ -393,6 +406,16 @@ export default function CommunityBoardEditorForm({
               maxLength={200}
               placeholder="제목을 입력하세요"
             />
+            {boardType === "NOTICE" ? (
+              <label className="mt-3 flex items-center gap-2 text-sm font-semibold text-[#00216a]">
+                <input
+                  type="checkbox"
+                  checked={highlighted}
+                  onChange={(ev) => setHighlighted(ev.target.checked)}
+                />
+                강조 (상위 3개, 굵은 글씨)
+              </label>
+            ) : null}
           </div>
 
           <div className="fcb-md-editor__section fcb-md-editor__section--tight">
@@ -506,6 +529,10 @@ export default function CommunityBoardEditorForm({
               type="button"
               className="fcb-md-action fcb-md-action--ghost"
               onClick={() => {
+                if (onCancel) {
+                  onCancel()
+                  return
+                }
                 if (typeof window !== "undefined" && window.history?.length > 1) {
                   window.history.back()
                 } else {

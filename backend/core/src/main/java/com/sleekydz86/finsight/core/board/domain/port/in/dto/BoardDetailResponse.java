@@ -28,6 +28,7 @@ public class BoardDetailResponse {
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
     private final BoardNavigationResponse navigation;
+    private final boolean highlighted;
 
     public BoardDetailResponse() {
         this.id = null;
@@ -48,6 +49,7 @@ public class BoardDetailResponse {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.navigation = null;
+        this.highlighted = false;
     }
 
     public BoardDetailResponse(
@@ -68,7 +70,8 @@ public class BoardDetailResponse {
             List<BoardFile> files,
             LocalDateTime createdAt,
             LocalDateTime updatedAt,
-            BoardNavigationResponse navigation) {
+            BoardNavigationResponse navigation,
+            boolean highlighted) {
         this.id = id;
         this.title = title;
         this.content = content;
@@ -87,6 +90,7 @@ public class BoardDetailResponse {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.navigation = navigation;
+        this.highlighted = highlighted;
     }
 
     public static BoardDetailResponse from(Board board) {
@@ -108,7 +112,8 @@ public class BoardDetailResponse {
                 board.getFiles(),
                 board.getCreatedAt(),
                 board.getUpdatedAt(),
-                null);
+                null,
+                board.isHighlighted());
     }
 
     public static BoardDetailResponse from(Board board, BoardNavigationResponse navigation) {
@@ -130,7 +135,8 @@ public class BoardDetailResponse {
                 board.getFiles(),
                 board.getCreatedAt(),
                 board.getUpdatedAt(),
-                navigation);
+                navigation,
+                board.isHighlighted());
     }
 
     public static BoardDetailResponse from(Board board, BoardNavigationResponse navigation, MarkdownRenderResult markdown) {
@@ -154,7 +160,8 @@ public class BoardDetailResponse {
                 board.getFiles(),
                 board.getCreatedAt(),
                 board.getUpdatedAt(),
-                navigation);
+                navigation,
+                board.isHighlighted());
     }
 
     public static BoardDetailResponse from(Board board, MarkdownRenderResult markdown) {
@@ -231,6 +238,10 @@ public class BoardDetailResponse {
 
     public BoardNavigationResponse getNavigation() {
         return navigation;
+    }
+
+    public boolean isHighlighted() {
+        return highlighted;
     }
 
     @Override

@@ -111,8 +111,9 @@ export function mapListToBoardRows(
 ): BoardRow[] {
   return items.map((b) => ({
     id: b.id,
-    num: b.id,
+    num: b.highlighted ? "pin" : b.id,
     title: b.title,
+    emphasized: Boolean(b.highlighted),
     href: `${basePath}/${b.id}`,
     author: formatAuthorServer(b.authorEmail),
     date: formatDateServer(b.createdAt),

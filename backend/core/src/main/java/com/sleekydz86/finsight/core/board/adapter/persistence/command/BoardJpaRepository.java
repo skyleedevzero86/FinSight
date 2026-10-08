@@ -34,7 +34,7 @@ public interface BoardJpaRepository extends JpaRepository<BoardJpaEntity, Long> 
                               )
                             )
                           )
-                        ORDER BY b.createdAt DESC
+                        ORDER BY b.highlighted DESC, b.createdAt DESC
                         """)
         Page<BoardJpaEntity> findVisibleByBoardType(
                         @Param("boardType") BoardType boardType,
@@ -56,7 +56,7 @@ public interface BoardJpaRepository extends JpaRepository<BoardJpaEntity, Long> 
                             )
                           )
                           AND (b.title LIKE %:keyword% OR b.content LIKE %:keyword%)
-                        ORDER BY b.createdAt DESC
+                        ORDER BY b.highlighted DESC, b.createdAt DESC
                         """)
         Page<BoardJpaEntity> findVisibleByBoardTypeAndKeyword(
                         @Param("boardType") BoardType boardType,
@@ -64,6 +64,15 @@ public interface BoardJpaRepository extends JpaRepository<BoardJpaEntity, Long> 
                         @Param("viewerEmail") String viewerEmail,
                         @Param("staffViewer") boolean staffViewer,
                         Pageable pageable);
+
+        @Query("""
+                        SELECT COUNT(b) FROM BoardJpaEntity b
+                        WHERE b.boardType = com.sleekydz86.finsight.core.board.domain.BoardType.NOTICE
+                          AND b.status = com.sleekydz86.finsight.core.board.domain.BoardStatus.ACTIVE
+                          AND b.highlighted = true
+                          AND (:excludeId IS NULL OR b.id <> :excludeId)
+                        """)
+        long countActiveHighlightedNotices(@Param("excludeId") Long excludeId);
 
         Page<BoardJpaEntity> findByAuthorEmailAndStatusOrderByCreatedAtDesc(
                         String authorEmail, BoardStatus status, Pageable pageable);
@@ -73,10 +82,8 @@ public interface BoardJpaRepository extends JpaRepository<BoardJpaEntity, Long> 
         @Query("SELECT b FROM BoardJpaEntity b WHERE b.status = :status AND b.reportCount > 0 ORDER BY b.reportCount DESC")
         List<BoardJpaEntity> findReportedBoards(@Param("status") BoardStatus status);
 
-        @Query("SELECT b FROM BoardJpaEntity b WHERE b.boardType = :boardType AND b.status = :status ORDER BY b.viewCount DESC")
-        List<BoardJpaEntity> findPopularBoards(@Param("boardType") BoardType boardType,
-                        @Param("status") BoardStatus status,
-                        Pageable pageable);
+        @Query("SELECT b FROM BoardJpaEntity b WHERE b.status = :status ORDER BY b.viewCount DESC, b.createdAt DESC")
+        List<BoardJpaEntity> findPopularBoards(@Param("status") BoardStatus status, Pageable pageable);
 
         @Query("SELECT b FROM BoardJpaEntity b WHERE b.boardType = :boardType AND b.status = :status ORDER BY b.createdAt DESC")
         List<BoardJpaEntity> findLatestBoards(@Param("boardType") BoardType boardType,
