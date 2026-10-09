@@ -35,12 +35,31 @@ public class NewsAiProcessingService {
                     AiModel.CHATGPT, originalContent);
 
             if (!analyzedNewsList.isEmpty()) {
-                return analyzedNewsList.get(0);
+                return keepSource(news, analyzedNewsList.get(0));
             }
         } catch (Exception e) {
             log.warn("AI 분석 실패, 원본 뉴스 사용: {}", news.getId(), e);
         }
         return news;
+    }
+
+    private News keepSource(News source, News analyzed) {
+        if (analyzed.getTranslatedContent() == null || analyzed.getAiOverView() == null) {
+            log.warn("AI 분석 결과가 비어 원본 뉴스를 유지합니다");
+            return source;
+        }
+        String translatedTitle = analyzed.getTranslatedContent().getTitle();
+        if (translatedTitle == null || translatedTitle.isBlank()) {
+            log.warn("AI 번역 제목이 없어 원본 뉴스를 유지합니다");
+            return source;
+        }
+        return source.updateAiAnalysis(
+                analyzed.getAiOverView().getOverview(),
+                translatedTitle,
+                analyzed.getTranslatedContent().getContent(),
+                analyzed.getAiOverView().getTargetCategories(),
+                analyzed.getAiOverView().getSentimentType(),
+                analyzed.getAiOverView().getSentimentScore());
     }
 
     public News processNewsWithAI(News news) {

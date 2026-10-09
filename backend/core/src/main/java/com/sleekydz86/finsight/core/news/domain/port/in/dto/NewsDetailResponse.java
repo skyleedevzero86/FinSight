@@ -24,6 +24,7 @@ public class NewsDetailResponse {
     private final LocalDateTime publishedTime;
     private final LocalDateTime scrapedTime;
     private final String sourceUrl;
+    private final String imageUrl;
     private final NewsStatistics statistics;
     private final Comments comments;
     private final List<News> relatedNews;
@@ -42,6 +43,7 @@ public class NewsDetailResponse {
         this.publishedTime = null;
         this.scrapedTime = null;
         this.sourceUrl = null;
+        this.imageUrl = null;
         this.statistics = null;
         this.comments = new Comments();
         this.relatedNews = null;
@@ -51,8 +53,8 @@ public class NewsDetailResponse {
                               String originalContent, String translatedTitle, String translatedContent,
                               String overview, SentimentType sentimentType, Double sentimentScore,
                               List<TargetCategory> categories, LocalDateTime publishedTime,
-                              LocalDateTime scrapedTime, String sourceUrl, NewsStatistics statistics,
-                              Comments comments, List<News> relatedNews) {
+                              LocalDateTime scrapedTime, String sourceUrl, String imageUrl,
+                              NewsStatistics statistics, Comments comments, List<News> relatedNews) {
         this.id = id;
         this.newsProvider = newsProvider;
         this.originalTitle = originalTitle;
@@ -66,6 +68,7 @@ public class NewsDetailResponse {
         this.publishedTime = publishedTime;
         this.scrapedTime = scrapedTime;
         this.sourceUrl = sourceUrl;
+        this.imageUrl = imageUrl;
         this.statistics = statistics;
         this.comments = comments;
         this.relatedNews = relatedNews;
@@ -84,6 +87,7 @@ public class NewsDetailResponse {
     public LocalDateTime getPublishedTime() { return publishedTime; }
     public LocalDateTime getScrapedTime() { return scrapedTime; }
     public String getSourceUrl() { return sourceUrl; }
+    public String getImageUrl() { return imageUrl; }
     public NewsStatistics getStatistics() { return statistics; }
     public Comments getComments() { return comments; }
     public List<News> getRelatedNews() { return relatedNews; }
@@ -102,6 +106,7 @@ public class NewsDetailResponse {
                 ", publishedTime=" + publishedTime +
                 ", scrapedTime=" + scrapedTime +
                 ", sourceUrl='" + sourceUrl + '\'' +
+                ", imageUrl='" + imageUrl + '\'' +
                 '}';
     }
 
@@ -123,6 +128,7 @@ public class NewsDetailResponse {
         private LocalDateTime publishedTime;
         private LocalDateTime scrapedTime;
         private String sourceUrl;
+        private String imageUrl;
         private NewsStatistics statistics;
         private Comments comments = new Comments();
         private List<News> relatedNews;
@@ -192,6 +198,11 @@ public class NewsDetailResponse {
             return this;
         }
 
+        public Builder imageUrl(String imageUrl) {
+            this.imageUrl = imageUrl;
+            return this;
+        }
+
         public Builder statistics(NewsStatistics statistics) {
             this.statistics = statistics;
             return this;
@@ -211,7 +222,7 @@ public class NewsDetailResponse {
             return new NewsDetailResponse(id, newsProvider, originalTitle, originalContent,
                     translatedTitle, translatedContent, overview, sentimentType,
                     sentimentScore, categories, publishedTime, scrapedTime,
-                    sourceUrl, statistics, comments, relatedNews);
+                    sourceUrl, imageUrl, statistics, comments, relatedNews);
         }
     }
 }

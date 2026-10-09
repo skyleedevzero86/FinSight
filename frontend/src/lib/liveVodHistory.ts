@@ -1,3 +1,5 @@
+import { displayYoutubeThumbnail } from "@/lib/liveVod"
+
 export type LiveVodHistoryItem = {
   videoId: string
   title: string
@@ -78,8 +80,7 @@ export function recordLiveVodWatch(input: {
     videoId,
     title: input.title || "VOD",
     channelTitle: input.channelTitle ?? null,
-    thumbnailUrl:
-      input.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    thumbnailUrl: displayYoutubeThumbnail(videoId, input.thumbnailUrl),
     tab: input.tab ?? null,
     watchUrl: input.watchUrl || youtubeWatchUrl(videoId),
     watchedAt: new Date().toISOString(),

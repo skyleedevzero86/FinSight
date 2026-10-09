@@ -1,8 +1,9 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
+import FcbBoardFrame from "@/components/community/FcbBoardFrame"
 import { canManageUsers } from "@/lib/adminUsers"
 import {
   blockModerationBoard,
@@ -13,8 +14,7 @@ import {
   type ModerationItem,
 } from "@/lib/boardModeration"
 
-const inputClass =
-  "rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none focus:border-finsight-secondary focus:ring-1 focus:ring-finsight-secondary/40"
+const PAGE_SIZE = 20
 
 const buttonClass =
   "rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-800 hover:bg-gray-50 disabled:opacity-50"
@@ -24,9 +24,14 @@ const primaryButtonClass =
 
 type TabKey = "candidates" | "hidden"
 
-function formatDate(value: string | null): string {
-  if (!value) return "-"
-  return value.replace("T", " ").slice(0, 16)
+function matchesQuery(item: ModerationItem, type: string, raw: string): boolean {
+  const query = raw.trim().toLowerCase()
+  if (!query) return true
+  const title = (item.title || "").toLowerCase()
+  const author = item.authorEmail.toLowerCase()
+  if (type === "author") return author.includes(query)
+  if (type === "subject") return title.includes(query)
+  return title.includes(query) || author.includes(query) || String(item.id).includes(query)
 }
 
 export default function AdminModerationClient() {
@@ -42,6 +47,10 @@ export default function AdminModerationClient() {
   const [acting, setActing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+  const [page, setPage] = useState(0)
+  const [searchType, setSearchType] = useState("")
+  const [searchInput, setSearchInput] = useState("")
+  const [searchValue, setSearchValue] = useState("")
 
   const loadCandidates = useCallback(async () => {
     setLoading(true)
@@ -85,6 +94,28 @@ export default function AdminModerationClient() {
     if (tab === "candidates") void loadCandidates()
     if (tab === "hidden") void loadHidden()
   }, [allowed, tab, loadCandidates, loadHidden])
+
+  const source = tab === "candidates" ? candidates : hidden
+  const filtered = useMemo(
+    () => source.filter((item) => matchesQuery(item, searchType, searchValue)),
+    [source, searchType, searchValue],
+  )
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const pageItems = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages - 1))
+  }, [totalPages])
+
+  function selectTab(next: TabKey) {
+    setTab(next)
+    setPage(0)
+  }
+
+  function submitSearch() {
+    setSearchValue(searchInput)
+    setPage(0)
+  }
 
   async function onHideAll() {
     if (
@@ -139,149 +170,143 @@ export default function AdminModerationClient() {
 
   if (!ready || !allowed) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-center text-gray-500">
-        권한을 확인하는 중…
-      </div>
+      <div className="w-full px-6 py-16 text-sm text-gray-500">권한을 확인하는 중…</div>
     )
   }
 
+  const emptyText =
+    tab === "candidates"
+      ? "임계값 이상 신고된 댓글이 없습니다."
+      : "숨김 댓글이 없습니다."
+
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-900">신고 관리</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          댓글 신고만 접수됩니다. 임계값 이상 신고된 댓글을 숨김·복구·차단할 수 있습니다.
-        </p>
-      </div>
-
-      {error ? (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </div>
-      ) : null}
-      {message ? (
-        <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {message}
-        </div>
-      ) : null}
-
-      <div className="mb-4 flex flex-wrap gap-2">
-        {(
-          [
-            ["candidates", "숨김 후보"],
-            ["hidden", "숨김 목록"],
-          ] as const
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            className={tab === key ? primaryButtonClass : buttonClass}
-            onClick={() => setTab(key)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "candidates" ? (
-        <section className="rounded border border-gray-200 bg-white">
-          <div className="flex flex-wrap items-center gap-3 border-b border-gray-100 px-4 py-3">
-            <h2 className="text-sm font-semibold text-gray-800">신고 과다 댓글 후보</h2>
-            <label className="ml-auto flex items-center gap-2 text-xs text-gray-600">
-              신고 임계값
-              <input
-                type="number"
-                min={1}
-                max={1000}
-                className={`${inputClass} w-20`}
-                value={threshold}
-                onChange={(e) => setThreshold(Math.max(1, Number(e.target.value) || 1))}
-              />
-            </label>
-            <button type="button" className={buttonClass} disabled={loading} onClick={() => void loadCandidates()}>
-              새로고침
-            </button>
-            <button
-              type="button"
-              className={primaryButtonClass}
-              disabled={acting || candidates.length === 0}
-              onClick={() => void onHideAll()}
-            >
-              일괄 숨김 실행
-            </button>
+    <FcbBoardFrame
+      boardId="bbs_moderation"
+      heading="신고 관리"
+      description="댓글 신고만 접수됩니다. 임계값 이상 신고된 댓글을 숨김·복구·차단할 수 있습니다."
+      caption={tab === "candidates" ? "숨김 후보" : "숨김 목록"}
+      totalCount={filtered.length}
+      currentPage={page + 1}
+      totalPages={totalPages}
+      onPage={(next) => setPage(Math.max(0, next - 1))}
+      search={{
+        type: searchType,
+        value: searchInput,
+        typeOptions: [
+          { value: "subject", label: "내용" },
+          { value: "author", label: "작성자" },
+        ],
+        onTypeChange: setSearchType,
+        onValueChange: setSearchInput,
+        onSubmit: submitSearch,
+      }}
+      beforeList={
+        <>
+          {error ? (
+            <p className="mb-3 border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </p>
+          ) : null}
+          {message ? (
+            <p className="mb-3 border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+              {message}
+            </p>
+          ) : null}
+          <div className="bbs_cate tablist fcb-tablist">
+            <ul className="tablist_3d fcb-tablist-3d">
+              {(
+                [
+                  ["candidates", "숨김 후보"],
+                  ["hidden", "숨김 목록"],
+                ] as const
+              ).map(([key, label]) => (
+                <li key={key} className={tab === key ? "on fcb-on" : undefined}>
+                  <button type="button" onClick={() => selectTab(key)}>
+                    {label}
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
-          {loading ? (
-            <div className="px-4 py-12 text-center text-sm text-gray-500">불러오는 중…</div>
-          ) : candidates.length === 0 ? (
-            <div className="px-4 py-12 text-center text-sm text-gray-500">
-              임계값 이상 신고된 ACTIVE 댓글이 없습니다.
+          {tab === "candidates" ? (
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                신고 임계값
+                <input
+                  type="number"
+                  min={1}
+                  max={1000}
+                  className="w-24 border border-gray-300 bg-white px-3 py-2 text-sm"
+                  value={threshold}
+                  onChange={(e) => setThreshold(Math.max(1, Number(e.target.value) || 1))}
+                />
+              </label>
+              <button
+                type="button"
+                className={buttonClass}
+                disabled={loading}
+                onClick={() => void loadCandidates()}
+              >
+                새로고침
+              </button>
+              <button
+                type="button"
+                className={primaryButtonClass}
+                disabled={acting || candidates.length === 0}
+                onClick={() => void onHideAll()}
+              >
+                일괄 숨김 실행
+              </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 text-xs text-gray-500">
-                  <tr>
-                    <th className="px-4 py-2">ID</th>
-                    <th className="px-4 py-2">내용</th>
-                    <th className="px-4 py-2">작성자</th>
-                    <th className="px-4 py-2">신고</th>
-                    <th className="px-4 py-2">게시글</th>
-                    <th className="px-4 py-2">작업</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {candidates.map((item) => (
-                    <tr key={item.id} className="border-t border-gray-100">
-                      <td className="px-4 py-2">{item.id}</td>
-                      <td className="max-w-xs truncate px-4 py-2">{item.title || "-"}</td>
-                      <td className="px-4 py-2 text-xs text-gray-600">{item.authorEmail}</td>
-                      <td className="px-4 py-2 font-semibold text-red-600">{item.reportCount}</td>
-                      <td className="px-4 py-2 text-xs text-gray-500">#{item.targetId ?? "-"}</td>
-                      <td className="px-4 py-2">
-                        <button
-                          type="button"
-                          className={buttonClass}
-                          disabled={acting}
-                          onClick={() => void onBlock(item)}
-                        >
-                          차단
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mb-4">
+              <button
+                type="button"
+                className={buttonClass}
+                disabled={loading}
+                onClick={() => void loadHidden()}
+              >
+                새로고침
+              </button>
             </div>
           )}
-        </section>
-      ) : null}
-
-      {tab === "hidden" ? (
-        <section className="rounded border border-gray-200 bg-white">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <h2 className="text-sm font-semibold text-gray-800">숨김 댓글 ({hidden.length})</h2>
-            <button type="button" className={buttonClass} disabled={loading} onClick={() => void loadHidden()}>
-              새로고침
-            </button>
-          </div>
-          {loading ? (
-            <div className="px-4 py-12 text-center text-sm text-gray-500">불러오는 중…</div>
-          ) : hidden.length === 0 ? (
-            <div className="px-4 py-12 text-center text-sm text-gray-500">숨김 댓글이 없습니다.</div>
-          ) : (
-            <ul className="divide-y divide-gray-100">
-              {hidden.map((item) => (
-                <li key={item.id} className="px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-gray-900">#{item.id}</span>
-                    <span className="text-xs text-amber-700">신고 {item.reportCount}</span>
-                    <span className="text-[11px] text-gray-400">{formatDate(item.updatedAt)}</span>
-                  </div>
-                  <p className="mt-1 text-sm text-gray-700">{item.title || "(내용 없음)"}</p>
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    {item.authorEmail} · 게시글 #{item.targetId ?? "-"}
-                  </p>
-                  <div className="mt-2 flex gap-2">
+        </>
+      }
+    >
+      <thead>
+        <tr>
+          <th className="td_num">번호</th>
+          <th className="td_subject">내용</th>
+          <th className="td_name">작성자</th>
+          <th className="td_hit">신고</th>
+          <th className="td_date">게시글</th>
+          <th className="td_action">작업</th>
+        </tr>
+      </thead>
+      <tbody>
+        {loading ? (
+          <tr>
+            <td colSpan={6} className="td_subject">
+              불러오는 중…
+            </td>
+          </tr>
+        ) : pageItems.length === 0 ? (
+          <tr>
+            <td colSpan={6} className="td_subject">
+              {searchValue.trim() ? "검색 결과가 없습니다." : emptyText}
+            </td>
+          </tr>
+        ) : (
+          pageItems.map((item, index) => (
+            <tr key={item.id}>
+              <td className="td_num">{page * PAGE_SIZE + index + 1}</td>
+              <td className="td_subject">{item.title || "(내용 없음)"}</td>
+              <td className="td_name">{item.authorEmail || "-"}</td>
+              <td className="td_hit">{item.reportCount}</td>
+              <td className="td_date">#{item.targetId ?? "-"}</td>
+              <td className="td_action">
+                <div className="flex flex-wrap justify-center gap-1">
+                  {tab === "hidden" ? (
                     <button
                       type="button"
                       className={buttonClass}
@@ -290,21 +315,21 @@ export default function AdminModerationClient() {
                     >
                       복구
                     </button>
-                    <button
-                      type="button"
-                      className={buttonClass}
-                      disabled={acting}
-                      onClick={() => void onBlock(item)}
-                    >
-                      차단
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ) : null}
-    </div>
+                  ) : null}
+                  <button
+                    type="button"
+                    className={buttonClass}
+                    disabled={acting}
+                    onClick={() => void onBlock(item)}
+                  >
+                    차단
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </FcbBoardFrame>
   )
 }

@@ -20,6 +20,13 @@ public interface YoutubeVideoMetaPersistencePort {
 
     Page<YoutubeVideoMeta> search(YoutubeImportStatus importStatus, String category, Pageable pageable);
 
+    Page<YoutubeVideoMeta> searchAdmin(
+            YoutubeImportStatus importStatus,
+            String category,
+            String keyword,
+            String sourceValue,
+            Pageable pageable);
+
     Page<YoutubeVideoMeta> searchBySource(
             YoutubeImportSourceType sourceType,
             String sourceValue,

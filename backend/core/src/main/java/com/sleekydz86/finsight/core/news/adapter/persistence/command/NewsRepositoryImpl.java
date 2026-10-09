@@ -93,6 +93,14 @@ public class NewsRepositoryImpl implements NewsPersistencePort {
     }
 
     @Override
+    public Newses findLatestNewsByProvider(com.sleekydz86.finsight.core.global.NewsProvider provider, int limit) {
+        int safeLimit = Math.max(1, limit);
+        return new Newses(newsJpaRepository.findLatestByProvider(provider, PageRequest.of(0, safeLimit)).stream()
+                .map(newsJpaMapper::toDomain)
+                .toList());
+    }
+
+    @Override
     public Newses findRelatedNews(Long newsId, List<String> categories, int limit) {
         List<NewsJpaEntity> entities = newsJpaRepository.findAll();
         return new Newses(entities.stream()

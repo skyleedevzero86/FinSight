@@ -1,71 +1,38 @@
 "use client"
 
+import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { fetchStoredNews, type StoredNewsCard } from "@/lib/publicNews"
 
-const scheduleData = [
-  {
-    id: 1,
-    time: "지금 5시 -",
-    endTime: "밤 6시 30분",
-    title: "착한 사나이 13회",
-    isLive: false
-  },
-  {
-    id: 2,
-    time: "밤 6시 30분 -",
-    endTime: "밤 7시 50분",
-    title: "finsight 뉴스룸",
-    isLive: false
-  },
-  {
-    id: 3,
-    time: "밤 7시 50분 -",
-    endTime: "밤 8시 50분",
-    title: "사건반장",
-    isLive: false
-  },
-  {
-    id: 4,
-    time: "밤 8시 50분 -",
-    endTime: "밤 10시",
-    title: "착한 사나이 13회",
-    isLive: false
-  },
-  {
-    id: 5,
-    time: "밤 10시 -",
-    endTime: "밤 11시 20분",
-    title: "착한 사나이 14회(최종회)",
-    isOnAir: true,
-    isLive: true
-  },
-  {
-    id: 6,
-    time: "밤 11시 20분 -",
-    endTime: "밤 0시 40분",
-    title: "이혼숙려캠프 52회 (재)",
-    isLive: false
-  },
-  {
-    id: 7,
-    time: "밤 0시 40분 -",
-    endTime: "새벽 1시 30분",
-    title: "중독자들 50회",
-    isLive: false
-  },
-  {
-    id: 8,
-    time: "새벽 1시 30분 -",
-    endTime: "새벽 2시 50분",
-    title: "비욘드 더 바 7회",
-    isLive: false
-  }
-]
+function relativeTime(raw: string | null): string {
+  if (!raw) return ""
+  const date = new Date(raw.includes("T") ? raw : raw.replace(" ", "T"))
+  const time = date.getTime()
+  if (Number.isNaN(time)) return ""
+  const minutes = Math.floor((Date.now() - time) / 60000)
+  if (minutes < 1) return "방금 전"
+  if (minutes < 60) return `${minutes}분 전`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}시간 전`
+  const days = Math.floor(hours / 24)
+  return `${days}일 전`
+}
 
 export default function OnAirSchedule() {
+  const [articles, setArticles] = useState<StoredNewsCard[]>([])
   const [cardsPerView, setCardsPerView] = useState(4)
   const [currentPage, setCurrentPage] = useState(0)
+
+  useEffect(() => {
+    let alive = true
+    fetchStoredNews(8, "MARKETAUX").then((items) => {
+      if (alive) setArticles(items ?? [])
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   useEffect(() => {
     const updateCardsPerView = () => {
@@ -86,12 +53,12 @@ export default function OnAirSchedule() {
   }, [])
 
   const pages = useMemo(() => {
-    const grouped: typeof scheduleData[] = []
-    for (let i = 0; i < scheduleData.length; i += cardsPerView) {
-      grouped.push(scheduleData.slice(i, i + cardsPerView))
+    const grouped: StoredNewsCard[][] = []
+    for (let i = 0; i < articles.length; i += cardsPerView) {
+      grouped.push(articles.slice(i, i + cardsPerView))
     }
     return grouped
-  }, [cardsPerView])
+  }, [articles, cardsPerView])
 
   useEffect(() => {
     setCurrentPage((prev) => Math.min(prev, Math.max(pages.length - 1, 0)))
@@ -99,21 +66,15 @@ export default function OnAirSchedule() {
 
   useEffect(() => {
     if (pages.length <= 1) return
-
     const timer = setInterval(() => {
       setCurrentPage((prev) => (prev + 1) % pages.length)
     }, 4500)
-
     return () => clearInterval(timer)
   }, [pages.length])
 
-  const goPrev = () => {
-    setCurrentPage((prev) => (prev - 1 + pages.length) % pages.length)
-  }
-
-  const goNext = () => {
-    setCurrentPage((prev) => (prev + 1) % pages.length)
-  }
+  const newestId = articles[0]?.id
+  const goPrev = () => setCurrentPage((prev) => (prev - 1 + pages.length) % pages.length)
+  const goNext = () => setCurrentPage((prev) => (prev + 1) % pages.length)
 
   return (
     <section className="bg-gray-50 py-8">
@@ -123,84 +84,56 @@ export default function OnAirSchedule() {
             인기뉴스
           </h3>
           <div className="flex gap-2">
-            <button
-              onClick={goPrev}
-              className="p-1 rounded-full transition bg-white hover:bg-gray-100 text-gray-700"
-            >
+            <button type="button" onClick={goPrev} className="p-1 rounded-full transition bg-white hover:bg-gray-100 text-gray-700" aria-label="이전 뉴스">
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <button
-              onClick={goNext}
-              className="p-1 rounded-full transition bg-white hover:bg-gray-100 text-gray-700"
-            >
+            <button type="button" onClick={goNext} className="p-1 rounded-full transition bg-white hover:bg-gray-100 text-gray-700" aria-label="다음 뉴스">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
         </div>
-
+        {articles.length === 0 ? <p className="text-sm text-gray-600">표시할 뉴스가 없습니다.</p> : null}
         <div className="relative">
           <div className="overflow-hidden">
-            <div
-              className="flex transition-transform duration-700 ease-in-out"
-              style={{ transform: `translateX(-${currentPage * 100}%)` }}
-            >
+            <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${currentPage * 100}%)` }}>
               {pages.map((page, pageIndex) => (
                 <div key={pageIndex} className="w-full shrink-0">
                   <div className="grid gap-4 grid-cols-1 md:grid-cols-2 xl:grid-cols-4">
-                    {page.map((program) => (
-                      <div
-                        key={program.id}
-                        className={`p-4 rounded-lg transition ${
-                          program.isOnAir
-                            ? "bg-finsight-primary text-white"
-                            : "bg-white hover:shadow-md"
-                        }`}
-                      >
-                        {program.isOnAir && (
-                          <div className="inline-flex items-center gap-2 mb-2">
-                            <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
-                              ON AIR
-                            </span>
-                          </div>
-                        )}
-                        <div className="text-sm mb-1">
-                          <span className="font-medium">{program.time}</span>
-                          <span className={program.isOnAir ? "text-white/80" : "text-gray-500"}>
-                            {" "}{program.endTime}
-                          </span>
-                        </div>
-                        <h4 className={`font-semibold ${program.isOnAir ? "" : "text-gray-900"}`}>
-                          {program.title}
-                        </h4>
-                        {program.isLive && !program.isOnAir && (
-                          <span className="inline-block mt-2 text-xs text-finsight-primary font-semibold">
-                            생방송
-                          </span>
-                        )}
-                      </div>
+                    {page.map((item) => (
+                      <NewsCard key={item.id} item={item} newest={item.id === newestId} />
                     ))}
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
-          {pages.length > 1 && (
+          {pages.length > 1 ? (
             <div className="mt-4 flex items-center justify-center gap-2">
               {pages.map((_, index) => (
                 <button
                   key={index}
+                  type="button"
                   onClick={() => setCurrentPage(index)}
-                  className={`h-2 rounded-full transition-all ${
-                    index === currentPage ? "w-6 bg-finsight-primary" : "w-2 bg-gray-300"
-                  }`}
-                  aria-label={`${index + 1}번 편성표 페이지로 이동`}
+                  className={`h-2 rounded-full transition-all ${index === currentPage ? "w-6 bg-finsight-primary" : "w-2 bg-gray-300"}`}
+                  aria-label={`${index + 1}번 인기뉴스 페이지로 이동`}
                 />
               ))}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </section>
+  )
+}
+
+function NewsCard({ item, newest }: { item: StoredNewsCard; newest: boolean }) {
+  return (
+    <Link
+      href={`/news/${item.id}`}
+      className={`flex items-start justify-between gap-3 p-4 rounded-lg transition ${newest ? "bg-finsight-primary text-white" : "bg-white hover:shadow-md"}`}
+    >
+      <h4 className={`min-w-0 font-semibold ${newest ? "" : "text-gray-900"}`}>{item.title}</h4>
+      <div className={`shrink-0 text-sm ${newest ? "text-white/80" : "text-gray-500"}`}>{relativeTime(item.publishedAt)}</div>
+    </Link>
   )
 }

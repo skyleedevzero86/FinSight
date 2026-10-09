@@ -263,6 +263,43 @@ export async function fetchAdminStatsChart(
   }
 }
 
+export async function fetchAdminOpsHome(): Promise<
+  | { ok: true; data: { overview: AdminStatsOverview; signups: AdminStatsChart | null; logins: AdminStatsChart | null; content: AdminStatsChart | null } }
+  | { ok: false; message: string; missing?: boolean }
+> {
+  try {
+    const res = await fetch("/api/v1/admin/stats/ops-home", {
+      headers: { Accept: "application/json" },
+      credentials: "include",
+      cache: "no-store",
+    })
+    if (res.status === 404) {
+      return { ok: false, message: "운영 현황 API가 없습니다.", missing: true }
+    }
+    const payload = await readJson(res)
+    if (res.status === 401 || res.status === 403) {
+      return { ok: false, message: authFailureMessage(res.status) }
+    }
+    if (!res.ok) {
+      return { ok: false, message: readMessage(payload, "운영 현황을 불러오지 못했습니다.") }
+    }
+    const overview = parseOverview(payload)
+    if (!overview) return { ok: false, message: "운영 현황 형식이 올바르지 않습니다." }
+    const data = asRecord(asRecord(payload)?.data) ?? asRecord(payload)
+    return {
+      ok: true,
+      data: {
+        overview,
+        signups: parseChart(data?.signups),
+        logins: parseChart(data?.logins),
+        content: parseChart(data?.content),
+      },
+    }
+  } catch {
+    return { ok: false, message: "서버에 연결하지 못했습니다. Next/백엔드가 실행 중인지 확인해 주세요." }
+  }
+}
+
 export async function refreshAdminHealth(): Promise<
   { ok: true } | { ok: false; message: string; unauthorized?: boolean }
 > {

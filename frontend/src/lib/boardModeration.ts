@@ -85,6 +85,21 @@ function parseItemList(raw: unknown): ModerationItem[] {
   return list.map(parseItem).filter((x): x is ModerationItem => x != null)
 }
 
+export async function fetchMaintenanceRuns(
+  limit = 20,
+): Promise<{ ok: true; data: ModerationRun[] } | { ok: false; message: string }> {
+  const res = await fetch(`/api/v1/admin/boards/maintenance/runs?limit=${limit}`, {
+    headers: authHeadersJson(),
+    cache: "no-store",
+  })
+  const payload = await readJson(res)
+  if (!res.ok) return { ok: false, message: readMessage(payload, "처리 이력을 불러오지 못했습니다.") }
+  const root = asRecord(payload)
+  const data = root?.data
+  const list = Array.isArray(data) ? data : []
+  return { ok: true, data: list.map(parseRun).filter((item): item is ModerationRun => item != null) }
+}
+
 export async function fetchModerationCandidates(
   reportThreshold: number,
 ): Promise<{ ok: true; data: ModerationItem[] } | { ok: false; message: string }> {

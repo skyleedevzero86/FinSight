@@ -46,6 +46,8 @@ public class YoutubeVideoDetailResponse {
     private String editorComment;
     private List<String> keyPoints;
     private LocalDateTime aiGeneratedAt;
+    private LocalDateTime aiFailedAt;
+    private String aiStatus;
     private YoutubeImportStatus importStatus;
     private LocalDateTime syncedAt;
     private LocalDateTime createdAt;

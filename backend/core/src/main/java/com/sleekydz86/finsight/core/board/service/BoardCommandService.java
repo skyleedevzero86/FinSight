@@ -13,6 +13,7 @@ import com.sleekydz86.finsight.core.board.domain.port.out.BoardScrapPersistenceP
 import com.sleekydz86.finsight.core.comment.domain.ReactionType;
 import com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException;
 import com.sleekydz86.finsight.core.global.exception.UserNotFoundException;
+import com.sleekydz86.finsight.core.global.exception.ValidationException;
 import com.sleekydz86.finsight.core.global.exception.CommentAlreadyReportedException;
 import com.sleekydz86.finsight.core.inbox.domain.InboxCategory;
 import com.sleekydz86.finsight.core.inbox.service.InboxService;
@@ -61,8 +62,13 @@ public class BoardCommandService implements BoardCommandUseCase {
     @Override
     public Board createBoard(String userEmail, BoardCreateRequest request) {
         log.info("게시글 생성 요청 - 사용자: {}", userEmail);
+        if (request.getBoardType() == BoardType.NOTICE) {
+            assertNoticeStaff(userEmail);
+        }
 
         BoardStatus initialStatus = request.getStatus() != null ? request.getStatus() : BoardStatus.ACTIVE;
+        boolean highlighted = request.getBoardType() == BoardType.NOTICE && request.isHighlighted();
+        assertHighlightCapacity(request.getBoardType(), initialStatus, highlighted, null);
         Board board = Board.builder()
                 .title(request.getTitle())
                 .content(request.getContent())
@@ -70,12 +76,29 @@ public class BoardCommandService implements BoardCommandUseCase {
                 .boardType(request.getBoardType())
                 .status(initialStatus)
                 .hashtags(request.getHashtags())
+                .highlighted(highlighted)
                 .build();
 
         Board savedBoard = boardPersistencePort.save(board);
         log.info("게시글 생성 완료 - 게시글 ID: {}", savedBoard.getId());
         notifyOnBoardCreated(savedBoard, userEmail);
         return savedBoard;
+    }
+
+    private void assertHighlightCapacity(
+            BoardType boardType,
+            BoardStatus status,
+            boolean highlighted,
+            Long excludeId) {
+        if (boardType != BoardType.NOTICE || !highlighted || status != BoardStatus.ACTIVE) {
+            return;
+        }
+        long used = boardPersistencePort.countActiveHighlightedNotices(excludeId);
+        if (used >= 3) {
+            throw new ValidationException(
+                    "강조 공지는 최대 3개까지 지정할 수 있습니다.",
+                    List.of("highlighted"));
+        }
     }
 
     private void notifyOnBoardCreated(Board board, String authorEmail) {
@@ -139,6 +162,15 @@ public class BoardCommandService implements BoardCommandUseCase {
         if (request.getStatus() != null) {
             updatedBoard = updatedBoard.updateStatus(request.getStatus());
         }
+        if (existingBoard.getBoardType() == BoardType.NOTICE) {
+            boolean highlighted = request.isHighlighted();
+            assertHighlightCapacity(
+                    BoardType.NOTICE,
+                    updatedBoard.getStatus(),
+                    highlighted,
+                    existingBoard.getId());
+            updatedBoard = updatedBoard.withHighlighted(highlighted);
+        }
 
         Board savedBoard = boardPersistencePort.save(updatedBoard);
         log.info("게시글 수정 완료 - 게시글 ID: {}", boardId);
@@ -165,6 +197,7 @@ public class BoardCommandService implements BoardCommandUseCase {
 
         Board board = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
+        rejectNoticeReaction(board);
 
         Optional<BoardReaction> existingReaction = boardReactionPersistencePort
                 .findByBoardIdAndUserEmail(boardId, userEmail);
@@ -203,6 +236,7 @@ public class BoardCommandService implements BoardCommandUseCase {
 
         Board board = boardPersistencePort.findById(boardId)
                 .orElseThrow(() -> new UserNotFoundException("게시글을 찾을 수 없습니다"));
+        rejectNoticeReaction(board);
 
         Optional<BoardReaction> existingReaction = boardReactionPersistencePort
                 .findByBoardIdAndUserEmail(boardId, userEmail);
@@ -356,11 +390,36 @@ public class BoardCommandService implements BoardCommandUseCase {
         log.info("게시글 파일 삭제 완료 - 파일 ID: {}", fileId);
     }
 
+    private void assertNoticeStaff(String userEmail) {
+        User user = userPersistencePort.findByEmail(userEmail).orElse(null);
+        String role = user == null || user.getRole() == null ? null : user.getRole().name();
+        if (!isStaffRole(role)) {
+            log.warn("공지 작성 권한 거부 - 요청자: {}, 역할: {}", userEmail, role);
+            throw new InsufficientPermissionException(
+                    "NOTICE_WRITE",
+                    "공지사항은 관리자만 작성할 수 있습니다");
+        }
+    }
+
+    private void rejectNoticeReaction(Board board) {
+        if (board.getBoardType() == BoardType.NOTICE) {
+            throw new InsufficientPermissionException(
+                    "NOTICE_REACTION",
+                    "공지사항에는 좋아요와 싫어요를 남길 수 없습니다");
+        }
+    }
+
     private void assertCanModifyBoard(Board board, String userEmail, String userRole) {
+        boolean isStaff = isStaffRole(userRole);
+        if (board.getBoardType() == BoardType.NOTICE && !isStaff) {
+            log.warn("공지 수정/삭제 권한 거부 - 요청자: {}, 역할: {}", userEmail, userRole);
+            throw new InsufficientPermissionException(
+                    "NOTICE_MODIFY",
+                    "공지사항은 관리자만 수정·삭제할 수 있습니다");
+        }
         boolean isAuthor = board.getAuthorEmail() != null
                 && userEmail != null
                 && board.getAuthorEmail().equalsIgnoreCase(userEmail.trim());
-        boolean isStaff = isStaffRole(userRole);
         if (!isAuthor && !isStaff) {
             log.warn("게시글 수정/삭제 권한 거부 - 요청자: {}, 역할: {}, 글작성자: {}",
                     userEmail, userRole, board.getAuthorEmail());

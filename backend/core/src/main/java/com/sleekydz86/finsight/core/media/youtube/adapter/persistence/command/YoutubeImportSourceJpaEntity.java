@@ -40,6 +40,9 @@ public class YoutubeImportSourceJpaEntity {
     @Column(name = "active", nullable = false)
     private boolean active = true;
 
+    @Column(name = "rejected", nullable = false)
+    private boolean rejected = false;
+
     @Column(name = "auto_publish", nullable = false)
     private boolean autoPublish = false;
 

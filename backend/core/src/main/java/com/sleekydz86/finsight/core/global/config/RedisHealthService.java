@@ -9,6 +9,9 @@ import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 @Service
 @ConditionalOnBean(name = "redisTemplate")
 public class RedisHealthService {
@@ -29,7 +32,10 @@ public class RedisHealthService {
             if (redisTemplate.getConnectionFactory() == null) {
                 return false;
             }
-            String pong = redisTemplate.execute((RedisCallback<String>) RedisConnection::ping);
+            String pong = CompletableFuture.supplyAsync(() ->
+                    redisTemplate.execute((RedisCallback<String>) RedisConnection::ping))
+                    .orTimeout(2, TimeUnit.SECONDS)
+                    .join();
             boolean isAvailable = pong != null && !pong.isBlank();
             logger.debug("Redis 연결 상태: {}", isAvailable ? "정상" : "비정상");
             return isAvailable;

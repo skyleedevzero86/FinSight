@@ -95,7 +95,7 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
     public Boards findPopularBoards(int limit) {
         Pageable pageable = PageRequest.of(0, limit);
         List<BoardJpaEntity> entities = boardJpaRepository.findPopularBoards(
-                BoardType.COMMUNITY, BoardStatus.ACTIVE, pageable);
+                BoardStatus.ACTIVE, pageable);
         List<Board> boards = entities.stream()
                 .map(boardJpaMapper::toDomain)
                 .toList();
@@ -123,6 +123,11 @@ public class BoardRepositoryImpl implements BoardPersistencePort {
     @Override
     public long countByBoardType(BoardType boardType) {
         return boardJpaRepository.countByBoardTypeAndStatus(boardType, BoardStatus.ACTIVE);
+    }
+
+    @Override
+    public long countActiveHighlightedNotices(Long excludeId) {
+        return boardJpaRepository.countActiveHighlightedNotices(excludeId);
     }
 
     @Override

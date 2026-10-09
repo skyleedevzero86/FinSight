@@ -39,10 +39,15 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
     @Query("SELECT n FROM NewsJpaEntity n ORDER BY n.viewCount DESC")
     Page<NewsJpaEntity> findPopularNews(Pageable pageable);
 
-    @Query("SELECT n FROM NewsJpaEntity n ORDER BY n.newsPublishedTime DESC")
+    boolean existsBySourceUrl(String sourceUrl);
+
+    @Query("SELECT n FROM NewsJpaEntity n WHERE n.newsProvider = :provider AND n.originalTitle NOT LIKE '[더미]%' AND (n.translatedTitle IS NULL OR n.translatedTitle NOT LIKE '[더미]%') ORDER BY n.newsPublishedTime DESC")
+    Page<NewsJpaEntity> findLatestByProvider(@Param("provider") com.sleekydz86.finsight.core.global.NewsProvider provider, Pageable pageable);
+
+    @Query("SELECT n FROM NewsJpaEntity n WHERE n.originalTitle NOT LIKE '[더미]%' AND (n.translatedTitle IS NULL OR n.translatedTitle NOT LIKE '[더미]%') ORDER BY n.newsPublishedTime DESC")
     List<NewsJpaEntity> findLatestNews();
 
-    @Query("SELECT n FROM NewsJpaEntity n ORDER BY n.newsPublishedTime DESC")
+    @Query("SELECT n FROM NewsJpaEntity n WHERE n.originalTitle NOT LIKE '[더미]%' AND (n.translatedTitle IS NULL OR n.translatedTitle NOT LIKE '[더미]%') ORDER BY n.newsPublishedTime DESC")
     Page<NewsJpaEntity> findLatestNews(Pageable pageable);
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.id != :newsId AND n.targetCategories LIKE %:category%")

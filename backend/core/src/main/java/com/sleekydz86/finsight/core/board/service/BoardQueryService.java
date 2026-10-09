@@ -199,11 +199,11 @@ public class BoardQueryService implements BoardQueryUseCase {
         }
 
         @Override
-        public List<BoardListResponse> getMyScrappedBoards(String userEmail, int page, int size) {
+        public PaginationResponse<BoardListResponse> getMyScrappedBoards(String userEmail, int page, int size) {
                 log.info("사용자 스크랩 게시판 조회 요청: user={}, page={}, size={}", userEmail, page, size);
 
                 List<BoardScrap> scraps = boardScrapPersistencePort.findByUserEmail(userEmail, page, size);
-                return scraps.stream()
+                List<BoardListResponse> content = scraps.stream()
                                 .map(scrap -> {
                                         Board board = boardPersistencePort.findById(scrap.getBoardId())
                                                         .orElseThrow(() -> new BoardNotFoundException(
@@ -211,6 +211,13 @@ public class BoardQueryService implements BoardQueryUseCase {
                                         return BoardListResponse.from(board);
                                 })
                                 .collect(Collectors.toList());
+                long total = boardScrapPersistencePort.countByUserEmail(userEmail);
+                return PaginationResponse.<BoardListResponse>builder()
+                                .content(content)
+                                .page(page)
+                                .size(size)
+                                .totalElements(total)
+                                .build();
         }
 
         @Override

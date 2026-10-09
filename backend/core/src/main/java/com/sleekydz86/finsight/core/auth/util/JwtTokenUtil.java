@@ -22,7 +22,7 @@ public class JwtTokenUtil {
 
     private static final Logger log = LoggerFactory.getLogger(JwtTokenUtil.class);
 
-    @Value("${jwt.secret:defaultSecretKeyForDevelopmentOnly12345678901234567890}")
+    @Value("${jwt.secret}")
     private String secret;
 
     @Value("${jwt.access-token.expiration:3600000}")

@@ -18,6 +18,7 @@ import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDt
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.MyFavoritePageResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReactionToggleResponse;
 import com.sleekydz86.finsight.core.media.livevod.domain.dto.LiveVodEngagementDtos.ReplyPageResponse;
+import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeThumbnailUrl;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeVideoMeta;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.LiveVodFeedResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.out.YoutubeVideoMetaPersistencePort;
@@ -137,7 +138,7 @@ public class LiveVodEngagementService {
         String id = row.getVideoId();
         String title = "VOD";
         String channel = null;
-        String thumb = "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
+        String thumb = YoutubeThumbnailUrl.displayUrl(id, null);
         try {
             Optional<YoutubeVideoMeta> stored = youtubeVideoMetaPersistencePort.findByVideoId(id);
             if (stored.isPresent()) {
@@ -146,8 +147,9 @@ public class LiveVodEngagementService {
                     title = meta.getYoutubeTitle().trim();
                 }
                 channel = meta.getChannelTitle();
-                if (meta.getThumbnailUrl() != null && !meta.getThumbnailUrl().isBlank()) {
-                    thumb = meta.getThumbnailUrl();
+                String resolvedThumb = YoutubeThumbnailUrl.displayUrl(id, meta.getThumbnailUrl());
+                if (resolvedThumb != null) {
+                    thumb = resolvedThumb;
                 }
             }
         } catch (Exception ex) {
@@ -171,7 +173,7 @@ public class LiveVodEngagementService {
 
         String watchUrl = "https://www.youtube.com/watch?v=" + id;
         String embedUrl = "https://www.youtube-nocookie.com/embed/" + id;
-        String thumbnailUrl = "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
+        String thumbnailUrl = YoutubeThumbnailUrl.displayUrl(id, null);
 
         LiveVodMetaResponse storedMeta = null;
         try {
@@ -182,9 +184,10 @@ public class LiveVodEngagementService {
                         ? meta.getYoutubeTitle().trim()
                         : "";
                 String channel = meta.getChannelTitle();
-                String thumb = meta.getThumbnailUrl() != null && !meta.getThumbnailUrl().isBlank()
-                        ? meta.getThumbnailUrl()
-                        : thumbnailUrl;
+                String thumb = YoutubeThumbnailUrl.displayUrl(id, meta.getThumbnailUrl());
+                if (thumb == null) {
+                    thumb = thumbnailUrl;
+                }
                 String embed = meta.getEmbedUrl() != null && !meta.getEmbedUrl().isBlank()
                         ? meta.getEmbedUrl().replace(
                         "https://www.youtube.com/embed/",
@@ -228,7 +231,7 @@ public class LiveVodEngagementService {
                 id,
                 PLACEHOLDER_TITLE,
                 null,
-                "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg",
+                YoutubeThumbnailUrl.displayUrl(id, null),
                 "https://www.youtube-nocookie.com/embed/" + id,
                 "https://www.youtube.com/watch?v=" + id);
     }

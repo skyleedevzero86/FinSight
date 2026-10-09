@@ -27,7 +27,7 @@ public class NewsNotificationService {
                     .collect(Collectors.toList());
 
             if (!importantNews.isEmpty()) {
-                log.info("중요 뉴스 {} 건에 대한 알림 발송 시작", importantNews.size());
+                log.info("감정 점수 0.7 초과 뉴스 {}건 알림 발송 시작", importantNews.size());
                 importantNews.forEach(news -> {
                     try {
                         notificationService.notifyUsersAboutNews(news);

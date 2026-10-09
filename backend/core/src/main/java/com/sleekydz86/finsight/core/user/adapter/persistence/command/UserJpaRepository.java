@@ -135,4 +135,7 @@ public interface UserJpaRepository extends JpaRepository<UserJpaEntity, Long> {
                         WHERE `createdAt` < :before
                         """, nativeQuery = true)
         long countCreatedBefore(@Param("before") LocalDateTime before);
+
+        @Query("SELECT COUNT(u) FROM UserJpaEntity u WHERE u.email IS NOT NULL AND u.email <> ''")
+        long countMembersWithEmail();
 }

@@ -25,6 +25,11 @@ import {
   type TargetCategory,
 } from "@/lib/registration"
 import { FINSIGHT_FORCE_PASSWORD_KEY } from "@/lib/finsightToken"
+import {
+  fetchInboxSettings,
+  updateInboxSettings,
+  type InboxSettings,
+} from "@/lib/inbox"
 
 const inputClass =
   "w-full rounded border border-gray-300 bg-white px-3 py-2.5 text-[15px] text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-finsight-secondary focus:ring-1 focus:ring-finsight-secondary/40"
@@ -84,6 +89,13 @@ export default function MyInfoClient() {
   const [saving, setSaving] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
   const [savingWatchlist, setSavingWatchlist] = useState(false)
+  const [inboxSettings, setInboxSettings] = useState<InboxSettings>({
+    youtubeEnabled: true,
+    newsEnabled: true,
+    commentEnabled: true,
+    qnaEnabled: true,
+  })
+  const [savingInbox, setSavingInbox] = useState(false)
   const [withdrawing, setWithdrawing] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [formOk, setFormOk] = useState<string | null>(null)
@@ -101,10 +113,11 @@ export default function MyInfoClient() {
     const loadId = ++loadGenRef.current
     watchDirtyRef.current = false
     void (async () => {
-      const [profile, list, status] = await Promise.all([
+      const [profile, list, status, inbox] = await Promise.all([
         fetchUserProfile(),
         fetchWatchlist(),
         user.authProvider === "WEB" ? fetchPasswordStatus() : Promise.resolve(null),
+        fetchInboxSettings(),
       ])
       if (loadId !== loadGenRef.current) return
       if (profile) {
@@ -116,6 +129,7 @@ export default function MyInfoClient() {
         setEmail(user.email)
         setPreviewUrl(user.profileImageUrl)
       }
+      if (inbox) setInboxSettings(inbox)
       if (!watchDirtyRef.current) {
         const fromProfile = profile?.watchlist ?? []
         setWatchlist(list.length ? list : fromProfile)
@@ -193,6 +207,61 @@ export default function MyInfoClient() {
         }
       }
     })()
+  }
+
+  async function onSaveInbox() {
+    setFormError(null)
+    setFormOk(null)
+    setSavingInbox(true)
+    const result = await updateInboxSettings(inboxSettings)
+    setSavingInbox(false)
+    if (!result.ok) {
+      setFormError(result.message)
+      return
+    }
+    setInboxSettings(result.settings)
+    setFormOk("알림 수신 설정을 저장했습니다.")
+  }
+
+  function renderInboxSettings() {
+    return (
+      <section className="mt-8 space-y-3 border-t border-gray-100 pt-8">
+        <p className="text-sm font-medium text-gray-800">알림 수신 설정</p>
+        <p className="text-xs text-gray-500">
+          이 계정의 유튜브·뉴스·댓글·QnA 수신 여부입니다. 저장하지 않으면 모두 받습니다.
+          관심종목 알림은 위의 관심 카테고리를 따릅니다.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(
+            [
+              ["youtubeEnabled", "유튜브"],
+              ["newsEnabled", "뉴스"],
+              ["commentEnabled", "댓글"],
+              ["qnaEnabled", "QnA"],
+            ] as const
+          ).map(([key, label]) => (
+            <label key={key} className="flex items-center gap-2 text-sm text-gray-800">
+              <input
+                type="checkbox"
+                checked={inboxSettings[key]}
+                onChange={(e) =>
+                  setInboxSettings((prev) => ({ ...prev, [key]: e.target.checked }))
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => void onSaveInbox()}
+          disabled={savingInbox}
+          className="rounded-md border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-60"
+        >
+          {savingInbox ? "저장 중..." : "알림 설정 저장"}
+        </button>
+      </section>
+    )
   }
 
   function renderWatchlistChips() {
@@ -551,6 +620,8 @@ export default function MyInfoClient() {
             </form>
             </>
           )}
+
+          {renderInboxSettings()}
 
           <button
             type="button"

@@ -3,7 +3,7 @@ import AdminNotificationsClient from "@/components/admin/AdminNotificationsClien
 
 export const metadata: Metadata = {
   title: "알림 관리 | finsight",
-  description: "finsight 인앱 알림 등록·수신 설정",
+  description: "finsight 공지 게시판 작성·알림 등록",
 }
 
 export default function AdminNotificationsPage() {

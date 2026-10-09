@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.web.controller.admin;
 
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.health.domain.Health;
+import com.sleekydz86.finsight.core.user.domain.port.in.dto.admin.AdminOpsHomeResponse;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.admin.AdminStatsChartResponse;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.admin.AdminStatsOverviewResponse;
 import com.sleekydz86.finsight.core.user.service.AdminStatsService;
@@ -40,6 +41,15 @@ public class AdminStatsController {
         log.info("관리자 통계 개요 API 호출");
         AdminStatsOverviewResponse response = adminStatsService.overview();
         return ResponseEntity.ok(ApiResponse.success(response, "통계 개요를 조회했습니다"));
+    }
+
+    @GetMapping("/ops-home")
+    @Operation(
+            summary = "운영 현황",
+            description = "나의 메뉴 운영 화면용. 회원 상태, DB·Redis, JVM, 최근 7일 가입·로그인·게시글만 조회합니다.")
+    public ResponseEntity<ApiResponse<AdminOpsHomeResponse>> opsHome() {
+        log.info("관리자 운영 현황 API 호출");
+        return ResponseEntity.ok(ApiResponse.success(adminStatsService.opsHome(), "운영 현황을 조회했습니다"));
     }
 
     @GetMapping("/charts/{chartKey}")

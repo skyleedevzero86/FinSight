@@ -1,3 +1,5 @@
+import { displayYoutubeThumbnail } from "@/lib/liveVod"
+
 export type BrowseHistoryKind = "LIVE_VOD" | "BOARD"
 
 export type BrowseHistoryItem = {
@@ -90,10 +92,10 @@ function migrateLegacyLiveVod(): BrowseHistoryItem[] {
           href: `/live-vod/watch/${encodeURIComponent(videoId)}?tab=HISTORY`,
           title: typeof o.title === "string" ? o.title : "VOD",
           subtitle: typeof o.channelTitle === "string" ? o.channelTitle : null,
-          thumbnailUrl:
-            typeof o.thumbnailUrl === "string" && o.thumbnailUrl
-              ? o.thumbnailUrl
-              : `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          thumbnailUrl: displayYoutubeThumbnail(
+            videoId,
+            typeof o.thumbnailUrl === "string" ? o.thumbnailUrl : "",
+          ),
           viewedAt: typeof o.watchedAt === "string" ? o.watchedAt : new Date().toISOString(),
         }
       })
@@ -171,7 +173,7 @@ export function recordLiveVodBrowseView(input: {
     href: `/live-vod/watch/${encodeURIComponent(videoId)}?tab=${encodeURIComponent(tab)}`,
     title: input.title || "VOD",
     subtitle: input.channelTitle ?? null,
-    thumbnailUrl: input.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    thumbnailUrl: displayYoutubeThumbnail(videoId, input.thumbnailUrl),
   })
 }
 

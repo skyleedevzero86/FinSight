@@ -6,6 +6,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import LiveVodComments from "@/components/live-vod/LiveVodComments"
 import {
+  displayYoutubeThumbnail,
   toPrivacyEmbedUrl,
   YOUTUBE_EMBED_ALLOW,
   fetchLiveVodMeta,
@@ -153,9 +154,7 @@ function LiveVodWatchBody() {
   const embedSrc = toPrivacyEmbedUrl(videoId)
   const [title, setTitle] = useState(queryTitle || PLACEHOLDER_TITLE)
   const [channel, setChannel] = useState<string | null>(queryChannel)
-  const [thumbnailUrl, setThumbnailUrl] = useState(
-    videoId ? `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg` : "",
-  )
+  const [thumbnailUrl, setThumbnailUrl] = useState(() => displayYoutubeThumbnail(videoId, ""))
   const [favorited, setFavorited] = useState(false)
   const [favoriteCount, setFavoriteCount] = useState(0)
   const [commentCount, setCommentCount] = useState(0)
@@ -209,7 +208,7 @@ function LiveVodWatchBody() {
 
   useEffect(() => {
     if (!videoId || !title || title === PLACEHOLDER_TITLE) return
-    const thumb = thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`
+    const thumb = displayYoutubeThumbnail(videoId, thumbnailUrl)
     const nextTab = tab === "FAVORITES" || tab === "HISTORY" ? "ALL" : tab
     recordLiveVodWatch({
       videoId,
@@ -289,7 +288,7 @@ function LiveVodWatchBody() {
           videoId,
           title,
           channelTitle: channel,
-          thumbnailUrl: thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+          thumbnailUrl: displayYoutubeThumbnail(videoId, thumbnailUrl),
           tab: tab === "FAVORITES" ? "ALL" : tab,
         })
       }

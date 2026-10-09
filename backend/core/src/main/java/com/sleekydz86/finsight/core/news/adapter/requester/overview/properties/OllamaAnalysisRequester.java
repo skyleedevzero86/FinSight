@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatReq
 import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -29,7 +30,7 @@ public class OllamaAnalysisRequester implements NewsAiRequester {
     private final ObjectMapper mapper;
 
     public OllamaAnalysisRequester(
-            WebClient webClient,
+            @Qualifier("ollamaWebClient") WebClient webClient,
             OllamaProperties ollamaProperties,
             ObjectMapper mapper) {
         this.webClient = webClient;

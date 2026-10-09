@@ -4,17 +4,21 @@ import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportStatus;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportSourceType;
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeVideoMeta;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.out.YoutubeVideoMetaPersistencePort;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 @Component
+@Transactional(readOnly = true)
 public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersistencePort {
 
     private final YoutubeVideoMetaJpaRepository youtubeVideoMetaJpaRepository;
@@ -24,6 +28,7 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
     }
 
     @Override
+    @Transactional
     public YoutubeVideoMeta save(YoutubeVideoMeta videoMeta) {
         YoutubeVideoMetaJpaEntity entity = toEntity(videoMeta);
         YoutubeVideoMetaJpaEntity savedEntity = youtubeVideoMetaJpaRepository.save(entity);
@@ -32,12 +37,12 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
 
     @Override
     public Optional<YoutubeVideoMeta> findByVideoId(String videoId) {
-        return youtubeVideoMetaJpaRepository.findByVideoId(videoId).map(this::toDomain);
+        return firstFetched(youtubeVideoMetaJpaRepository.findFetchedByVideoId(videoId));
     }
 
     @Override
     public Optional<YoutubeVideoMeta> findByBoardId(Long boardId) {
-        return youtubeVideoMetaJpaRepository.findByBoardId(boardId).map(this::toDomain);
+        return firstFetched(youtubeVideoMetaJpaRepository.findFetchedByBoardId(boardId));
     }
 
     @Override
@@ -73,6 +78,30 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
                 .map(this::toDomain)
                 .toList();
 
+        return new PageImpl<>(content, sortedPageable, page.getTotalElements());
+    }
+
+    @Override
+    public Page<YoutubeVideoMeta> searchAdmin(
+            YoutubeImportStatus importStatus,
+            String category,
+            String keyword,
+            String sourceValue,
+            Pageable pageable) {
+        Pageable sortedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                newestFirstSort());
+        Page<YoutubeVideoMetaJpaEntity> page = youtubeVideoMetaJpaRepository.searchAdmin(
+                importStatus != null,
+                importStatus == null ? YoutubeImportStatus.DRAFT : importStatus,
+                category == null ? "" : category,
+                keyword == null ? "" : keyword,
+                sourceValue == null ? "" : sourceValue,
+                sortedPageable);
+        List<YoutubeVideoMeta> content = page.getContent().stream()
+                .map(this::toDomain)
+                .toList();
         return new PageImpl<>(content, sortedPageable, page.getTotalElements());
     }
 
@@ -145,6 +174,27 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
                 YoutubeImportStatus.DRAFT);
     }
 
+    private Optional<YoutubeVideoMeta> firstFetched(List<YoutubeVideoMetaJpaEntity> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(toDomain(entities.get(0)));
+    }
+
+    private static List<String> copyKeyPoints(List<String> keyPoints) {
+        if (keyPoints == null) {
+            return new ArrayList<>();
+        }
+        Hibernate.initialize(keyPoints);
+        List<String> copied = new ArrayList<>();
+        for (String keyPoint : keyPoints) {
+            if (keyPoint != null && !keyPoint.isBlank()) {
+                copied.add(keyPoint);
+            }
+        }
+        return copied;
+    }
+
     private static Sort newestFirstSort() {
         return Sort.by(Sort.Order.desc("publishedAt"), Sort.Order.desc("createdAt"));
     }
@@ -171,8 +221,9 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
                 .embedUrl(entity.getEmbedUrl())
                 .summary(entity.getSummary())
                 .editorComment(entity.getEditorComment())
-                .keyPoints(entity.getKeyPoints())
+                .keyPoints(copyKeyPoints(entity.getKeyPoints()))
                 .aiGeneratedAt(entity.getAiGeneratedAt())
+                .aiFailedAt(entity.getAiFailedAt())
                 .importStatus(entity.getImportStatus())
                 .syncedAt(entity.getSyncedAt())
                 .createdAt(entity.getCreatedAt())
@@ -198,8 +249,9 @@ public class YoutubeVideoMetaRepositoryImpl implements YoutubeVideoMetaPersisten
         entity.setEmbedUrl(videoMeta.getEmbedUrl());
         entity.setSummary(videoMeta.getSummary());
         entity.setEditorComment(videoMeta.getEditorComment());
-        entity.setKeyPoints(videoMeta.getKeyPoints());
+        entity.setKeyPoints(copyKeyPoints(videoMeta.getKeyPoints()));
         entity.setAiGeneratedAt(videoMeta.getAiGeneratedAt());
+        entity.setAiFailedAt(videoMeta.getAiFailedAt());
         entity.setImportStatus(videoMeta.getImportStatus());
         entity.setSyncedAt(videoMeta.getSyncedAt());
         entity.setCreatedAt(videoMeta.getCreatedAt());

@@ -9,18 +9,19 @@ import {
   Link2,
   Mail,
   PanelTop,
-  Settings,
   ShieldAlert,
   Users,
   type LucideIcon,
 } from "lucide-react"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import {
-  loadAdminOpsHome,
+  loadAdminOpsCore,
+  loadAdminOpsExtras,
   type AdminOpsHomeData,
   type OpsLogLine,
   type OpsServerRow,
   type OpsSlice,
+  type OpsTask,
   type OpsTrendSeries,
 } from "@/lib/adminOpsHome"
 import { formatKoreanDate, type MyInfoNotice } from "@/lib/myInfoHome"
@@ -46,6 +47,7 @@ const EMPTY: AdminOpsHomeData = {
   trendLabels: [],
   trend: [],
   memberSlices: [],
+  tasks: [],
 }
 
 function countText(value: number): string {
@@ -64,7 +66,7 @@ function Panel({
   children: React.ReactNode
 }) {
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-[#e7edf5] bg-white px-4 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+    <section className="flex flex-col border border-[#e7edf5] bg-white px-4 py-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-[15px] font-bold text-slate-800">{title}</h2>
         {href && action ? (
@@ -96,7 +98,7 @@ function Meter({ label, value }: { label: string; value: number | null }) {
 }
 
 function ServerList({ rows }: { rows: OpsServerRow[] }) {
-  if (!rows.length) return <p className="py-8 text-center text-sm text-slate-400">서버 상태를 불러오는 중입니다.</p>
+  if (!rows.length) return <p className="py-8 text-center text-sm text-slate-400">서버 상태를 불러오지 못했습니다.</p>
   return (
     <ul className="flex flex-col gap-3">
       {rows.map((row) => (
@@ -109,10 +111,14 @@ function ServerList({ rows }: { rows: OpsServerRow[] }) {
                 {row.statusLabel}
               </span>
             </span>
-            <span className="mt-1 flex flex-col gap-1">
-              <Meter label="CPU" value={row.cpu} />
-              <Meter label="메모리" value={row.memory} />
-            </span>
+            {row.cpu != null || row.memory != null ? (
+              <span className="mt-1 flex flex-col gap-1">
+                {row.cpu != null ? <Meter label="CPU" value={row.cpu} /> : null}
+                {row.memory != null ? <Meter label="메모리" value={row.memory} /> : null}
+              </span>
+            ) : (
+              <span className="mt-1 block text-[11px] text-slate-500">{row.detail || "상태만 확인됩니다."}</span>
+            )}
           </span>
         </li>
       ))}
@@ -145,15 +151,10 @@ function Greeting({ serviceOk, serviceLabel }: { serviceOk: boolean; serviceLabe
   const { user } = useAuthSession()
   const name = user?.nickname || "관리자"
   return (
-    <div className="flex items-start justify-between gap-3 rounded-2xl border border-[#e7edf5] bg-white px-4 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
-      <div className="flex min-w-0 items-start gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
-          <Settings className="h-5 w-5" aria-hidden />
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-base font-bold text-slate-900">안녕하세요, {name}님</p>
-          <p className="mt-1 text-[13px] text-slate-500">FinSight 서비스 운영 현황을 확인하세요.</p>
-        </div>
+    <div className="flex flex-1 items-center justify-between gap-3 border border-[#e7edf5] bg-white px-4 py-4">
+      <div className="min-w-0">
+        <p className="truncate text-base font-bold text-slate-900">안녕하세요, {name}님</p>
+        <p className="mt-1 text-[13px] text-slate-500">FinSight 서비스 운영 현황을 확인하세요.</p>
       </div>
       <div className="shrink-0 text-right">
         <p className="text-[11px] text-slate-400">{formatKoreanDate(new Date())}</p>
@@ -181,7 +182,7 @@ function StatCard({
   sub: string
 }) {
   return (
-    <Link href={href} className="flex items-center gap-3 rounded-2xl border border-[#e7edf5] bg-white px-3 py-3 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+    <Link href={href} className="flex h-full items-center gap-3 border border-[#e7edf5] bg-white px-3 py-3">
       <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${iconClass}`}>
         <Icon className="h-4 w-4" aria-hidden />
       </span>
@@ -331,27 +332,72 @@ function MemberDonut({ total, slices }: { total: number; slices: OpsSlice[] }) {
   )
 }
 
+const TASK_LIST_MIN_HEIGHT = "min-h-[8.75rem]"
+
+function TaskList({ items }: { items: OpsTask[] }) {
+  if (!items.length) {
+    return (
+      <p className={`flex ${TASK_LIST_MIN_HEIGHT} items-center justify-center text-sm text-slate-400`}>
+        지금 처리할 일이 없습니다.
+      </p>
+    )
+  }
+  return (
+    <ul className={`grid ${TASK_LIST_MIN_HEIGHT} content-start gap-2 md:grid-cols-2`}>
+      {items.map((item) => (
+        <li key={item.key}>
+          <Link href={item.href} className="flex items-center gap-3 border border-[#e7edf5] px-3 py-2.5 hover:bg-slate-50">
+            <span className={`shrink-0 px-1.5 py-0.5 text-[11px] font-semibold ${item.urgent ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-700"}`}>
+              {item.label}
+            </span>
+            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-slate-800">{item.title}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function loginSub(delta: number | null): string {
   if (delta == null) return "전일 로그인 없음"
-  const sign = delta > 0 ? "+" : ""
-  return `전일 대비 ${sign}${delta}%`
+  const shown = Math.max(0, delta)
+  const sign = shown > 0 ? "+" : ""
+  return `전일 대비 ${sign}${shown}%`
+}
+
+function signupSub(count: number): string {
+  if (count <= 0) return "오늘 신규 0건"
+  return `오늘 신규 +${countText(count)}건`
 }
 
 export default function AdminOpsHomeClient() {
   const [data, setData] = useState<AdminOpsHomeData>(EMPTY)
-  const [loading, setLoading] = useState(true)
+  const [coreReady, setCoreReady] = useState(false)
+  const [detailReady, setDetailReady] = useState(false)
 
   useEffect(() => {
     let alive = true
-    void loadAdminOpsHome()
-      .then((next) => {
-        if (alive) setData(next)
+    void loadAdminOpsCore()
+      .then((core) => {
+        if (!alive) return
+        setData(core)
+        setCoreReady(true)
+        if (!core.servers.length) {
+          setDetailReady(true)
+          return
+        }
+        return loadAdminOpsExtras(core)
+      })
+      .then((full) => {
+        if (!alive) return
+        if (full) setData(full)
+        setDetailReady(true)
       })
       .catch((error: unknown) => {
         console.error("운영 현황을 불러오지 못했습니다.", error)
-      })
-      .finally(() => {
-        if (alive) setLoading(false)
+        if (!alive) return
+        setCoreReady(true)
+        setDetailReady(true)
       })
     return () => {
       alive = false
@@ -367,16 +413,26 @@ export default function AdminOpsHomeClient() {
       <div className="grid items-stretch gap-4 xl:grid-cols-2">
         <div className="grid gap-4 md:grid-cols-2">
           <Panel title="서버 현황" href="/admin/health" action="상세보기">
-            {loading ? <p className="py-8 text-center text-sm text-slate-400">서버 상태를 불러오는 중입니다.</p> : <ServerList rows={data.servers} />}
+            {!coreReady ? (
+              <p className="py-8 text-center text-sm text-slate-400">서버 상태를 불러오는 중입니다.</p>
+            ) : (
+              <ServerList rows={data.servers} />
+            )}
           </Panel>
           <Panel title="최근 시스템 로그" href="/admin/stats" action="상세보기">
-            {loading ? <p className="py-8 text-center text-sm text-slate-400">로그를 불러오는 중입니다.</p> : <LogList items={data.logs} />}
+            {!coreReady ? (
+              <p className="py-8 text-center text-sm text-slate-400">로그를 불러오는 중입니다.</p>
+            ) : data.logs.length ? (
+              <LogList items={data.logs} />
+            ) : (
+              <p className="py-8 text-center text-sm text-slate-400">{data.serviceLabel}</p>
+            )}
           </Panel>
         </div>
-        <div className="flex flex-col gap-3">
+        <div className="flex h-full flex-col gap-3">
           <Greeting serviceOk={data.serviceOk} serviceLabel={data.serviceLabel} />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard href="/admin/users" icon={Users} iconClass="bg-sky-100 text-sky-600" label="전체 회원수" value={`${countText(data.totalUsers)}명`} sub={`오늘 신규 +${countText(data.todaySignups)}`} />
+          <div className="grid min-h-0 flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard href="/admin/users" icon={Users} iconClass="bg-sky-100 text-sky-600" label="전체 회원수" value={`${countText(data.totalUsers)}명`} sub={signupSub(data.todaySignups)} />
             <StatCard href="/admin/stats" icon={Eye} iconClass="bg-violet-100 text-violet-600" label="오늘 접속자" value={`${countText(data.todayLogins)}명`} sub={loginSub(data.loginDeltaPercent)} />
             <StatCard href="/admin/moderation" icon={ShieldAlert} iconClass="bg-rose-100 text-rose-600" label="미처리 신고" value={`${countText(data.openReports)}건`} sub={`긴급 ${countText(data.urgentReports)}건`} />
             <StatCard href="/admin/email-logs" icon={Mail} iconClass="bg-amber-100 text-amber-600" label="메일 발송 실패" value={`${countText(data.mailFailures)}건`} sub={mailSub} />
@@ -384,7 +440,11 @@ export default function AdminOpsHomeClient() {
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1.2fr)]">
+      <Panel title="오늘 처리할 일">
+        {detailReady ? <TaskList items={data.tasks} /> : <p className={`flex ${TASK_LIST_MIN_HEIGHT} items-center justify-center text-sm text-slate-400`}>처리할 일을 불러오는 중입니다.</p>}
+      </Panel>
+
+      <div className="grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1.2fr)]">
         <Panel title="주요 관리 바로가기">
           <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
             <Shortcut href="/admin/mainimg" icon={ImageIcon} iconClass="bg-violet-500" label="메인이미지 관리" detail={`현재 ${countText(data.mainimgLive)}개 노출중`} />
@@ -396,18 +456,26 @@ export default function AdminOpsHomeClient() {
           </div>
         </Panel>
         <Panel title="공지사항 / 운영 알림" href="/community/notice" action="전체보기">
-          {loading ? <p className="py-8 text-center text-sm text-slate-400">공지를 불러오는 중입니다.</p> : <NoticeList items={data.notices} />}
+          {detailReady ? <NoticeList items={data.notices} /> : <p className="py-8 text-center text-sm text-slate-400">공지를 불러오는 중입니다.</p>}
         </Panel>
         <div className="grid gap-4 md:grid-cols-2">
           <Panel title="최근 7일 사용자 추이" href="/admin/stats" action="전체보기">
-            {data.trendLabels.length < 2 ? (
-              <p className="py-8 text-center text-sm text-slate-400">추이 데이터가 없습니다.</p>
+            {!coreReady ? (
+              <p className="py-8 text-center text-sm text-slate-400">추이를 불러오는 중입니다.</p>
+            ) : data.trendLabels.length < 2 ? (
+              <p className="py-8 text-center text-sm text-slate-400">{data.serviceLabel}</p>
             ) : (
               <TrendChart labels={data.trendLabels} series={data.trend} />
             )}
           </Panel>
           <Panel title="회원 현황" href="/admin/users" action="전체보기">
-            <MemberDonut total={data.totalUsers} slices={data.memberSlices} />
+            {!coreReady ? (
+              <p className="py-8 text-center text-sm text-slate-400">회원 현황을 불러오는 중입니다.</p>
+            ) : data.servers.length || data.totalUsers > 0 || data.memberSlices.length ? (
+              <MemberDonut total={data.totalUsers} slices={data.memberSlices} />
+            ) : (
+              <p className="py-8 text-center text-sm text-slate-400">{data.serviceLabel}</p>
+            )}
           </Panel>
         </div>
       </div>

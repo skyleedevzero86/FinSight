@@ -20,6 +20,7 @@ import com.sleekydz86.finsight.core.global.exception.BoardNotFoundException;
 import com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException;
 import com.sleekydz86.finsight.core.global.exception.NewsNotFoundException;
 import com.sleekydz86.finsight.core.inbox.domain.InboxCategory;
+import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import com.sleekydz86.finsight.core.inbox.service.InboxService;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
@@ -43,19 +44,22 @@ public class CommentCommandService implements CommentCommandUseCase {
     private final BoardPersistencePort boardPersistencePort;
     private final UserPersistencePort userPersistencePort;
     private final InboxService inboxService;
+    private final NewsPersistencePort newsPersistencePort;
 
     public CommentCommandService(CommentPersistencePort commentPersistencePort,
                                  CommentReactionPersistencePort commentReactionPersistencePort,
                                  CommentReportPersistencePort commentReportPersistencePort,
                                  BoardPersistencePort boardPersistencePort,
                                  UserPersistencePort userPersistencePort,
-                                 InboxService inboxService) {
+                                 InboxService inboxService,
+                                 NewsPersistencePort newsPersistencePort) {
         this.commentPersistencePort = commentPersistencePort;
         this.commentReactionPersistencePort = commentReactionPersistencePort;
         this.commentReportPersistencePort = commentReportPersistencePort;
         this.boardPersistencePort = boardPersistencePort;
         this.userPersistencePort = userPersistencePort;
         this.inboxService = inboxService;
+        this.newsPersistencePort = newsPersistencePort;
     }
 
     @Override
@@ -72,6 +76,9 @@ public class CommentCommandService implements CommentCommandUseCase {
             if (board.getBoardType() == BoardType.QNA) {
                 assertCanCommentOnQna(board, userEmail, userRole);
             }
+        }
+        if (request.getCommentType() == CommentType.NEWS) {
+            assertNewsExists(request.getTargetId());
         }
 
         Comment comment = Comment.builder()
@@ -97,6 +104,14 @@ public class CommentCommandService implements CommentCommandUseCase {
         log.info("댓글 생성 완료 - 댓글 ID: {}", savedComment.getId());
 
         return savedComment;
+    }
+
+    private void assertNewsExists(Long newsId) {
+        if (newsId == null || newsId <= 0) {
+            throw new NewsNotFoundException(newsId);
+        }
+        newsPersistencePort.findById(newsId)
+                .orElseThrow(() -> new NewsNotFoundException(newsId));
     }
 
     private void notifyBoardAuthorOnComment(Board board, String commenterEmail, Comment comment) {

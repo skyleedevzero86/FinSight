@@ -21,6 +21,7 @@ public class BoardListResponse {
     private final String timeAgo;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
+    private final boolean highlighted;
 
     public BoardListResponse() {
         this.id = null;
@@ -36,12 +37,13 @@ public class BoardListResponse {
         this.timeAgo = "";
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        this.highlighted = false;
     }
 
     public BoardListResponse(Long id, String title, String authorEmail, BoardType boardType,
                              BoardStatus status, int viewCount, int likeCount, int dislikeCount,
                              int commentCount, List<String> hashtags, String timeAgo,
-                             LocalDateTime createdAt, LocalDateTime updatedAt) {
+                             LocalDateTime createdAt, LocalDateTime updatedAt, boolean highlighted) {
         this.id = id;
         this.title = title;
         this.authorEmail = authorEmail;
@@ -55,6 +57,7 @@ public class BoardListResponse {
         this.timeAgo = timeAgo;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.highlighted = highlighted;
     }
 
     public static BoardListResponse from(Board board) {
@@ -71,7 +74,8 @@ public class BoardListResponse {
                 board.getHashtags(),
                 calculateTimeAgo(board.getCreatedAt()),
                 board.getCreatedAt(),
-                board.getUpdatedAt()
+                board.getUpdatedAt(),
+                board.isHighlighted()
         );
     }
 
@@ -107,6 +111,7 @@ public class BoardListResponse {
     public String getTimeAgo() { return timeAgo; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public boolean isHighlighted() { return highlighted; }
 
     @Override
     public String toString() {

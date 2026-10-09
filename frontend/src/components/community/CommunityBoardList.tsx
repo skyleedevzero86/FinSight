@@ -156,7 +156,7 @@ export default function CommunityBoardList({
                       )}
                     </td>
                     <td className="td_subject">
-                      <Link href={row.href}>
+                      <Link href={row.href} className={row.emphasized ? "is_emphasis" : undefined}>
                         {row.privatePost ? (
                           <span className="mr-1.5 inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600">
                             비공개

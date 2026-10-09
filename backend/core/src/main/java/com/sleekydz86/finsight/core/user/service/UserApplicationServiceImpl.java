@@ -432,6 +432,13 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public MemberDetectionCounts memberDetectionCounts() {
+        long members = userPersistencePort.countMembers();
+        long emails = userPersistencePort.countMembersWithEmail();
+        log.info("자동 탐지용 회원정보 집계: members={}, emails={}", members, emails);
+        return new MemberDetectionCounts(members, members, emails);
+    }
+
     public Page<UserResponse> searchAdminUsers(UserStatus status, String keyword, boolean revealUsername,
             boolean revealEmail, boolean revealPhone, Pageable pageable) {
         return userPersistencePort.searchUsers(status, keyword, pageable)

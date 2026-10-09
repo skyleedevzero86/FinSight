@@ -223,6 +223,20 @@ public class AdvancedNewsService implements NewsCommandUseCase, NewsQueryUseCase
     }
 
     @Override
+    public Newses getLatestNewsByProvider(String provider, int limit) {
+        if (provider == null || provider.isBlank()) {
+            return new Newses();
+        }
+        try {
+            NewsProvider parsed = NewsProvider.valueOf(provider.trim().toUpperCase());
+            return newsPersistencePort.findLatestNewsByProvider(parsed, Math.max(1, limit));
+        } catch (IllegalArgumentException exception) {
+            log.warn("유효하지 않은 뉴스 제공자: {}", provider);
+            return new Newses();
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     @Cacheable(key = "news:latest", expireSeconds = 300)
     public Newses getLatestNews(int limit) {

@@ -30,6 +30,8 @@ public interface BoardPersistencePort {
 
     long countByBoardType(BoardType boardType);
 
+    long countActiveHighlightedNotices(Long excludeId);
+
     long countByAuthorEmail(String authorEmail);
 
     long countByAuthorEmailBetween(String authorEmail, java.time.LocalDateTime from, java.time.LocalDateTime to);

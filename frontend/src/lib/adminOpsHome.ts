@@ -1,5 +1,7 @@
 import { fetchAdminEmailLogs, type AdminEmailLog, type EmailStatus } from "@/lib/adminEmailLogs"
+import { fetchAdminUsers } from "@/lib/adminUsers"
 import {
+  fetchAdminOpsHome,
   fetchAdminStatsChart,
   fetchAdminStatsOverview,
   type AdminStatsChart,
@@ -15,6 +17,7 @@ export type OpsServerRow = {
   name: string
   ok: boolean
   statusLabel: string
+  detail: string
   cpu: number | null
   memory: number | null
 }
@@ -35,6 +38,14 @@ export type OpsTrendSeries = {
   name: string
   color: string
   points: number[]
+}
+
+export type OpsTask = {
+  key: string
+  label: string
+  title: string
+  href: string
+  urgent: boolean
 }
 
 export type AdminOpsHomeData = {
@@ -58,6 +69,7 @@ export type AdminOpsHomeData = {
   trendLabels: string[]
   trend: OpsTrendSeries[]
   memberSlices: OpsSlice[]
+  tasks: OpsTask[]
 }
 
 type ReportHit = {
@@ -192,8 +204,9 @@ async function reportHits(path: string): Promise<ReportHit[]> {
 }
 
 function serverRows(overview: AdminStatsOverview | null): OpsServerRow[] {
-  const health = overview?.healthSnapshot
-  const metrics = overview?.metricsSnapshot
+  if (!overview) return []
+  const health = overview.healthSnapshot
+  const metrics = overview.metricsSnapshot
   const cpu = metrics?.cpuUsagePercent ?? null
   const memory = metrics ? Math.round(metrics.heapUsagePercent) : null
   return [
@@ -201,6 +214,7 @@ function serverRows(overview: AdminStatsOverview | null): OpsServerRow[] {
       name: "Spring API",
       ok: isUp(health?.overall?.status),
       statusLabel: statusLabel(health?.overall?.status),
+      detail: health?.overall?.message || "",
       cpu,
       memory,
     },
@@ -208,6 +222,7 @@ function serverRows(overview: AdminStatsOverview | null): OpsServerRow[] {
       name: "데이터베이스",
       ok: isUp(health?.database?.status),
       statusLabel: statusLabel(health?.database?.status),
+      detail: health?.database?.message || "",
       cpu: null,
       memory: null,
     },
@@ -215,10 +230,19 @@ function serverRows(overview: AdminStatsOverview | null): OpsServerRow[] {
       name: "Redis",
       ok: isUp(health?.redis?.status),
       statusLabel: statusLabel(health?.redis?.status),
+      detail: health?.redis?.message || "",
       cpu: null,
       memory: null,
     },
   ]
+}
+
+function healthLog(status: string | undefined, message: string | undefined, time: string): OpsLogLine {
+  return {
+    level: isUp(status) ? "INFO" : "ERROR",
+    message: message || "상태를 확인하지 못했습니다.",
+    timeLabel: time,
+  }
 }
 
 function buildLogs(
@@ -227,12 +251,12 @@ function buildLogs(
   reports: ReportHit[],
 ): OpsLogLine[] {
   const time = clockNow(overview?.metricsSnapshot?.timestamp)
-  const overall = overview?.healthSnapshot.overall
-  const healthLine: OpsLogLine = {
-    level: isUp(overall?.status) ? "INFO" : "ERROR",
-    message: overall?.message || "시스템 상태를 확인하지 못했습니다.",
-    timeLabel: time,
-  }
+  const health = overview?.healthSnapshot
+  const healthLines: OpsLogLine[] = [
+    healthLog(health?.overall?.status, health?.overall?.message, time),
+    healthLog(health?.database?.status, health?.database?.message ? `데이터베이스: ${health.database.message}` : undefined, time),
+    healthLog(health?.redis?.status, health?.redis?.message ? `Redis: ${health.redis.message}` : undefined, time),
+  ]
   const mailLines: OpsLogLine[] = mails.slice(0, 3).map((item) => ({
     level: "ERROR",
     message: item.errorMessage || `메일 발송 실패: ${item.subject}`,
@@ -243,7 +267,7 @@ function buildLogs(
     message: `신고 ${item.reportCount}회 · ${item.title}`,
     timeLabel: clockLabel(item.createdAt),
   }))
-  return [healthLine, ...mailLines, ...reportLines].slice(0, 5)
+  return [...healthLines, ...mailLines, ...reportLines].slice(0, 5)
 }
 
 function memberSlices(overview: AdminStatsOverview | null): OpsSlice[] {
@@ -252,6 +276,7 @@ function memberSlices(overview: AdminStatsOverview | null): OpsSlice[] {
     { label: "승인", value: overview.approvedUsers, color: "#3b82f6" },
     { label: "승인대기", value: overview.pendingUsers, color: "#94a3b8" },
     { label: "정지", value: overview.suspendedUsers, color: "#f97316" },
+    { label: "거부", value: overview.totalUsers - overview.approvedUsers - overview.pendingUsers - overview.suspendedUsers - overview.withdrawnUsers, color: "#a855f7" },
     { label: "탈퇴", value: overview.withdrawnUsers, color: "#ef4444" },
   ].filter((slice) => slice.value > 0)
 }
@@ -335,16 +360,141 @@ function toOpsHome(bundle: OpsBundle): AdminOpsHomeData {
     trendLabels: trend.labels,
     trend: trend.series,
     memberSlices: memberSlices(bundle.overview),
+    tasks: [],
   }
 }
 
-export async function loadAdminOpsHome(): Promise<AdminOpsHomeData> {
-  const [overviewResult, signupsResult, loginsResult, contentResult, notices, mainimgLive, popupLive, ulinkCount, failedMails, sentTotal, failedTotal, mailToday, boardReports, commentReports] =
+const EMPTY_EXTRAS = {
+  notices: [] as MyInfoNotice[],
+  mainimgLive: 0,
+  popupLive: 0,
+  ulinkCount: 0,
+  failedMails: [] as AdminEmailLog[],
+  sentTotal: 0,
+  failedTotal: 0,
+  mailToday: "오늘 0건",
+  reports: [] as ReportHit[],
+  tasks: [] as OpsTask[],
+}
+
+async function pendingApprovals(): Promise<OpsTask[]> {
+  const result = await fetchAdminUsers({
+    page: 0,
+    size: 3,
+    status: "PENDING",
+    keyword: "",
+    reveal: [],
+  })
+  if (!result.ok) return []
+  return result.data.content.map((user) => ({
+    key: `pending-${user.id}`,
+    label: "승인 대기",
+    title: user.nickname || user.email || user.username || `회원 #${user.id}`,
+    href: "/admin/users",
+    urgent: false,
+  }))
+}
+
+function buildTasks(pending: OpsTask[], reports: ReportHit[], mails: AdminEmailLog[]): OpsTask[] {
+  const urgentReports = reports.filter((item) => item.reportCount >= URGENT_REPORTS)
+  const reportTasks = [...urgentReports, ...reports.filter((item) => item.reportCount < URGENT_REPORTS)]
+    .slice(0, 2)
+    .map((item, index) => ({
+      key: `report-${index}-${item.title}`,
+      label: item.reportCount >= URGENT_REPORTS ? "긴급 신고" : "신고",
+      title: item.title,
+      href: "/admin/moderation",
+      urgent: item.reportCount >= URGENT_REPORTS,
+    }))
+  const mailTasks = mails.slice(0, 2).map((item) => ({
+    key: `mail-${item.id}`,
+    label: "메일 실패",
+    title: item.subject || item.errorMessage || "발송 실패",
+    href: "/admin/email-logs",
+    urgent: true,
+  }))
+  return [...pending.slice(0, 2), ...reportTasks, ...mailTasks].slice(0, 5)
+}
+
+let coreFlight: Promise<AdminOpsHomeData> | null = null
+
+function emptyOpsHome(message: string): AdminOpsHomeData {
+  return {
+    ...toOpsHome({
+      overview: null,
+      signups: null,
+      logins: null,
+      content: null,
+      ...EMPTY_EXTRAS,
+    }),
+    serviceLabel: message,
+  }
+}
+
+function homeFromParts(
+  overview: AdminStatsOverview | null,
+  signups: AdminStatsChart | null,
+  logins: AdminStatsChart | null,
+  content: AdminStatsChart | null,
+): AdminOpsHomeData {
+  return toOpsHome({
+    overview,
+    signups,
+    logins,
+    content,
+    ...EMPTY_EXTRAS,
+  })
+}
+
+async function fetchLegacyOpsHome(): Promise<AdminOpsHomeData | null> {
+  const [overview, signups, logins, content] = await Promise.all([
+    fetchAdminStatsOverview(),
+    fetchAdminStatsChart("signups", { days: 7 }),
+    fetchAdminStatsChart("logins", { days: 7 }),
+    fetchAdminStatsChart("content", { days: 7 }),
+  ])
+  if (!overview.ok) return null
+  return homeFromParts(
+    overview.data,
+    signups.ok ? signups.data : null,
+    logins.ok ? logins.data : null,
+    content.ok ? content.data : null,
+  )
+}
+
+async function fetchOpsCore(): Promise<AdminOpsHomeData> {
+  const packed = await fetchAdminOpsHome()
+  if (packed.ok) {
+    return homeFromParts(
+      packed.data.overview,
+      packed.data.signups,
+      packed.data.logins,
+      packed.data.content,
+    )
+  }
+  if (packed.missing) {
+    const legacy = await fetchLegacyOpsHome()
+    if (legacy) return legacy
+  }
+  const expired = /로그인이 만료|유효하지 않습니다/.test(packed.message ?? "")
+  if (!expired) {
+    console.error("운영 현황을 불러오지 못했습니다.", packed.message)
+  }
+  return emptyOpsHome(packed.message)
+}
+
+export function loadAdminOpsCore(): Promise<AdminOpsHomeData> {
+  if (!coreFlight) {
+    coreFlight = fetchOpsCore().finally(() => {
+      coreFlight = null
+    })
+  }
+  return coreFlight
+}
+
+export async function loadAdminOpsExtras(base: AdminOpsHomeData): Promise<AdminOpsHomeData> {
+  const [notices, mainimgLive, popupLive, ulinkCount, failedMails, sentTotal, failedTotal, mailToday, boardReports, commentReports, pending] =
     await Promise.all([
-      fetchAdminStatsOverview(),
-      fetchAdminStatsChart("signups", { days: 7 }),
-      fetchAdminStatsChart("logins", { days: 7 }),
-      fetchAdminStatsChart("content", { days: 7 }),
       loadNoticeCards(5),
       countOf(() => fetchAdminMainimgItems({ page: 0, size: 1, reflectOnly: true })),
       countOf(() => fetchAdminPopupItems({ page: 0, size: 1, activeOnly: true })),
@@ -355,23 +505,33 @@ export async function loadAdminOpsHome(): Promise<AdminOpsHomeData> {
       mailTodayLabel(),
       reportHits("/api/v1/admin/boards/maintenance/candidates?reportThreshold=1"),
       reportHits("/api/v1/admin/comments/maintenance/candidates?reportThreshold=1"),
+      pendingApprovals(),
     ])
-  if (!overviewResult.ok) {
-    console.error("운영 현황 개요를 불러오지 못했습니다.", overviewResult.message)
-  }
-  return toOpsHome({
-    overview: overviewResult.ok ? overviewResult.data : null,
-    signups: signupsResult.ok ? signupsResult.data : null,
-    logins: loginsResult.ok ? loginsResult.data : null,
-    content: contentResult.ok ? contentResult.data : null,
-    notices,
+  const reports = [...boardReports, ...commentReports]
+  const extraLogs = [
+    ...failedMails.slice(0, 3).map((item) => ({
+      level: "ERROR" as const,
+      message: item.errorMessage || `메일 발송 실패: ${item.subject}`,
+      timeLabel: clockLabel(item.createdAt),
+    })),
+    ...reports.slice(0, 3).map((item) => ({
+      level: (item.reportCount >= URGENT_REPORTS ? "ERROR" : "WARN") as OpsLogLine["level"],
+      message: `신고 ${item.reportCount}회 · ${item.title}`,
+      timeLabel: clockLabel(item.createdAt),
+    })),
+  ]
+  return {
+    ...base,
+    logs: [...base.logs, ...extraLogs].slice(0, 5),
+    openReports: reports.length,
+    urgentReports: reports.filter((item) => item.reportCount >= URGENT_REPORTS).length,
+    mailFailures: failedTotal,
+    mailSuccessPercent: successPercent(sentTotal, failedTotal),
     mainimgLive,
     popupLive,
     ulinkCount,
-    failedMails,
-    sentTotal,
-    failedTotal,
-    mailToday,
-    reports: [...boardReports, ...commentReports],
-  })
+    mailTodayLabel: mailToday,
+    notices,
+    tasks: buildTasks(pending, reports, failedMails),
+  }
 }

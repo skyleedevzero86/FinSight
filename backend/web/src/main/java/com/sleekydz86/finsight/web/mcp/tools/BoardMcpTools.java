@@ -1,10 +1,12 @@
 package com.sleekydz86.finsight.web.mcp.tools;
 
 import com.sleekydz86.finsight.core.board.domain.BoardType;
+import com.sleekydz86.finsight.core.board.domain.port.in.dto.BoardDetailResponse;
 import com.sleekydz86.finsight.core.board.domain.port.in.dto.BoardListResponse;
 import com.sleekydz86.finsight.core.board.domain.port.in.dto.BoardSearchRequest;
 import com.sleekydz86.finsight.core.board.service.BoardQueryService;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
+import com.sleekydz86.finsight.web.mcp.McpText;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -37,16 +39,50 @@ public class BoardMcpTools {
                 .size(safeSize)
                 .build();
         PaginationResponse<BoardListResponse> result = boardQueryService.getBoards(request);
-        List<BoardSummary> items = result.getContent().stream()
-                .map(b -> new BoardSummary(
-                        b.getId(),
-                        b.getTitle(),
-                        b.getBoardType() != null ? b.getBoardType().name() : null,
-                        b.getViewCount(),
-                        b.getCommentCount(),
-                        b.getCreatedAt() != null ? b.getCreatedAt().toString() : null))
+        List<BoardSummary> items = result == null || result.getContent() == null
+                ? List.of()
+                : result.getContent().stream().map(BoardMcpTools::summary).toList();
+        long total = result == null ? 0 : result.getTotalElements();
+        return new BoardListResult(items.size(), total, safePage, safeSize, items);
+    }
+
+    @Tool(description = "게시글 상세를 조회합니다. 조회수는 올리지 않습니다. 읽기 전용입니다.")
+    public BoardDetailResult getBoardDetail(
+            @ToolParam(description = "게시글 ID") Long boardId) {
+        if (boardId == null || boardId <= 0) {
+            throw new IllegalArgumentException("게시글 ID가 올바르지 않습니다. 입력값: " + boardId + ". 1 이상의 숫자여야 합니다.");
+        }
+        BoardDetailResponse detail = boardQueryService.getBoardDetail(boardId, null, false, false);
+        String preview = detail.getPlainTextPreview() != null ? detail.getPlainTextPreview() : detail.getContent();
+        return new BoardDetailResult(
+                detail.getId(),
+                detail.getTitle(),
+                detail.getBoardType() == null ? null : detail.getBoardType().name(),
+                detail.getAuthorEmail(),
+                detail.getViewCount(),
+                detail.getCommentCount(),
+                McpText.clip(preview, 1200));
+    }
+
+    @Tool(description = "인기 게시글을 조회합니다. 읽기 전용입니다.")
+    public BoardListResult listPopularBoards(
+            @ToolParam(description = "조회 개수 (1~30)", required = false) Integer limit) {
+        int safeLimit = clamp(limit, 1, 30, 10);
+        List<BoardSummary> items = boardQueryService.getPopularBoards(safeLimit).stream()
+                .map(BoardMcpTools::summary)
                 .toList();
-        return new BoardListResult(items.size(), result.getTotalElements(), safePage, safeSize, items);
+        return new BoardListResult(items.size(), items.size(), 0, safeLimit, items);
+    }
+
+    private static BoardSummary summary(BoardListResponse board) {
+        return new BoardSummary(
+                board.getId(),
+                board.getTitle(),
+                board.getBoardType() == null ? null : board.getBoardType().name(),
+                board.getViewCount(),
+                board.getCommentCount(),
+                board.getCreatedAt() == null ? null : board.getCreatedAt().toString(),
+                board.getAuthorEmail());
     }
 
     private static BoardType parseBoardType(String boardType) {
@@ -81,7 +117,8 @@ public class BoardMcpTools {
             String boardType,
             int viewCount,
             int commentCount,
-            String createdAt) {
+            String createdAt,
+            String authorEmail) {
     }
 
     public record BoardListResult(
@@ -90,5 +127,15 @@ public class BoardMcpTools {
             int page,
             int size,
             List<BoardSummary> items) {
+    }
+
+    public record BoardDetailResult(
+            Long id,
+            String title,
+            String boardType,
+            String authorEmail,
+            int viewCount,
+            int commentCount,
+            String contentPreview) {
     }
 }

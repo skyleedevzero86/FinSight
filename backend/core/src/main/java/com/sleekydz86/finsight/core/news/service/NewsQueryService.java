@@ -9,7 +9,9 @@ import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsDetailResponse;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsSearchRequest;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsStatisticsPersistencePort;
+import com.sleekydz86.finsight.core.news.domain.vo.NewsTextRepair;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.global.exception.NewsNotFoundException;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
@@ -86,6 +88,7 @@ public class NewsQueryService implements NewsQueryUseCase {
         }
 
         @Override
+        @Transactional
         public NewsDetailResponse getNewsDetail(Long newsId) {
                 log.info("뉴스 상세 조회 - ID: {}", newsId);
 
@@ -97,18 +100,21 @@ public class NewsQueryService implements NewsQueryUseCase {
                 return NewsDetailResponse.builder()
                         .id(news.getId())
                         .newsProvider(news.getNewsProvider())
-                        .originalTitle(news.getOriginalContent() != null ? news.getOriginalContent().getTitle()
+                        .originalTitle(news.getOriginalContent() != null
+                                ? NewsTextRepair.repair(news.getOriginalContent().getTitle())
                                 : null)
                         .originalContent(news.getOriginalContent() != null
-                                ? news.getOriginalContent().getContent()
+                                ? NewsTextRepair.repair(news.getOriginalContent().getContent())
                                 : null)
                         .translatedTitle(news.getTranslatedContent() != null
-                                ? news.getTranslatedContent().getTitle()
+                                ? NewsTextRepair.repair(news.getTranslatedContent().getTitle())
                                 : null)
                         .translatedContent(news.getTranslatedContent() != null
-                                ? news.getTranslatedContent().getContent()
+                                ? NewsTextRepair.repair(news.getTranslatedContent().getContent())
                                 : null)
-                        .overview(news.getAiOverView() != null ? news.getAiOverView().getOverview() : null)
+                        .overview(news.getAiOverView() != null
+                                ? NewsTextRepair.repair(news.getAiOverView().getOverview())
+                                : null)
                         .sentimentType(news.getAiOverView() != null ? news.getAiOverView().getSentimentType()
                                 : null)
                         .sentimentScore(news.getAiOverView() != null ? news.getAiOverView().getSentimentScore()
@@ -119,6 +125,7 @@ public class NewsQueryService implements NewsQueryUseCase {
                                 : null)
                         .scrapedTime(news.getScrapedTime())
                         .sourceUrl(news.getNewsMeta() != null ? news.getNewsMeta().getSourceUrl() : null)
+                        .imageUrl(news.getOriginalContent() != null ? news.getOriginalContent().getImageUrl() : null)
                         .statistics(null)
                         .comments(null)
                         .relatedNews(null)
@@ -162,6 +169,16 @@ public class NewsQueryService implements NewsQueryUseCase {
         }
 
         @Override
+        public Newses getLatestNewsByProvider(String provider, int limit) {
+                NewsProvider parsed = newsProvider(provider);
+                if (parsed == null) {
+                        return new Newses();
+                }
+                log.info("제공자별 최신 뉴스 조회 - 제공자: {}, 제한: {}", parsed, limit);
+                return newsPersistencePort.findLatestNewsByProvider(parsed, Math.max(1, limit));
+        }
+
+        @Override
         public Newses getNewsByCategory(String category, int limit) {
                 log.info("카테고리별 뉴스 조회 - 카테고리: {}, 제한: {}", category, limit);
 
@@ -198,5 +215,17 @@ public class NewsQueryService implements NewsQueryUseCase {
                         request.getProviders());
 
                 return newsPersistencePort.findAllByFilters(queryRequest).getNewses().size();
+        }
+
+        private NewsProvider newsProvider(String provider) {
+                if (provider == null || provider.isBlank()) {
+                        return null;
+                }
+                try {
+                        return NewsProvider.valueOf(provider.trim().toUpperCase());
+                } catch (IllegalArgumentException exception) {
+                        log.warn("유효하지 않은 뉴스 제공자: {}", provider);
+                        return null;
+                }
         }
 }

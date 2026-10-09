@@ -1,7 +1,6 @@
 package com.sleekydz86.finsight.core.news.adapter.out;
 
 import com.sleekydz86.finsight.core.global.AiModel;
-import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.domain.port.out.requester.NewsAiRequester;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsAiAnalysisRequesterPort;
@@ -11,8 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -131,121 +128,8 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
     }
 
     private List<News> generateBasicAnalysis(Content content) {
-        log.info("콘텐츠 기본 분석 생성: {}", content.getTitle());
-
-        try {
-            String basicOverview = extractBasicOverview(content);
-            SentimentType sentimentType = analyzeBasicSentiment(content);
-            List<TargetCategory> categories = extractBasicCategories(content);
-
-            var aiOverview = new AiOverview(
-                    basicOverview,
-                    sentimentType,
-                    0.5,
-                    categories
-            );
-
-            var news = News.createWithoutAI(
-                    new NewsMeta(NewsProvider.ALL, LocalDateTime.now(), "fallback"),
-                    content
-            ).updateAiAnalysis(
-                    basicOverview,
-                    content.getTitle(),
-                    content.getContent(),
-                    categories,
-                    sentimentType,
-                    0.5
-            );
-
-            return List.of(news);
-
-        } catch (Exception e) {
-            log.error("기본 분석 생성 실패", e);
-            
-            var news = News.createWithoutAI(
-                    new NewsMeta(NewsProvider.ALL, LocalDateTime.now(), "fallback"),
-                    content
-            );
-            return List.of(news);
-        }
-    }
-
-    private String extractBasicOverview(Content content) {
-        String text = content.getTitle() + " " + content.getContent();
-
-        if (text.toLowerCase().contains("stock") || text.toLowerCase().contains("market")) {
-            return "주식 시장 관련 뉴스입니다.";
-        } else if (text.toLowerCase().contains("crypto") || text.toLowerCase().contains("bitcoin")) {
-            return "암호화폐 관련 뉴스입니다.";
-        } else if (text.toLowerCase().contains("earnings") || text.toLowerCase().contains("revenue")) {
-            return "기업 실적 관련 뉴스입니다.";
-        }
-
-        return "금융 관련 뉴스입니다.";
-    }
-
-    private SentimentType analyzeBasicSentiment(Content content) {
-        String text = (content.getTitle() + " " + content.getContent()).toLowerCase();
-
-        List<String> positiveWords = List.of("surge", "jump", "rise", "gain", "profit", "growth", "positive", "bullish");
-        List<String> negativeWords = List.of("fall", "drop", "decline", "loss", "crash", "negative", "bearish", "concern");
-
-        int positiveCount = countWords(text, positiveWords);
-        int negativeCount = countWords(text, negativeWords);
-
-        if (positiveCount > negativeCount) {
-            return SentimentType.POSITIVE;
-        } else if (negativeCount > positiveCount) {
-            return SentimentType.NEGATIVE;
-        } else {
-            return SentimentType.NEUTRAL;
-        }
-    }
-
-    private int countWords(String text, List<String> words) {
-        return (int) words.stream()
-                .filter(text::contains)
-                .count();
-    }
-
-    private List<TargetCategory> extractBasicCategories(Content content) {
-        String text = (content.getTitle() + " " + content.getContent()).toLowerCase();
-
-        List<TargetCategory> categories = new ArrayList<>();
-
-        if (text.contains("apple") || text.contains("iphone")) {
-            categories.add(TargetCategory.AAPL);
-        }
-        if (text.contains("microsoft") || text.contains("azure")) {
-            categories.add(TargetCategory.MSFT);
-        }
-        if (text.contains("nvidia") || text.contains("ai")) {
-            categories.add(TargetCategory.NVDA);
-        }
-        if (text.contains("google") || text.contains("alphabet")) {
-            categories.add(TargetCategory.GOOGL);
-        }
-        if (text.contains("meta") || text.contains("facebook")) {
-            categories.add(TargetCategory.META);
-        }
-        if (text.contains("tesla") || text.contains("electric")) {
-            categories.add(TargetCategory.TSLA);
-        }
-        if (text.contains("bitcoin") || text.contains("crypto")) {
-            categories.add(TargetCategory.BTC);
-        }
-        if (text.contains("spy") || text.contains("s&p")) {
-            categories.add(TargetCategory.SPY);
-        }
-        if (text.contains("qqq") || text.contains("nasdaq")) {
-            categories.add(TargetCategory.QQQ);
-        }
-
-        if (categories.isEmpty()) {
-            categories.add(TargetCategory.NONE);
-        }
-
-        return categories;
+        log.warn("AI 분석을 만들지 못했습니다. 제목: {}", content.getTitle());
+        return List.of();
     }
 
     @Override

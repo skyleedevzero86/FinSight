@@ -410,3 +410,42 @@ export const ONAIR_BLOCK_META = {
   image: IMG("/operate/common/category/vod/nwdesk/__icsFiles/afieldfile/2026/02/26/400x226.png"),
   alt: "프로그램 이미지",
 }
+
+export type HomeNewsCard = {
+  href: string
+  title: string
+  image: string
+  alt: string
+}
+
+function pushNewsCard(target: HomeNewsCard[], seen: Set<string>, card: HomeNewsCard) {
+  const title = card.title.trim()
+  if (!title || seen.has(title)) return
+  seen.add(title)
+  target.push({ ...card, title, href: card.href && card.href !== "#" ? card.href : "/news" })
+}
+
+export const HOME_LATEST_NEWS: HomeNewsCard[] = (() => {
+  const cards: HomeNewsCard[] = []
+  const seen = new Set<string>()
+  pushNewsCard(cards, seen, {
+    href: MAIN_HERO.href,
+    title: MAIN_HERO.title,
+    image: MAIN_HERO.image,
+    alt: MAIN_HERO.alt,
+  })
+  pushNewsCard(cards, seen, {
+    href: HIT_NEWS_TOP.href,
+    title: HIT_NEWS_TOP.title,
+    image: HIT_NEWS_TOP.image,
+    alt: HIT_NEWS_TOP.alt,
+  })
+  for (const group of [AI_PICK_PANS, AI_PICK_BOTTOM_PANS, MBIG_PANS, MBIG_EXTRA_PANS]) {
+    for (const item of group.flat()) {
+      if (item.vod) continue
+      pushNewsCard(cards, seen, item)
+      if (cards.length >= 6) return cards
+    }
+  }
+  return cards.slice(0, 6)
+})()

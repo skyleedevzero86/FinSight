@@ -33,8 +33,19 @@ public class YoutubeVideoMeta {
     @Builder.Default
     private List<String> keyPoints = new ArrayList<>();
     private LocalDateTime aiGeneratedAt;
+    private LocalDateTime aiFailedAt;
     private YoutubeImportStatus importStatus;
     private LocalDateTime syncedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    public String resolveAiStatus() {
+        if (aiGeneratedAt != null) {
+            return "DONE";
+        }
+        if (aiFailedAt != null) {
+            return "FAILED";
+        }
+        return "PENDING";
+    }
 }

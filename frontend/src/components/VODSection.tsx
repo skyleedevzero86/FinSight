@@ -1,7 +1,7 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
+import VodThumbnail from "@/components/VodThumbnail"
 import { useEffect, useMemo, useState } from "react"
 import { Play } from "lucide-react"
 import { useAuthSession } from "@/components/AuthSessionProvider"
@@ -92,11 +92,13 @@ export default function VODSection() {
 
   const visibleItems = useMemo(() => {
     if (activeTab === "recommended") {
-      return pickRecommendedItems(recommendPool, {
+      const picked = pickRecommendedItems(recommendPool, {
         loggedIn: Boolean(user),
         watchlist,
         limit: HOME_VOD_LIMIT,
       })
+      if (picked.length > 0) return picked
+      return latestItems.slice(0, HOME_VOD_LIMIT)
     }
     if (activeTab === "popular") {
       if (!hasPopularitySignal(latestItems)) {
@@ -110,8 +112,8 @@ export default function VODSection() {
   }, [activeTab, latestItems, recommendPool, user, watchlist])
 
   return (
-    <section className="py-12 px-4 md:px-8 max-w-7xl mx-auto">
-      <div className="mb-8 grid grid-cols-2 items-center gap-x-4 gap-y-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+    <section className="py-16 px-4 md:px-8 max-w-7xl mx-auto">
+      <div className="mb-10 grid grid-cols-2 items-center gap-x-8 gap-y-6 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-12">
         <h2 className="col-span-1 row-start-1 justify-self-start text-2xl font-bold md:col-start-1 md:row-start-1 md:text-3xl">
           실시간 VOD
         </h2>
@@ -121,7 +123,7 @@ export default function VODSection() {
         >
           더보기 →
         </Link>
-        <div className="col-span-2 row-start-2 flex justify-center gap-3 sm:gap-4 md:col-span-1 md:col-start-2 md:row-start-1 md:justify-self-center">
+        <div className="col-span-2 row-start-2 flex justify-center gap-8 md:col-span-1 md:col-start-2 md:row-start-1 md:justify-self-center md:gap-12">
           {TABS.map((tab) => {
             const selected = activeTab === tab.id
             return (
@@ -138,7 +140,7 @@ export default function VODSection() {
                       : "유튜브 최신 영상"
                 }
                 onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex min-w-[4.25rem] justify-center px-3 py-2 text-center text-sm font-semibold transition sm:min-w-[4.5rem] sm:px-4 ${
+                className={`inline-flex min-w-[5.75rem] justify-center px-5 py-2.5 text-center text-sm font-semibold transition md:min-w-[6.5rem] md:px-6 ${
                   selected
                     ? "text-finsight-primary border-b-2 border-finsight-primary"
                     : "text-gray-500 hover:text-gray-700"
@@ -152,13 +154,13 @@ export default function VODSection() {
       </div>
 
       {loading ? (
-        <p className="py-10 text-center text-sm text-gray-500">영상을 불러오는 중…</p>
+        <p className="py-16 text-center text-sm text-gray-500">영상을 불러오는 중…</p>
       ) : error && activeTab !== "recommended" ? (
-        <p className="py-10 text-center text-sm text-gray-500">{error}</p>
+        <p className="py-16 text-center text-sm text-gray-500">{error}</p>
       ) : visibleItems.length === 0 ? (
-        <p className="py-10 text-center text-sm text-gray-500">표시할 영상이 없습니다.</p>
+        <p className="py-16 text-center text-sm text-gray-500">표시할 영상이 없습니다.</p>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
           {visibleItems.map((vod) => {
             const sourceTab =
               "sourceTab" in vod && typeof vod.sourceTab === "string" ? vod.sourceTab : "ALL"
@@ -171,10 +173,10 @@ export default function VODSection() {
                 onClick={() => stashLiveVodMetaHint(vod)}
               >
                 <div className="relative aspect-video overflow-hidden rounded-lg mb-3">
-                  <Image
-                    src={vod.thumbnailUrl}
+                  <VodThumbnail
+                    videoId={vod.videoId}
+                    thumbnailUrl={vod.thumbnailUrl}
                     alt={vod.title}
-                    fill
                     sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover group-hover:scale-105 transition duration-300"
                   />

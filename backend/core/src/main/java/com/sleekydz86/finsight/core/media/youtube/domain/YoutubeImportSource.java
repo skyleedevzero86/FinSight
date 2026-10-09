@@ -17,6 +17,7 @@ public class YoutubeImportSource {
     private String sourceValue;
     private String category;
     private boolean active;
+    private boolean rejected;
     private boolean autoPublish;
     private LocalDateTime lastSyncedAt;
     private LocalDateTime createdAt;

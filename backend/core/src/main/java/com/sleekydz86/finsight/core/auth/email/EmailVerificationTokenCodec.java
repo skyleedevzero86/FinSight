@@ -24,7 +24,7 @@ public class EmailVerificationTokenCodec {
     private final SecureRandom secureRandom = new SecureRandom();
 
     public EmailVerificationTokenCodec(
-            @Value("${jwt.secret:defaultSecretKeyForDevelopmentOnly12345678901234567890}") String secret) {
+            @Value("${jwt.secret}") String secret) {
         this.secretKey = new SecretKeySpec(sha256(secret), "AES");
     }
 

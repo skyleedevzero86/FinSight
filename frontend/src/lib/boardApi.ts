@@ -1,4 +1,5 @@
 import { authHeadersJson } from "@/lib/finsightToken"
+import { keywordsFromViewedPosts } from "@/lib/searchKeywords"
 
 export type BoardTypeCode = "NOTICE" | "FREE" | "QNA" | "COMMUNITY" | "MEDIA"
 
@@ -16,6 +17,7 @@ export type BoardListItem = {
   timeAgo: string
   createdAt: string
   updatedAt: string
+  highlighted?: boolean
 }
 
 export type BoardPagination = {
@@ -48,6 +50,7 @@ export type BoardDetail = {
   files: unknown[]
   createdAt: string
   updatedAt: string
+  highlighted?: boolean
   navigation: {
     previous: {
       id: number
@@ -102,6 +105,145 @@ export type BoardReactionStatus = {
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object") return null
   return value as Record<string, unknown>
+}
+
+export type PopularBoardCard = {
+  id: number
+  title: string
+  boardType: BoardTypeCode
+  timeAgo: string
+}
+
+const BOARD_TYPES: BoardTypeCode[] = ["NOTICE", "FREE", "QNA", "COMMUNITY", "MEDIA"]
+
+function asBoardType(value: unknown): BoardTypeCode | null {
+  const code = typeof value === "string" ? value.toUpperCase() : ""
+  return BOARD_TYPES.find((item) => item === code) ?? null
+}
+
+export function boardDetailPath(boardType: string, id: number): string {
+  const t = boardType.toUpperCase()
+  if (t === "NOTICE") return `/community/notice/${id}`
+  if (t === "FREE") return `/community/free/${id}`
+  return `/community/qna/${id}`
+}
+
+export function boardListPath(boardType: string): string {
+  const t = boardType.toUpperCase()
+  if (t === "NOTICE") return "/community/notice"
+  if (t === "FREE") return "/community/free"
+  if (t === "QNA") return "/community/qna"
+  return "/community/notice"
+}
+
+type ScoredPopularCard = PopularBoardCard & { viewCount: number; hashtags: string[] }
+
+function parsePopularCards(data: unknown): ScoredPopularCard[] {
+  if (!Array.isArray(data)) return []
+  const cards: ScoredPopularCard[] = []
+  for (const row of data) {
+    const record = asRecord(row)
+    const id = Number(record?.id)
+    const boardType = asBoardType(record?.boardType)
+    if (!record || !Number.isFinite(id) || id <= 0 || !boardType) continue
+    cards.push({
+      id,
+      title: typeof record.title === "string" ? record.title : "",
+      boardType,
+      timeAgo: typeof record.timeAgo === "string" ? record.timeAgo : "",
+      viewCount: Number(record.viewCount) || 0,
+      hashtags: Array.isArray(record.hashtags)
+        ? record.hashtags.filter((item): item is string => typeof item === "string")
+        : [],
+    })
+  }
+  return cards
+}
+
+function toPopularCard(card: ScoredPopularCard): PopularBoardCard {
+  return {
+    id: card.id,
+    title: card.title,
+    boardType: card.boardType,
+    timeAgo: card.timeAgo,
+  }
+}
+
+function rankPopularCards(rows: ScoredPopularCard[], limit: number): PopularBoardCard[] {
+  return [...rows]
+    .sort((a, b) => b.viewCount - a.viewCount || b.id - a.id)
+    .slice(0, limit)
+    .map(toPopularCard)
+}
+
+async function fetchBoardTypeCards(boardType: BoardTypeCode): Promise<ScoredPopularCard[]> {
+  try {
+    const res = await fetch(`/api/v1/boards?boardType=${boardType}&page=0&size=50`, {
+      cache: "no-store",
+    })
+    if (!res.ok) return []
+    const payload: unknown = await res.json().catch(() => null)
+    const data = asRecord(unwrapApiData(payload))
+    return parsePopularCards(data?.content)
+  } catch {
+    return []
+  }
+}
+
+async function fetchPopularEndpoint(limit: number): Promise<ScoredPopularCard[]> {
+  try {
+    const res = await fetch(`/api/v1/boards/popular?limit=${limit}`, { cache: "no-store" })
+    if (!res.ok) return []
+    const payload: unknown = await res.json().catch(() => null)
+    return parsePopularCards(unwrapApiData(payload))
+  } catch {
+    return []
+  }
+}
+
+export function watchPopularBoardCards(
+  limit: number,
+  onCards: (cards: PopularBoardCard[]) => void,
+  onSettled: () => void,
+  onKeywords?: (keywords: string[]) => void,
+): () => void {
+  const size = Math.min(100, Math.max(1, limit))
+  let cancelled = false
+  let pending = BOARD_TYPES.length + 1
+  const scored = new Map<BoardTypeCode, ScoredPopularCard[]>()
+  const finishOne = () => {
+    pending -= 1
+    if (!cancelled && pending <= 0) onSettled()
+  }
+  const emitKeywords = (rows: ScoredPopularCard[]) => {
+    if (!onKeywords || cancelled) return
+    const keywords = keywordsFromViewedPosts(rows, 10)
+    if (keywords.length > 0) onKeywords(keywords)
+  }
+  const publish = () => {
+    if (cancelled) return
+    const rows = [...scored.values()].flat()
+    const cards = rankPopularCards(rows, size)
+    if (cards.length > 0) onCards(cards)
+    emitKeywords(rows)
+  }
+  void fetchPopularEndpoint(size).then((rows) => {
+    if (!cancelled && rows.length > 0) {
+      onCards(rankPopularCards(rows, size))
+      emitKeywords(rows)
+    }
+    finishOne()
+  })
+  for (const boardType of BOARD_TYPES) {
+    void fetchBoardTypeCards(boardType).then((rows) => {
+      scored.set(boardType, rows)
+      publish()
+      finishOne()
+    })
+  }
+  return () => {
+    cancelled = true
+  }
 }
 
 export async function fetchBoardReactionStatus(

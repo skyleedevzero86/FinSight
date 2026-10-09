@@ -34,6 +34,8 @@ public class YoutubeVideoListResponse {
     private YoutubeImportStatus importStatus;
     private List<String> hashtags;
     private LocalDateTime aiGeneratedAt;
+    private LocalDateTime aiFailedAt;
+    private String aiStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

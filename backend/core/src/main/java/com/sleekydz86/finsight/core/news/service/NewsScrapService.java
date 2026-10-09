@@ -21,7 +21,10 @@ public class NewsScrapService {
     }
 
     public List<News> scrapNewsFromProviders() {
-        List<NewsProvider> providers = List.of(NewsProvider.MARKETAUX);
+        List<NewsProvider> providers = List.of(
+                NewsProvider.MARKETAUX,
+                NewsProvider.ALPHA_VANTAGE,
+                NewsProvider.YAHOO_FINANCE);
 
         return providers.stream()
                 .map(provider -> {

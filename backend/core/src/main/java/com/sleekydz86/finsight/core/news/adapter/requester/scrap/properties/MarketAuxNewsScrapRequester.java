@@ -10,9 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -40,13 +41,16 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
             log.warn("MarketAux API 키가 없어 뉴스 수집을 건너뜁니다. MARKETAUX_API_KEY를 설정하세요.");
             return CompletableFuture.completedFuture(List.of());
         }
+        String publishedAfter = publishTimeAfter.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
+        var uri = UriComponentsBuilder.fromUriString(marketAuxProperties.getBaseUrl())
+                .queryParam("api_token", marketAuxProperties.getApiKey())
+                .queryParam("limit", limit)
+                .queryParam("language", "en")
+                .queryParam("published_after", publishedAfter)
+                .build()
+                .toUri();
         return webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path(marketAuxProperties.getBaseUrl())
-                        .queryParam("api_token", marketAuxProperties.getApiKey())
-                        .queryParam("limit", limit)
-                        .queryParam("published_after", publishTimeAfter.toInstant(ZoneOffset.UTC))
-                        .build())
+                .uri(uri)
                 .retrieve()
                 .bodyToMono(MarketAuxResponse.class)
                 .map(this::convertToNews)
@@ -73,7 +77,7 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                     publishedTime.toLocalDateTime(),
                     item.url);
 
-            Content originalContent = new Content(item.title, item.description);
+            Content originalContent = new Content(item.title, item.description).withImageUrl(item.image_url);
 
             return News.createWithoutAI(newsMeta, originalContent);
         } catch (Exception e) {
@@ -85,7 +89,8 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                     item.url != null ? item.url : "https://api.marketaux.com");
             Content fallbackContent = new Content(
                     item.title != null ? item.title : "제목 없음",
-                    item.description != null ? item.description : "설명 없음");
+                    item.description != null ? item.description : "설명 없음")
+                    .withImageUrl(item.image_url);
 
             return News.createWithoutAI(fallbackMeta, fallbackContent);
         }
@@ -108,6 +113,9 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
 
         @JsonProperty("url")
         public String url;
+
+        @JsonProperty("image_url")
+        public String image_url;
 
         @JsonProperty("published_at")
         public String published_at;

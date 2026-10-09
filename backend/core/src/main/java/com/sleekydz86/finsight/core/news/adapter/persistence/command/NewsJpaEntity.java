@@ -27,6 +27,9 @@ public class NewsJpaEntity {
     @Column(name = "source_url", nullable = false)
     private String sourceUrl;
 
+    @Column(name = "image_url", length = 1000)
+    private String imageUrl;
+
     @Column(name = "scraped_time", nullable = false)
     private LocalDateTime scrapedTime;
 
@@ -124,6 +127,14 @@ public class NewsJpaEntity {
 
     public void setSourceUrl(String sourceUrl) {
         this.sourceUrl = sourceUrl;
+    }
+
+    public String getImageUrl() {
+        return imageUrl;
+    }
+
+    public void setImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public LocalDateTime getScrapedTime() {

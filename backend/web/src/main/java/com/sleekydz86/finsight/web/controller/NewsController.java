@@ -4,7 +4,10 @@ import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.Newses;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsCommandUseCase;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsQueryUseCase;
+import com.sleekydz86.finsight.core.news.service.NewsAiAvailability;
+import com.sleekydz86.finsight.core.news.service.NewsReactionService;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsDetailResponse;
+import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsReactionResponse;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsQueryRequest;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsSearchRequest;
 import com.sleekydz86.finsight.core.global.annotation.CurrentUser;
@@ -14,6 +17,8 @@ import com.sleekydz86.finsight.core.global.annotation.SecurityAudit;
 import com.sleekydz86.finsight.core.global.dto.ApiResponse;
 import com.sleekydz86.finsight.core.global.dto.AuthenticatedUser;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
+import com.sleekydz86.finsight.core.global.exception.BaseException;
+import com.sleekydz86.finsight.core.global.exception.NewsNotFoundException;
 import com.sleekydz86.finsight.core.global.exception.SystemException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -32,10 +37,17 @@ public class NewsController {
 
     private final NewsCommandUseCase newsCommandUseCase;
     private final NewsQueryUseCase newsQueryUseCase;
+    private final NewsAiAvailability newsAiAvailability;
+    private final NewsReactionService newsReactionService;
 
-    public NewsController(NewsCommandUseCase newsCommandUseCase, NewsQueryUseCase newsQueryUseCase) {
+    public NewsController(NewsCommandUseCase newsCommandUseCase,
+                          NewsQueryUseCase newsQueryUseCase,
+                          NewsAiAvailability newsAiAvailability,
+                          NewsReactionService newsReactionService) {
         this.newsCommandUseCase = newsCommandUseCase;
         this.newsQueryUseCase = newsQueryUseCase;
+        this.newsAiAvailability = newsAiAvailability;
+        this.newsReactionService = newsReactionService;
     }
 
     @Operation(summary = "뉴스 스크래핑", description = "뉴스를 스크래핑합니다.")
@@ -56,22 +68,53 @@ public class NewsController {
         }
     }
 
+    @Operation(summary = "뉴스 반응 조회", description = "뉴스 좋아요·싫어요 수를 조회합니다. 로그인 시 내 반응이 포함됩니다.", security = {})
+    @GetMapping("/{newsId}/reactions")
+    public ResponseEntity<ApiResponse<NewsReactionResponse>> getNewsReactions(
+            @PathVariable Long newsId,
+            @CurrentUser(required = false) AuthenticatedUser currentUser) {
+        try {
+            String email = currentUser == null ? null : currentUser.getEmail();
+            return ResponseEntity.ok(ApiResponse.success(
+                    newsReactionService.view(newsId, email),
+                    "뉴스 반응을 조회했습니다."));
+        } catch (BaseException e) {
+            return ResponseEntity.status(e.getHttpStatus()).body(ApiResponse.error(e.getMessage(), e.getHttpStatus()));
+        }
+    }
+
+    @Operation(summary = "뉴스 반응 변경", description = "좋아요 또는 싫어요를 추가·변경·해제합니다.")
+    @PostMapping("/{newsId}/reactions")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
+    public ResponseEntity<ApiResponse<NewsReactionResponse>> toggleNewsReaction(
+            @PathVariable Long newsId,
+            @RequestBody NewsReactionRequest request,
+            @CurrentUser AuthenticatedUser currentUser) {
+        try {
+            String reaction = request == null ? null : request.reaction();
+            return ResponseEntity.ok(ApiResponse.success(
+                    newsReactionService.toggle(newsId, currentUser.getEmail(), reaction),
+                    "뉴스 반응을 반영했습니다."));
+        } catch (BaseException e) {
+            return ResponseEntity.status(e.getHttpStatus()).body(ApiResponse.error(e.getMessage(), e.getHttpStatus()));
+        }
+    }
+
     @Operation(summary = "뉴스 상세 조회", description = "뉴스 ID로 상세 정보를 조회합니다.")
     @GetMapping("/{newsId}")
     @LogExecution("뉴스 상세 조회 API")
     @PerformanceMonitor(threshold = 1000, metricName = "api.news.detail")
     @SecurityAudit(action = "NEWS_DETAIL_API", resource = "NEWS_API", level = SecurityAudit.SecurityLevel.INFO)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
-    public ResponseEntity<ApiResponse<NewsDetailResponse>> getNewsDetail(
-            @PathVariable Long newsId,
-            @CurrentUser AuthenticatedUser currentUser) {
+    public ResponseEntity<ApiResponse<NewsDetailResponse>> getNewsDetail(@PathVariable Long newsId) {
         try {
             NewsDetailResponse news = newsQueryUseCase.getNewsDetail(newsId);
             return ResponseEntity.ok(ApiResponse.success(news, "뉴스 상세 조회에 성공했습니다"));
+        } catch (NewsNotFoundException e) {
+            return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage(), 404));
         } catch (SystemException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ApiResponse.error("뉴스 조회 중 오류가 발생했습니다.", 500));
+            return ResponseEntity.internalServerError().body(ApiResponse.error("관리자에게 문의주세요.", 500));
         }
     }
 
@@ -132,22 +175,30 @@ public class NewsController {
         }
     }
 
+    @Operation(summary = "뉴스 AI 상태", description = "AI 키와 연결 상태를 확인합니다.")
+    @GetMapping("/ai-status")
+    public ResponseEntity<ApiResponse<NewsAiAvailability.Status>> newsAiStatus() {
+        NewsAiAvailability.Status status = newsAiAvailability.status();
+        return ResponseEntity.ok(ApiResponse.success(status, status.available() ? "뉴스 AI를 사용할 수 있습니다" : status.message()));
+    }
+
     @Operation(summary = "최신 뉴스 조회", description = "최신 뉴스 목록을 조회합니다.")
     @GetMapping("/latest")
     @LogExecution("최신 뉴스 조회 API")
     @PerformanceMonitor(threshold = 1000, metricName = "api.news.latest")
     @SecurityAudit(action = "NEWS_LATEST_API", resource = "NEWS_API", level = SecurityAudit.SecurityLevel.INFO)
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
     public ResponseEntity<ApiResponse<Newses>> getLatestNews(
             @RequestParam(defaultValue = "10") int limit,
-            @CurrentUser AuthenticatedUser currentUser) {
+            @RequestParam(required = false) String provider) {
         try {
-            Newses newses = newsQueryUseCase.getLatestNews(limit);
+            Newses newses = provider == null || provider.isBlank()
+                    ? newsQueryUseCase.getLatestNews(limit)
+                    : newsQueryUseCase.getLatestNewsByProvider(provider, limit);
             return ResponseEntity.ok(ApiResponse.success(newses, "최신 뉴스 조회에 성공했습니다"));
         } catch (SystemException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().body(ApiResponse.error("최신 뉴스 조회 중 오류가 발생했습니다.", 500));
+            return ResponseEntity.internalServerError().body(ApiResponse.error("관리자에게 문의주세요.", 500));
         }
     }
 
@@ -168,5 +219,8 @@ public class NewsController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error("개인화 뉴스 조회 중 오류가 발생했습니다.", 500));
         }
+    }
+
+    public record NewsReactionRequest(String reaction) {
     }
 }

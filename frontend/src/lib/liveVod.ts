@@ -59,6 +59,21 @@ export function liveVodWatchHref(
 
 const META_HINT_KEY = "finsight.liveVod.metaHint.v1"
 const PLACEHOLDER_TITLE = "VOD 상세"
+const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
+const YTIMG_ID = /i\.ytimg\.com\/vi\/([^/?#]+)\//i
+const UNRELIABLE_YTIMG = /\/(hqdefault|sddefault|maxresdefault)\./i
+
+export function displayYoutubeThumbnail(
+  videoId: string | null | undefined,
+  storedUrl?: string | null,
+): string {
+  const stored = (storedUrl || "").trim()
+  const fromUrl = stored.match(YTIMG_ID)?.[1]?.trim() ?? ""
+  const id = fromUrl || (videoId || "").trim()
+  if (!YOUTUBE_VIDEO_ID.test(id)) return ""
+  if (stored.startsWith("https://") && !UNRELIABLE_YTIMG.test(stored)) return stored
+  return `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
+}
 
 export type LiveVodMetaHint = {
   videoId: string
@@ -78,8 +93,7 @@ export function stashLiveVodMetaHint(
       videoId: item.videoId,
       title,
       channelTitle: item.channelTitle ?? null,
-      thumbnailUrl:
-        item.thumbnailUrl || `https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg`,
+      thumbnailUrl: displayYoutubeThumbnail(item.videoId, item.thumbnailUrl),
     }
     window.sessionStorage.setItem(META_HINT_KEY, JSON.stringify(payload))
   } catch {
@@ -100,8 +114,7 @@ export function readLiveVodMetaHint(videoId: string): LiveVodMetaHint | null {
       videoId,
       title,
       channelTitle: parsed.channelTitle ?? null,
-      thumbnailUrl:
-        parsed.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+      thumbnailUrl: displayYoutubeThumbnail(videoId, parsed.thumbnailUrl),
     }
   } catch {
     return null
@@ -123,7 +136,7 @@ export async function fetchLiveVodMeta(videoId: string): Promise<LiveVodMeta> {
     videoId,
     title: hint?.title || PLACEHOLDER_TITLE,
     channelTitle: hint?.channelTitle ?? null,
-    thumbnailUrl: hint?.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+    thumbnailUrl: displayYoutubeThumbnail(videoId, hint?.thumbnailUrl),
     embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
     watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
   }
@@ -147,10 +160,10 @@ export async function fetchLiveVodMeta(videoId: string): Promise<LiveVodMeta> {
         typeof data.channelTitle === "string"
           ? data.channelTitle
           : fallback.channelTitle,
-      thumbnailUrl:
-        typeof data.thumbnailUrl === "string" && data.thumbnailUrl
-          ? data.thumbnailUrl
-          : fallback.thumbnailUrl,
+      thumbnailUrl: displayYoutubeThumbnail(
+        typeof data.videoId === "string" ? data.videoId : videoId,
+        typeof data.thumbnailUrl === "string" ? data.thumbnailUrl : fallback.thumbnailUrl,
+      ),
       embedUrl:
         typeof data.embedUrl === "string" && data.embedUrl ? data.embedUrl : fallback.embedUrl,
       watchUrl:
@@ -168,14 +181,14 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function parseItem(raw: unknown): LiveVodItem | null {
   const o = asRecord(raw)
-  if (!o || typeof o.videoId !== "string" || !o.videoId) return null
+  if (!o || typeof o.videoId !== "string" || !YOUTUBE_VIDEO_ID.test(o.videoId)) return null
   return {
     videoId: o.videoId,
     title: typeof o.title === "string" ? o.title : "",
-    thumbnailUrl:
-      typeof o.thumbnailUrl === "string" && o.thumbnailUrl
-        ? o.thumbnailUrl
-        : `https://i.ytimg.com/vi/${o.videoId}/mqdefault.jpg`,
+    thumbnailUrl: displayYoutubeThumbnail(
+      o.videoId,
+      typeof o.thumbnailUrl === "string" ? o.thumbnailUrl : "",
+    ),
     watchUrl:
       typeof o.watchUrl === "string" && o.watchUrl
         ? o.watchUrl
@@ -255,10 +268,10 @@ export async function fetchLiveVodFeed(
         typeof data.featuredVideoId === "string" ? data.featuredVideoId : null,
       featuredTitle:
         typeof data.featuredTitle === "string" ? data.featuredTitle : null,
-      featuredThumbnailUrl:
-        typeof data.featuredThumbnailUrl === "string"
-          ? data.featuredThumbnailUrl
-          : null,
+      featuredThumbnailUrl: displayYoutubeThumbnail(
+        typeof data.featuredVideoId === "string" ? data.featuredVideoId : "",
+        typeof data.featuredThumbnailUrl === "string" ? data.featuredThumbnailUrl : "",
+      ) || null,
       embedUrl:
         typeof data.featuredVideoId === "string"
           ? toPrivacyEmbedUrl(data.featuredVideoId)

@@ -10,6 +10,7 @@ import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeAiEn
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeImportSourceCreateRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeImportSourceResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeManualImportRequest;
+import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceActiveRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceReviewRequest;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSourceReviewResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeSyncSummaryResponse;
@@ -86,9 +87,20 @@ public class AdminYoutubeMediaController {
     public ResponseEntity<ApiResponse<YoutubeImportSourceResponse>> createImportSource(
             @RequestBody @Valid YoutubeImportSourceCreateRequest request,
             @CurrentUser AuthenticatedUser currentUser) {
-        YoutubeImportSourceResponse response = youtubeMediaAdminUseCase.createImportSource(currentUser.getEmail(), request);
+        YoutubeImportSourceResponse response = youtubeMediaAdminUseCase.createImportSource(currentUser.getEmail(),
+                request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "YouTube 수집 소스를 성공적으로 생성했습니다."));
+    }
+
+    @Operation(summary = "수집 소스 상태 변경", description = "YouTube 수집 소스를 승인하거나 거부합니다.")
+    @PostMapping("/sources/{sourceId}/active")
+    public ResponseEntity<ApiResponse<YoutubeImportSourceResponse>> updateSourceState(
+            @PathVariable Long sourceId,
+            @RequestBody @Valid YoutubeSourceActiveRequest request,
+            @CurrentUser AuthenticatedUser currentUser) {
+        YoutubeImportSourceResponse response = youtubeMediaAdminUseCase.updateSourceState(sourceId, request);
+        return ResponseEntity.ok(ApiResponse.success(response, "YouTube 수집 소스 상태를 변경했습니다."));
     }
 
     @Operation(summary = "소스 동기화", description = "지정한 YouTube 소스를 동기화합니다.")
@@ -105,7 +117,8 @@ public class AdminYoutubeMediaController {
     public ResponseEntity<ApiResponse<YoutubeSyncSummaryResponse>> importManualUrls(
             @RequestBody @Valid YoutubeManualImportRequest request,
             @CurrentUser AuthenticatedUser currentUser) {
-        YoutubeSyncSummaryResponse response = youtubeMediaAdminUseCase.importManualUrls(currentUser.getEmail(), request);
+        YoutubeSyncSummaryResponse response = youtubeMediaAdminUseCase.importManualUrls(currentUser.getEmail(),
+                request);
         return ResponseEntity.ok(ApiResponse.success(response, "YouTube 영상을 수동으로 성공적으로 가져왔습니다."));
     }
 
@@ -115,6 +128,18 @@ public class AdminYoutubeMediaController {
             @CurrentUser AuthenticatedUser currentUser) {
         YoutubeSyncSummaryResponse response = youtubeMediaAdminUseCase.syncActiveSources();
         return ResponseEntity.ok(ApiResponse.success(response, "활성화된 모든 YouTube 소스를 성공적으로 동기화했습니다."));
+    }
+
+    @Operation(summary = "영상 AI 보강", description = "해당 영상의 요약, 편집 코멘트, 핵심 포인트를 만듭니다.")
+    @PostMapping("/videos/{boardId}/enrich")
+    public ResponseEntity<ApiResponse<YoutubeVideoDetailResponse>> enrichVideo(
+            @PathVariable Long boardId,
+            @CurrentUser AuthenticatedUser currentUser) {
+        YoutubeVideoDetailResponse response = youtubeMediaAdminUseCase.enrichVideo(boardId);
+        String message = "FAILED".equals(response.getAiStatus())
+                ? "관리자에게 문의주세요."
+                : "영상 보강 문장을 만들었습니다.";
+        return ResponseEntity.ok(ApiResponse.success(response, message));
     }
 
     @Operation(summary = "초안 영상 AI 보강", description = "대기 중인 초안 영상을 AI로 보강합니다.")
@@ -131,7 +156,8 @@ public class AdminYoutubeMediaController {
             @PathVariable Long boardId,
             @RequestBody @Valid YoutubeVideoPublishRequest request,
             @CurrentUser AuthenticatedUser currentUser) {
-        YoutubeVideoDetailResponse response = youtubeMediaAdminUseCase.publishVideo(boardId, currentUser.getEmail(), request);
+        YoutubeVideoDetailResponse response = youtubeMediaAdminUseCase.publishVideo(boardId, currentUser.getEmail(),
+                request);
         return ResponseEntity.ok(ApiResponse.success(response, "YouTube 영상을 성공적으로 게시했습니다."));
     }
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
 import { AdminStatsBarChart, AdminStatsLineChart } from "@/components/admin/AdminStatsCharts"
+import { FcbManageShell, FcbTabList } from "@/components/community/FcbManageShell"
 import { canManageUsers } from "@/lib/adminUsers"
 import {
   fetchAdminStatsChart,
@@ -502,41 +503,46 @@ export default function AdminHealthClient() {
   ]
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
-      <div className="overflow-hidden border border-black bg-white">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black bg-[#3d4654] px-5 py-3 text-white">
-          <div>
-            <h1 className="text-base font-medium tracking-tight">
-              서버상황 <span className="text-[#7CFC00]">FinSight</span>
-            </h1>
-            <p className="mt-0.5 text-xs text-gray-300">차트·수치로 서버와 통계를 확인합니다</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-200">
-            <span className="inline-flex items-center gap-1.5 bg-white/10 px-2.5 py-1">
-              <span className="h-1.5 w-1.5 animate-pulse bg-[#7CFC00]" />
-              30초 폴링
-            </span>
-            {updatedAt ? <span>갱신 {updatedAt}</span> : null}
-            {loading && overview ? <span className="text-gray-300">갱신 중…</span> : null}
-            <button
-              type="button"
-              onClick={() => (viewMode === "numbers" ? void loadNumbers() : void loadChart())}
-              disabled={loading}
-              className="border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
-            >
-              {loading ? "조회 중…" : "다시 조회"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void onRefresh()}
-              disabled={refreshing}
-              className="border border-white/30 px-2.5 py-1 hover:bg-white/10 disabled:opacity-50"
-            >
-              {refreshing ? "재수집 중…" : "상태 새로고침"}
-            </button>
-          </div>
+    <FcbManageShell
+      title="서버 현황"
+      description="차트·수치로 서버와 통계를 확인합니다."
+      toolbar={
+        <div className="mb-4 flex flex-wrap items-center justify-end gap-2 text-sm text-gray-600">
+          <span className="inline-flex items-center gap-1.5 border border-gray-300 bg-white px-2.5 py-1">
+            <span className="h-1.5 w-1.5 animate-pulse bg-[#03c75a]" />
+            30초 폴링
+          </span>
+          {updatedAt ? <span>갱신 {updatedAt}</span> : null}
+          {loading && overview ? <span>갱신 중…</span> : null}
+          <button
+            type="button"
+            onClick={() => (viewMode === "numbers" ? void loadNumbers() : void loadChart())}
+            disabled={loading}
+            className="rounded border border-gray-300 bg-white px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {loading ? "조회 중…" : "다시 조회"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            disabled={refreshing}
+            className="rounded border border-gray-300 bg-white px-3 py-1.5 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {refreshing ? "재수집 중…" : "상태 새로고침"}
+          </button>
         </div>
-
+      }
+    >
+      <FcbTabList
+        label="서버 현황 보기"
+        activeKey={viewMode}
+        onSelect={(key) => setViewMode(key as ViewMode)}
+        items={[
+          { key: "chart", label: "차트로 보기" },
+          { key: "numbers", label: "수치로 보기" },
+        ]}
+      />
+      <div className="overflow-hidden border border-gray-200 bg-white">
         <div className="grid gap-0 lg:grid-cols-[220px_1fr]">
           <aside className="border-b border-black bg-gray-50 p-4 lg:border-b-0 lg:border-r">
             {viewMode === "numbers" ? (
@@ -609,31 +615,6 @@ export default function AdminHealthClient() {
           </aside>
 
           <div className="min-w-0">
-            <div className="flex border-b border-black">
-              <button
-                type="button"
-                onClick={() => setViewMode("chart")}
-                className={
-                  viewMode === "chart"
-                    ? "flex-1 bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
-                    : "flex-1 bg-white px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
-                }
-              >
-                차트로 보기
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("numbers")}
-                className={
-                  viewMode === "numbers"
-                    ? "flex-1 bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
-                    : "flex-1 border-l border-black bg-white px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
-                }
-              >
-                수치로 보기
-              </button>
-            </div>
-
             <div className="relative space-y-6 px-5 py-6">
               {error ? (
                 <div className="flex flex-wrap items-center justify-between gap-3 border border-black bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -862,6 +843,6 @@ export default function AdminHealthClient() {
           </div>
         </div>
       </div>
-    </div>
+    </FcbManageShell>
   )
 }
