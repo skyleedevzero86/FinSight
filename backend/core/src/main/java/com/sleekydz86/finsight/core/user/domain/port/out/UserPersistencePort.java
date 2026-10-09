@@ -55,6 +55,10 @@ public interface UserPersistencePort {
 
     long countByStatus(UserStatus status);
 
+    long countMembers();
+
+    long countMembersWithEmail();
+
     List<User> findByWatchlistCategories(List<TargetCategory> categories);
 
     List<User> findAllActiveUsers();

@@ -66,6 +66,8 @@ public interface UserApplicationService {
 
     void changePassword(Long userId, UserPasswordChangeRequest request);
 
+    MemberDetectionCounts memberDetectionCounts();
+
     Page<UserResponse> searchAdminUsers(UserStatus status, String keyword, boolean revealUsername,
             boolean revealEmail, boolean revealPhone, Pageable pageable);
 

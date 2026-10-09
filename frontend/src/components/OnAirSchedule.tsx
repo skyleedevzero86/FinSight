@@ -19,10 +19,6 @@ function relativeTime(raw: string | null): string {
   return `${days}일 전`
 }
 
-function marketAuxNews(items: StoredNewsCard[]): StoredNewsCard[] {
-  return items.filter((item) => !item.provider || item.provider === "MARKETAUX")
-}
-
 export default function OnAirSchedule() {
   const [articles, setArticles] = useState<StoredNewsCard[]>([])
   const [cardsPerView, setCardsPerView] = useState(4)
@@ -30,8 +26,8 @@ export default function OnAirSchedule() {
 
   useEffect(() => {
     let alive = true
-    fetchStoredNews(8).then((items) => {
-      if (alive) setArticles(marketAuxNews(items ?? []))
+    fetchStoredNews(8, "MARKETAUX").then((items) => {
+      if (alive) setArticles(items ?? [])
     })
     return () => {
       alive = false

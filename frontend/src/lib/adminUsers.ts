@@ -101,6 +101,43 @@ function parseUser(raw: unknown): AdminUser | null {
   }
 }
 
+export type MemberDetectionCounts = {
+  usernameCount: number
+  nicknameCount: number
+  emailCount: number
+}
+
+export async function fetchMemberDetectionCounts(): Promise<
+  { ok: true; data: MemberDetectionCounts } | { ok: false; message: string }
+> {
+  const res = await fetch("/api/v1/admin/users/detection-fields", {
+    headers: authHeadersJson(),
+    cache: "no-store",
+  })
+  const payload = await readJson(res)
+  if (!res.ok) {
+    return { ok: false, message: readMessage(payload, "회원정보 탐지 항목을 불러오지 못했습니다.") }
+  }
+  const root = asRecord(payload)
+  const data = asRecord(root?.data)
+  if (!data) {
+    return { ok: false, message: "회원정보 탐지 항목 형식이 올바르지 않습니다." }
+  }
+  return {
+    ok: true,
+    data: {
+      usernameCount: countOf(data.usernameCount),
+      nicknameCount: countOf(data.nicknameCount),
+      emailCount: countOf(data.emailCount),
+    },
+  }
+}
+
+function countOf(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0
+}
+
 export async function fetchAdminUsers(options: {
   page: number
   size: number

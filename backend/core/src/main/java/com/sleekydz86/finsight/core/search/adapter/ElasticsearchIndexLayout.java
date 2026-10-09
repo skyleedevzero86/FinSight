@@ -13,7 +13,7 @@ final class ElasticsearchIndexLayout {
     private ElasticsearchIndexLayout() {
     }
 
-    static String firstUri(String uris) {
+    public static String firstUri(String uris) {
         String raw = uris == null ? "" : uris.split(",")[0].trim();
         if (raw.isEmpty()) {
             throw new RestClientException("Elasticsearch 주소가 비어 있습니다.");
@@ -21,7 +21,7 @@ final class ElasticsearchIndexLayout {
         return raw.endsWith("/") ? raw.substring(0, raw.length() - 1) : raw;
     }
 
-    static String writeAlias(String readAlias) {
+    public static String writeAlias(String readAlias) {
         return requireIndexName(readAlias) + "-write";
     }
 

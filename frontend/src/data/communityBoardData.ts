@@ -3,7 +3,7 @@ export type CommunityNavKey = "notice" | "free" | "qna"
 export const COMMUNITY_NAV = [
   { key: "notice" as const, label: "공지사항", href: "/community/notice" },
   { key: "qna" as const, label: "Q&A", href: "/community/qna" },
-  { key: "free" as const, label: "포트폴리오 공유 (준비중)", href: "/community/free" },
+  { key: "free" as const, label: "포트폴리오 공유", href: "/community/free" },
 ]
 
 export type BoardRow = {

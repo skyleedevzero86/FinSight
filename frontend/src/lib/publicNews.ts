@@ -159,6 +159,29 @@ export async function fetchNewsAiDown(): Promise<boolean> {
   }
 }
 
+export async function fetchPersonalizedNews(limit = 3): Promise<StoredNewsCard[] | null> {
+  return fetchNewsList(`/api/v1/news/personalized?limit=${limit}`)
+}
+
+export async function fetchPopularNews(limit = 3): Promise<StoredNewsCard[] | null> {
+  return fetchNewsList(`/api/v1/news/popular?limit=${limit}`)
+}
+
+async function fetchNewsList(path: string): Promise<StoredNewsCard[] | null> {
+  try {
+    const res = await fetch(path, { credentials: "include", cache: "no-store" })
+    if (!res.ok) return null
+    const data = payloadOf(await res.json())
+    const record = asRecord(data)
+    const rows = record && Array.isArray(record.newses) ? record.newses : []
+    return rows
+      .map((row) => cardFromNews(asRecord(row) ?? {}))
+      .filter((row): row is StoredNewsCard => row !== null)
+  } catch {
+    return null
+  }
+}
+
 export async function fetchStoredNews(limit = 20, provider?: string): Promise<StoredNewsCard[] | null> {
   try {
     const providerQuery = provider ? `&provider=${encodeURIComponent(provider)}` : ""

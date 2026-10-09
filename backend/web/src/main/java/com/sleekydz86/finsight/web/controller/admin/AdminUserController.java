@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.UserStatus;
 import com.sleekydz86.finsight.core.user.domain.port.in.dto.AdminPasswordResetRequest;
+import com.sleekydz86.finsight.core.user.domain.port.in.dto.MemberDetectionCounts;
 import com.sleekydz86.finsight.core.user.domain.port.out.dto.UserResponse;
 import com.sleekydz86.finsight.core.user.service.UserApplicationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -62,6 +63,13 @@ public class AdminUserController {
                         PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100),
                                 Sort.by(Sort.Direction.DESC, "id"))));
         return ResponseEntity.ok(ApiResponse.success(response, "사용자 목록을 조회했습니다"));
+    }
+
+    @GetMapping("/detection-fields")
+    @Operation(summary = "자동 탐지에 쓸 회원정보 항목")
+    public ResponseEntity<ApiResponse<MemberDetectionCounts>> detectionFields() {
+        MemberDetectionCounts counts = userApplicationService.memberDetectionCounts();
+        return ResponseEntity.ok(ApiResponse.success(counts, "회원정보 탐지 항목을 조회했습니다"));
     }
 
     @GetMapping("/pending")

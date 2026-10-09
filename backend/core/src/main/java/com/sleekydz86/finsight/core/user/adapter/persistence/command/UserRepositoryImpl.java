@@ -349,6 +349,26 @@ public class UserRepositoryImpl implements UserPersistencePort {
     }
 
     @Override
+    public long countMembers() {
+        try {
+            return userJpaRepository.count();
+        } catch (Exception e) {
+            log.error("회원 수 조회 실패: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    @Override
+    public long countMembersWithEmail() {
+        try {
+            return userJpaRepository.countMembersWithEmail();
+        } catch (Exception e) {
+            log.error("이메일이 있는 회원 수 조회 실패: {}", e.getMessage());
+            return 0;
+        }
+    }
+
+    @Override
     public List<User> findByWatchlistCategories(List<TargetCategory> categories) {
         try {
             List<UserJpaEntity> entities = userJpaRepository.findByWatchlistIn(categories);
