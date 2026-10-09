@@ -7,6 +7,7 @@ resources:
   - mysql
   - redis
   - minio
+  - elasticsearch
   - web
   - frontend
   - batch

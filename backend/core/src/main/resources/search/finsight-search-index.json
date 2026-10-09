@@ -1,0 +1,62 @@
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0,
+    "refresh_interval": "1s",
+    "index.search.slowlog.threshold.query.warn": "200ms",
+    "index.search.slowlog.threshold.query.info": "80ms",
+    "index.search.slowlog.threshold.fetch.warn": "100ms",
+    "index.indexing.slowlog.threshold.index.warn": "200ms",
+    "analysis": {
+      "analyzer": {
+        "finsight_korean": {
+          "type": "custom",
+          "tokenizer": "finsight_nori",
+          "filter": ["lowercase"]
+        }
+      },
+      "tokenizer": {
+        "finsight_nori": {
+          "type": "nori_tokenizer",
+          "decompound_mode": "mixed",
+          "discard_punctuation": true
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "sourceType": { "type": "keyword" },
+      "sourceId": { "type": "keyword" },
+      "title": {
+        "type": "text",
+        "analyzer": "finsight_korean",
+        "search_analyzer": "finsight_korean",
+        "fields": {
+          "exact": { "type": "keyword", "ignore_above": 256 }
+        }
+      },
+      "body": {
+        "type": "text",
+        "analyzer": "finsight_korean",
+        "search_analyzer": "finsight_korean"
+      },
+      "href": { "type": "keyword" },
+      "publishedAt": { "type": "date" },
+      "viewCount": { "type": "integer" },
+      "tags": { "type": "keyword" },
+      "embedding": {
+        "type": "dense_vector",
+        "dims": __VECTOR_DIMS__,
+        "index": true,
+        "similarity": "cosine",
+        "index_options": {
+          "type": "int8_hnsw",
+          "m": 16,
+          "ef_construction": 100
+        }
+      }
+    }
+  }
+}

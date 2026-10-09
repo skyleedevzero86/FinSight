@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch
+  namespace: finsight-k8s
+  labels:
+    app: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              if ! elasticsearch-plugin list | grep -q analysis-nori; then
+                elasticsearch-plugin install --batch analysis-nori
+              fi
+              exec /usr/local/bin/docker-entrypoint.sh eswrapper
+          ports:
+            - name: http
+              containerPort: 9200
+          env:
+            - name: discovery.type
+              value: single-node
+            - name: xpack.security.enabled
+              value: "false"
+            - name: xpack.security.http.ssl.enabled
+              value: "false"
+            - name: ingest.geoip.downloader.enabled
+              value: "false"
+            - name: action.destructive_requires_name
+              value: "true"
+            - name: ES_JAVA_OPTS
+              value: "-Xms1g -Xmx1g"
+            - name: cluster.name
+              value: finsight
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health
+              port: 9200
+            initialDelaySeconds: 90
+            periodSeconds: 15
+            failureThreshold: 20
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9200
+            initialDelaySeconds: 180
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 200m
+              memory: 1536Mi
+            limits:
+              memory: 2Gi
