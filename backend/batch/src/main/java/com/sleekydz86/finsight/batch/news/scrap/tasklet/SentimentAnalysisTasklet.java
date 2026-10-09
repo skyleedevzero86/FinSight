@@ -3,6 +3,7 @@ package com.sleekydz86.finsight.batch.news.scrap.tasklet;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaRepository;
 import com.sleekydz86.finsight.core.news.domain.port.out.SentimentAnalysisPort;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentAnalysisResult;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentStatus;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,6 +77,9 @@ public class SentimentAnalysisTasklet implements Tasklet {
     private void processNewsEntity(com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity newsEntity) {
         long startTime = System.currentTimeMillis();
 
+        if (newsEntity.getSentimentStatus() == SentimentStatus.DONE) {
+            return;
+        }
         try {
             String content = newsEntity.getOriginalTitle() + ". " + newsEntity.getOriginalContent();
             SentimentAnalysisResult sentimentResult = sentimentAnalysisPort.analyzeSentiment(content);
@@ -107,10 +111,7 @@ public class SentimentAnalysisTasklet implements Tasklet {
 
     private void updateNewsEntityWithAnalysis(com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity newsEntity,
                                               SentimentAnalysisResult sentimentResult) {
-        newsEntity.setSentimentType(sentimentResult.getSentimentType());
-        newsEntity.setSentimentScore(sentimentResult.getScore());
-        newsEntity.setOverview(sentimentResult.getSentimentDescription());
-
+        NewsSentimentRecorder.applyKeyword(newsEntity, sentimentResult);
         newsJpaRepository.save(newsEntity);
     }
 

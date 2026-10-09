@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.news.domain.port.out.NewsAiAnalysisRequester
 import com.sleekydz86.finsight.core.global.AiModel;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.News;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentStatus;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.service.AiModelSelectionService;
 import org.slf4j.Logger;
@@ -169,9 +170,13 @@ public class OpenAiAnalysisTasklet implements Tasklet {
                 }
 
                 try {
-                    newsEntity.setOverview("AI 분석 실패로 인한 기본 요약");
-                    newsEntity.setSentimentType(SentimentType.NEUTRAL);
-                    newsEntity.setSentimentScore(0.5);
+                    if (newsEntity.getOverview() == null) {
+                        newsEntity.setOverview("AI 분석 실패로 인한 기본 요약");
+                    }
+                    if (newsEntity.getSentimentStatus() != SentimentStatus.DONE) {
+                        newsEntity.setSentimentType(SentimentType.NEUTRAL);
+                        newsEntity.setSentimentScore(0.5);
+                    }
                     newsJpaRepository.save(newsEntity);
                     log.info("뉴스 {} 기본 폴백 데이터 저장 완료", newsEntity.getId());
                 } catch (Exception saveEx) {
@@ -200,14 +205,14 @@ public class OpenAiAnalysisTasklet implements Tasklet {
         try {
             if (analyzedNews.getAiOverView() != null) {
                 newsEntity.setOverview(analyzedNews.getAiOverView().getOverview());
-
-                if (analyzedNews.getAiOverView().getSentimentType() != null) {
-                    newsEntity.setSentimentType(analyzedNews.getAiOverView().getSentimentType());
-                }
-
-                double sentimentScore = analyzedNews.getAiOverView().getSentimentScore();
-                if (sentimentScore != 0.0) {
-                    newsEntity.setSentimentScore(sentimentScore);
+                if (newsEntity.getSentimentStatus() != SentimentStatus.DONE) {
+                    if (analyzedNews.getAiOverView().getSentimentType() != null) {
+                        newsEntity.setSentimentType(analyzedNews.getAiOverView().getSentimentType());
+                    }
+                    double sentimentScore = analyzedNews.getAiOverView().getSentimentScore();
+                    if (sentimentScore != 0.0) {
+                        newsEntity.setSentimentScore(sentimentScore);
+                    }
                 }
             }
 

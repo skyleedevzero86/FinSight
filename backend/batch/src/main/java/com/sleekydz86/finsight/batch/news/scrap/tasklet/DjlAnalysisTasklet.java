@@ -3,7 +3,10 @@ package com.sleekydz86.finsight.batch.news.scrap.tasklet;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaRepository;
 import com.sleekydz86.finsight.core.news.domain.port.out.DjlSentimentAnalysisPort;
+import com.sleekydz86.finsight.core.news.domain.port.out.SentimentAnalysisPort;
 import com.sleekydz86.finsight.core.news.domain.vo.DjlSentimentResult;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentAnalysisResult;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentStatus;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,14 +14,12 @@ import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -27,9 +28,12 @@ import java.util.concurrent.atomic.AtomicLong;
 public class DjlAnalysisTasklet implements Tasklet {
 
     private static final Logger log = LoggerFactory.getLogger(DjlAnalysisTasklet.class);
+    private static final int PAGE = 32;
+    private static final int PENDING_CAP = 500;
 
     private final NewsJpaRepository newsJpaRepository;
     private final DjlSentimentAnalysisPort djlSentimentAnalysisPort;
+    private final SentimentAnalysisPort sentimentAnalysisPort;
 
     private final AtomicInteger processedNewsCount = new AtomicInteger(0);
     private final AtomicInteger successfulAnalysisCount = new AtomicInteger(0);
@@ -38,105 +42,130 @@ public class DjlAnalysisTasklet implements Tasklet {
     private final ConcurrentHashMap<SentimentType, AtomicInteger> sentimentDistribution = new ConcurrentHashMap<>();
 
     public DjlAnalysisTasklet(NewsJpaRepository newsJpaRepository,
-                              DjlSentimentAnalysisPort djlSentimentAnalysisPort) {
+                              DjlSentimentAnalysisPort djlSentimentAnalysisPort,
+                              SentimentAnalysisPort sentimentAnalysisPort) {
         this.newsJpaRepository = newsJpaRepository;
         this.djlSentimentAnalysisPort = djlSentimentAnalysisPort;
+        this.sentimentAnalysisPort = sentimentAnalysisPort;
     }
 
     @Override
-    public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
+    public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) {
         if (!djlSentimentAnalysisPort.isModelAvailable()) {
-            log.warn("DJL 모델을 사용할 수 없습니다. 작업을 건너뜁니다.");
-            return RepeatStatus.FINISHED;
+            log.warn("DJL 모델을 사용할 수 없습니다. 키워드 감성으로 대체하고 재시도 대상으로 남깁니다.");
         }
-
-        log.info("DJL 감정분석 배치 작업 시작");
-
-        int pageSize = 100;
-        int pageNumber = 0;
-        Pageable pageable = PageRequest.of(pageNumber, pageSize);
-
-        while (true) {
-            Page<NewsJpaEntity> newsPage = newsJpaRepository.findByOverviewIsNull(pageable);
-
-            if (!newsPage.hasContent()) {
-                break;
-            }
-
-            for (NewsJpaEntity newsEntity : newsPage.getContent()) {
-                try {
-                    processNewsEntity(newsEntity);
-                } catch (Exception e) {
-                    log.error("뉴스 엔티티 처리 실패 (ID: {}): {}", newsEntity.getId(), e.getMessage());
-                    failedAnalysisCount.incrementAndGet();
-                }
-            }
-
-            if (!newsPage.hasNext()) {
-                break;
-            }
-
-            pageable = pageable.next();
-        }
-
-        log.info("DJL 감정분석 배치 작업 완료 - 처리: {}, 성공: {}, 실패: {}",
-                processedNewsCount.get(), successfulAnalysisCount.get(), failedAnalysisCount.get());
-
+        int pending = drainPending();
+        int retried = analyzeIds(retryIds());
+        log.info("DJL 감정분석 배치 완료 - 신규: {}, 재시도: {}, 성공: {}, 실패: {}",
+                pending, retried, successfulAnalysisCount.get(), failedAnalysisCount.get());
         return RepeatStatus.FINISHED;
     }
 
-    private void processNewsEntity(NewsJpaEntity newsEntity) {
-        long startTime = System.currentTimeMillis();
-        processedNewsCount.incrementAndGet();
-
-        try {
-            String content = newsEntity.getOriginalTitle() + ". " + newsEntity.getOriginalContent();
-            DjlSentimentResult sentimentResult = djlSentimentAnalysisPort.analyzeSentiment(content);
-
-            if (sentimentResult.isSuccess()) {
-                updateNewsEntityWithAnalysis(newsEntity, sentimentResult);
-
-                sentimentDistribution.computeIfAbsent(sentimentResult.toSentimentType(),
-                        k -> new AtomicInteger(0)).incrementAndGet();
-
-                successfulAnalysisCount.incrementAndGet();
-                totalProcessingTime.addAndGet(System.currentTimeMillis() - startTime);
-
-                log.debug("뉴스 ID {} 감정분석 완료: {} (점수: {})",
-                        newsEntity.getId(), sentimentResult.getLabel(), sentimentResult.getScore());
-            } else {
-                failedAnalysisCount.incrementAndGet();
-                log.warn("뉴스 ID {} 감정분석 실패: {}",
-                        newsEntity.getId(), sentimentResult.getErrorMessage());
+    private int drainPending() {
+        int seen = 0;
+        while (seen < PENDING_CAP) {
+            List<Long> ids = newsJpaRepository.findSentimentPendingIds(
+                    SentimentStatus.PENDING, PageRequest.of(0, PAGE));
+            if (ids.isEmpty()) {
+                return seen;
             }
-
-        } catch (Exception e) {
-            failedAnalysisCount.incrementAndGet();
-            log.error("뉴스 ID {} 처리 중 오류: {}", newsEntity.getId(), e.getMessage());
+            analyzeIds(ids);
+            seen += ids.size();
         }
+        return seen;
     }
 
-    private void updateNewsEntityWithAnalysis(NewsJpaEntity newsEntity, DjlSentimentResult sentimentResult) {
-        newsEntity.setSentimentType(sentimentResult.toSentimentType());
-        newsEntity.setSentimentScore(sentimentResult.getScore());
-        String overview = String.format("감정분석 결과: %s (신뢰도: %.2f%%)",
-                sentimentResult.getLabel(), sentimentResult.getConfidence() * 100);
-        newsEntity.setOverview(overview);
-        newsJpaRepository.save(newsEntity);
+    private List<Long> retryIds() {
+        return newsJpaRepository.findSentimentRetryIds(
+                List.of(SentimentStatus.FAILED, SentimentStatus.KEYWORD),
+                NewsSentimentRecorder.MAX_ATTEMPTS,
+                PageRequest.of(0, PAGE));
+    }
+
+    private int analyzeIds(List<Long> ids) {
+        List<NewsJpaEntity> chunk = new ArrayList<>();
+        for (Long id : ids) {
+            newsJpaRepository.findById(id).ifPresent(chunk::add);
+            if (chunk.size() == PAGE) {
+                analyzeChunk(chunk);
+                chunk = new ArrayList<>();
+            }
+        }
+        if (!chunk.isEmpty()) {
+            analyzeChunk(chunk);
+        }
+        return ids.size();
+    }
+
+    private void analyzeChunk(List<NewsJpaEntity> news) {
+        if (!djlSentimentAnalysisPort.isModelAvailable()) {
+            news.forEach(item -> {
+                processedNewsCount.incrementAndGet();
+                applyKeywordOrFail(item);
+            });
+            newsJpaRepository.saveAll(news);
+            return;
+        }
+        List<DjlSentimentResult> results = djlSentimentAnalysisPort.analyzeSentimentBatch(textsOf(news));
+        for (int index = 0; index < news.size(); index++) {
+            applyOne(news.get(index), resultAt(results, index));
+        }
+        newsJpaRepository.saveAll(news);
+    }
+
+    private void applyOne(NewsJpaEntity news, DjlSentimentResult result) {
+        long started = System.currentTimeMillis();
+        processedNewsCount.incrementAndGet();
+        if (result != null && result.isSuccess()) {
+            NewsSentimentRecorder.applyDjl(news, result);
+            successfulAnalysisCount.incrementAndGet();
+            totalProcessingTime.addAndGet(System.currentTimeMillis() - started);
+            sentimentDistribution.computeIfAbsent(result.toSentimentType(), key -> new AtomicInteger()).incrementAndGet();
+            return;
+        }
+        String reason = result == null ? "결과 없음" : result.getErrorMessage();
+        log.warn("뉴스 감성분석 실패 newsId={} 사유={}", news.getId(), reason);
+        applyKeywordOrFail(news);
+    }
+
+    private void applyKeywordOrFail(NewsJpaEntity news) {
+        SentimentAnalysisResult keyword = sentimentAnalysisPort.analyzeSentiment(textOf(news));
+        if (keyword.isSuccess()) {
+            NewsSentimentRecorder.applyKeyword(news, keyword);
+            log.info("뉴스 감성을 키워드로 대체했습니다. newsId={} 시도={}", news.getId(), news.getSentimentAttempts());
+            return;
+        }
+        NewsSentimentRecorder.markFailed(news);
+        failedAnalysisCount.incrementAndGet();
+        log.warn("뉴스 감성 키워드 대체도 실패했습니다. newsId={} 사유={}", news.getId(), keyword.getErrorMessage());
+    }
+
+    private DjlSentimentResult resultAt(List<DjlSentimentResult> results, int index) {
+        if (results == null || index >= results.size()) {
+            return null;
+        }
+        return results.get(index);
+    }
+
+    private List<String> textsOf(List<NewsJpaEntity> news) {
+        return news.stream().map(this::textOf).toList();
+    }
+
+    private String textOf(NewsJpaEntity news) {
+        String title = news.getOriginalTitle() == null ? "" : news.getOriginalTitle();
+        String body = news.getOriginalContent() == null ? "" : news.getOriginalContent();
+        return title + ". " + body;
     }
 
     public DjlAnalysisMetrics getAnalysisMetrics() {
-        ConcurrentHashMap<SentimentType, Integer> convertedDistribution = new ConcurrentHashMap<>();
-        sentimentDistribution.forEach((key, value) ->
-                convertedDistribution.put(key, value.get()));
-
+        ConcurrentHashMap<SentimentType, Integer> converted = new ConcurrentHashMap<>();
+        sentimentDistribution.forEach((key, value) -> converted.put(key, value.get()));
         return new DjlAnalysisMetrics(
                 processedNewsCount.get(),
                 successfulAnalysisCount.get(),
                 failedAnalysisCount.get(),
                 totalProcessingTime.get(),
-                convertedDistribution
-        );
+                converted);
     }
 
     public void resetMetrics() {
@@ -155,12 +184,16 @@ public class DjlAnalysisTasklet implements Tasklet {
             ConcurrentHashMap<SentimentType, Integer> sentimentDistribution
     ) {
         public double getSuccessRate() {
-            if (processedNewsCount == 0) return 0.0;
+            if (processedNewsCount == 0) {
+                return 0.0;
+            }
             return (double) successfulAnalysisCount / processedNewsCount * 100;
         }
 
         public double getAverageProcessingTime() {
-            if (successfulAnalysisCount == 0) return 0.0;
+            if (successfulAnalysisCount == 0) {
+                return 0.0;
+            }
             return (double) totalProcessingTime / successfulAnalysisCount;
         }
 

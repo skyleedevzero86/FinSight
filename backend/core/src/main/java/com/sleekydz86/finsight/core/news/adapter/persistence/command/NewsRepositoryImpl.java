@@ -9,7 +9,10 @@ import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -98,6 +101,25 @@ public class NewsRepositoryImpl implements NewsPersistencePort {
         return new Newses(newsJpaRepository.findLatestByProvider(provider, PageRequest.of(0, safeLimit)).stream()
                 .map(newsJpaMapper::toDomain)
                 .toList());
+    }
+
+    @Override
+    public Newses findByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return new Newses();
+        }
+        Map<Long, News> byId = new HashMap<>();
+        for (NewsJpaEntity entity : newsJpaRepository.findAllById(ids)) {
+            byId.put(entity.getId(), newsJpaMapper.toDomain(entity));
+        }
+        List<News> ordered = new ArrayList<>();
+        for (Long id : ids) {
+            News news = byId.get(id);
+            if (news != null) {
+                ordered.add(news);
+            }
+        }
+        return new Newses(ordered);
     }
 
     @Override

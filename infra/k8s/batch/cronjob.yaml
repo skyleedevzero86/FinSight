@@ -29,6 +29,8 @@ spec:
                 - secretRef:
                     name: finsight-secrets
               env:
+                - name: DJL_EMBEDDING_ENABLED
+                  value: "true"
                 - name: SPRING_DATASOURCE_USERNAME
                   valueFrom:
                     secretKeyRef:

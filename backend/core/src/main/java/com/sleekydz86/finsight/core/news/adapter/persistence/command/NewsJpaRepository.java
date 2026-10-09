@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.core.news.adapter.persistence.command;
 
+import com.sleekydz86.finsight.core.news.domain.vo.EmbeddingStatus;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentStatus;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +21,38 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.overview IS NULL")
     Page<NewsJpaEntity> findByOverviewIsNull(Pageable pageable);
+
+    @Query("""
+            SELECT n.id FROM NewsJpaEntity n
+            WHERE n.sentimentStatus IS NULL OR n.sentimentStatus = :pending
+            ORDER BY n.id ASC
+            """)
+    List<Long> findSentimentPendingIds(@Param("pending") SentimentStatus pending, Pageable pageable);
+
+    @Query("""
+            SELECT n.id FROM NewsJpaEntity n
+            WHERE n.sentimentStatus IN :statuses AND n.sentimentAttempts < :maxAttempts
+            ORDER BY n.id ASC
+            """)
+    List<Long> findSentimentRetryIds(@Param("statuses") List<SentimentStatus> statuses,
+                                     @Param("maxAttempts") int maxAttempts,
+                                     Pageable pageable);
+
+    @Query("""
+            SELECT n.id FROM NewsJpaEntity n
+            WHERE n.embeddingStatus IS NULL OR n.embeddingStatus = :pending
+            ORDER BY n.id ASC
+            """)
+    List<Long> findEmbeddingPendingIds(@Param("pending") EmbeddingStatus pending, Pageable pageable);
+
+    @Query("""
+            SELECT n.id FROM NewsJpaEntity n
+            WHERE n.embeddingStatus = :status AND n.embeddingAttempts < :maxAttempts
+            ORDER BY n.id ASC
+            """)
+    List<Long> findEmbeddingRetryIds(@Param("status") EmbeddingStatus status,
+                                     @Param("maxAttempts") int maxAttempts,
+                                     Pageable pageable);
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.newsPublishedTime >= :startDate AND n.newsPublishedTime <= :endDate")
     List<NewsJpaEntity> findByPublishedTimeBetween(@Param("startDate") LocalDateTime startDate,

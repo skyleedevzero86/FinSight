@@ -182,6 +182,21 @@ public class NewsController {
         return ResponseEntity.ok(ApiResponse.success(status, status.available() ? "뉴스 AI를 사용할 수 있습니다" : status.message()));
     }
 
+    @Operation(summary = "유사 뉴스 조회", description = "임베딩으로 비슷한 뉴스를 조회합니다. 색인이 없으면 같은 관심 종목 뉴스를 반환합니다.")
+    @GetMapping("/{newsId}/similar")
+    public ResponseEntity<ApiResponse<Newses>> getSimilarNews(
+            @PathVariable Long newsId,
+            @RequestParam(defaultValue = "5") int limit) {
+        try {
+            Newses newses = newsQueryUseCase.getRelatedNews(newsId, limit);
+            return ResponseEntity.ok(ApiResponse.success(newses, "유사 뉴스를 조회했습니다."));
+        } catch (NewsNotFoundException e) {
+            return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage(), 404));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(ApiResponse.error("관리자에게 문의주세요.", 500));
+        }
+    }
+
     @Operation(summary = "최신 뉴스 조회", description = "최신 뉴스 목록을 조회합니다.")
     @GetMapping("/latest")
     @LogExecution("최신 뉴스 조회 API")

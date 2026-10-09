@@ -14,6 +14,9 @@ public class DjlSentimentResult {
     private LocalDateTime analyzedAt;
     private String modelName;
     private String originalText;
+    private double positiveProbability;
+    private double neutralProbability;
+    private double negativeProbability;
 
     public DjlSentimentResult() {
         this.analyzedAt = LocalDateTime.now();
@@ -66,6 +69,21 @@ public class DjlSentimentResult {
             return this;
         }
 
+        public DjlSentimentResultBuilder positiveProbability(double positiveProbability) {
+            result.positiveProbability = positiveProbability;
+            return this;
+        }
+
+        public DjlSentimentResultBuilder neutralProbability(double neutralProbability) {
+            result.neutralProbability = neutralProbability;
+            return this;
+        }
+
+        public DjlSentimentResultBuilder negativeProbability(double negativeProbability) {
+            result.negativeProbability = negativeProbability;
+            return this;
+        }
+
         public DjlSentimentResult build() {
             return result;
         }
@@ -97,6 +115,15 @@ public class DjlSentimentResult {
 
     public String getOriginalText() { return originalText; }
     public void setOriginalText(String originalText) { this.originalText = originalText; }
+
+    public double getPositiveProbability() { return positiveProbability; }
+    public void setPositiveProbability(double positiveProbability) { this.positiveProbability = positiveProbability; }
+
+    public double getNeutralProbability() { return neutralProbability; }
+    public void setNeutralProbability(double neutralProbability) { this.neutralProbability = neutralProbability; }
+
+    public double getNegativeProbability() { return negativeProbability; }
+    public void setNegativeProbability(double negativeProbability) { this.negativeProbability = negativeProbability; }
 
     public SentimentType toSentimentType() {
         if (!success || label == null) {
@@ -139,6 +166,9 @@ public class DjlSentimentResult {
         DjlSentimentResult that = (DjlSentimentResult) o;
         return Double.compare(that.score, score) == 0 &&
                 Double.compare(that.confidence, confidence) == 0 &&
+                Double.compare(that.positiveProbability, positiveProbability) == 0 &&
+                Double.compare(that.neutralProbability, neutralProbability) == 0 &&
+                Double.compare(that.negativeProbability, negativeProbability) == 0 &&
                 success == that.success &&
                 processingTimeMs == that.processingTimeMs &&
                 Objects.equals(label, that.label) &&
@@ -150,6 +180,7 @@ public class DjlSentimentResult {
 
     @Override
     public int hashCode() {
-        return Objects.hash(label, score, confidence, success, errorMessage, processingTimeMs, analyzedAt, modelName, originalText);
+        return Objects.hash(label, score, confidence, positiveProbability, neutralProbability, negativeProbability,
+                success, errorMessage, processingTimeMs, analyzedAt, modelName, originalText);
     }
 }

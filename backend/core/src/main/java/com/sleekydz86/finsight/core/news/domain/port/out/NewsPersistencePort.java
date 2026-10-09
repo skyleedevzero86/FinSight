@@ -19,4 +19,5 @@ public interface NewsPersistencePort {
     Newses findLatestNews(int limit);
     Newses findLatestNewsByProvider(com.sleekydz86.finsight.core.global.NewsProvider provider, int limit);
     Newses findRelatedNews(Long newsId, List<String> categories, int limit);
+    Newses findByIds(List<Long> ids);
 }

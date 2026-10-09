@@ -2,10 +2,10 @@ package com.sleekydz86.finsight.batch.news.scrap.job;
 
 import com.sleekydz86.finsight.batch.news.scrap.tasklet.DjlAnalysisTasklet;
 import com.sleekydz86.finsight.batch.news.scrap.tasklet.NewsCrawlingTasklet;
+import com.sleekydz86.finsight.batch.news.scrap.tasklet.NewsEmbeddingTasklet;
 import com.sleekydz86.finsight.batch.news.scrap.tasklet.OpenAiAnalysisTasklet;
 import com.sleekydz86.finsight.batch.news.scrap.tasklet.SentimentAnalysisTasklet;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity;
-import com.sleekydz86.finsight.core.news.domain.port.out.DjlSentimentAnalysisPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.*;
@@ -42,6 +42,7 @@ public class NewsScrapJobConfig {
     private final NewsCrawlingTasklet newsCrawlingTasklet;
     private final OpenAiAnalysisTasklet openAiAnalysisTasklet;
     private final DjlAnalysisTasklet djlAnalysisTasklet;
+    private final NewsEmbeddingTasklet newsEmbeddingTasklet;
     private final SentimentAnalysisTasklet sentimentAnalysisTasklet;
 
     private final ConcurrentHashMap<String, AtomicLong> stepExecutionMetrics = new ConcurrentHashMap<>();
@@ -54,6 +55,7 @@ public class NewsScrapJobConfig {
             NewsCrawlingTasklet newsCrawlingTasklet,
             OpenAiAnalysisTasklet openAiAnalysisTasklet,
             DjlAnalysisTasklet djlAnalysisTasklet,
+            NewsEmbeddingTasklet newsEmbeddingTasklet,
             SentimentAnalysisTasklet sentimentAnalysisTasklet) {
 
         this.jobRepository = jobRepository;
@@ -62,6 +64,7 @@ public class NewsScrapJobConfig {
         this.newsCrawlingTasklet = newsCrawlingTasklet;
         this.openAiAnalysisTasklet = openAiAnalysisTasklet;
         this.djlAnalysisTasklet = djlAnalysisTasklet;
+        this.newsEmbeddingTasklet = newsEmbeddingTasklet;
         this.sentimentAnalysisTasklet = sentimentAnalysisTasklet;
     }
 
@@ -88,7 +91,8 @@ public class NewsScrapJobConfig {
                     }
                 })
                 .start(newsCrawlingStep())
-                .next(sentimentAnalysisStep())
+                .next(djlAnalysisStep())
+                .next(newsEmbeddingStep())
                 .build();
     }
 
@@ -260,6 +264,7 @@ public class NewsScrapJobConfig {
                 .incrementer(jobParametersIncrementer())
                 .start(newsCrawlingStep())
                 .next(djlAnalysisStep())
+                .next(newsEmbeddingStep())
                 .listener(new JobExecutionListener() {
                     @Override
                     public void beforeJob(JobExecution jobExecution) {
@@ -271,6 +276,13 @@ public class NewsScrapJobConfig {
                         log.info("DJL 뉴스 스크래핑 작업 완료 - 상태: {}", jobExecution.getStatus());
                     }
                 })
+                .build();
+    }
+
+    @Bean
+    public Step newsEmbeddingStep() {
+        return new StepBuilder("newsEmbeddingStep", jobRepository)
+                .tasklet(newsEmbeddingTasklet, transactionManager)
                 .build();
     }
 

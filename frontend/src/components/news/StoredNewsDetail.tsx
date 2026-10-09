@@ -7,6 +7,7 @@ import { newsImageSrc } from "@/lib/newsImage"
 import {
   categoryLabel,
   fetchNewsAiDown,
+  fetchSimilarNews,
   fetchStoredNews,
   fetchStoredNewsDetail,
   NEWS_ADMIN_NOTICE,
@@ -81,6 +82,7 @@ export default function StoredNewsDetail({ newsId }: { newsId: string }) {
   const [detail, setDetail] = useState<StoredNewsDetail | null>(null)
   const [fallbackImage, setFallbackImage] = useState<string | null>(null)
   const [related, setRelated] = useState<StoredNewsCard[]>([])
+  const [relatedTitle, setRelatedTitle] = useState("랭킹 뉴스")
   const [missing, setMissing] = useState(false)
   const [failed, setFailed] = useState(false)
   const [aiDown, setAiDown] = useState(false)
@@ -103,11 +105,19 @@ export default function StoredNewsDetail({ newsId }: { newsId: string }) {
       }
       setDetail(result)
     })
-    fetchStoredNews(12).then((rows) => {
-      if (!alive || !rows) return
-      const match = rows.find((row) => String(row.id) === newsId)
-      if (match?.imageUrl) setFallbackImage(match.imageUrl)
-      setRelated(rows.filter((row) => String(row.id) !== newsId).slice(0, 5))
+    Promise.all([fetchStoredNews(12), fetchSimilarNews(newsId, 5)]).then(([rows, similar]) => {
+      if (!alive) return
+      if (rows) {
+        const match = rows.find((row) => String(row.id) === newsId)
+        if (match?.imageUrl) setFallbackImage(match.imageUrl)
+      }
+      if (similar && similar.length > 0) {
+        setRelatedTitle("비슷한 뉴스")
+        setRelated(similar)
+        return
+      }
+      setRelatedTitle("랭킹 뉴스")
+      if (rows) setRelated(rows.filter((row) => String(row.id) !== newsId).slice(0, 5))
     })
     return () => {
       alive = false
@@ -181,7 +191,7 @@ export default function StoredNewsDetail({ newsId }: { newsId: string }) {
         <NewsArticleComments newsId={newsId} />
       </article>
       <aside>
-        <h2 className="text-base font-semibold text-gray-900">랭킹 뉴스</h2>
+        <h2 className="text-base font-semibold text-gray-900">{relatedTitle}</h2>
         <ol className="mt-3 space-y-3">
           {related.map((item, index) => (
             <li key={item.id} className="flex gap-2 text-sm">

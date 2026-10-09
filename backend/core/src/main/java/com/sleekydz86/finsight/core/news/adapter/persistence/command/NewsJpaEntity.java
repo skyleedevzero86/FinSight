@@ -1,6 +1,8 @@
 package com.sleekydz86.finsight.core.news.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.global.NewsProvider;
+import com.sleekydz86.finsight.core.news.domain.vo.EmbeddingStatus;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentStatus;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import jakarta.persistence.*;
@@ -57,6 +59,38 @@ public class NewsJpaEntity {
 
     @Column(name = "ai_sentiment_score")
     private Double sentimentScore;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ai_sentiment_status", length = 16)
+    private SentimentStatus sentimentStatus;
+
+    @Column(name = "ai_sentiment_confidence")
+    private Double sentimentConfidence;
+
+    @Column(name = "ai_sentiment_positive")
+    private Double sentimentPositive;
+
+    @Column(name = "ai_sentiment_neutral")
+    private Double sentimentNeutral;
+
+    @Column(name = "ai_sentiment_negative")
+    private Double sentimentNegative;
+
+    @Column(name = "ai_sentiment_model", length = 200)
+    private String sentimentModel;
+
+    @Column(name = "ai_sentiment_attempts", nullable = false)
+    private int sentimentAttempts;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ai_embedding_status", length = 16)
+    private EmbeddingStatus embeddingStatus;
+
+    @Column(name = "ai_embedding_model", length = 200)
+    private String embeddingModel;
+
+    @Column(name = "ai_embedding_attempts", nullable = false)
+    private int embeddingAttempts;
 
     @Column(name = "view_count", nullable = false)
     private int viewCount = 0;
@@ -199,6 +233,86 @@ public class NewsJpaEntity {
 
     public void setSentimentScore(Double sentimentScore) {
         this.sentimentScore = sentimentScore;
+    }
+
+    public SentimentStatus getSentimentStatus() {
+        return sentimentStatus;
+    }
+
+    public void setSentimentStatus(SentimentStatus sentimentStatus) {
+        this.sentimentStatus = sentimentStatus;
+    }
+
+    public Double getSentimentConfidence() {
+        return sentimentConfidence;
+    }
+
+    public void setSentimentConfidence(Double sentimentConfidence) {
+        this.sentimentConfidence = sentimentConfidence;
+    }
+
+    public Double getSentimentPositive() {
+        return sentimentPositive;
+    }
+
+    public void setSentimentPositive(Double sentimentPositive) {
+        this.sentimentPositive = sentimentPositive;
+    }
+
+    public Double getSentimentNeutral() {
+        return sentimentNeutral;
+    }
+
+    public void setSentimentNeutral(Double sentimentNeutral) {
+        this.sentimentNeutral = sentimentNeutral;
+    }
+
+    public Double getSentimentNegative() {
+        return sentimentNegative;
+    }
+
+    public void setSentimentNegative(Double sentimentNegative) {
+        this.sentimentNegative = sentimentNegative;
+    }
+
+    public String getSentimentModel() {
+        return sentimentModel;
+    }
+
+    public void setSentimentModel(String sentimentModel) {
+        this.sentimentModel = sentimentModel;
+    }
+
+    public int getSentimentAttempts() {
+        return sentimentAttempts;
+    }
+
+    public void setSentimentAttempts(int sentimentAttempts) {
+        this.sentimentAttempts = sentimentAttempts;
+    }
+
+    public EmbeddingStatus getEmbeddingStatus() {
+        return embeddingStatus;
+    }
+
+    public void setEmbeddingStatus(EmbeddingStatus embeddingStatus) {
+        this.embeddingStatus = embeddingStatus;
+    }
+
+    public String getEmbeddingModel() {
+        return embeddingModel;
+    }
+
+    public void setEmbeddingModel(String embeddingModel) {
+        this.embeddingModel = embeddingModel;
+    }
+
+    public int getEmbeddingAttempts() {
+        return embeddingAttempts;
+    }
+
+    public void setEmbeddingAttempts(int embeddingAttempts) {
+        this.embeddingAttempts = embeddingAttempts;
     }
 
     public int getViewCount() {

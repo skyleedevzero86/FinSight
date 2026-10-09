@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.global.config;
 
 import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
+import com.sleekydz86.finsight.core.news.domain.port.out.NewsSimilarSearchPort;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsStatisticsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsCommandUseCase;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsQueryUseCase;
@@ -27,6 +28,7 @@ import com.sleekydz86.finsight.core.notification.domain.port.out.NotificationSen
 import com.sleekydz86.finsight.core.notification.service.NotificationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -85,9 +87,9 @@ public class AdvancedDependencyInjectionConfig {
     }
 
     @Bean
-    public NewsQueryUseCase newsQueryUseCase() {
+    public NewsQueryUseCase newsQueryUseCase(ObjectProvider<NewsSimilarSearchPort> similarSearch) {
         return new NewsQueryService(newsPersistencePort, newsStatisticsPersistencePort,
-                personalizedNewsService, userPersistencePort);
+                personalizedNewsService, userPersistencePort, similarSearch);
     }
 
     @Bean
@@ -98,9 +100,9 @@ public class AdvancedDependencyInjectionConfig {
 
     @Bean
     @Qualifier("newsQueryService")
-    public NewsQueryService newsQueryService() {
+    public NewsQueryService newsQueryService(ObjectProvider<NewsSimilarSearchPort> similarSearch) {
         return new NewsQueryService(newsPersistencePort, newsStatisticsPersistencePort,
-                personalizedNewsService, userPersistencePort);
+                personalizedNewsService, userPersistencePort, similarSearch);
     }
 
     @Bean
