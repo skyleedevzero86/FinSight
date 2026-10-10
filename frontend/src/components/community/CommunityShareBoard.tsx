@@ -1,8 +1,12 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { useAuthSession } from "@/components/AuthSessionProvider"
+import PortfolioShareArticle, { type ShareModeration } from "@/components/community/PortfolioShareArticle"
+import { canManageUsers } from "@/lib/adminUsers"
 import {
   fetchPortfolioShares,
+  moderatePortfolioShare,
   type PortfolioShareCard,
   type PortfolioShareGoal,
 } from "@/lib/portfolioApi"
@@ -14,6 +18,9 @@ export default function CommunityShareBoard() {
   const [loading, setLoading] = useState(true)
   const [scrollMode, setScrollMode] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
+  const [pendingId, setPendingId] = useState<number | null>(null)
+  const { user } = useAuthSession()
+  const moderator = canManageUsers(user?.role)
   const pageRef = useRef(0)
   const hasNextRef = useRef(false)
   const loadingRef = useRef(false)
@@ -71,6 +78,19 @@ export default function CommunityShareBoard() {
     return () => observer.disconnect()
   }, [scrollMode, cards.length])
 
+  async function moderate(shareId: number, status: Exclude<ShareModeration, "OPEN">) {
+    setPendingId(shareId)
+    setError("")
+    try {
+      const updated = await moderatePortfolioShare(shareId, status)
+      setCards((current) => current.map((card) => (card.id === shareId ? updated : card)))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "공유 게시물을 처리하지 못했습니다.")
+    } finally {
+      setPendingId(null)
+    }
+  }
+
   return (
     <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
       <section>
@@ -86,7 +106,12 @@ export default function CommunityShareBoard() {
         ) : null}
         <div className="grid gap-4 md:grid-cols-2">
           {cards.map((card) => (
-            <ShareCard key={card.id} card={card} />
+            <PortfolioShareArticle
+              key={card.id}
+              card={card}
+              pending={pendingId === card.id}
+              onModerate={moderator ? (status) => void moderate(card.id, status) : undefined}
+            />
           ))}
         </div>
         <div className="mt-8 flex justify-center">
@@ -165,38 +190,3 @@ function ShareGuide({ onClose }: { onClose: () => void }) {
   )
 }
 
-function ShareCard({ card }: { card: PortfolioShareCard }) {
-  const progress = Math.max(0, Math.min(card.progressPercent, 100))
-  const rateLabel = card.cheerCount > 0 ? card.cheerCount.toLocaleString("ko-KR") : card.goalRateLabel
-  return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">
-            {card.authorName.slice(0, 1)}
-          </span>
-          <span className="truncate text-sm font-semibold text-slate-800">{card.authorName}</span>
-        </div>
-        <time className="shrink-0 text-xs text-slate-400">{card.sharedAt}</time>
-      </div>
-      <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-500">{card.message}</p>
-      <div className="mt-4 rounded-2xl bg-[#f4f6fb] px-4 py-4">
-        <p className="text-[11px] text-slate-400">목표달성</p>
-        <p className="mt-1 text-sm font-semibold text-slate-800">{card.goalLabel}</p>
-        <div className="mt-2 flex items-end justify-between gap-3">
-          <p className="text-2xl font-bold tracking-tight text-slate-900">{card.amountLabel || "비율만"}</p>
-          <p className="text-sm font-semibold text-slate-500">{progress}%</p>
-        </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
-          <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
-        </div>
-        <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-          {rateLabel ? <span className="text-emerald-600">달성률 {rateLabel}</span> : null}
-          {card.monthRateLabel ? <span className="text-rose-500">이 달 {card.monthRateLabel}</span> : null}
-          {card.showAsset ? <span className="text-slate-500">자산</span> : null}
-          {card.showDebt ? <span className="text-slate-500">부채</span> : null}
-        </div>
-      </div>
-    </article>
-  )
-}

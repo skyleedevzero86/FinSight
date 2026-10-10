@@ -10,6 +10,7 @@ public class OllamaProperties {
     private boolean enabled = false;
     private String baseUrl = "http://127.0.0.1:11434";
     private String model = "llama3.2";
+    private String portfolioModel = "llama2";
     private int timeoutSeconds = 120;
 
     public boolean isEnabled() {
@@ -34,6 +35,14 @@ public class OllamaProperties {
 
     public void setModel(String model) {
         this.model = model;
+    }
+
+    public String getPortfolioModel() {
+        return portfolioModel;
+    }
+
+    public void setPortfolioModel(String portfolioModel) {
+        this.portfolioModel = portfolioModel;
     }
 
     public int getTimeoutSeconds() {

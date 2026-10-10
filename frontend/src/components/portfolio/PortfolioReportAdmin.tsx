@@ -3,14 +3,23 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthSession } from "@/components/AuthSessionProvider"
-import { canManageUsers, fetchAdminUsers, fetchMemberDetectionCounts, type MemberDetectionCounts } from "@/lib/adminUsers"
+import { canManageUsers, fetchAdminUsers } from "@/lib/adminUsers"
 import { fetchMaintenanceRuns, type ModerationRun } from "@/lib/boardModeration"
+import PortfolioShareArticle from "@/components/community/PortfolioShareArticle"
 import { PortfolioDialog } from "@/components/portfolio/PortfolioDialog"
+import {
+  fetchPortfolioDetections,
+  fetchPortfolioShares,
+  moderatePortfolioShare,
+  type PortfolioDetectionChip,
+  type PortfolioShareCard,
+} from "@/lib/portfolioApi"
 
-type ReportStatus = "대기" | "검토중" | "정상" | "경고" | "블라인드" | "정지 7일"
+type ReportStatus = "대기" | "검토중" | "정상" | "경고" | "블라인드" | "정지 7일" | "삭제"
 
 type ReportRow = {
   id: string
+  shareId?: number
   type: string
   typeClass: string
   author: string
@@ -18,6 +27,7 @@ type ReportRow = {
   count: number
   status: ReportStatus
   actions: string[]
+  card?: PortfolioShareCard
 }
 
 const PAGE_SIZE = 2
@@ -34,8 +44,8 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
   const { user, ready } = useAuthSession()
   const [rows, setRows] = useState(INITIAL_ROWS)
   const [blindToday, setBlindToday] = useState(3)
-  const [signals, setSignals] = useState<MemberDetectionCounts | null>(null)
-  const [signalNote, setSignalNote] = useState("회원정보를 불러오는 중입니다.")
+  const [chips, setChips] = useState<PortfolioDetectionChip[]>([])
+  const [signalNote, setSignalNote] = useState("공개 공유 글과 신고 사유를 집계하는 중입니다.")
   const [names, setNames] = useState<Record<string, { username: string; id: string }>>({})
   const [page, setPage] = useState(0)
   const [detail, setDetail] = useState<ReportRow | null>(null)
@@ -43,6 +53,7 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
   const [runs, setRuns] = useState<ModerationRun[]>([])
   const [runNote, setRunNote] = useState("")
   const [localHistory, setLocalHistory] = useState<string[]>([])
+  const [actionError, setActionError] = useState("")
   const waiting = rows.filter((row) => row.status === "대기" || row.status === "검토중").length
   const allowed = Boolean(onBack) || Boolean(user && canManageUsers(user.role))
 
@@ -58,16 +69,17 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
   useEffect(() => {
     if (!allowed) return
     let alive = true
-    fetchMemberDetectionCounts().then((result) => {
-      if (!alive) return
-      if (!result.ok) {
-        setSignals(null)
-        setSignalNote(result.message)
-        return
-      }
-      setSignals(result.data)
-      setSignalNote("회원정보에 있는 아이디, 닉네임, 이메일만 가져왔습니다.")
-    })
+    fetchPortfolioDetections()
+      .then((detection) => {
+        if (!alive) return
+        setChips(detection.chips)
+        setSignalNote(detection.note)
+      })
+      .catch((reason: unknown) => {
+        if (!alive) return
+        setChips([])
+        setSignalNote(reason instanceof Error ? reason.message : "공유 자동 탐지를 불러오지 못했습니다.")
+      })
     return () => {
       alive = false
     }
@@ -87,6 +99,23 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
       })
       setNames(next)
     })
+    return () => {
+      alive = false
+    }
+  }, [allowed])
+
+  useEffect(() => {
+    if (!allowed) return
+    let alive = true
+    fetchPortfolioShares(0, 12)
+      .then((feed) => {
+        if (!alive || feed.cards.length === 0) return
+        const live = feed.cards.map(shareRow).filter((row): row is ReportRow => row !== null)
+        setRows([...live, ...INITIAL_ROWS])
+      })
+      .catch(() => {
+        if (alive) setActionError("공개 공유 카드를 불러오지 못했습니다.")
+      })
     return () => {
       alive = false
     }
@@ -118,7 +147,7 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
   const safePage = Math.min(page, totalPages - 1)
   const pageRows = rows.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)
 
-  function apply(id: string, action: string) {
+  async function apply(id: string, action: string) {
     const row = rows.find((item) => item.id === id)
     const who = row ? authorText(row, names) : id
     const stamp = new Intl.DateTimeFormat("ko-KR", {
@@ -129,6 +158,23 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
       minute: "2-digit",
     }).format(new Date())
     setLocalHistory((current) => [`${stamp} · ${who} · ${action}`, ...current])
+    setActionError("")
+    if (row?.shareId && (action === "경고" || action === "블라인드" || action === "삭제")) {
+      const status = action === "경고" ? "WARN" : action === "블라인드" ? "BLIND" : "REMOVED"
+      try {
+        const updated = await moderatePortfolioShare(row.shareId, status)
+        const next = shareRow(updated)
+        setRows((current) => current.flatMap((item) => {
+          if (item.id !== id) return [item]
+          return next ? [next] : []
+        }))
+        setDetail((current) => (current?.id === id ? next : current))
+        if (action === "블라인드") setBlindToday((count) => count + 1)
+      } catch (reason) {
+        setActionError(reason instanceof Error ? reason.message : "공유 게시물을 처리하지 못했습니다.")
+      }
+      return
+    }
     if (action === "삭제") {
       setRows((current) => current.filter((item) => item.id !== id))
       return
@@ -156,6 +202,7 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
             처리이력
           </button>
         </div>
+        {actionError ? <p className="mt-3 text-sm text-red-600">{actionError}</p> : null}
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[720px] text-left text-sm">
             <thead className="text-xs text-slate-400">
@@ -175,11 +222,11 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
                 </tr>
               ) : null}
               {pageRows.map((row) => (
-                <tr key={row.id} className="border-t border-neutral-200">
+                <tr key={row.id} className={`border-t border-neutral-200 ${row.status === "경고" ? "bg-rose-50" : ""}`}>
                   <td className={`py-3 font-semibold ${row.typeClass}`}>{row.type}</td>
                   <td className="py-3 text-slate-700">{authorText(row, names)}</td>
                   <td className="py-3">
-                    <button type="button" onClick={() => setDetail(row)} className="text-left text-slate-700 underline">
+                    <button type="button" onClick={() => setDetail(row)} className={`text-left underline ${row.status === "삭제" ? "text-slate-400 line-through" : "text-slate-700"}`}>
                       {row.content}
                     </button>
                   </td>
@@ -188,7 +235,7 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
                   <td className="py-3">
                     <div className="flex gap-2">
                       {row.actions.map((action) => (
-                        <button key={action} type="button" onClick={() => apply(row.id, action)} className="text-xs font-medium text-slate-500 hover:text-slate-900">{action}</button>
+                        <button key={action} type="button" onClick={() => void apply(row.id, action)} className="text-xs font-medium text-slate-500 hover:text-slate-900">{action}</button>
                       ))}
                     </div>
                   </td>
@@ -218,8 +265,10 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
           <h2 className="text-base font-bold text-slate-900">자동 탐지</h2>
           <p className="mt-1 text-xs text-slate-500">{signalNote}</p>
           <div className="mt-3 flex flex-nowrap gap-2 overflow-x-auto">
-            {detectionChips(signals).map((label) => (
-              <span key={label} className="shrink-0 whitespace-nowrap border border-neutral-300 bg-slate-50 px-2 py-1 text-xs text-slate-600">{label}</span>
+            {chips.map((chip) => (
+              <span key={chip.label} className="shrink-0 whitespace-nowrap border border-neutral-300 bg-slate-50 px-2 py-1 text-xs text-slate-600">
+                {chip.label} {chip.count}
+              </span>
             ))}
           </div>
         </section>
@@ -227,7 +276,13 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
       {detail ? (
         <PortfolioDialog title="공개 콘텐츠" subtitle={authorText(detail, names)} onClose={() => setDetail(null)}>
           <p className="text-xs text-slate-500">{detail.type} · 신고 {detail.count} · {detail.status}</p>
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-900">{detail.content}</p>
+          {detail.card ? (
+            <div className="mt-3">
+              <PortfolioShareArticle card={detail.card} />
+            </div>
+          ) : (
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-900">{detail.content}</p>
+          )}
           <div className="mt-5 flex justify-end">
             <button type="button" onClick={() => setDetail(null)} className="border border-neutral-300 px-4 py-2 text-sm">닫기</button>
           </div>
@@ -267,6 +322,32 @@ export default function PortfolioReportAdmin({ onBack }: { onBack?: () => void }
   )
 }
 
+function shareRow(card: PortfolioShareCard): ReportRow | null {
+  const likes = card.likeCount ?? 0
+  const dislikes = card.dislikeCount ?? 0
+  const reports = card.reportCount ?? 0
+  const removed = card.moderationStatus === "REMOVED"
+  const blind = card.moderationStatus === "BLIND" || reports > 0
+  const warn = !removed && !blind && (card.moderationStatus === "WARN" || dislikes > 0)
+  const normal = !removed && !blind && !warn && likes >= 10
+  if (!removed && !blind && !warn && !normal) return null
+  const status: ReportStatus = removed ? "삭제" : blind ? "블라인드" : warn ? "경고" : "정상"
+  const type = reports > 0 ? "신고" : dislikes > 0 ? "싫어요" : likes >= 10 ? "좋아요" : "공유"
+  const hidden = status === "블라인드" || status === "삭제"
+  return {
+    id: `share-${card.id}`,
+    shareId: card.id,
+    type,
+    typeClass: type === "신고" || status === "삭제" ? "text-rose-500" : type === "싫어요" ? "text-orange-500" : type === "좋아요" ? "text-emerald-600" : "text-slate-500",
+    author: card.authorName,
+    content: hidden ? (status === "블라인드" ? "블라인드 처리된 게시물입니다." : "삭제된 게시물입니다.") : card.message,
+    count: reports,
+    status,
+    actions: status === "삭제" ? [] : ["경고", "블라인드", "삭제"],
+    card,
+  }
+}
+
 function authorText(row: ReportRow, names: Record<string, { username: string; id: string }>): string {
   const member = names[row.id]
   if (!member) return row.author
@@ -280,15 +361,6 @@ function authorLabel(username: string, id: string): string {
   if (!key || name === key) return name
   const combined = `${name} (${key})`
   return combined.length > AUTHOR_LIMIT ? name : combined
-}
-
-function detectionChips(signals: MemberDetectionCounts | null): string[] {
-  const chips: string[] = []
-  if (signals && signals.usernameCount > 0) chips.push(`아이디 ${signals.usernameCount}`)
-  if (signals && signals.nicknameCount > 0) chips.push(`닉네임 ${signals.nicknameCount}`)
-  if (signals && signals.emailCount > 0) chips.push(`이메일 ${signals.emailCount}`)
-  chips.push("오픈채팅 URL", "과장 수익문구", "리딩방 패턴")
-  return chips
 }
 
 function Kpi({ label, value, accent }: { label: string; value: string; accent?: boolean }) {

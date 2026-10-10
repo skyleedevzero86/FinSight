@@ -19,7 +19,11 @@ public record PortfolioShareFeed(
             boolean showAsset,
             boolean showDebt,
             int cheerCount,
-            String sharedAt
+            String sharedAt,
+            String moderationStatus,
+            long likeCount,
+            long dislikeCount,
+            long reportCount
     ) {
     }
 

@@ -1,3 +1,5 @@
+import { displayYoutubeThumbnail } from "@/lib/liveVod"
+
 export type LiveVodFavorite = {
   videoId: string
   title: string
@@ -29,10 +31,10 @@ function readAll(): LiveVodFavorite[] {
           videoId: o.videoId,
           title: typeof o.title === "string" ? o.title : "VOD",
           channelTitle: typeof o.channelTitle === "string" ? o.channelTitle : null,
-          thumbnailUrl:
-            typeof o.thumbnailUrl === "string" && o.thumbnailUrl
-              ? o.thumbnailUrl
-              : `https://i.ytimg.com/vi/${o.videoId}/mqdefault.jpg`,
+          thumbnailUrl: displayYoutubeThumbnail(
+            o.videoId,
+            typeof o.thumbnailUrl === "string" ? o.thumbnailUrl : "",
+          ),
           tab: typeof o.tab === "string" ? o.tab : null,
           savedAt: typeof o.savedAt === "string" ? o.savedAt : new Date().toISOString(),
         } satisfies LiveVodFavorite
@@ -78,8 +80,7 @@ export function toggleLiveVodFavorite(input: {
       videoId,
       title: input.title || "VOD",
       channelTitle: input.channelTitle ?? null,
-      thumbnailUrl:
-        input.thumbnailUrl || `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+      thumbnailUrl: displayYoutubeThumbnail(videoId, input.thumbnailUrl),
       tab: input.tab ?? null,
       savedAt: new Date().toISOString(),
     },

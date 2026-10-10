@@ -103,6 +103,9 @@ export function PortfolioShareDialog({
               showAllocation: allocation,
               showGoal: goal,
               showDebt: debt,
+              showExactNames: exactNames,
+              showPrincipal: principal,
+              showProfit: profit,
             })
           }
           className="border border-blue-700 bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"

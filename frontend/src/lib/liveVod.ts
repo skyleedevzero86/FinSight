@@ -29,11 +29,13 @@ export function toPrivacyEmbedUrl(
   videoId: string | null | undefined,
   embedUrl?: string | null,
 ): string {
-  const id =
-    (typeof videoId === "string" && videoId.trim()) ||
-    (typeof embedUrl === "string"
+  const explicit = typeof videoId === "string" ? videoId.trim() : ""
+  if (explicit && !isYoutubeVideoId(explicit)) return ""
+  const fromEmbed =
+    typeof embedUrl === "string"
       ? embedUrl.match(/(?:embed\/|v=|youtu\.be\/|live\/)([A-Za-z0-9_-]{11})/)?.[1]
-      : null)
+      : ""
+  const id = isYoutubeVideoId(explicit) ? explicit : isYoutubeVideoId(fromEmbed) ? fromEmbed : ""
   if (!id) return ""
   const params = new URLSearchParams({
     autoplay: "0",
@@ -60,8 +62,14 @@ export function liveVodWatchHref(
 const META_HINT_KEY = "finsight.liveVod.metaHint.v1"
 const PLACEHOLDER_TITLE = "VOD 상세"
 const YOUTUBE_VIDEO_ID = /^[A-Za-z0-9_-]{11}$/
+const PLACEHOLDER_VIDEO_ID = /^dummy/i
 const YTIMG_ID = /i\.ytimg\.com\/vi\/([^/?#]+)\//i
 const UNRELIABLE_YTIMG = /\/(hqdefault|sddefault|maxresdefault)\./i
+
+export function isYoutubeVideoId(videoId: string | null | undefined): boolean {
+  const id = (videoId || "").trim()
+  return YOUTUBE_VIDEO_ID.test(id) && !PLACEHOLDER_VIDEO_ID.test(id)
+}
 
 export function displayYoutubeThumbnail(
   videoId: string | null | undefined,
@@ -70,7 +78,7 @@ export function displayYoutubeThumbnail(
   const stored = (storedUrl || "").trim()
   const fromUrl = stored.match(YTIMG_ID)?.[1]?.trim() ?? ""
   const id = fromUrl || (videoId || "").trim()
-  if (!YOUTUBE_VIDEO_ID.test(id)) return ""
+  if (!isYoutubeVideoId(id)) return ""
   if (stored.startsWith("https://") && !UNRELIABLE_YTIMG.test(stored)) return stored
   return `https://i.ytimg.com/vi/${id}/mqdefault.jpg`
 }

@@ -94,7 +94,7 @@ public class AdvancedSecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/{newsId:\\d+}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/{newsId:\\d+}/reactions").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/news/{newsId:\\d+}/similar").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/portfolio/shares").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/portfolio/shares", "/api/v1/portfolio/shares/*", "/api/v1/portfolio/shares/*/comments").permitAll()
                         .requestMatchers("/api/v1/health", "/api/v1/health/**").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "MANAGER")
                         .anyRequest().authenticated()

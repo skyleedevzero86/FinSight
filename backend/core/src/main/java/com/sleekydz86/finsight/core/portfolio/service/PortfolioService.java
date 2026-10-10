@@ -1,5 +1,6 @@
 package com.sleekydz86.finsight.core.portfolio.service;
 
+import com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException;
 import com.sleekydz86.finsight.core.global.exception.ValidationException;
 import com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioAssetJpaEntity;
 import com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioAssetJpaRepository;
@@ -18,7 +19,10 @@ import com.sleekydz86.finsight.core.portfolio.domain.PortfolioSummary;
 import com.sleekydz86.finsight.core.portfolio.domain.port.in.dto.PortfolioAssetCommand;
 import com.sleekydz86.finsight.core.portfolio.domain.port.in.dto.PortfolioShareCommand;
 import com.sleekydz86.finsight.core.user.domain.User;
+import com.sleekydz86.finsight.core.user.domain.UserRole;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -31,7 +35,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
@@ -41,25 +44,31 @@ public class PortfolioService {
     private static final long MAX_AMOUNT = 100_000_000_000_000L;
     private static final ZoneId ZONE = ZoneId.of("Asia/Seoul");
 
-    private static final DateTimeFormatter SHARE_DATE = DateTimeFormatter.ofPattern("yyyy.MM.dd");
+    private static final Logger log = LoggerFactory.getLogger(PortfolioService.class);
 
     private final PortfolioAssetJpaRepository assetRepository;
     private final PortfolioSnapshotJpaRepository snapshotRepository;
     private final PortfolioShareJpaRepository shareRepository;
     private final PortfolioGoalSearch goalSearch;
     private final UserPersistencePort userPersistencePort;
+    private final PortfolioGoalAlarm goalAlarm;
+    private final PortfolioShareFeedbackService feedbackService;
 
     public PortfolioService(
             PortfolioAssetJpaRepository assetRepository,
             PortfolioSnapshotJpaRepository snapshotRepository,
             PortfolioShareJpaRepository shareRepository,
             PortfolioGoalSearch goalSearch,
-            UserPersistencePort userPersistencePort) {
+            UserPersistencePort userPersistencePort,
+            PortfolioGoalAlarm goalAlarm,
+            PortfolioShareFeedbackService feedbackService) {
         this.assetRepository = assetRepository;
         this.snapshotRepository = snapshotRepository;
         this.shareRepository = shareRepository;
         this.goalSearch = goalSearch;
         this.userPersistencePort = userPersistencePort;
+        this.goalAlarm = goalAlarm;
+        this.feedbackService = feedbackService;
     }
 
     @Transactional(readOnly = true)
@@ -145,7 +154,19 @@ public class PortfolioService {
         String visibility = choice(command.visibility(), "PUBLIC", "FOLLOWERS", "PRIVATE");
         String amountMode = choice(command.amountMode(), "BAND", "EXACT", "RATIO");
         boolean showAmount = command.showNetWorth() && !"RATIO".equals(amountMode);
-        shareRepository.save(new PortfolioShareJpaEntity(
+        PortfolioShareCommand stored = new PortfolioShareCommand(
+                message,
+                visibility,
+                amountMode,
+                command.showNetWorth(),
+                command.showMonthRate(),
+                command.showAllocation(),
+                command.showGoal(),
+                command.showDebt(),
+                command.showExactNames(),
+                command.showPrincipal(),
+                command.showProfit());
+        PortfolioShareJpaEntity share = new PortfolioShareJpaEntity(
                 userId,
                 authorName(userId),
                 message,
@@ -157,29 +178,34 @@ public class PortfolioService {
                 command.showGoal() ? goalRate(summary.goalPercentTenths()) : null,
                 command.showAllocation(),
                 command.showDebt(),
-                LocalDateTime.now()));
+                LocalDateTime.now());
+        share.keepPublicDetail(PortfolioShareSnapshots.write(stored, summary, assetsOf(userId), YearMonth.now(ZONE)));
+        shareRepository.save(share);
         return summary;
     }
 
+    @Transactional
+    public PortfolioShareCard moderate(String role, Long shareId, String status) {
+        requireModerator(role);
+        PortfolioShareJpaEntity share = shareRepository.findById(shareId)
+                .orElseThrow(() -> new ValidationException(
+                        "공유 게시물을 찾을 수 없습니다. 번호: " + shareId, List.of()));
+        if ("REMOVED".equals(share.getModerationStatus())) {
+            throw new ValidationException("삭제된 게시물은 수정할 수 없습니다.", List.of());
+        }
+        String next = moderationStatus(status);
+        share.applyModeration(next);
+        log.info("포트폴리오 공유 조치 shareId={} status={}", shareId, next);
+        return toCard(share);
+    }
+
     private PortfolioShareCard toCard(PortfolioShareJpaEntity share) {
-        String sharedAt = share.getCreatedAt() == null ? "" : SHARE_DATE.format(share.getCreatedAt());
-        return new PortfolioShareCard(
-                share.getId(),
-                PortfolioShareText.maskName(share.getAuthorName()),
-                share.getMessage(),
-                share.getGoalLabel(),
-                share.getAmountLabel(),
-                share.getProgressPercent(),
-                share.getMonthRateLabel(),
-                share.getGoalRateLabel(),
-                share.isShowAsset(),
-                share.isShowDebt(),
-                share.getCheerCount(),
-                sharedAt);
+        return feedbackService.toCard(share);
     }
 
     private List<PortfolioGoalSearch.PortfolioTopic> weekTopics() {
         return shareRepository.findByVisibilityAndCreatedAtGreaterThanEqual("PUBLIC", weekStart()).stream()
+                .filter(feedbackService::countsForGoals)
                 .map(share -> new PortfolioGoalSearch.PortfolioTopic(
                         share.getId() == null ? 0L : share.getId(),
                         share.getUserId(),
@@ -187,6 +213,34 @@ public class PortfolioService {
                         share.getGoalLabel(),
                         share.getMessage()))
                 .toList();
+    }
+
+    private void requireModerator(String role) {
+        if (!moderator(role)) {
+            throw new InsufficientPermissionException("ADMIN", "공유 게시물 조치는 관리자만 할 수 있습니다.");
+        }
+    }
+
+    private boolean moderator(String role) {
+        if (role == null || role.isBlank()) {
+            return false;
+        }
+        try {
+            return UserRole.valueOf(role.trim().toUpperCase()).canManageUsers();
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
+    private String moderationStatus(String status) {
+        if (status == null || status.isBlank()) {
+            throw new ValidationException("처리 상태를 입력해 주세요.", List.of());
+        }
+        String value = status.trim().toUpperCase();
+        if ("WARN".equals(value) || "BLIND".equals(value) || "REMOVED".equals(value)) {
+            return value;
+        }
+        throw new ValidationException("처리할 수 없는 상태입니다. 입력값: " + status, List.of());
     }
 
     private LocalDateTime weekStart() {
@@ -226,7 +280,10 @@ public class PortfolioService {
         List<PortfolioSnapshotJpaEntity> snapshots = snapshotRepository.findByUserIdOrderByYearMonthAsc(userId);
         YearMonth today = YearMonth.now(ZONE);
         boolean recorded = snapshots.stream().anyMatch(row -> today.toString().equals(row.getYearMonth()));
-        return PortfolioSummaryCalculator.summarize(toHoldings(assets), toPoints(snapshots), today, recorded);
+        PortfolioSummary summary = PortfolioSummaryCalculator.summarize(
+                toHoldings(assets), toPoints(snapshots), today, recorded);
+        goalAlarm.notifyIfReached(userId, summary);
+        return summary;
     }
 
     private List<PortfolioAssetJpaEntity> assetsOf(Long userId) {

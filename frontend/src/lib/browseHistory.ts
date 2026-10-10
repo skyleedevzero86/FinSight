@@ -52,6 +52,15 @@ export function extractContentThumbnail(content: string | null | undefined): str
   return null
 }
 
+function browseThumbnail(kind: BrowseHistoryKind, row: Record<string, unknown>): string {
+  const stored = typeof row.thumbnailUrl === "string" ? row.thumbnailUrl : ""
+  if (kind !== "LIVE_VOD") return stored || BOARD_HISTORY_PLACEHOLDER
+  const fromHref =
+    typeof row.href === "string" ? row.href.match(/\/live-vod\/watch\/([^/?#]+)/)?.[1] : ""
+  const videoId = fromHref ? decodeURIComponent(fromHref) : ""
+  return displayYoutubeThumbnail(videoId, stored) || BOARD_HISTORY_PLACEHOLDER
+}
+
 function normalizeItem(row: unknown): BrowseHistoryItem | null {
   if (!row || typeof row !== "object") return null
   const o = row as Record<string, unknown>
@@ -65,10 +74,7 @@ function normalizeItem(row: unknown): BrowseHistoryItem | null {
     href: o.href,
     title: o.title,
     subtitle: typeof o.subtitle === "string" ? o.subtitle : null,
-    thumbnailUrl:
-      typeof o.thumbnailUrl === "string" && o.thumbnailUrl
-        ? o.thumbnailUrl
-        : BOARD_HISTORY_PLACEHOLDER,
+    thumbnailUrl: browseThumbnail(kind, o),
     viewedAt: typeof o.viewedAt === "string" ? o.viewedAt : new Date().toISOString(),
   }
 }
