@@ -24,6 +24,18 @@ public interface YoutubeVideoMetaJpaRepository extends JpaRepository<YoutubeVide
 
     Page<YoutubeVideoMetaJpaEntity> findByImportStatus(YoutubeImportStatus importStatus, Pageable pageable);
 
+    @Query("""
+            SELECT e FROM YoutubeVideoMetaJpaEntity e
+            WHERE e.importStatus = com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportStatus.PUBLISHED
+              AND LENGTH(e.videoId) = 11
+              AND (
+                LOWER(COALESCE(e.youtubeTitle, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                OR LOWER(COALESCE(e.summary, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+              )
+            ORDER BY e.id DESC
+            """)
+    Page<YoutubeVideoMetaJpaEntity> searchPublishedCatalog(@Param("keyword") String keyword, Pageable pageable);
+
     Page<YoutubeVideoMetaJpaEntity> findByCategoryIgnoreCase(String category, Pageable pageable);
 
     Page<YoutubeVideoMetaJpaEntity> findByImportStatusAndCategoryIgnoreCase(

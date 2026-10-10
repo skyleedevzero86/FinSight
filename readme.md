@@ -9,16 +9,15 @@
 
 ## 프로젝트 구성
 
-| 경로 | 역할 |
-| --- | --- |
-| `backend/web` | 외부 REST API (포트 `8080`), JWT, Swagger, Spring AI MCP |
-| `backend/core` | 도메인·JPA·보안·외부 API/AI (라이브러리, 단독 시 `8081`) |
-| `backend/batch` | 뉴스/YouTube/알림/계정 스케줄 배치 (웹 없음) |
-| `frontend` | Next.js 15 App Router 사용자·관리자 UI (`3000`) |
-| `docker-compose.yml` | 로컬 데이터 스토어만 (MySQL · Redis · MinIO) |
-| `infra/docker-compose.yml` | 앱 포함 Compose (web · batch · frontend + 위 스토어) |
-| `infra/k8s` | k3s/Kustomize 매니페스트 (Compose와 분리, 네임스페이스 `finsight-k8s`) |
-| `docs/setup` | 로컬 AI(Ollama · DJL · Hugging Face) 설치 가이드 |
+| 경로                       | 역할                                                                   |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `backend/web`              | 외부 REST API (포트 `8080`), JWT, Swagger, Spring AI MCP               |
+| `backend/core`             | 도메인·JPA·보안·외부 API/AI (라이브러리, 단독 시 `8081`)               |
+| `backend/batch`            | 뉴스/YouTube/알림/계정 스케줄 배치 (웹 없음)                           |
+| `frontend`                 | Next.js 15 App Router 사용자·관리자 UI (`3000`)                        |
+| `docker-compose.yml`       | 로컬 데이터 스토어만 (MySQL · Redis · MinIO)                           |
+| `infra/docker-compose.yml` | 앱 포함 Compose (web · batch · frontend + 위 스토어)                   |
+| `infra/k8s`                | k3s/Kustomize 매니페스트 (Compose와 분리, 네임스페이스 `finsight-k8s`) |
 
 ## 기술 스택
 
@@ -50,18 +49,18 @@ com.sleekydz86.finsight.core/
 
 ## Frontend 주요 경로
 
-| 경로 | 설명 |
-| --- | --- |
-| `/`, `/news`, `/search`, `/live-vod`, `/economy-pick` | 메인·뉴스·검색·LIVE/VOD·경제 Pick |
-| `/live-vod/watch/[videoId]` | VOD 시청 |
-| `/login`, `/signup`, `/find-email`, `/find-password` | 인증·계정 복구 |
-| `/auth/{google,kakao,naver}/callback` | 소셜 로그인 콜백 |
-| `/verify/[token]` | 이메일 인증 |
-| `/community`, `/community/free`, `/qna`, `/notice` | 커뮤니티 CRUD·댓글·반응 |
-| `/myinfo`, `/myinfo/posts`, `/myinfo/favorites`, `/myinfo/history`, `/myinfo/portfolio`, `/myinfo/userinfo` | 마이페이지 |
-| `/admin/users`, `/stats`, `/health`, `/email-logs`, `/sms` | 관리자 (회원·통계·헬스·메일·SMS) |
-| `/admin/moderation`, `/notifications`, `/popup`, `/mainimg`, `/ulink` | 관리자 (모더레이션·알림·팝업·메인이미지·링크) |
-| `/terms`, `/privacy`, `/viewer-rights`, `/youth-policy` | 약관·정책 |
+| 경로                                                                                                        | 설명                                          |
+| ----------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `/`, `/news`, `/search`, `/live-vod`, `/economy-pick`                                                       | 메인·뉴스·검색·LIVE/VOD·경제 Pick             |
+| `/live-vod/watch/[videoId]`                                                                                 | VOD 시청                                      |
+| `/login`, `/signup`, `/find-email`, `/find-password`                                                        | 인증·계정 복구                                |
+| `/auth/{google,kakao,naver}/callback`                                                                       | 소셜 로그인 콜백                              |
+| `/verify/[token]`                                                                                           | 이메일 인증                                   |
+| `/community`, `/community/free`, `/qna`, `/notice`                                                          | 커뮤니티 CRUD·댓글·반응                       |
+| `/myinfo`, `/myinfo/posts`, `/myinfo/favorites`, `/myinfo/history`, `/myinfo/portfolio`, `/myinfo/userinfo` | 마이페이지                                    |
+| `/admin/users`, `/stats`, `/health`, `/email-logs`, `/sms`                                                  | 관리자 (회원·통계·헬스·메일·SMS)              |
+| `/admin/moderation`, `/notifications`, `/popup`, `/mainimg`, `/ulink`                                       | 관리자 (모더레이션·알림·팝업·메인이미지·링크) |
+| `/terms`, `/privacy`, `/viewer-rights`, `/youth-policy`                                                     | 약관·정책                                     |
 
 `/myinfo`, `/admin`, 커뮤니티 글쓰기·수정은 세션 쿠키가 없으면 `/login`으로 보냅니다.
 
@@ -79,9 +78,6 @@ FinSight/
 ├─ infra/
 │  ├─ docker-compose.yml
 │  └─ k8s/                 # Kustomize, 상세는 infra/k8s/README.md
-├─ docs/
-│  ├─ setup/               # 로컬 AI 설치
-│  └─ cassandra-ai/        # 별도 DART/KOSDAQ 랩 (FinSight 앱과 분리)
 ├─ docker-compose.yml      # MySQL · Redis · MinIO 만
 └─ readme.md
 ```
@@ -92,29 +88,31 @@ FinSight/
 - Node.js 20+ (Bun 또는 pnpm)
 - (권장) Docker — MySQL / Redis / MinIO
 - (선택) 외부 API 키: MarketAux, OpenAI, YouTube, 메일/Solapi/FCM, OAuth 클라이언트
-- (선택) 로컬 Llama/감성 모델: [docs/setup/README.md](docs/setup/README.md)
+- (선택) 로컬 Llama/감성 모델 / Open AI
 
 ## 로컬 인프라
 
-데이터 스토어만 띄울 때 (앱은 Gradle/Next로 따로 실행):
+데이터 스토어만 띄울 때 (앱은 Gradle/Next로 따로 실행)
 
 ```bash
 docker compose up -d
 ```
 
-| 서비스 | 접속 |
-| --- | --- |
-| MySQL | `localhost:3306` / DB `finsight` / 사용자·비번 compose 참고 |
-| Redis | `localhost:9379` (컨테이너 6379, 비밀번호 compose 참고) |
-| MinIO | API `9000`, 콘솔 `9001` |
+| 서비스 | 접속                                                        |
+| ------ | ----------------------------------------------------------- |
+| MySQL  | `localhost:3306` / DB `finsight` / 사용자·비번 compose 참고 |
+| Redis  | `localhost:9379` (컨테이너 6379, 비밀번호 compose 참고)     |
+| MinIO  | API `9000`, 콘솔 `9001`                                     |
 
-웹·배치·프론트까지 한 스택으로 띄울 때 (루트 `.env` 필요):
+웹·배치·프론트까지 한 스택으로 띄울 때 (루트 `.env` 필요)
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d --build
 ```
 
-이 Compose는 루트 `docker-compose.yml`과 볼륨 이름(`finsight_finsight-*-data`)을 공유합니다. k8s 매니페스트는 이 스택과 분리되어 있으며, 적용 방법은 [infra/k8s/README.md](infra/k8s/README.md)를 따릅니다.
+이 Compose는 루트 `docker-compose.yml`과 볼륨 이름(`finsight_finsight-*-data`)을 공유합니다.<br/>
+k8s 매니페스트는 이 스택과 분리되어 있습니다.
+<br/>
 
 ## 로컬 실행
 
@@ -134,17 +132,19 @@ cd backend
 .\gradlew.bat :batch:bootRun
 ```
 
-| 모듈 | 프로필 | 포트 |
-| --- | --- | --- |
-| `web` | `local` | `8080` |
-| `core` | `core-local` | 단독 시 `8081` |
-| `batch` | `batch-local` | 웹 없음 |
+| 모듈    | 프로필        | 포트           |
+| ------- | ------------- | -------------- |
+| `web`   | `local`       | `8080`         |
+| `core`  | `core-local`  | 단독 시 `8081` |
+| `batch` | `batch-local` | 웹 없음        |
 
-일반 API 개발은 `:web:bootRun`만으로 충분합니다. 뉴스·YouTube 수집은 `:batch:bootRun`이 필요합니다.
+일반 API 개발은 `:web:bootRun`만으로 충분합니다.<br/>
+뉴스·YouTube 수집은 `:batch:bootRun`이 필요합니다.<br/>
 
 ### 2) Frontend
 
-`frontend/bun.lock`과 `frontend/pnpm-lock.yaml`이 있습니다. 둘 중 하나만 쓰면 됩니다.
+`frontend/bun.lock`과 `frontend/pnpm-lock.yaml`이 있습니다.<br/>
+둘 중 하나만 쓰면 됩니다.
 
 ```bash
 cd frontend
@@ -199,19 +199,15 @@ pnpm run dev
 
 ## Kubernetes
 
-Compose와 분리된 k3s 매니페스트입니다. MySQL·MinIO는 StatefulSet+PVC, Redis는 PVC 없는 캐시, web/frontend는 Deployment, batch는 CronJob입니다. Ingress는 frontend와 web만 노출합니다.
+Compose와 분리된 k3s 매니페스트입니다. <br/>
+MySQL·MinIO는 StatefulSet+PVC, Redis는 PVC 없는 캐시, web/frontend는 Deployment, batch는 CronJob입니다. <br/>
+Ingress는 frontend와 web만 노출합니다.<br/>
 
 ```powershell
 cd infra/k8s
 copy 01-secrets.example.yaml secrets.yaml
 kubectl apply -k .
 ```
-
-절차·스토리지·S3 전환 메모: [infra/k8s/README.md](infra/k8s/README.md)
-
-## 로컬 AI
-
-Ollama·DJL·Hugging Face 캐시를 D: 드라이브 `tools/`에 두는 절차는 [docs/setup/README.md](docs/setup/README.md)에 있습니다. Python/CUDA 수동 설치는 필요 없고, DJL PyTorch는 Gradle `pytorch-native-cpu`를 사용합니다.
 
 ## API 문서
 
