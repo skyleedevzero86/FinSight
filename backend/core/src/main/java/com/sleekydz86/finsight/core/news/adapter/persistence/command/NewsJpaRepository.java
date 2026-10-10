@@ -89,8 +89,9 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
             WHERE n.originalTitle NOT LIKE '[더미]%'
               AND (n.translatedTitle IS NULL OR n.translatedTitle NOT LIKE '[더미]%')
               AND (
-                LOWER(COALESCE(n.translatedTitle, n.originalTitle, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                OR LOWER(COALESCE(n.translatedContent, n.originalContent, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                COALESCE(n.translatedTitle, n.originalTitle, '') LIKE CONCAT('%', :keyword, '%')
+                OR n.translatedContent LIKE CONCAT('%', :keyword, '%')
+                OR n.originalContent LIKE CONCAT('%', :keyword, '%')
               )
             ORDER BY n.newsPublishedTime DESC
             """)
