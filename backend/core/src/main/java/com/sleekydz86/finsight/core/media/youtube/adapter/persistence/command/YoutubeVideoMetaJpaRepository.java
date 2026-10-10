@@ -29,7 +29,7 @@ public interface YoutubeVideoMetaJpaRepository extends JpaRepository<YoutubeVide
             WHERE e.importStatus = com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportStatus.PUBLISHED
               AND LENGTH(e.videoId) = 11
               AND (
-                LOWER(e.youtubeTitle) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                e.youtubeTitle LIKE CONCAT('%', :keyword, '%')
                 OR e.summary LIKE CONCAT('%', :keyword, '%')
               )
             ORDER BY e.id DESC
