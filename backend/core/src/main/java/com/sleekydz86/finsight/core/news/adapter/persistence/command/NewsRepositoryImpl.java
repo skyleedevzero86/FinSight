@@ -5,18 +5,25 @@ import com.sleekydz86.finsight.core.news.domain.Newses;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsQueryRequest;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsSearchRequest;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
+import com.sleekydz86.finsight.core.news.domain.vo.NewsSourceUrls;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public class NewsRepositoryImpl implements NewsPersistencePort {
+
+    private static final Logger log = LoggerFactory.getLogger(NewsRepositoryImpl.class);
 
     private final NewsJpaMapper newsJpaMapper;
     private final NewsJpaRepository newsJpaRepository;
@@ -28,15 +35,41 @@ public class NewsRepositoryImpl implements NewsPersistencePort {
 
     @Override
     public Newses saveAllNews(List<News> newses) {
-        List<NewsJpaEntity> entities = newses.stream()
+        List<News> fresh = selectFresh(newses);
+        if (fresh.isEmpty()) {
+            return new Newses(List.of());
+        }
+        List<NewsJpaEntity> savedEntities = newsJpaRepository.saveAll(fresh.stream()
                 .map(newsJpaMapper::toEntity)
-                .toList();
-
-        List<NewsJpaEntity> savedEntities = newsJpaRepository.saveAll(entities);
-
+                .toList());
         return new Newses(savedEntities.stream()
                 .map(newsJpaMapper::toDomain)
                 .toList());
+    }
+
+    private List<News> selectFresh(List<News> newses) {
+        if (newses == null || newses.isEmpty()) {
+            return List.of();
+        }
+        Set<String> urls = new HashSet<>();
+        for (News news : newses) {
+            if (news == null || news.getNewsMeta() == null) {
+                continue;
+            }
+            String url = NewsSourceUrls.normalize(news.getNewsMeta().getSourceUrl());
+            if (!url.isBlank()) {
+                urls.add(url);
+            }
+        }
+        Set<String> stored = urls.isEmpty()
+                ? Set.of()
+                : new HashSet<>(newsJpaRepository.findSourceUrlBySourceUrlIn(urls));
+        List<News> fresh = NewsSourceUrls.withoutStoredDuplicates(newses, stored);
+        int skipped = newses.size() - fresh.size();
+        if (skipped > 0) {
+            log.info("중복 뉴스 URL {}건을 건너뜁니다", skipped);
+        }
+        return fresh;
     }
 
     @Override

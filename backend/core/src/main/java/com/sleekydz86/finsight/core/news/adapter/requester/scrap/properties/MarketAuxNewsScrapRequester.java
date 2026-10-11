@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 @Component
@@ -66,33 +67,26 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
 
         return response.data.stream()
                 .map(this::convertToNews)
+                .filter(Objects::nonNull)
                 .toList();
     }
 
     private News convertToNews(MarketAuxNewsItem item) {
+        if (item == null || item.url == null || item.url.isBlank()) {
+            log.warn("MarketAux 뉴스 URL이 없어 항목을 건너뜁니다");
+            return null;
+        }
         try {
             OffsetDateTime publishedTime = OffsetDateTime.parse(item.published_at);
             NewsMeta newsMeta = NewsMeta.of(
                     NewsProvider.MARKETAUX,
                     publishedTime.toLocalDateTime(),
                     item.url);
-
             Content originalContent = new Content(item.title, item.description).withImageUrl(item.image_url);
-
             return News.createWithoutAI(newsMeta, originalContent);
         } catch (Exception e) {
             log.error("MarketAux 뉴스 항목 변환 실패: {}", e.getMessage());
-
-            NewsMeta fallbackMeta = NewsMeta.of(
-                    NewsProvider.MARKETAUX,
-                    LocalDateTime.now(),
-                    item.url != null ? item.url : "https://api.marketaux.com");
-            Content fallbackContent = new Content(
-                    item.title != null ? item.title : "제목 없음",
-                    item.description != null ? item.description : "설명 없음")
-                    .withImageUrl(item.image_url);
-
-            return News.createWithoutAI(fallbackMeta, fallbackContent);
+            return null;
         }
     }
 

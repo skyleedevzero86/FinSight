@@ -12,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "news")
+@Table(name = "news", uniqueConstraints = @UniqueConstraint(name = "uk_news_source_url", columnNames = "source_url"))
 public class NewsJpaEntity {
 
     @Id

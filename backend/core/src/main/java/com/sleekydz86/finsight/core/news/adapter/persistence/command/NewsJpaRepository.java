@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -74,6 +75,9 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
     Page<NewsJpaEntity> findPopularNews(Pageable pageable);
 
     boolean existsBySourceUrl(String sourceUrl);
+
+    @Query("SELECT n.sourceUrl FROM NewsJpaEntity n WHERE n.sourceUrl IN :urls")
+    List<String> findSourceUrlBySourceUrlIn(@Param("urls") Collection<String> urls);
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.newsProvider = :provider AND n.originalTitle NOT LIKE '[더미]%' AND (n.translatedTitle IS NULL OR n.translatedTitle NOT LIKE '[더미]%') ORDER BY n.newsPublishedTime DESC")
     Page<NewsJpaEntity> findLatestByProvider(@Param("provider") com.sleekydz86.finsight.core.global.NewsProvider provider, Pageable pageable);

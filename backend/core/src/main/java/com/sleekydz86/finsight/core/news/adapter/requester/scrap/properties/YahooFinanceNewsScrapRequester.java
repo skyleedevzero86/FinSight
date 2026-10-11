@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.news.adapter.requester.NewsScrapRequester;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
+import com.sleekydz86.finsight.core.news.domain.vo.NewsSourceUrls;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -95,8 +96,9 @@ public class YahooFinanceNewsScrapRequester implements NewsScrapRequester {
             if (news.getNewsMeta().getNewsPublishedTime().isBefore(after)) {
                 continue;
             }
-            String url = news.getNewsMeta().getSourceUrl();
-            if (newsJpaRepository.existsBySourceUrl(url)) {
+            String url = NewsSourceUrls.normalize(news.getNewsMeta().getSourceUrl());
+            news.getNewsMeta().setSourceUrl(url);
+            if (url.isBlank() || newsJpaRepository.existsBySourceUrl(url)) {
                 continue;
             }
             fresh.add(news);

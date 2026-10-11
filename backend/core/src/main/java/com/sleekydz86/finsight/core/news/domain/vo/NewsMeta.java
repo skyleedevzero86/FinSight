@@ -14,7 +14,7 @@ public class NewsMeta {
     public NewsMeta(NewsProvider newsProvider, LocalDateTime newsPublishedTime, String sourceUrl) {
         this.newsProvider = newsProvider;
         this.newsPublishedTime = newsPublishedTime;
-        this.sourceUrl = sourceUrl;
+        this.sourceUrl = NewsSourceUrls.normalize(sourceUrl);
     }
 
     public static NewsMeta of(NewsProvider newsProvider, LocalDateTime newsPublishedTime, String sourceUrl) {
@@ -50,7 +50,7 @@ public class NewsMeta {
     }
 
     public void setSourceUrl(String sourceUrl) {
-        this.sourceUrl = sourceUrl;
+        this.sourceUrl = NewsSourceUrls.normalize(sourceUrl);
     }
 
     public boolean isValidProvider() {

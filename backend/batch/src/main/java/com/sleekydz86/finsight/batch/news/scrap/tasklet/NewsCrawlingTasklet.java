@@ -68,15 +68,17 @@ public class NewsCrawlingTasklet implements Tasklet {
                         return executeScrapingForProvider(provider, requester, publishTimeAfter, limit)
                                 .whenComplete((result, throwable) -> {
                                     if (throwable != null) {
-                                        log.error("뉴스 제공자 스크래핑 중 오류 발생: {}", provider, throwable);
-                                        errorCount.computeIfAbsent(provider, k -> new AtomicInteger(0)).incrementAndGet();
-                                    } else {
-                                        log.info("제공자 {}에서 뉴스 {}건 스크래핑 완료",
-                                                result.size(), provider);
-                                        scrapedNewsCount.computeIfAbsent(provider, k -> new AtomicInteger(0))
-                                                .addAndGet(result.size());
-                                        totalScrapedCount.addAndGet(result.size());
+                                        return;
                                     }
+                                    log.info("제공자 {}에서 뉴스 {}건 스크래핑 완료", provider, result.size());
+                                    scrapedNewsCount.computeIfAbsent(provider, k -> new AtomicInteger(0))
+                                            .addAndGet(result.size());
+                                    totalScrapedCount.addAndGet(result.size());
+                                })
+                                .exceptionally(throwable -> {
+                                    log.error("뉴스 제공자 스크래핑 중 오류 발생: {}", provider, throwable);
+                                    errorCount.computeIfAbsent(provider, k -> new AtomicInteger(0)).incrementAndGet();
+                                    return List.of();
                                 });
                     })
                     .toList();
