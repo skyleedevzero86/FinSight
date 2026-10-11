@@ -97,6 +97,15 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
             """)
     Page<NewsJpaEntity> searchCatalog(@Param("keyword") String keyword, Pageable pageable);
 
+    @Query("""
+            SELECT n FROM NewsJpaEntity n
+            WHERE n.originalTitle NOT LIKE '[더미]%'
+              AND (n.translatedTitle IS NULL OR n.translatedTitle NOT LIKE '[더미]%')
+              AND COALESCE(n.translatedTitle, n.originalTitle, '') LIKE CONCAT('%', :keyword, '%')
+            ORDER BY n.newsPublishedTime DESC
+            """)
+    Page<NewsJpaEntity> searchCatalogTitle(@Param("keyword") String keyword, Pageable pageable);
+
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.id != :newsId AND n.targetCategories LIKE %:category%")
     List<NewsJpaEntity> findRelatedNews(@Param("newsId") Long newsId, @Param("category") String category);
 

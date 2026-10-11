@@ -54,7 +54,7 @@ public class MysqlCatalogSearch {
 
     @Transactional(readOnly = true)
     public SearchSection news(String keyword) {
-        Page<NewsJpaEntity> page = newsRepository.searchCatalog(keyword, PageRequest.of(0, HITS));
+        Page<NewsJpaEntity> page = newsRepository.searchCatalogTitle(keyword, PageRequest.of(0, HITS));
         List<SearchHit> hits = page.getContent().stream().map(row -> hit(
                 SearchSnippets.title(row.getTranslatedTitle(), row.getOriginalTitle()),
                 SearchSnippets.snippet(row.getTranslatedContent(), row.getOriginalContent(), keyword),
@@ -67,7 +67,7 @@ public class MysqlCatalogSearch {
         Page<YoutubeVideoMetaJpaEntity> page = videoRepository.searchPublishedCatalog(keyword, PageRequest.of(0, HITS));
         List<SearchHit> hits = page.getContent().stream().map(row -> hit(
                 SearchSnippets.title(row.getYoutubeTitle(), row.getChannelTitle()),
-                SearchSnippets.snippet(row.getSummary(), row.getYoutubeTitle(), keyword),
+                SearchSnippets.snippet(row.getSummary(), "", keyword),
                 "/live-vod/watch/" + row.getVideoId())).toList();
         return section("vod", "실시간 VOD", page.getTotalElements(), "", hits);
     }

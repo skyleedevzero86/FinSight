@@ -13,8 +13,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -29,16 +31,24 @@ public class ElasticsearchCatalogGateway {
 
     private final ElasticsearchProperties properties;
     private final RestTemplate restTemplate;
+    private final RestTemplate searchTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public ElasticsearchCatalogGateway(ElasticsearchProperties properties, RestTemplate restTemplate) {
+    public ElasticsearchCatalogGateway(
+            ElasticsearchProperties properties,
+            RestTemplate restTemplate,
+            RestTemplateBuilder builder) {
         this.properties = properties;
         this.restTemplate = restTemplate;
+        this.searchTemplate = builder
+                .setConnectTimeout(Duration.ofSeconds(2))
+                .setReadTimeout(Duration.ofSeconds(4))
+                .build();
     }
 
     public SearchSection search(List<String> sourceTypes, String label, String key, String keyword) {
         String body = query(sourceTypes, keyword);
-        String response = exchange(HttpMethod.POST, base() + "/" + readAlias() + "/_search", body);
+        String response = searchExchange(base() + "/" + readAlias() + "/_search", body);
         return parse(key, label, keyword, response);
     }
 
@@ -111,7 +121,7 @@ public class ElasticsearchCatalogGateway {
         if (fragments.isArray() && !fragments.isEmpty()) {
             return SearchSnippets.snippet(fragments.get(0).asText(""), "", keyword);
         }
-        return SearchSnippets.snippet(body, hit.path("_source").path("title").asText(""), keyword);
+        return SearchSnippets.snippet(body, "", keyword);
     }
 
     private String query(List<String> sourceTypes, String keyword) {
@@ -164,6 +174,12 @@ public class ElasticsearchCatalogGateway {
             return "";
         }
         return body.length() <= 4000 ? body : body.substring(0, 4000);
+    }
+
+    private String searchExchange(String url, String body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return searchTemplate.exchange(url, HttpMethod.POST, new HttpEntity<>(body, headers), String.class).getBody();
     }
 
     private String exchange(HttpMethod method, String url, String body) {

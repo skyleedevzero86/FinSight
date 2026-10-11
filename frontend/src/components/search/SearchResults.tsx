@@ -15,11 +15,26 @@ type Result = {
   sections: Section[]
 }
 
+function sameVisibleText(left: string, right: string) {
+  return left.replace(/\s+/g, " ").trim() === right.replace(/\s+/g, " ").trim()
+}
+
+function isAbort(cause: unknown) {
+  return cause instanceof DOMException && cause.name === "AbortError"
+}
+
 const TONE: Record<string, string> = {
   news: "bg-orange-500",
   vod: "bg-sky-500",
   community: "bg-emerald-500",
   activity: "bg-violet-500",
+}
+
+const SECTION_MORE: Record<string, string> = {
+  news: "/news",
+  vod: "/live-vod",
+  community: "/community",
+  activity: "/myinfo/activity",
 }
 
 export default function SearchResults({ query }: { query: string }) {
@@ -35,10 +50,12 @@ export default function SearchResults({ query }: { query: string }) {
     setError("")
     setResult(null)
     let alive = true
+    const controller = new AbortController()
     fetch(`/api/v1/search?q=${encodeURIComponent(query)}`, {
       headers: { Accept: "application/json", ...authHeadersJson() },
       cache: "no-store",
       credentials: "include",
+      signal: controller.signal,
     })
       .then(async (res) => {
         const body: unknown = await res.json().catch(() => null)
@@ -51,10 +68,12 @@ export default function SearchResults({ query }: { query: string }) {
         if (alive) setResult(next)
       })
       .catch((cause: unknown) => {
-        if (alive) setError(cause instanceof Error ? cause.message : "검색 결과를 불러오지 못했습니다.")
+        if (!alive || isAbort(cause)) return
+        setError(cause instanceof Error ? cause.message : "검색 결과를 불러오지 못했습니다.")
       })
     return () => {
       alive = false
+      controller.abort()
     }
   }, [query])
 
@@ -94,6 +113,12 @@ export default function SearchResults({ query }: { query: string }) {
                   {section.key === "activity" && section.note ? null : (
                     <span className="font-medium text-slate-400">({section.total.toLocaleString("ko-KR")}건)</span>
                   )}
+                  <Link
+                    href={SECTION_MORE[section.key] ?? "/search"}
+                    className="ml-auto text-xs font-medium text-slate-500 hover:text-sky-700 hover:underline"
+                  >
+                    자세히보기
+                  </Link>
                 </h2>
                 {section.key === "activity" && section.note ? (
                   <LockedActivity query={result.query} message={section.note} />
@@ -108,7 +133,7 @@ export default function SearchResults({ query }: { query: string }) {
                           <Link href={hit.href || "/search"} className="text-sm font-semibold text-sky-700 hover:underline">
                             <Highlight text={hit.title} query={result.query} />
                           </Link>
-                          {hit.snippet ? (
+                          {hit.snippet && !sameVisibleText(hit.snippet, hit.title) ? (
                             <p className="mt-1 text-sm leading-6 text-slate-600">
                               <Highlight text={hit.snippet} query={result.query} />
                             </p>

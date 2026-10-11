@@ -225,7 +225,22 @@ function parseSection(raw: unknown): LiveVodSection | null {
   }
 }
 
-export async function fetchLiveVodFeed(
+const liveVodFeedInflight = new Map<string, Promise<{ ok: true; data: LiveVodFeed } | { ok: false; message: string }>>()
+
+export function fetchLiveVodFeed(
+  tab: string,
+): Promise<{ ok: true; data: LiveVodFeed } | { ok: false; message: string }> {
+  const key = tab && tab !== "ALL" ? tab : "ALL"
+  const pending = liveVodFeedInflight.get(key)
+  if (pending) return pending
+  const request = requestLiveVodFeed(tab).finally(() => {
+    liveVodFeedInflight.delete(key)
+  })
+  liveVodFeedInflight.set(key, request)
+  return request
+}
+
+async function requestLiveVodFeed(
   tab: string,
 ): Promise<{ ok: true; data: LiveVodFeed } | { ok: false; message: string }> {
   const params = new URLSearchParams()
