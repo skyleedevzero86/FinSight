@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportSourceType
 import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeImportStatus;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaEntity;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaRepository;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Disabled("로컬 MySQL finsight_catalog_it가 필요함. 통합 테스트 환경 정리 예정")
 class CatalogSearchMysqlRepositoryTest {
 
     @Autowired

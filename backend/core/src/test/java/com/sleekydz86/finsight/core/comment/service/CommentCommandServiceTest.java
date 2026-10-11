@@ -8,6 +8,8 @@ import com.sleekydz86.finsight.core.comment.domain.port.out.CommentPersistencePo
 import com.sleekydz86.finsight.core.comment.domain.port.out.CommentReactionPersistencePort;
 import com.sleekydz86.finsight.core.comment.domain.port.out.CommentReportPersistencePort;
 import com.sleekydz86.finsight.core.global.exception.CommentNotFoundException;
+import com.sleekydz86.finsight.core.news.domain.News;
+import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,6 +37,9 @@ class CommentCommandServiceTest {
 
     @Mock
     private com.sleekydz86.finsight.core.board.domain.port.out.BoardPersistencePort boardPersistencePort;
+
+    @Mock
+    private NewsPersistencePort newsPersistencePort;
 
     @InjectMocks
     private CommentCommandService commentCommandService;
@@ -70,6 +75,7 @@ class CommentCommandServiceTest {
     @Test
     void 댓글_생성_성공() {
 
+        when(newsPersistencePort.findById(1L)).thenReturn(Optional.of(new News()));
         when(commentPersistencePort.save(any(Comment.class))).thenReturn(comment);
 
         Comment result = commentCommandService.createComment("test@example.com", "USER", commentCreateRequest);
