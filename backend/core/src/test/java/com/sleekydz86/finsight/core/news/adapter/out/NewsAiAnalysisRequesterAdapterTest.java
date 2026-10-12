@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class NewsAiAnalysisRequesterAdapterTest {
 
@@ -22,9 +23,9 @@ class NewsAiAnalysisRequesterAdapterTest {
                 List.of(chatgpt),
                 new AiModelSelectionService(List.of(chatgpt)));
 
-        List<?> analyzed = adapter.analyseNewses(AiModel.CHATGPT, new Content("제목", "본문"));
-
-        assertThat(analyzed).isEmpty();
+        assertThatThrownBy(() -> adapter.analyseNewses(AiModel.CHATGPT, new Content("제목", "본문")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("CHATGPT");
         assertThat(chatgpt.calls.get()).isEqualTo(1);
     }
 

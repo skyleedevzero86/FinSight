@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsAiAnalysisRequesterPort;
 import com.sleekydz86.finsight.core.news.domain.vo.*;
 import com.sleekydz86.finsight.core.news.service.AiModelSelectionService;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -39,6 +40,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
     }
 
     @Override
+    @CircuitBreaker(name = "newsAiCircuitBreaker", fallbackMethod = "analyseNewsesOpen")
     public List<News> analyseNewses(AiModel model, Content content) {
         totalRequests.incrementAndGet();
 
@@ -73,8 +75,18 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
             failedRequests.incrementAndGet();
             aiModelSelectionService.recordModelError(model);
 
-            return executeFallbackStrategy(content, model, "예외 발생: " + e.getMessage());
+            List<News> fallback = executeFallbackStrategy(content, model, "예외 발생: " + e.getMessage());
+            if (!fallback.isEmpty()) {
+                return fallback;
+            }
+            throw new IllegalStateException("AI 분석에 실패했습니다. 모델: " + model, e);
         }
+    }
+
+    private List<News> analyseNewsesOpen(AiModel model, Content content, Throwable throwable) {
+        String title = content == null ? "" : content.getTitle();
+        log.warn("AI 분석 서킷이 열려 호출을 건너뜁니다. 모델: {}, 제목: {}", model, title);
+        return List.of();
     }
 
     private List<News> executeFallbackStrategy(Content content, AiModel failedModel, String fallbackReason) {

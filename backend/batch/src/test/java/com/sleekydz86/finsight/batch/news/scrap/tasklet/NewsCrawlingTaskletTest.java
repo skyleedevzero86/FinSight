@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -43,7 +44,7 @@ class NewsCrawlingTaskletTest {
         NewsCrawlingTasklet tasklet = new NewsCrawlingTasklet(
                 List.of(successRequester(), failingRequester()),
                 persistence,
-                new NewsAiProcessingService(new EmptyAiAnalysis()),
+                new NewsAiProcessingService(new EmptyAiAnalysis(), new DirectExecutor()),
                 new NewsNotificationService(null));
 
         RepeatStatus status = tasklet.execute(contribution(), chunkContext());
@@ -63,7 +64,7 @@ class NewsCrawlingTaskletTest {
         NewsCrawlingTasklet tasklet = new NewsCrawlingTasklet(
                 List.of(successRequester()),
                 persistence,
-                new NewsAiProcessingService(ai),
+                new NewsAiProcessingService(ai, new DirectExecutor()),
                 new NewsNotificationService(null));
 
         RepeatStatus status = tasklet.execute(contribution(), chunkContext());
@@ -80,7 +81,7 @@ class NewsCrawlingTaskletTest {
                         NewsProvider.ALPHA_VANTAGE,
                         CompletableFuture.failedFuture(new IllegalStateException("수집 실패")))),
                 new RecordingNewsPersistence(),
-                new NewsAiProcessingService(new EmptyAiAnalysis()),
+                new NewsAiProcessingService(new EmptyAiAnalysis(), new DirectExecutor()),
                 new NewsNotificationService(null));
 
         assertThatThrownBy(() -> tasklet.execute(contribution(), chunkContext()))
@@ -109,6 +110,13 @@ class NewsCrawlingTaskletTest {
     private static ChunkContext chunkContext() {
         StepExecution stepExecution = new StepExecution("newsCrawlingStep", new JobExecution(2L, new JobParameters()));
         return new ChunkContext(new StepContext(stepExecution));
+    }
+
+    private static final class DirectExecutor implements Executor {
+        @Override
+        public void execute(Runnable command) {
+            command.run();
+        }
     }
 
     private static final class FixedRequester implements NewsScrapRequester {
