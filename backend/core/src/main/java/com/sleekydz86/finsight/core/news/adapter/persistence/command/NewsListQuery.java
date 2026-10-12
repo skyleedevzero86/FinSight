@@ -97,9 +97,9 @@ final class NewsListQuery {
             return;
         }
         String keyword = request.getKeyword().trim();
-        where.and(news.originalTitle.containsIgnoreCase(keyword)
-                .or(news.originalContent.containsIgnoreCase(keyword))
-                .or(news.translatedTitle.containsIgnoreCase(keyword))
-                .or(news.translatedContent.containsIgnoreCase(keyword)));
+        where.and(news.originalTitle.contains(keyword)
+                .or(news.originalContent.contains(keyword))
+                .or(news.translatedTitle.contains(keyword))
+                .or(news.translatedContent.contains(keyword)));
     }
 }

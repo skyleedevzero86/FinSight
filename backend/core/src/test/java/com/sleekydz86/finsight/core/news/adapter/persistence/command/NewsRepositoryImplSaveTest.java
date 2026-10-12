@@ -61,6 +61,7 @@ class NewsRepositoryImplSaveTest {
 
         assertThat(kospi).contains("코스피");
         assertThat(nasdaq).contains("나스닥");
+        assertThat(kospi).doesNotContain("containsIc").doesNotContain("lower(");
         assertThat(kospi).isNotEqualTo(nasdaq);
         NewsQueryRequest blank = new NewsQueryRequest(null, null, null, "  ", null, null);
         assertThat(NewsListQuery.filters(news, blank).hasValue()).isFalse();

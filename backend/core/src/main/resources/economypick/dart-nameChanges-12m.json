@@ -1,0 +1,79 @@
+{
+  "generatedAt": "2026-06-18T12:40:36.547Z",
+  "category": "nameChanges",
+  "period": "12개월",
+  "totalCompanies": 100,
+  "events": 7,
+  "data": [
+    {
+      "stockCode": "013720",
+      "corpCode": "00151605",
+      "companyName": "THE CUBE&",
+      "marketCap": 277,
+      "reportName": "상호변경안내              ",
+      "rceptNo": "20260612900321",
+      "date": "20260612",
+      "category": "사명변경"
+    },
+    {
+      "stockCode": "900110",
+      "corpCode": "00799070",
+      "companyName": "딥커머스",
+      "marketCap": 263,
+      "reportName": "상호변경안내              ",
+      "rceptNo": "20260423900728",
+      "date": "20260423",
+      "category": "사명변경"
+    },
+    {
+      "stockCode": "038870",
+      "corpCode": "00287812",
+      "companyName": "에코심플렉스",
+      "marketCap": 283,
+      "reportName": "상호변경안내              ",
+      "rceptNo": "20260326902849",
+      "date": "20260326",
+      "category": "사명변경"
+    },
+    {
+      "stockCode": "296640",
+      "corpCode": "01341630",
+      "companyName": "이노에이엑스",
+      "marketCap": 295,
+      "reportName": "상호변경안내              ",
+      "rceptNo": "20260326900642",
+      "date": "20260326",
+      "category": "사명변경"
+    },
+    {
+      "stockCode": "298060",
+      "corpCode": "01110474",
+      "companyName": "풍전약품",
+      "marketCap": 241,
+      "reportName": "상호변경안내              ",
+      "rceptNo": "20260324901385",
+      "date": "20260324",
+      "category": "사명변경"
+    },
+    {
+      "stockCode": "290560",
+      "corpCode": "01130849",
+      "companyName": "파라택시스이더리움",
+      "marketCap": 245,
+      "reportName": "상호변경안내              ",
+      "rceptNo": "20260116900954",
+      "date": "20260116",
+      "category": "사명변경"
+    },
+    {
+      "stockCode": "223310",
+      "corpCode": "01075126",
+      "companyName": "사토시홀딩스",
+      "marketCap": 277,
+      "reportName": "상호변경안내              ",
+      "rceptNo": "20250730900265",
+      "date": "20250730",
+      "category": "사명변경"
+    }
+  ]
+}

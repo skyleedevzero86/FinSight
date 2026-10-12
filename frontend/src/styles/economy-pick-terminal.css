@@ -49,14 +49,17 @@
   min-height: 520px;
   padding-top: 1rem;
   padding-bottom: 1.5rem;
-  overflow-x: hidden;
+  overflow: visible;
   min-width: 0;
 }
 
 @media (min-width: 1024px) {
   .ep-as-layout {
     flex-direction: row;
-    align-items: stretch;
+    align-items: flex-start;
+    height: auto;
+    min-height: 0;
+    max-height: none;
   }
 }
 
@@ -78,10 +81,22 @@
 
 @media (min-width: 1024px) {
   .ep-as-portfolio {
-    width: 260px;
-    max-width: 260px;
+    display: flex;
+    flex-direction: column;
+    width: 300px;
+    max-width: 300px;
+    position: static;
+    align-self: flex-start;
+    height: auto;
+    max-height: none;
+    margin-top: 0;
     margin-bottom: 0;
-    margin-right: 0;
+    margin-right: 0.75rem;
+  }
+
+  .ep-as-portfolio .header,
+  .ep-as-watchlist-menu {
+    flex-shrink: 0;
   }
 }
 
@@ -113,23 +128,112 @@
   background: var(--ep-bg);
 }
 
+.ep-as-menu-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 8px 12px 12px;
+  border-bottom: 1px solid var(--ep-border);
+  background: var(--ep-surface);
+}
+
+.ep-as-menu-panel input:not([type="checkbox"]) {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--ep-border);
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--ep-text);
+  background: #fff;
+}
+
+.ep-as-menu-panel > button {
+  width: 100%;
+}
+
+.ep-as-menu-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ep-muted);
+}
+
+.ep-as-lane-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: nowrap;
+  color: var(--ep-text);
+}
+
+.ep-as-lane-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 16px;
+}
+
+.ep-as-candle {
+  cursor: pointer;
+}
+
+.ep-as-candle--on {
+  outline: 2px solid var(--ep-primary);
+  outline-offset: 1px;
+}
+
 .ep-as-stock-list {
   padding: 4px 0;
+  max-height: 42vh;
   overflow-x: hidden;
-  overflow-y: visible;
-  overscroll-behavior-x: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   touch-action: pan-y;
+}
+
+@media (min-width: 1024px) {
+  .ep-as-stock-list {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
 }
 
 .ep-as-splitter {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
   padding: 8px 12px;
+  border: none;
   color: var(--ep-muted);
+  font: inherit;
   font-size: 12px;
   font-weight: 600;
+  text-align: left;
   background: var(--ep-bg);
+  cursor: pointer;
+}
+
+.ep-as-splitter:hover {
+  color: var(--ep-text);
+}
+
+.ep-as-caret {
+  width: 12px;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.ep-as-lane-count {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 
 .ep-as-watchlist-item {
@@ -166,10 +270,11 @@
   border: 1px solid var(--ep-border);
 }
 
-.ep-as-logo img {
+.ep-as-logo img,
+.ep-as-logo .ep-as-logo-fallback {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .ep-as-stock-info {
@@ -226,9 +331,17 @@
 .ep-as-center {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: transparent;
+}
+
+@media (min-width: 1024px) {
+  .ep-as-center {
+    height: auto;
+    overflow: visible;
+  }
 }
 
 .ep-as-multi-chart {
@@ -270,10 +383,11 @@
   border: 1px solid var(--ep-border);
 }
 
-.ep-as-stock-nav .logo-sm img {
+.ep-as-stock-nav .logo-sm img,
+.ep-as-stock-nav .logo-sm .ep-as-logo-fallback {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .ep-as-stock-nav h2.name {
@@ -431,6 +545,21 @@
   background: var(--ep-surface);
 }
 
+@media (min-width: 1024px) {
+  .ep-as-chart-canvas {
+    height: 180px;
+  }
+
+  .ep-as-subchart,
+  .ep-as-botbar {
+    display: none;
+  }
+}
+
+.ep-as-stock-list .ep-as-menu-note {
+  padding: 8px 12px;
+}
+
 .ep-as-ticker {
   display: flex;
   align-items: center;
@@ -460,12 +589,29 @@
   }
 }
 
+.ep-as-ticker:hover .ep-as-ticker-track {
+  animation-play-state: paused;
+}
+
+.ep-as-ticker-lane {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ep-primary);
+}
+
 .ep-as-ticker-item {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
 
 .ep-as-ticker-item .nm {
@@ -493,28 +639,53 @@
   border: 1px solid var(--ep-border);
 }
 
-.ep-as-ticker-logo img {
+.ep-as-ticker-logo img,
+.ep-as-ticker-logo .ep-as-logo-fallback {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+}
+
+.stock-logo.lg {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--ep-border);
+  flex-shrink: 0;
+  background: #fff;
+}
+
+.stock-logo.lg img,
+.stock-logo.lg .ep-as-logo-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ep-as-logo-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8eef5;
+  color: #1f2937;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .ep-as-smart-tab {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-height: 0;
   border: 1px solid var(--ep-border);
   border-radius: 0.5rem;
   background: var(--ep-surface);
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .ep-as-app-content {
-  padding: 16px 12px 32px;
-  overflow-y: auto;
-  max-height: none;
+  padding: 16px 12px 24px;
+  overflow: visible;
   background: var(--ep-bg);
 }
 
@@ -575,21 +746,29 @@
 
 .ep-as-company-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 12px 20px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
   margin-bottom: 20px;
 }
 
+.ep-as-company-cell {
+  padding: 14px 16px;
+  border: 1px solid var(--ep-border);
+  border-radius: 0.5rem;
+  background: var(--ep-surface);
+}
+
 .ep-as-company-cell .t {
-  margin: 0 0 4px;
-  font-size: 11px;
+  margin: 0 0 6px;
+  font-size: 12px;
   color: var(--ep-muted);
 }
 
 .ep-as-company-cell .v {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
   font-variant-numeric: tabular-nums;
   color: var(--ep-text);
 }
@@ -725,7 +904,7 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 0;
+  padding: 12px 4px;
   border-bottom: 1px solid var(--ep-border);
   font-size: 12px;
 }
