@@ -123,7 +123,7 @@ public class AdvancedNewsService implements NewsCommandUseCase, NewsQueryUseCase
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "news:all:filters", expireSeconds = 300)
+    @Cacheable(expireSeconds = 300)
     public Newses findAllByFilters(NewsQueryRequest request) {
         log.info("필터 조건으로 뉴스 조회: {}", request);
         return newsPersistencePort.findAllByFilters(request);
@@ -131,7 +131,7 @@ public class AdvancedNewsService implements NewsCommandUseCase, NewsQueryUseCase
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "news:search", expireSeconds = 300)
+    @Cacheable(expireSeconds = 300)
     public PaginationResponse<Newses> searchNews(NewsSearchRequest request) {
         log.info("뉴스 검색: {}", request);
 
@@ -163,7 +163,7 @@ public class AdvancedNewsService implements NewsCommandUseCase, NewsQueryUseCase
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "news:detail", expireSeconds = 600)
+    @Cacheable(expireSeconds = 600)
     public NewsDetailResponse getNewsDetail(Long newsId) {
         log.info("뉴스 상세 조회: {}", newsId);
 
@@ -178,7 +178,7 @@ public class AdvancedNewsService implements NewsCommandUseCase, NewsQueryUseCase
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "news:related", expireSeconds = 300)
+    @Cacheable(expireSeconds = 300)
     public Newses getRelatedNews(Long newsId, int limit) {
         log.info("관련 뉴스 조회: {}, limit: {}", newsId, limit);
 
@@ -206,7 +206,7 @@ public class AdvancedNewsService implements NewsCommandUseCase, NewsQueryUseCase
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "news:popular", expireSeconds = 300)
+    @Cacheable(expireSeconds = 300)
     public Newses getPopularNews(int limit) {
         log.info("인기 뉴스 조회: limit: {}", limit);
 
@@ -238,7 +238,7 @@ public class AdvancedNewsService implements NewsCommandUseCase, NewsQueryUseCase
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "news:latest", expireSeconds = 300)
+    @Cacheable(expireSeconds = 300)
     public Newses getLatestNews(int limit) {
         log.info("최신 뉴스 조회: limit: {}", limit);
 
@@ -257,7 +257,7 @@ public class AdvancedNewsService implements NewsCommandUseCase, NewsQueryUseCase
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(key = "news:category", expireSeconds = 300)
+    @Cacheable(expireSeconds = 300)
     public Newses getNewsByCategory(String category, int limit) {
         log.info("카테고리별 뉴스 조회: {}, limit: {}", category, limit);
 

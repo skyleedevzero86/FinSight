@@ -49,7 +49,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
             if (requester == null) {
                 log.error("모델 {}에 사용 가능한 AI 요청기가 없습니다", model);
                 failedRequests.incrementAndGet();
-                return executeFallbackStrategy(content, "사용 가능한 요청기 없음");
+                return executeFallbackStrategy(content, model, "사용 가능한 요청기 없음");
             }
 
             var aiChatRequest = createAiChatRequest(content);
@@ -57,7 +57,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
 
             if (aiChatResponse == null || aiChatResponse.getAnalyses() == null || aiChatResponse.getAnalyses().isEmpty()) {
                 log.warn("모델 {} AI 분석 응답이 비어 있습니다", model);
-                return executeFallbackStrategy(content, "빈 AI 응답");
+                return executeFallbackStrategy(content, model, "빈 AI 응답");
             }
 
             List<News> analyzedNews = convertToNews(aiChatResponse, content);
@@ -73,15 +73,15 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
             failedRequests.incrementAndGet();
             aiModelSelectionService.recordModelError(model);
 
-            return executeFallbackStrategy(content, "예외 발생: " + e.getMessage());
+            return executeFallbackStrategy(content, model, "예외 발생: " + e.getMessage());
         }
     }
 
-    private List<News> executeFallbackStrategy(Content content, String fallbackReason) {
+    private List<News> executeFallbackStrategy(Content content, AiModel failedModel, String fallbackReason) {
         log.info("폴백 전략 실행 - 제목: {}, 사유: {}", content.getTitle(), fallbackReason);
 
         try {
-            List<News> fallbackResult = tryAlternativeModels(content);
+            List<News> fallbackResult = tryAlternativeModels(content, failedModel);
             if (!fallbackResult.isEmpty()) {
                 log.info("대체 모델 폴백 성공");
                 return fallbackResult;
@@ -96,7 +96,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
         }
     }
 
-    private List<News> tryAlternativeModels(Content content) {
+    private List<News> tryAlternativeModels(Content content, AiModel failedModel) {
 
         List<AiModel> alternativeModels = List.of(
                 AiModel.GEMMA,
@@ -106,21 +106,22 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
         );
 
         for (AiModel alternativeModel : alternativeModels) {
-            if (isModelAvailable(alternativeModel)) {
-                try {
-                    log.debug("대체 모델 시도: {}", alternativeModel);
-                    NewsAiRequester requester = aiRequesters.get(alternativeModel);
-                    var aiChatRequest = createAiChatRequest(content);
-                    var aiChatResponse = requester.request(aiChatRequest);
+            if (alternativeModel == failedModel || !isModelAvailable(alternativeModel)) {
+                continue;
+            }
+            try {
+                log.debug("대체 모델 시도: {}", alternativeModel);
+                NewsAiRequester requester = aiRequesters.get(alternativeModel);
+                var aiChatRequest = createAiChatRequest(content);
+                var aiChatResponse = requester.request(aiChatRequest);
 
-                    if (aiChatResponse != null && !aiChatResponse.getAnalyses().isEmpty()) {
-                        log.info("대체 모델 {} 성공", alternativeModel);
-                        return convertToNews(aiChatResponse, content);
-                    }
-                } catch (Exception e) {
-                    log.warn("대체 모델 {} 실패: {}", alternativeModel, e.getMessage());
-                    continue;
+                if (aiChatResponse != null && aiChatResponse.getAnalyses() != null
+                        && !aiChatResponse.getAnalyses().isEmpty()) {
+                    log.info("대체 모델 {} 성공", alternativeModel);
+                    return convertToNews(aiChatResponse, content);
                 }
+            } catch (Exception e) {
+                log.warn("대체 모델 {} 실패: {}", alternativeModel, e.getMessage());
             }
         }
 

@@ -5,6 +5,7 @@ import com.sleekydz86.finsight.core.news.domain.News;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public final class NewsSourceUrls {
@@ -23,7 +24,25 @@ public final class NewsSourceUrls {
         while (end > host && trimmed.charAt(end - 1) == '/') {
             end--;
         }
-        return trimmed.substring(0, end);
+        return lowerSchemeAndHost(trimmed.substring(0, end));
+    }
+
+    private static String lowerSchemeAndHost(String url) {
+        int scheme = url.indexOf("://");
+        if (scheme < 0) {
+            return url;
+        }
+        String lowered = url.substring(0, scheme).toLowerCase(Locale.ROOT) + url.substring(scheme);
+        int hostStart = scheme + 3;
+        int slash = lowered.indexOf('/', hostStart);
+        int hostEnd = slash < 0 ? lowered.length() : slash;
+        int at = lowered.lastIndexOf('@', hostEnd - 1);
+        if (at >= hostStart) {
+            hostStart = at + 1;
+        }
+        return lowered.substring(0, hostStart)
+                + lowered.substring(hostStart, hostEnd).toLowerCase(Locale.ROOT)
+                + lowered.substring(hostEnd);
     }
 
     public static List<News> withoutStoredDuplicates(List<News> incoming, Set<String> storedUrls) {

@@ -55,6 +55,7 @@ public class NewsCrawlingTasklet implements Tasklet {
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
         log.info("뉴스 크롤링 태스크릿 시작");
+        resetMetrics();
 
         LocalDateTime publishTimeAfter = LocalDateTime.now().minusHours(24);
         int limit = 100;
@@ -90,14 +91,22 @@ public class NewsCrawlingTasklet implements Tasklet {
                     .flatMap(List::stream)
                     .toList();
 
-            if (!allScrapedNews.isEmpty()) {
-                log.info("스크래핑한 뉴스 {}건 저장 시작", allScrapedNews.size());
-                List<News> analyzed = newsAiProcessingService.processNewsWithAI(allScrapedNews);
+            if (everyProviderFailed(allScrapedNews)) {
+                log.error("모든 뉴스 제공처 수집에 실패했습니다");
+                throw new IllegalStateException("모든 뉴스 제공처 수집에 실패했습니다");
+            }
+
+            List<News> fresh = newsPersistencePort.omitStoredDuplicates(allScrapedNews);
+            if (!fresh.isEmpty()) {
+                log.info("스크래핑한 뉴스 {}건 중 신규 {}건 저장 시작", allScrapedNews.size(), fresh.size());
+                List<News> analyzed = newsAiProcessingService.processNewsWithAI(fresh);
                 Newses saved = newsPersistencePort.saveAllNews(analyzed);
                 newsNotificationService.sendNotificationsForImportantNews(saved.getNewses());
                 log.info("스크래핑한 뉴스 저장 완료");
-            } else {
+            } else if (allScrapedNews.isEmpty()) {
                 log.warn("스크래핑된 뉴스가 없습니다");
+            } else {
+                log.info("이미 저장된 뉴스라 신규 저장을 건너뜁니다");
             }
 
             contribution.incrementWriteCount(allScrapedNews.size());
@@ -109,6 +118,14 @@ public class NewsCrawlingTasklet implements Tasklet {
         }
 
         return RepeatStatus.FINISHED;
+    }
+
+    private boolean everyProviderFailed(List<News> scraped) {
+        if (!scraped.isEmpty() || newsScrapRequesters.isEmpty()) {
+            return false;
+        }
+        long failedProviders = errorCount.values().stream().filter(count -> count.get() > 0).count();
+        return failedProviders >= newsScrapRequesters.size();
     }
 
     private CompletableFuture<List<News>> executeScrapingForProvider(

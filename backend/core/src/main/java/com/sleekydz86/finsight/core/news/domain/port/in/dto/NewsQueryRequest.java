@@ -48,4 +48,9 @@ public class NewsQueryRequest {
     public List<NewsProvider> getProviders() {
         return providers;
     }
+
+    @Override
+    public String toString() {
+        return startDate + "|" + endDate + "|" + sentimentType + "|" + keyword + "|" + categories + "|" + providers;
+    }
 }

@@ -17,6 +17,8 @@ class NewsSourceUrlsTest {
                 .isEqualTo("https://news.example/a");
         assertThat(NewsSourceUrls.normalize("https://news.example"))
                 .isEqualTo("https://news.example");
+        assertThat(NewsSourceUrls.normalize("HTTPS://News.Example/A/"))
+                .isEqualTo("https://news.example/A");
         assertThat(NewsSourceUrls.normalize(null)).isEmpty();
     }
 
@@ -34,6 +36,17 @@ class NewsSourceUrlsTest {
         assertThat(kept).containsExactly(first, fresh);
         assertThat(first.getNewsMeta().getSourceUrl()).isEqualTo("https://news.example/a");
         assertThat(fresh.getNewsMeta().getSourceUrl()).isEqualTo("https://news.example/c");
+    }
+
+    @Test
+    void 호스트_대소문자만_다른_주소는_한_건으로_본다() {
+        News upper = news("HTTPS://News.Example/a/");
+        News lower = news("https://news.example/a");
+
+        List<News> kept = NewsSourceUrls.withoutStoredDuplicates(List.of(upper, lower), Set.of());
+
+        assertThat(kept).containsExactly(upper);
+        assertThat(upper.getNewsMeta().getSourceUrl()).isEqualTo("https://news.example/a");
     }
 
     private static News news(String url) {

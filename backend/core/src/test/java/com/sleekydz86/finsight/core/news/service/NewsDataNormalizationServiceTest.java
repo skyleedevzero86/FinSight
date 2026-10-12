@@ -67,7 +67,7 @@ class NewsDataNormalizationServiceTest {
         assertThat(normalizedNews).hasSize(2);
         assertThat(normalizedNews)
                 .extracting(news -> news.getOriginalContent().getTitle())
-                .containsExactlyInAnyOrder("테스트 뉴스 제목", "HTML 태그 포함 뉴스");
+                .containsExactly("테스트 뉴스 제목", "HTML 태그 포함 뉴스");
         assertThat(normalizedNews)
                 .extracting(news -> news.getOriginalContent().getContent())
                 .containsExactlyInAnyOrder("테스트 뉴스 본문입니다.", "HTML body with tags.");
