@@ -23,6 +23,8 @@ repositories {
     mavenCentral()
 }
 
+ext['testcontainers.version'] = '2.0.5'
+
 dependencies {
     implementation project(':core')
     implementation 'org.springframework.boot:spring-boot-starter-web'
@@ -46,6 +48,9 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-webflux'
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation 'io.rest-assured:rest-assured'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter:2.0.5'
+    testImplementation 'org.testcontainers:testcontainers-mysql:2.0.5'
+    testImplementation 'com.querydsl:querydsl-jpa:5.1.0:jakarta'
 
 }
 
