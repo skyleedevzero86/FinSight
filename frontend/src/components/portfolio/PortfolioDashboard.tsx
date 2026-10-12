@@ -1,5 +1,16 @@
+"use client"
+
 import Link from "next/link"
-import type { PortfolioAsset, PortfolioInsight, PortfolioSlice, PortfolioSummary, PortfolioTrend } from "@/lib/portfolioApi"
+import { useEffect, useState } from "react"
+import {
+  fetchPortfolioDiagnosis,
+  type PortfolioAsset,
+  type PortfolioDiagnosis,
+  type PortfolioInsight,
+  type PortfolioSlice,
+  type PortfolioSummary,
+  type PortfolioTrend,
+} from "@/lib/portfolioApi"
 import type { StoredNewsCard } from "@/lib/publicNews"
 
 const SLICE_COLOR: Record<string, string> = {
@@ -107,6 +118,33 @@ export function PortfolioDashboard({
   onDelete: (asset: PortfolioAsset) => void
 }) {
   const goalWidth = Math.max(0, Math.min(100, summary.goalPercentTenths / 10))
+  const assetKey = summary.assets.map((asset) => `${asset.id}:${asset.amount}`).join("|")
+  const [diagnosis, setDiagnosis] = useState<PortfolioDiagnosis | null>(null)
+  const [diagnosisPending, setDiagnosisPending] = useState(false)
+
+  useEffect(() => {
+    if (summary.totalAssets <= 0) {
+      setDiagnosis(null)
+      setDiagnosisPending(false)
+      return
+    }
+    let alive = true
+    setDiagnosisPending(true)
+    fetchPortfolioDiagnosis()
+      .then((data) => {
+        if (alive) setDiagnosis(data)
+      })
+      .catch(() => {
+        if (alive) setDiagnosis(null)
+      })
+      .finally(() => {
+        if (alive) setDiagnosisPending(false)
+      })
+    return () => {
+      alive = false
+    }
+  }, [summary.totalAssets, summary.netWorth, assetKey])
+
   return (
     <div className="mx-auto flex w-full max-w-[1100px] flex-col gap-4 px-4 py-6 md:px-6">
       <Hero
@@ -123,7 +161,13 @@ export function PortfolioDashboard({
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <TrendCard trend={summary.trend} />
-        <DiagnosisCard insights={summary.insights} advice={summary.advice} score={summary.goalPercentTenths} />
+        <DiagnosisCard
+          insights={diagnosis?.insights?.length ? diagnosis.insights : summary.insights}
+          advice={diagnosis?.advice || summary.advice}
+          score={summary.goalPercentTenths}
+          pending={diagnosisPending}
+          llama={diagnosis?.source === "LLAMA2"}
+        />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <NewsCard news={news} caption={newsCaption} />
@@ -273,11 +317,27 @@ function TrendCard({ trend }: { trend: PortfolioTrend[] }) {
   )
 }
 
-function DiagnosisCard({ insights, advice, score }: { insights: PortfolioInsight[]; advice: string; score: number }) {
+function DiagnosisCard({
+  insights,
+  advice,
+  score,
+  pending,
+  llama,
+}: {
+  insights: PortfolioInsight[]
+  advice: string
+  score: number
+  pending: boolean
+  llama: boolean
+}) {
   const ring = Math.max(0, Math.min(100, score / 10))
   return (
     <section className="border border-neutral-400 bg-white p-5">
-      <CardHead title="자산 진단" subtitle="보유 금액으로 계산" extra="오늘 계산" />
+      <CardHead
+        title="자산 진단"
+        subtitle={llama ? "Llama 2가 보유 금액을 보고 작성" : "보유 금액으로 계산"}
+        extra={pending ? "Llama 2 작성 중" : llama ? "Llama 2" : "오늘 계산"}
+      />
       <div className="mt-4 flex gap-4">
         <div
           className="grid h-20 w-20 shrink-0 place-items-center rounded-full"
@@ -286,7 +346,8 @@ function DiagnosisCard({ insights, advice, score }: { insights: PortfolioInsight
           <div className="grid h-14 w-14 place-items-center rounded-full bg-white text-xl font-bold text-slate-900">{Math.round(ring)}</div>
         </div>
         <ul className="min-w-0 flex-1 space-y-2 text-sm">
-          {insights.length === 0 ? <li className="text-slate-500">자산을 등록하면 진단 문구가 나옵니다.</li> : null}
+          {pending && insights.length === 0 ? <li className="text-slate-500">Llama 2가 진단 문구를 작성하는 중입니다.</li> : null}
+          {!pending && insights.length === 0 ? <li className="text-slate-500">자산을 등록하면 진단 문구가 나옵니다.</li> : null}
           {insights.map((line) => (
             <li key={line.text} className={line.tone === "WARN" ? "text-amber-700" : "text-emerald-700"}>
               {line.tone === "WARN" ? "⚠ " : "✓ "}
@@ -295,7 +356,9 @@ function DiagnosisCard({ insights, advice, score }: { insights: PortfolioInsight
           ))}
         </ul>
       </div>
-      <p className="mt-4 border border-neutral-300 bg-white px-3 py-3 text-xs leading-6 text-slate-600">{advice}</p>
+      <p className="mt-4 border border-neutral-300 bg-white px-3 py-3 text-xs leading-6 text-slate-600">
+        {pending && !llama ? "Llama 2가 진단 문구를 작성하는 중입니다." : advice}
+      </p>
     </section>
   )
 }

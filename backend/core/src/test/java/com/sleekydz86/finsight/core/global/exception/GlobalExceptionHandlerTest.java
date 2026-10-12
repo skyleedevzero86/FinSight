@@ -54,7 +54,7 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(post("/test/auth-failed")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 

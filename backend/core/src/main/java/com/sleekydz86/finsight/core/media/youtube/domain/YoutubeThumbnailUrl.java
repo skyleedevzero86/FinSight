@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 public final class YoutubeThumbnailUrl {
 
     private static final Pattern VIDEO_ID = Pattern.compile("^[A-Za-z0-9_-]{11}$");
+    private static final Pattern PLACEHOLDER_ID = Pattern.compile("^dummy", Pattern.CASE_INSENSITIVE);
     private static final Pattern YTIMG_ID = Pattern.compile("i\\.ytimg\\.com/vi/([^/?#]+)/", Pattern.CASE_INSENSITIVE);
     private static final Pattern UNRELIABLE_SIZE = Pattern.compile("/(hqdefault|sddefault|maxresdefault)\\.", Pattern.CASE_INSENSITIVE);
 
@@ -13,13 +14,17 @@ public final class YoutubeThumbnailUrl {
     }
 
     public static boolean isVideoId(String videoId) {
-        return videoId != null && VIDEO_ID.matcher(videoId.trim()).matches();
+        if (videoId == null) {
+            return false;
+        }
+        String id = videoId.trim();
+        return VIDEO_ID.matcher(id).matches() && !PLACEHOLDER_ID.matcher(id).find();
     }
 
     public static String displayUrl(String videoId, String storedUrl) {
         String stored = storedUrl == null ? "" : storedUrl.trim();
         String id = resolveVideoId(videoId, stored);
-        if (!VIDEO_ID.matcher(id).matches()) {
+        if (!isVideoId(id)) {
             return null;
         }
         if (stored.startsWith("https://") && !UNRELIABLE_SIZE.matcher(stored).find()) {

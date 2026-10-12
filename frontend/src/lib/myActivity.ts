@@ -81,14 +81,14 @@ function toPost(row: BoardListItem): ActivityPostItem {
 
 async function loadPosts(): Promise<ActivityPostItem[]> {
   try {
-    const res = await fetch("/api/v1/boards/my-boards?page=0&size=5", {
+    const res = await fetch("/api/v1/boards/my-boards?page=0&size=100", {
       headers: { Accept: "application/json", ...authHeadersJson() },
       cache: "no-store",
     })
     if (!res.ok) return []
     const data = unwrapApiData<{ content?: BoardListItem[] }>(await res.json())
     const rows = Array.isArray(data?.content) ? data.content : []
-    return rows.slice(0, 5).map(toPost)
+    return rows.map(toPost)
   } catch (error) {
     console.error("내 활동 게시글을 불러오지 못했습니다.", error)
     return []
@@ -96,9 +96,9 @@ async function loadPosts(): Promise<ActivityPostItem[]> {
 }
 
 async function loadAlerts(): Promise<ActivityAlertItem[]> {
-  const inbox = await fetchInboxPage({ page: 0, size: 5 })
+  const inbox = await fetchInboxPage({ page: 0, size: 50 })
   const fromInbox: ActivityAlertItem[] = inbox.ok
-    ? inbox.page.content.slice(0, 5).map((item) => ({
+    ? inbox.page.content.map((item) => ({
         key: `inbox-${item.id}`,
         title: item.title,
         detail: item.body || item.actorName || "알림",
@@ -114,7 +114,7 @@ async function loadAlerts(): Promise<ActivityAlertItem[]> {
 
 async function loadMyComments(): Promise<ActivityAlertItem[]> {
   try {
-    const res = await fetch("/api/v1/comments/my-comments?page=0&size=5", {
+    const res = await fetch("/api/v1/comments/my-comments?page=0&size=50", {
       headers: { Accept: "application/json", ...authHeadersJson() },
       cache: "no-store",
     })
@@ -138,7 +138,6 @@ async function loadMyComments(): Promise<ActivityAlertItem[]> {
         }
       })
       .filter((row): row is ActivityAlertItem => Boolean(row))
-      .slice(0, 5)
   } catch (error) {
     console.error("내 활동 댓글을 불러오지 못했습니다.", error)
     return []
@@ -148,8 +147,8 @@ async function loadMyComments(): Promise<ActivityAlertItem[]> {
 async function loadFavorites(): Promise<ActivityWatchItem[]> {
   try {
     const [vod, scraps] = await Promise.all([
-      fetchMyLiveVodFavorites(0, 5).catch(() => null),
-      fetchMyBoardScraps(0, 5).catch(() => null),
+      fetchMyLiveVodFavorites(0, 100).catch(() => null),
+      fetchMyBoardScraps(0, 100).catch(() => null),
     ])
     const videos: ActivityWatchItem[] = (vod?.items ?? []).map((item) => ({
       key: `fav-${item.videoId}`,
@@ -167,7 +166,7 @@ async function loadFavorites(): Promise<ActivityWatchItem[]> {
       source: boardLabel(item.boardType),
       timeLabel: item.timeAgo || formatRelativeKo(item.createdAt),
     }))
-    return [...videos, ...boards].slice(0, 5)
+    return [...videos, ...boards]
   } catch (error) {
     console.error("내 활동 즐겨찾기를 불러오지 못했습니다.", error)
     return []
@@ -175,9 +174,7 @@ async function loadFavorites(): Promise<ActivityWatchItem[]> {
 }
 
 function loadWatches(): ActivityWatchItem[] {
-  return listLiveVodHistory()
-    .slice(0, 5)
-    .map((item) => ({
+  return listLiveVodHistory().map((item) => ({
       key: item.videoId,
       title: item.title,
       href: `/live-vod/watch/${encodeURIComponent(item.videoId)}`,

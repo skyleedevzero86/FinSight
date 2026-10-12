@@ -47,4 +47,6 @@ public interface InboxNotificationJpaRepository extends JpaRepository<InboxNotif
     Page<InboxNotificationJpaEntity> findAllActive(Pageable pageable);
 
     List<InboxNotificationJpaEntity> findByRecipientUserIdAndDeletedFalseAndIdIn(Long recipientUserId, List<Long> ids);
+
+    boolean existsByRecipientUserIdAndRefTypeAndRefId(Long recipientUserId, String refType, Long refId);
 }

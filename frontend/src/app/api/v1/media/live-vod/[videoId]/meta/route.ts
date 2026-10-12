@@ -1,5 +1,5 @@
 import { getFinSightBaseUrl } from "@/lib/finsightApiProxy"
-import { displayYoutubeThumbnail } from "@/lib/liveVod"
+import { displayYoutubeThumbnail, toPrivacyEmbedUrl } from "@/lib/liveVod"
 
 type Ctx = { params: Promise<{ videoId: string }> }
 
@@ -20,7 +20,7 @@ function fallbackMeta(videoId: string): MetaPayload {
     title: PLACEHOLDER_TITLE,
     channelTitle: null,
     thumbnailUrl: displayYoutubeThumbnail(videoId, ""),
-    embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
+    embedUrl: toPrivacyEmbedUrl(videoId),
     watchUrl: `https://www.youtube.com/watch?v=${videoId}`,
   }
 }
@@ -61,16 +61,16 @@ async function fetchOEmbed(videoId: string): Promise<MetaPayload | null> {
     const title = typeof data.title === "string" && data.title ? data.title : PLACEHOLDER_TITLE
     const channelTitle =
       typeof data.author_name === "string" && data.author_name ? data.author_name : null
-    const thumbnailUrl =
-      typeof data.thumbnail_url === "string" && data.thumbnail_url
-        ? data.thumbnail_url
-        : displayYoutubeThumbnail(videoId, "")
+    const thumbnailUrl = displayYoutubeThumbnail(
+      videoId,
+      typeof data.thumbnail_url === "string" ? data.thumbnail_url : "",
+    )
     return {
       videoId,
       title,
       channelTitle,
       thumbnailUrl,
-      embedUrl: `https://www.youtube-nocookie.com/embed/${videoId}`,
+      embedUrl: toPrivacyEmbedUrl(videoId),
       watchUrl,
     }
   } catch {
@@ -89,14 +89,11 @@ function parseBackendMeta(videoId: string, payload: unknown): MetaPayload | null
     videoId: id,
     title,
     channelTitle: typeof data.channelTitle === "string" ? data.channelTitle : null,
-    thumbnailUrl:
-      typeof data.thumbnailUrl === "string" && data.thumbnailUrl
-        ? data.thumbnailUrl
-        : displayYoutubeThumbnail(id, ""),
-    embedUrl:
-      typeof data.embedUrl === "string" && data.embedUrl
-        ? data.embedUrl
-        : `https://www.youtube-nocookie.com/embed/${id}`,
+    thumbnailUrl: displayYoutubeThumbnail(
+      id,
+      typeof data.thumbnailUrl === "string" ? data.thumbnailUrl : "",
+    ),
+    embedUrl: toPrivacyEmbedUrl(id, typeof data.embedUrl === "string" ? data.embedUrl : ""),
     watchUrl:
       typeof data.watchUrl === "string" && data.watchUrl
         ? data.watchUrl

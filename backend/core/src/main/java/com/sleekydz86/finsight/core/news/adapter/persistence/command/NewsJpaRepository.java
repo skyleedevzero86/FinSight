@@ -1,5 +1,7 @@
 package com.sleekydz86.finsight.core.news.adapter.persistence.command;
 
+import com.sleekydz86.finsight.core.news.domain.vo.EmbeddingStatus;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentStatus;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -19,6 +22,38 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.overview IS NULL")
     Page<NewsJpaEntity> findByOverviewIsNull(Pageable pageable);
+
+    @Query("""
+            SELECT n.id FROM NewsJpaEntity n
+            WHERE n.sentimentStatus IS NULL OR n.sentimentStatus = :pending
+            ORDER BY n.id ASC
+            """)
+    List<Long> findSentimentPendingIds(@Param("pending") SentimentStatus pending, Pageable pageable);
+
+    @Query("""
+            SELECT n.id FROM NewsJpaEntity n
+            WHERE n.sentimentStatus IN :statuses AND n.sentimentAttempts < :maxAttempts
+            ORDER BY n.id ASC
+            """)
+    List<Long> findSentimentRetryIds(@Param("statuses") List<SentimentStatus> statuses,
+                                     @Param("maxAttempts") int maxAttempts,
+                                     Pageable pageable);
+
+    @Query("""
+            SELECT n.id FROM NewsJpaEntity n
+            WHERE n.embeddingStatus IS NULL OR n.embeddingStatus = :pending
+            ORDER BY n.id ASC
+            """)
+    List<Long> findEmbeddingPendingIds(@Param("pending") EmbeddingStatus pending, Pageable pageable);
+
+    @Query("""
+            SELECT n.id FROM NewsJpaEntity n
+            WHERE n.embeddingStatus = :status AND n.embeddingAttempts < :maxAttempts
+            ORDER BY n.id ASC
+            """)
+    List<Long> findEmbeddingRetryIds(@Param("status") EmbeddingStatus status,
+                                     @Param("maxAttempts") int maxAttempts,
+                                     Pageable pageable);
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.newsPublishedTime >= :startDate AND n.newsPublishedTime <= :endDate")
     List<NewsJpaEntity> findByPublishedTimeBetween(@Param("startDate") LocalDateTime startDate,
@@ -41,6 +76,9 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
 
     boolean existsBySourceUrl(String sourceUrl);
 
+    @Query("SELECT n.sourceUrl FROM NewsJpaEntity n WHERE n.sourceUrl IN :urls")
+    List<String> findSourceUrlBySourceUrlIn(@Param("urls") Collection<String> urls);
+
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.newsProvider = :provider AND n.originalTitle NOT LIKE '[더미]%' AND (n.translatedTitle IS NULL OR n.translatedTitle NOT LIKE '[더미]%') ORDER BY n.newsPublishedTime DESC")
     Page<NewsJpaEntity> findLatestByProvider(@Param("provider") com.sleekydz86.finsight.core.global.NewsProvider provider, Pageable pageable);
 
@@ -49,6 +87,28 @@ public interface NewsJpaRepository extends JpaRepository<NewsJpaEntity, Long> {
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.originalTitle NOT LIKE '[더미]%' AND (n.translatedTitle IS NULL OR n.translatedTitle NOT LIKE '[더미]%') ORDER BY n.newsPublishedTime DESC")
     Page<NewsJpaEntity> findLatestNews(Pageable pageable);
+
+    @Query("""
+            SELECT n FROM NewsJpaEntity n
+            WHERE n.originalTitle NOT LIKE '[더미]%'
+              AND (n.translatedTitle IS NULL OR n.translatedTitle NOT LIKE '[더미]%')
+              AND (
+                COALESCE(n.translatedTitle, n.originalTitle, '') LIKE CONCAT('%', :keyword, '%')
+                OR n.translatedContent LIKE CONCAT('%', :keyword, '%')
+                OR n.originalContent LIKE CONCAT('%', :keyword, '%')
+              )
+            ORDER BY n.newsPublishedTime DESC
+            """)
+    Page<NewsJpaEntity> searchCatalog(@Param("keyword") String keyword, Pageable pageable);
+
+    @Query("""
+            SELECT n FROM NewsJpaEntity n
+            WHERE n.originalTitle NOT LIKE '[더미]%'
+              AND (n.translatedTitle IS NULL OR n.translatedTitle NOT LIKE '[더미]%')
+              AND COALESCE(n.translatedTitle, n.originalTitle, '') LIKE CONCAT('%', :keyword, '%')
+            ORDER BY n.newsPublishedTime DESC
+            """)
+    Page<NewsJpaEntity> searchCatalogTitle(@Param("keyword") String keyword, Pageable pageable);
 
     @Query("SELECT n FROM NewsJpaEntity n WHERE n.id != :newsId AND n.targetCategories LIKE %:category%")
     List<NewsJpaEntity> findRelatedNews(@Param("newsId") Long newsId, @Param("category") String category);

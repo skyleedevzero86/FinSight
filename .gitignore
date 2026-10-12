@@ -54,9 +54,9 @@ frontend/Dockerfile
 frontend/.dockerignore
 infra/docker-compose.yml
 docker-compose.yml
-test/
+/test/
 *.ps1
-tools/
+/tools/
 /SampleHtml
 화면인증001.png
 화면인증002.png

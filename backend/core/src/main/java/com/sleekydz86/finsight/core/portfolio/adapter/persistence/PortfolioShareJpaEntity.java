@@ -31,6 +31,9 @@ public class PortfolioShareJpaEntity {
     @Column(nullable = false, length = 500)
     private String message;
 
+    @Column(name = "public_detail", columnDefinition = "TEXT")
+    private String publicDetail;
+
     @Column(nullable = false, length = 16)
     private String visibility;
 
@@ -57,6 +60,9 @@ public class PortfolioShareJpaEntity {
 
     @Column(name = "cheer_count", nullable = false)
     private int cheerCount;
+
+    @Column(name = "moderation_status", nullable = false, length = 16)
+    private String moderationStatus;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -86,6 +92,15 @@ public class PortfolioShareJpaEntity {
         this.showAsset = showAsset;
         this.showDebt = showDebt;
         this.cheerCount = 0;
+        this.moderationStatus = "OPEN";
         this.createdAt = createdAt;
+    }
+
+    public void applyModeration(String status) {
+        this.moderationStatus = status;
+    }
+
+    public void keepPublicDetail(String publicDetail) {
+        this.publicDetail = publicDetail;
     }
 }

@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.news.domain.port.in.NewsQueryUseCase;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsDetailResponse;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsSearchRequest;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
+import com.sleekydz86.finsight.core.news.domain.port.out.NewsSimilarSearchPort;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsStatisticsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsTextRepair;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
@@ -17,6 +18,7 @@ import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,15 +35,18 @@ public class NewsQueryService implements NewsQueryUseCase {
         private final NewsPersistencePort newsPersistencePort;
         private final NewsStatisticsPersistencePort newsStatisticsPersistencePort;
         private final UserPersistencePort userPersistencePort;
+        private final ObjectProvider<NewsSimilarSearchPort> similarSearch;
 
         public NewsQueryService(NewsPersistencePort newsPersistencePort,
                                 NewsStatisticsPersistencePort newsStatisticsPersistencePort,
                                 PersonalizedNewsService personalizedNewsService,
-                                UserPersistencePort userPersistencePort) {
+                                UserPersistencePort userPersistencePort,
+                                ObjectProvider<NewsSimilarSearchPort> similarSearch) {
                 this.newsPersistencePort = newsPersistencePort;
                 this.newsStatisticsPersistencePort = newsStatisticsPersistencePort;
                 this.personalizedNewsService = personalizedNewsService;
                 this.userPersistencePort = userPersistencePort;
+                this.similarSearch = similarSearch;
         }
 
         @Override
@@ -135,6 +140,11 @@ public class NewsQueryService implements NewsQueryUseCase {
         @Override
         public Newses getRelatedNews(Long newsId, int limit) {
                 log.info("관련 뉴스 조회 - ID: {}, 제한: {}", newsId, limit);
+                int safeLimit = Math.max(1, limit);
+                Newses similar = similarNews(newsId, safeLimit);
+                if (!similar.getNewses().isEmpty()) {
+                        return similar;
+                }
 
                 News news = newsPersistencePort.findById(newsId)
                         .orElseThrow(() -> new NewsNotFoundException(newsId));
@@ -154,6 +164,19 @@ public class NewsQueryService implements NewsQueryUseCase {
                         .toList();
 
                 return new Newses(relatedNews);
+        }
+
+        private Newses similarNews(Long newsId, int limit) {
+                NewsSimilarSearchPort search = similarSearch.getIfAvailable();
+                if (search == null) {
+                        return new Newses();
+                }
+                try {
+                        return newsPersistencePort.findByIds(search.findSimilarIds(newsId, limit));
+                } catch (RuntimeException exception) {
+                    log.warn("유사 뉴스 검색에 실패해 카테고리 조회로 넘어갑니다. newsId={}", newsId, exception);
+                    return new Newses();
+                }
         }
 
         @Override

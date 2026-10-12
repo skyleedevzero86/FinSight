@@ -259,7 +259,8 @@ public class LiveVodEngagementService {
             Object thumbObj = body.get("thumbnail_url");
             String title = titleObj instanceof String s && !s.isBlank() ? s.trim() : PLACEHOLDER_TITLE;
             String channel = authorObj instanceof String s && !s.isBlank() ? s : null;
-            String thumb = thumbObj instanceof String s && !s.isBlank() ? s : thumbnailUrl;
+            String rawThumb = thumbObj instanceof String s && !s.isBlank() ? s : thumbnailUrl;
+            String thumb = YoutubeThumbnailUrl.displayUrl(id, rawThumb);
             return new LiveVodMetaResponse(id, title, channel, thumb, embedUrl, watchUrl);
         } catch (Exception ex) {
             log.warn("YouTube oEmbed 조회 실패 videoId={}: {}", id, ex.getMessage());

@@ -182,6 +182,10 @@ async function fetchNewsList(path: string): Promise<StoredNewsCard[] | null> {
   }
 }
 
+export async function fetchSimilarNews(id: string, limit = 5): Promise<StoredNewsCard[] | null> {
+  return fetchNewsList(`/api/v1/news/${encodeURIComponent(id)}/similar?limit=${limit}`)
+}
+
 export async function fetchStoredNews(limit = 20, provider?: string): Promise<StoredNewsCard[] | null> {
   try {
     const providerQuery = provider ? `&provider=${encodeURIComponent(provider)}` : ""

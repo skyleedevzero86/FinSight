@@ -47,6 +47,7 @@ export default function VODSection() {
   const [activeTab, setActiveTab] = useState<VodTab>("latest")
   const [latestItems, setLatestItems] = useState<LiveVodItem[]>([])
   const [recommendPool, setRecommendPool] = useState<RecommendedLiveVodItem[]>([])
+  const [recommendLoaded, setRecommendLoaded] = useState(false)
   const [watchlist, setWatchlist] = useState<TargetCategory[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -55,10 +56,7 @@ export default function VODSection() {
     let cancelled = false
     void (async () => {
       setLoading(true)
-      const [latestResult, recommendResult] = await Promise.all([
-        fetchLiveVodFeed("ALL"),
-        fetchHomeRecommendPool(),
-      ])
+      const latestResult = await fetchLiveVodFeed("ALL")
       if (cancelled) return
       if (!latestResult.ok) {
         setLatestItems([])
@@ -67,13 +65,25 @@ export default function VODSection() {
         setLatestItems(flattenLiveVodFeedItems(latestResult.data))
         setError(null)
       }
-      setRecommendPool(recommendResult)
       setLoading(false)
     })()
     return () => {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (activeTab !== "recommended" || recommendLoaded) return
+    let cancelled = false
+    void fetchHomeRecommendPool().then((pool) => {
+      if (cancelled) return
+      setRecommendPool(pool)
+      setRecommendLoaded(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, recommendLoaded])
 
   useEffect(() => {
     let cancelled = false

@@ -30,7 +30,7 @@ class NewsAiProcessingServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        service = new NewsAiProcessingService(newsAiAnalysisRequesterPort);
+        service = new NewsAiProcessingService(newsAiAnalysisRequesterPort, command -> command.run());
     }
 
     @Test
@@ -135,13 +135,11 @@ class NewsAiProcessingServiceIntegrationTest {
     }
 
     @Test
-    void processNewsList_NullList_ThrowsNullPointerException() {
-        List<News> newsList = null;
+    void processNewsList_NullList_ReturnsEmptyList() {
+        List<News> result = service.processNewsWithAI((List<News>) null);
 
-        assertThrows(NullPointerException.class, () -> {
-            service.processNewsWithAI(newsList);
-        });
-
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
         verify(newsAiAnalysisRequesterPort, never()).analyseNewses(any(), any());
     }
 

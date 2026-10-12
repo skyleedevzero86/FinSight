@@ -8,6 +8,9 @@ public record PortfolioShareCommand(
         boolean showMonthRate,
         boolean showAllocation,
         boolean showGoal,
-        boolean showDebt
+        boolean showDebt,
+        boolean showExactNames,
+        boolean showPrincipal,
+        boolean showProfit
 ) {
 }

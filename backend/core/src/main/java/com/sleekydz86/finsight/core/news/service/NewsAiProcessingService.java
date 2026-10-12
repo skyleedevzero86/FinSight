@@ -6,10 +6,15 @@ import com.sleekydz86.finsight.core.global.AiModel;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 @Service
 public class NewsAiProcessingService {
@@ -17,15 +22,28 @@ public class NewsAiProcessingService {
     private static final Logger log = LoggerFactory.getLogger(NewsAiProcessingService.class);
 
     private final NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort;
+    private final Executor aiAnalysisExecutor;
 
-    public NewsAiProcessingService(NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort) {
+    public NewsAiProcessingService(NewsAiAnalysisRequesterPort newsAiAnalysisRequesterPort,
+                                   @Qualifier("aiAnalysisExecutor") Executor aiAnalysisExecutor) {
         this.newsAiAnalysisRequesterPort = newsAiAnalysisRequesterPort;
+        this.aiAnalysisExecutor = aiAnalysisExecutor;
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<News> processNewsWithAI(List<News> newses) {
-        return newses.stream()
-                .map(this::analyzeNewsWithAI)
-                .collect(Collectors.toList());
+        if (newses == null || newses.isEmpty()) {
+            return List.of();
+        }
+        List<CompletableFuture<News>> pending = new ArrayList<>();
+        for (News news : newses) {
+            pending.add(CompletableFuture.supplyAsync(() -> analyzeNewsWithAI(news), aiAnalysisExecutor));
+        }
+        List<News> analyzed = new ArrayList<>();
+        for (CompletableFuture<News> future : pending) {
+            analyzed.add(future.join());
+        }
+        return analyzed;
     }
 
     private News analyzeNewsWithAI(News news) {
@@ -62,6 +80,7 @@ public class NewsAiProcessingService {
                 analyzed.getAiOverView().getSentimentScore());
     }
 
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public News processNewsWithAI(News news) {
         if (news == null) {
             return null;

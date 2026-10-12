@@ -29,7 +29,7 @@ final class ElasticsearchIndexLayout {
         return requireIndexName(readAlias) + "-v1";
     }
 
-    static String nextConcrete(String currentConcrete) {
+    public static String nextConcrete(String currentConcrete) {
         String current = requireIndexName(currentConcrete);
         int mark = current.lastIndexOf("-v");
         if (mark < 1 || !current.substring(mark + 2).matches("\\d+")) {

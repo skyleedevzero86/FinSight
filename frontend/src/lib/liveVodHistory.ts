@@ -38,10 +38,10 @@ function readAll(): LiveVodHistoryItem[] {
           videoId: o.videoId,
           title: typeof o.title === "string" ? o.title : "VOD",
           channelTitle: typeof o.channelTitle === "string" ? o.channelTitle : null,
-          thumbnailUrl:
-            typeof o.thumbnailUrl === "string" && o.thumbnailUrl
-              ? o.thumbnailUrl
-              : `https://i.ytimg.com/vi/${o.videoId}/mqdefault.jpg`,
+          thumbnailUrl: displayYoutubeThumbnail(
+            o.videoId,
+            typeof o.thumbnailUrl === "string" ? o.thumbnailUrl : "",
+          ),
           tab: typeof o.tab === "string" ? o.tab : null,
           watchUrl:
             typeof o.watchUrl === "string" && o.watchUrl

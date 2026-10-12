@@ -96,4 +96,10 @@ public class NewsSearchRequest {
     public void setSize(int size) {
         this.size = size;
     }
+
+    @Override
+    public String toString() {
+        return startDate + "|" + endDate + "|" + sentimentType + "|" + keyword + "|"
+                + categories + "|" + providers + "|" + page + "|" + size;
+    }
 }

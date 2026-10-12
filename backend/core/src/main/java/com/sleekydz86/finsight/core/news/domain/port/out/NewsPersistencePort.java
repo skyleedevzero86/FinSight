@@ -10,6 +10,8 @@ import java.util.Optional;
 
 public interface NewsPersistencePort {
     Newses saveAllNews(List<News> newses);
+
+    List<News> omitStoredDuplicates(List<News> newses);
     Newses findByOverviewIsNull();
     Newses findAllByFilters(NewsQueryRequest request);
     Optional<News> findById(Long newsId);
@@ -19,4 +21,5 @@ public interface NewsPersistencePort {
     Newses findLatestNews(int limit);
     Newses findLatestNewsByProvider(com.sleekydz86.finsight.core.global.NewsProvider provider, int limit);
     Newses findRelatedNews(Long newsId, List<String> categories, int limit);
+    Newses findByIds(List<Long> ids);
 }

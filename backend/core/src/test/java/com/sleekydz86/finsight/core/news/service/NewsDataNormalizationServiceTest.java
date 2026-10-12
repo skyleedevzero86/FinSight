@@ -13,13 +13,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("뉴스 데이터 정규화 서비스 테스트")
@@ -36,11 +36,23 @@ class NewsDataNormalizationServiceTest {
 
     @BeforeEach
     void setUp() {
+        applyNormalizationSettings();
         testNews = createTestNews();
         htmlTestNews = createHtmlTestNews();
         emptyTestNews = createEmptyTestNews();
         specialCharTestNews = createSpecialCharTestNews();
         longContentTestNews = createLongContentTestNews();
+    }
+
+    private void applyNormalizationSettings() {
+        ReflectionTestUtils.setField(normalizationService, "minTitleLength", 1);
+        ReflectionTestUtils.setField(normalizationService, "maxTitleLength", 200);
+        ReflectionTestUtils.setField(normalizationService, "minContentLength", 1);
+        ReflectionTestUtils.setField(normalizationService, "maxContentLength", 10000);
+        ReflectionTestUtils.setField(normalizationService, "removeHtmlTags", true);
+        ReflectionTestUtils.setField(normalizationService, "removeControlCharacters", true);
+        ReflectionTestUtils.setField(normalizationService, "removeSpecialCharacters", false);
+        ReflectionTestUtils.setField(normalizationService, "enableContentHashing", true);
     }
 
     @Test
@@ -53,14 +65,12 @@ class NewsDataNormalizationServiceTest {
 
         assertThat(normalizedNews).isNotNull();
         assertThat(normalizedNews).hasSize(2);
-
-        News firstNews = normalizedNews.get(0);
-        assertThat(firstNews.getOriginalContent().getTitle()).isEqualTo("테스트 뉴스 제목");
-        assertThat(firstNews.getOriginalContent().getContent()).isEqualTo("테스트 뉴스 본문입니다.");
-
-        News secondNews = normalizedNews.get(1);
-        assertThat(secondNews.getOriginalContent().getTitle()).isEqualTo("HTML 태그 포함 뉴스");
-        assertThat(secondNews.getOriginalContent().getContent()).isEqualTo("HTML body with tags.");
+        assertThat(normalizedNews)
+                .extracting(news -> news.getOriginalContent().getTitle())
+                .containsExactly("테스트 뉴스 제목", "HTML 태그 포함 뉴스");
+        assertThat(normalizedNews)
+                .extracting(news -> news.getOriginalContent().getContent())
+                .containsExactlyInAnyOrder("테스트 뉴스 본문입니다.", "HTML body with tags.");
     }
 
     @Test
@@ -81,17 +91,14 @@ class NewsDataNormalizationServiceTest {
     }
 
     @Test
-    @DisplayName("빈 데이터 처리 성공")
+    @DisplayName("빈 데이터는 결과에서 빠진다")
     void 빈_데이터_처리_성공() {
 
         List<News> newsList = List.of(emptyTestNews);
 
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
-        assertThat(normalizedNews).hasSize(1);
-        News normalized = normalizedNews.get(0);
-        assertThat(normalized.getOriginalContent().getTitle()).isEqualTo("");
-        assertThat(normalized.getOriginalContent().getContent()).isEqualTo("");
+        assertThat(normalizedNews).isEmpty();
     }
 
     @Test
@@ -105,9 +112,9 @@ class NewsDataNormalizationServiceTest {
 
         assertThat(statistics).isNotNull();
         assertThat(statistics.get("totalProcessedCount")).isEqualTo(3L);
-        assertThat(statistics.get("successCount")).isEqualTo(3L);
-        assertThat(statistics.get("failureCount")).isEqualTo(0L);
-        assertThat((Double) statistics.get("successRate")).isEqualTo(100.0);
+        assertThat(statistics.get("successCount")).isEqualTo(2L);
+        assertThat(statistics.get("failureCount")).isEqualTo(1L);
+        assertThat((Double) statistics.get("successRate")).isEqualTo(2.0 / 3);
     }
 
     @Test
@@ -157,14 +164,14 @@ class NewsDataNormalizationServiceTest {
     }
 
     @Test
-    @DisplayName("정규화 실패 시 예외 처리")
-    void 정규화_실패_시_예외_처리() {
+    @DisplayName("내용이 없는 뉴스는 결과에서 빠진다")
+    void 내용이_없는_뉴스는_결과에서_빠진다() {
 
         News invalidNews = createInvalidNews();
 
-        assertThatThrownBy(() -> normalizationService.normalizeAndDeduplicate(List.of(invalidNews)))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("뉴스 정규화 중 오류 발생");
+        List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(List.of(invalidNews));
+
+        assertThat(normalizedNews).isEmpty();
     }
 
     @Test

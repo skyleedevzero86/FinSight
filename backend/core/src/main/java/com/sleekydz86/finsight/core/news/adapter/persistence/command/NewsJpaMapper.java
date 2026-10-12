@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.news.adapter.persistence.command;
 
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.AiOverview;
+import com.sleekydz86.finsight.core.news.domain.vo.AiOverview.ImpactLevel;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
@@ -22,17 +23,7 @@ public class NewsJpaMapper {
             );
         }
 
-        AiOverview aiOverview = null;
-        if (newsJpaEntity.getOverview() != null &&
-                newsJpaEntity.getSentimentType() != null &&
-                newsJpaEntity.getSentimentScore() != null) {
-            aiOverview = new AiOverview(
-                    newsJpaEntity.getOverview(),
-                    newsJpaEntity.getSentimentType(),
-                    newsJpaEntity.getSentimentScore(),
-                    copyCategories(newsJpaEntity.getTargetCategories())
-            );
-        }
+        AiOverview aiOverview = toOverview(newsJpaEntity);
 
         NewsMeta newsMeta = new NewsMeta(
                 newsJpaEntity.getNewsProvider(),
@@ -51,6 +42,25 @@ public class NewsJpaMapper {
                 translatedContent,
                 aiOverview
         );
+    }
+
+    private AiOverview toOverview(NewsJpaEntity newsJpaEntity) {
+        boolean hasSummary = newsJpaEntity.getOverview() != null;
+        boolean hasSentiment = newsJpaEntity.getSentimentType() != null && newsJpaEntity.getSentimentScore() != null;
+        if (!hasSummary && !hasSentiment) {
+            return null;
+        }
+        double score = newsJpaEntity.getSentimentScore() == null ? 0.0 : newsJpaEntity.getSentimentScore();
+        double confidence = newsJpaEntity.getSentimentConfidence() == null
+                ? 0.5
+                : newsJpaEntity.getSentimentConfidence();
+        return new AiOverview(
+                newsJpaEntity.getOverview(),
+                newsJpaEntity.getSentimentType(),
+                score,
+                copyCategories(newsJpaEntity.getTargetCategories()),
+                ImpactLevel.MEDIUM,
+                confidence);
     }
 
     private List<TargetCategory> copyCategories(List<TargetCategory> source) {
