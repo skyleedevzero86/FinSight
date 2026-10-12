@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.news.adapter.out;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import com.sleekydz86.finsight.core.global.config.NewsAiCircuitBreakerConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -13,15 +14,13 @@ import org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(
         classes = NewsAiCircuitBreakerBindingTest.CircuitOnly.class,
-        properties = {
-                "spring.main.web-application-type=none",
-                "spring.config.import=file:./src/main/resources/application.yml"
-        })
+        properties = "spring.main.web-application-type=none")
 class NewsAiCircuitBreakerBindingTest {
 
     @Autowired
@@ -36,6 +35,7 @@ class NewsAiCircuitBreakerBindingTest {
     }
 
     @SpringBootConfiguration
+    @Import(NewsAiCircuitBreakerConfig.class)
     @EnableAutoConfiguration(exclude = {
             DataSourceAutoConfiguration.class,
             HibernateJpaAutoConfiguration.class,
