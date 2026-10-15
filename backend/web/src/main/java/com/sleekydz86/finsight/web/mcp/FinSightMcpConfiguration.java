@@ -4,6 +4,7 @@ import com.sleekydz86.finsight.web.mcp.tools.AccountMcpTools;
 import com.sleekydz86.finsight.web.mcp.tools.AdminMcpTools;
 import com.sleekydz86.finsight.web.mcp.tools.BoardMcpTools;
 import com.sleekydz86.finsight.web.mcp.tools.LiveVodMcpTools;
+import com.sleekydz86.finsight.web.mcp.tools.NewsCrawlIncidentTools;
 import com.sleekydz86.finsight.web.mcp.tools.NewsMcpTools;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
@@ -18,12 +19,13 @@ public class FinSightMcpConfiguration {
     @Bean
     public ToolCallbackProvider finSightMcpTools(
             NewsMcpTools newsMcpTools,
+            NewsCrawlIncidentTools newsCrawlIncidentTools,
             BoardMcpTools boardMcpTools,
             LiveVodMcpTools liveVodMcpTools,
             AccountMcpTools accountMcpTools,
             AdminMcpTools adminMcpTools) {
         return MethodToolCallbackProvider.builder()
-                .toolObjects(newsMcpTools, boardMcpTools, liveVodMcpTools, accountMcpTools, adminMcpTools)
+                .toolObjects(newsMcpTools, newsCrawlIncidentTools, boardMcpTools, liveVodMcpTools, accountMcpTools, adminMcpTools)
                 .build();
     }
 }

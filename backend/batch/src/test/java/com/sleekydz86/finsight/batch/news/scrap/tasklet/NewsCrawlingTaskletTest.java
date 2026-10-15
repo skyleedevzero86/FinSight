@@ -12,6 +12,8 @@ import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsSourceUrls;
+import com.sleekydz86.finsight.core.news.crawl.NewsCrawlPermit;
+import com.sleekydz86.finsight.core.news.crawl.NewsCrawlRunGate;
 import com.sleekydz86.finsight.core.news.service.NewsAiProcessingService;
 import com.sleekydz86.finsight.core.news.service.NewsNotificationService;
 import org.junit.jupiter.api.Test;
@@ -23,11 +25,13 @@ import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.scope.context.StepContext;
 import org.springframework.batch.repeat.RepeatStatus;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -45,7 +49,10 @@ class NewsCrawlingTaskletTest {
                 List.of(successRequester(), failingRequester()),
                 persistence,
                 new NewsAiProcessingService(new EmptyAiAnalysis(), new DirectExecutor()),
-                new NewsNotificationService(null));
+                new NewsNotificationService(null),
+                openGate(),
+                (provider, error) -> {
+                });
 
         RepeatStatus status = tasklet.execute(contribution(), chunkContext());
 
@@ -65,7 +72,10 @@ class NewsCrawlingTaskletTest {
                 List.of(successRequester()),
                 persistence,
                 new NewsAiProcessingService(ai, new DirectExecutor()),
-                new NewsNotificationService(null));
+                new NewsNotificationService(null),
+                openGate(),
+                (provider, error) -> {
+                });
 
         RepeatStatus status = tasklet.execute(contribution(), chunkContext());
 
@@ -82,11 +92,90 @@ class NewsCrawlingTaskletTest {
                         CompletableFuture.failedFuture(new IllegalStateException("수집 실패")))),
                 new RecordingNewsPersistence(),
                 new NewsAiProcessingService(new EmptyAiAnalysis(), new DirectExecutor()),
-                new NewsNotificationService(null));
+                new NewsNotificationService(null),
+                openGate(),
+                (provider, error) -> {
+                });
 
         assertThatThrownBy(() -> tasklet.execute(contribution(), chunkContext()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("모든 뉴스 제공처 수집에 실패했습니다");
+    }
+
+    @Test
+    void 잠금이_걸린_제공처는_실패로_세지_않는다() throws Exception {
+        JobExecution jobExecution = new JobExecution(8L, new JobParameters());
+        StepExecution stepExecution = new StepExecution("newsCrawlingStep", jobExecution);
+        NewsCrawlingTasklet tasklet = new NewsCrawlingTasklet(
+                List.of(successRequester(), failingRequester()),
+                new RecordingNewsPersistence(),
+                new NewsAiProcessingService(new EmptyAiAnalysis(), new DirectExecutor()),
+                new NewsNotificationService(null),
+                closedGate(),
+                (provider, error) -> {
+                    throw new IllegalStateException("잠금 건너뜀은 장애 사건이 아닙니다");
+                });
+
+        RepeatStatus status = tasklet.execute(new StepContribution(stepExecution), new ChunkContext(new StepContext(stepExecution)));
+
+        assertThat(status).isEqualTo(RepeatStatus.FINISHED);
+        assertThat(tasklet.getCrawlingMetrics().errorCount()).isEmpty();
+        assertThat(jobExecution.getExecutionContext().getInt("newsCrawlRan")).isZero();
+        assertThat(jobExecution.getExecutionContext().getInt("newsCrawlLockSkips")).isEqualTo(2);
+    }
+
+    @Test
+    void 실패한_제공처만_장애_사건으로_기록한다() throws Exception {
+        CopyOnWriteArrayList<NewsProvider> recorded = new CopyOnWriteArrayList<>();
+        NewsCrawlingTasklet tasklet = new NewsCrawlingTasklet(
+                List.of(successRequester(), failingRequester(), new FixedRequester(
+                        NewsProvider.ALPHA_VANTAGE,
+                        CompletableFuture.completedFuture(List.of()))),
+                new RecordingNewsPersistence(),
+                new NewsAiProcessingService(new EmptyAiAnalysis(), new DirectExecutor()),
+                new NewsNotificationService(null),
+                openGate(),
+                (provider, error) -> recorded.add(provider));
+
+        tasklet.execute(contribution(), chunkContext());
+
+        assertThat(recorded).containsExactly(NewsProvider.MARKETAUX);
+    }
+
+    private static NewsCrawlRunGate openGate() {
+        return new NewsCrawlRunGate() {
+            @Override
+            public Optional<NewsCrawlPermit> tryAcquire(NewsProvider provider, String owner, Duration ttl) {
+                return Optional.of(new NewsCrawlPermit(provider, owner, 1L));
+            }
+
+            @Override
+            public void release(NewsCrawlPermit permit) {
+            }
+
+            @Override
+            public boolean stillHeld(NewsCrawlPermit permit) {
+                return true;
+            }
+        };
+    }
+
+    private static NewsCrawlRunGate closedGate() {
+        return new NewsCrawlRunGate() {
+            @Override
+            public Optional<NewsCrawlPermit> tryAcquire(NewsProvider provider, String owner, Duration ttl) {
+                return Optional.empty();
+            }
+
+            @Override
+            public void release(NewsCrawlPermit permit) {
+            }
+
+            @Override
+            public boolean stillHeld(NewsCrawlPermit permit) {
+                return false;
+            }
+        };
     }
 
     private static NewsScrapRequester successRequester() {

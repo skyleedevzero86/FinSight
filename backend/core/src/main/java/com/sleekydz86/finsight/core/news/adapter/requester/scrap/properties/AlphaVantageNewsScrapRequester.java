@@ -60,7 +60,6 @@ public class AlphaVantageNewsScrapRequester implements NewsScrapRequester {
                 .bodyToMono(AlphaVantageResponse.class)
                 .map(response -> convert(response, publishTimeAfter))
                 .doOnError(error -> log.error("Alpha Vantage 뉴스 조회 실패: {}", error.getMessage()))
-                .onErrorReturn(List.of())
                 .toFuture();
     }
 
