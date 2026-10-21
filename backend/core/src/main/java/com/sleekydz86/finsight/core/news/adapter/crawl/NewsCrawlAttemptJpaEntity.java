@@ -26,7 +26,7 @@ public class NewsCrawlAttemptJpaEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "incident_id", nullable = false)
     private long incidentId;
 
     @Enumerated(EnumType.STRING)
@@ -36,17 +36,18 @@ public class NewsCrawlAttemptJpaEntity {
     @Column(nullable = false, length = 255)
     private String executor;
 
-    @Column(nullable = false)
+    @Column(name = "started_at", nullable = false)
     private LocalDateTime startedAt;
 
+    @Column(name = "finished_at")
     private LocalDateTime finishedAt;
 
-    @Column(nullable = false)
+    @Column(name = "saved_count", nullable = false)
     private int savedCount;
 
-    @Column(nullable = false)
+    @Column(name = "duplicate_count", nullable = false)
     private int duplicateCount;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "result_message", nullable = false, length = 500)
     private String resultMessage;
 }

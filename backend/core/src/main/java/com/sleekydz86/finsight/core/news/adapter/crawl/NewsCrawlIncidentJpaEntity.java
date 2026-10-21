@@ -38,8 +38,10 @@ public class NewsCrawlIncidentJpaEntity {
     @Column(nullable = false, length = 32)
     private NewsCrawlCause cause;
 
+    @Column(name = "http_status")
     private Integer httpStatus;
 
+    @Column(name = "retry_after_seconds")
     private Integer retryAfterSeconds;
 
     @Column(nullable = false, length = 500)
@@ -48,19 +50,21 @@ public class NewsCrawlIncidentJpaEntity {
     @Column(nullable = false)
     private boolean retryable;
 
-    @Column(nullable = false)
+    @Column(name = "occurred_at", nullable = false)
     private LocalDateTime occurredAt;
 
+    @Column(name = "analyzed_at")
     private LocalDateTime analyzedAt;
 
-    @Column(length = 1000)
+    @Column(name = "model_note", length = 1000)
     private String modelNote;
 
-    @Column(length = 255)
+    @Column(name = "approved_by", length = 255)
     private String approvedBy;
 
+    @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
-    @Column(nullable = false)
+    @Column(name = "fencing_token", nullable = false)
     private long fencingToken;
 }
