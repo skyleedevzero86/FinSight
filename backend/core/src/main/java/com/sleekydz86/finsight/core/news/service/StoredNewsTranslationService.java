@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsTextRepair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ public class StoredNewsTranslationService {
     private final Set<Long> busy = ConcurrentHashMap.newKeySet();
     private final Set<Long> skipped = ConcurrentHashMap.newKeySet();
 
+    @Autowired
     public StoredNewsTranslationService(NewsAiProcessingService newsAiProcessingService,
                                         NewsPersistencePort newsPersistencePort) {
         this(newsAiProcessingService, newsPersistencePort, task -> CompletableFuture.runAsync(task));
