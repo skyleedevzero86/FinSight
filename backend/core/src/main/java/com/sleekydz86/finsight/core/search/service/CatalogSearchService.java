@@ -57,6 +57,8 @@ public class CatalogSearchService {
         sections.add(mysql.mine(keyword, userId, email));
         long tookMs = (System.nanoTime() - started) / 1_000_000L;
         redis.record(tookMs, engine);
+        log.info("검색을 마쳤습니다. tookMs={} engine={} cached={} queryLength={}",
+                tookMs, engine, cached, keyword.length());
         if (tookMs >= SLOW_MS) {
             log.warn("검색이 느립니다. queryLength={} tookMs={} engine={}", keyword.length(), tookMs, engine);
         }
