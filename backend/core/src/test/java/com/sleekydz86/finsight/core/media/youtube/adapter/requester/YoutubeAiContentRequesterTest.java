@@ -9,6 +9,7 @@ import com.sleekydz86.finsight.core.media.youtube.domain.YoutubeVideoMeta;
 import com.sleekydz86.finsight.core.news.adapter.requester.overview.properties.OllamaProperties;
 import com.sleekydz86.finsight.core.news.adapter.requester.overview.properties.OpenAiProperties;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -24,15 +25,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 class YoutubeAiContentRequesterTest {
 
     @Test
-    void 설명문_없이_요약과_핵심포인트를_만든다() {
+    @DisplayName("설명문 없이 요약과 핵심포인트를 만든다")
+    void buildsSummaryAndKeyPointsWithoutDescription() {
+        // given
         WebClient webClient = WebClient.builder()
                 .exchangeFunction(request -> Mono.just(ClientResponseFactory.ok(generatedJson())))
                 .build();
         OpenAiProperties openAiProperties = new OpenAiProperties();
+
+        // when
         openAiProperties.setApiKey("test-key");
         openAiProperties.setModel("gpt-4o-mini");
+
+        // given
         OllamaProperties ollamaProperties = new OllamaProperties();
+
+        // when
         ollamaProperties.setEnabled(false);
+
+        // given
         YoutubeAiContentRequester requester = new YoutubeAiContentRequester(
                 webClient,
                 webClient,
@@ -41,9 +52,14 @@ class YoutubeAiContentRequesterTest {
                 new ObjectMapper(),
                 "openai");
         YoutubeVideoMeta meta = meta();
+
+        // then
         assertThat(requester.buildPrompt(meta, board())).doesNotContain("비트겟");
+
+        // when
         YoutubeGeneratedContent generated = requester.generate(meta, board());
 
+        // then
         assertThat(generated.getSummary()).contains("금리");
         assertThat(generated.getEditorComment()).contains("금리");
         assertThat(generated.getKeyPoints()).containsExactly("국채 금리", "순환매", "제목 범위");
@@ -60,7 +76,9 @@ class YoutubeAiContentRequesterTest {
     }
 
     @Test
-    void 로컬_프로필은_올라마로_보강한다() {
+    @DisplayName("로컬 프로필은 올라마로 보강한다")
+    void localProfileEnrichesWithOllama() {
+        // given
         AtomicReference<String> requestedUrl = new AtomicReference<>();
         WebClient webClient = WebClient.builder()
                 .exchangeFunction(request -> {
@@ -69,11 +87,19 @@ class YoutubeAiContentRequesterTest {
                 })
                 .build();
         OpenAiProperties openAiProperties = new OpenAiProperties();
+
+        // when
         openAiProperties.setApiKey("test-key");
+
+        // given
         OllamaProperties ollamaProperties = new OllamaProperties();
+
+        // when
         ollamaProperties.setEnabled(true);
         ollamaProperties.setBaseUrl("http://127.0.0.1:11434");
         ollamaProperties.setModel("llama3.2");
+
+        // given
         YoutubeAiContentRequester requester = new YoutubeAiContentRequester(
                 webClient,
                 webClient,
@@ -82,8 +108,10 @@ class YoutubeAiContentRequesterTest {
                 new ObjectMapper(),
                 "ollama");
 
+        // when
         YoutubeGeneratedContent generated = requester.generate(meta(), board());
 
+        // then
         assertThat(requestedUrl.get()).isEqualTo("http://127.0.0.1:11434/api/chat");
         assertThat(generated.getSummary()).contains("금리");
         assertThat(generated.getKeyPoints()).hasSize(3);

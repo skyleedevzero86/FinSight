@@ -60,6 +60,11 @@
   border-top: 0;
 }
 
+.sn-thumb-wrap {
+  position: relative;
+  display: block;
+}
+
 .sn-thumb,
 .sn-rank-thumb {
   width: 100%;
@@ -98,10 +103,16 @@
 }
 
 .sn-time {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
   margin: 10px 0 0;
   color: #888;
   font-size: 13px;
-  text-align: right;
+}
+
+.sn-sentiment {
+  color: #333;
 }
 
 .sn-more {

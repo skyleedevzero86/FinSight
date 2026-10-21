@@ -5,6 +5,7 @@ import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.LocalDateTime;
 
@@ -15,22 +16,30 @@ class NewsJpaMapperTest {
     private final NewsJpaMapper mapper = new NewsJpaMapper();
 
     @Test
+    @DisplayName("저장하고 다시 읽어도 이미지 주소를 유지한다")
     void keepsImageUrlWhenSavingAndLoading() {
+        // given
         News news = newsWithImage("https://cdn.example.com/a.jpg");
 
+        // when
         NewsJpaEntity entity = mapper.toEntity(news);
         News loaded = mapper.toDomain(entity);
 
+        // then
         assertThat(entity.getImageUrl()).isEqualTo("https://cdn.example.com/a.jpg");
         assertThat(loaded.getOriginalContent().getImageUrl()).isEqualTo("https://cdn.example.com/a.jpg");
     }
 
     @Test
+    @DisplayName("컬럼보다 긴 이미지 주소는 잘라 저장한다")
     void clipsImageUrlLongerThanColumn() {
+        // given
         News news = newsWithImage("https://cdn.example.com/" + "a".repeat(1100));
 
+        // when
         NewsJpaEntity entity = mapper.toEntity(news);
 
+        // then
         assertThat(entity.getImageUrl()).hasSize(1000);
     }
 

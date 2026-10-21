@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { fetchStoredNews, type StoredNewsCard } from "@/lib/publicNews"
+import { fetchStoredNews, sentimentLabel, type StoredNewsCard } from "@/lib/publicNews"
 
 function relativeTime(raw: string | null): string {
   if (!raw) return ""
@@ -126,13 +126,24 @@ export default function OnAirSchedule() {
   )
 }
 
+function moodClass(sentiment: string | null, newest: boolean): string {
+  if (newest) return "text-white"
+  if (sentiment === "POSITIVE") return "text-[#2b8a3e]"
+  if (sentiment === "NEGATIVE") return "text-[#e03131]"
+  return "text-[#3b5bdb]"
+}
+
 function NewsCard({ item, newest }: { item: StoredNewsCard; newest: boolean }) {
+  const mood = sentimentLabel(item.sentiment)
   return (
     <Link
       href={`/news/${item.id}`}
       className={`flex items-start justify-between gap-3 p-4 rounded-lg transition ${newest ? "bg-finsight-primary text-white" : "bg-white hover:shadow-md"}`}
     >
-      <h4 className={`min-w-0 font-semibold ${newest ? "" : "text-gray-900"}`}>{item.title}</h4>
+      <div className="min-w-0">
+        <h4 className={`font-semibold ${newest ? "" : "text-gray-900"}`}>{item.title}</h4>
+        {mood ? <p className={`mt-1 text-xs font-semibold ${moodClass(item.sentiment, newest)}`}>{mood}</p> : null}
+      </div>
       <div className={`shrink-0 text-sm ${newest ? "text-white/80" : "text-gray-500"}`}>{relativeTime(item.publishedAt)}</div>
     </Link>
   )

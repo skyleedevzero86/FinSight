@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.news.domain.port.in.NewsCommandUseCase;
 import com.sleekydz86.finsight.core.news.domain.port.in.NewsQueryUseCase;
 import com.sleekydz86.finsight.core.news.service.NewsAiAvailability;
 import com.sleekydz86.finsight.core.news.service.NewsReactionService;
+import com.sleekydz86.finsight.core.news.service.StoredNewsTranslationService;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsDetailResponse;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsReactionResponse;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsQueryRequest;
@@ -39,15 +40,18 @@ public class NewsController {
     private final NewsQueryUseCase newsQueryUseCase;
     private final NewsAiAvailability newsAiAvailability;
     private final NewsReactionService newsReactionService;
+    private final StoredNewsTranslationService storedNewsTranslationService;
 
     public NewsController(NewsCommandUseCase newsCommandUseCase,
                           NewsQueryUseCase newsQueryUseCase,
                           NewsAiAvailability newsAiAvailability,
-                          NewsReactionService newsReactionService) {
+                          NewsReactionService newsReactionService,
+                          StoredNewsTranslationService storedNewsTranslationService) {
         this.newsCommandUseCase = newsCommandUseCase;
         this.newsQueryUseCase = newsQueryUseCase;
         this.newsAiAvailability = newsAiAvailability;
         this.newsReactionService = newsReactionService;
+        this.storedNewsTranslationService = storedNewsTranslationService;
     }
 
     @Operation(summary = "뉴스 스크래핑", description = "뉴스를 스크래핑합니다.")
@@ -107,7 +111,7 @@ public class NewsController {
     @SecurityAudit(action = "NEWS_DETAIL_API", resource = "NEWS_API", level = SecurityAudit.SecurityLevel.INFO)
     public ResponseEntity<ApiResponse<NewsDetailResponse>> getNewsDetail(@PathVariable Long newsId) {
         try {
-            NewsDetailResponse news = newsQueryUseCase.getNewsDetail(newsId);
+            NewsDetailResponse news = storedNewsTranslationService.fill(newsQueryUseCase.getNewsDetail(newsId));
             return ResponseEntity.ok(ApiResponse.success(news, "뉴스 상세 조회에 성공했습니다"));
         } catch (NewsNotFoundException e) {
             return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage(), 404));
@@ -209,7 +213,8 @@ public class NewsController {
             Newses newses = provider == null || provider.isBlank()
                     ? newsQueryUseCase.getLatestNews(limit)
                     : newsQueryUseCase.getLatestNewsByProvider(provider, limit);
-            return ResponseEntity.ok(ApiResponse.success(newses, "최신 뉴스 조회에 성공했습니다"));
+            return ResponseEntity.ok(ApiResponse.success(
+                    storedNewsTranslationService.fill(newses), "최신 뉴스 조회에 성공했습니다"));
         } catch (SystemException e) {
             return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage(), 400));
         } catch (Exception e) {

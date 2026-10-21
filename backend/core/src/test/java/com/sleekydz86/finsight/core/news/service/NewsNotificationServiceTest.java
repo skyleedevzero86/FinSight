@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.notification.service.NotificationService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,23 +26,37 @@ class NewsNotificationServiceTest {
     private NotificationService notificationService;
 
     @Test
-    void 감정점수가_0점7을_넘고_관심종목과_맞으면_알림한다() {
+    @DisplayName("감정점수가 0점7을 넘고 관심종목과 맞으면 알림한다")
+    void notifiesWhenSentimentAboveZeroPointSevenMatchesWatchlist() {
+        // given
         News news = news(0.71);
+
+        // when
         new NewsNotificationService(notificationService)
                 .sendNotificationsForImportantNews(List.of(news));
+
+        // then
         verify(notificationService).notifyUsersAboutNews(news);
     }
 
     @Test
-    void 감정점수가_0점7_이하면_알림하지_않는다() {
+    @DisplayName("감정점수가 0점7 이하면 알림하지 않는다")
+    void doesNotNotifyWhenSentimentIsAtMostZeroPointSeven() {
+        // given
         News news = news(0.7);
+
+        // when
         new NewsNotificationService(notificationService)
                 .sendNotificationsForImportantNews(List.of(news));
+
+        // then
         verify(notificationService, never()).notifyUsersAboutNews(news);
     }
 
     @Test
-    void 감정분석이_없으면_알림하지_않는다() {
+    @DisplayName("감정분석이 없으면 알림하지 않는다")
+    void doesNotNotifyWithoutSentimentAnalysis() {
+        // given
         News news = new News(
                 3L,
                 NewsProvider.MARKETAUX,
@@ -50,8 +65,12 @@ class NewsNotificationServiceTest {
                 null,
                 null,
                 null);
+
+        // when
         new NewsNotificationService(notificationService)
                 .sendNotificationsForImportantNews(List.of(news));
+
+        // then
         verify(notificationService, never()).notifyUsersAboutNews(news);
     }
 

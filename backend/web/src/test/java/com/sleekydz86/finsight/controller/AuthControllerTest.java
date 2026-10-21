@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.auth.dto.LoginRequest;
 import com.sleekydz86.finsight.core.auth.service.AuthenticationService;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -43,10 +44,15 @@ class AuthControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
+    @DisplayName("로그인 요청 테스트")
     @WithMockUser
-    void 로그인_요청_테스트() throws Exception {
+    void loginRequest() throws Exception {
+        // given
         LoginRequest request = new LoginRequest("test@example.com", "password123!");
 
+        // when
+
+        // then
         mockMvc.perform(post("/api/v1/auth/login")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)

@@ -4,6 +4,9 @@ import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.adapter.requester.NewsScrapRequester;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.Newses;
+import com.sleekydz86.finsight.core.news.crawl.NewsCrawlFailureSink;
+import com.sleekydz86.finsight.core.news.crawl.NewsCrawlPermit;
+import com.sleekydz86.finsight.core.news.crawl.NewsCrawlRunGate;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import com.sleekydz86.finsight.core.news.service.NewsAiProcessingService;
 import com.sleekydz86.finsight.core.news.service.NewsNotificationService;
@@ -15,11 +18,15 @@ import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
 import org.springframework.stereotype.Component;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -32,16 +39,22 @@ public class NewsCrawlingTasklet implements Tasklet {
     private final NewsPersistencePort newsPersistencePort;
     private final NewsAiProcessingService newsAiProcessingService;
     private final NewsNotificationService newsNotificationService;
+    private final NewsCrawlRunGate crawlRunGate;
+    private final NewsCrawlFailureSink failureSink;
 
     private final ConcurrentHashMap<NewsProvider, AtomicInteger> scrapedNewsCount = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<NewsProvider, AtomicInteger> errorCount = new ConcurrentHashMap<>();
     private final AtomicInteger totalScrapedCount = new AtomicInteger(0);
+    private final AtomicInteger lockSkips = new AtomicInteger(0);
+    private final AtomicInteger ranProviders = new AtomicInteger(0);
 
     public NewsCrawlingTasklet(
             List<NewsScrapRequester> newsScrapRequesters,
             NewsPersistencePort newsPersistencePort,
             NewsAiProcessingService newsAiProcessingService,
-            NewsNotificationService newsNotificationService) {
+            NewsNotificationService newsNotificationService,
+            NewsCrawlRunGate crawlRunGate,
+            NewsCrawlFailureSink failureSink) {
         this.newsScrapRequesters = newsScrapRequesters.stream()
                 .collect(Collectors.toMap(
                         NewsScrapRequester::supports,
@@ -50,13 +63,16 @@ public class NewsCrawlingTasklet implements Tasklet {
         this.newsPersistencePort = newsPersistencePort;
         this.newsAiProcessingService = newsAiProcessingService;
         this.newsNotificationService = newsNotificationService;
+        this.crawlRunGate = crawlRunGate;
+        this.failureSink = failureSink;
     }
 
     @Override
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
         log.info("뉴스 크롤링 태스크릿 시작");
         resetMetrics();
-
+        String owner = "batch-" + UUID.randomUUID();
+        List<NewsCrawlPermit> held = new CopyOnWriteArrayList<>();
         LocalDateTime publishTimeAfter = LocalDateTime.now().minusHours(24);
         int limit = 100;
 
@@ -66,7 +82,7 @@ public class NewsCrawlingTasklet implements Tasklet {
                         NewsProvider provider = entry.getKey();
                         NewsScrapRequester requester = entry.getValue();
 
-                        return executeScrapingForProvider(provider, requester, publishTimeAfter, limit)
+                        return executeScrapingForProvider(provider, requester, publishTimeAfter, limit, owner, held)
                                 .whenComplete((result, throwable) -> {
                                     if (throwable != null) {
                                         return;
@@ -79,6 +95,7 @@ public class NewsCrawlingTasklet implements Tasklet {
                                 .exceptionally(throwable -> {
                                     log.error("뉴스 제공자 스크래핑 중 오류 발생: {}", provider, throwable);
                                     errorCount.computeIfAbsent(provider, k -> new AtomicInteger(0)).incrementAndGet();
+                                    recordFailure(provider, throwable);
                                     return List.of();
                                 });
                     })
@@ -115,6 +132,9 @@ public class NewsCrawlingTasklet implements Tasklet {
         } catch (Exception e) {
             log.error("뉴스 크롤링 태스크릿 실행 중 오류 발생", e);
             throw e;
+        } finally {
+            held.forEach(crawlRunGate::release);
+            writeRunCounts(chunkContext);
         }
 
         return RepeatStatus.FINISHED;
@@ -132,24 +152,44 @@ public class NewsCrawlingTasklet implements Tasklet {
             NewsProvider provider,
             NewsScrapRequester requester,
             LocalDateTime publishTimeAfter,
-            int limit) {
+            int limit,
+            String owner,
+            List<NewsCrawlPermit> held) {
 
         return CompletableFuture.supplyAsync(() -> {
+            Optional<NewsCrawlPermit> permit = crawlRunGate.tryAcquire(provider, owner, Duration.ofMinutes(2));
+            if (permit.isEmpty()) {
+                lockSkips.incrementAndGet();
+                log.warn("제공처 {} 수집 잠금이 있어 이번 수집을 건너뜁니다", provider);
+                return List.of();
+            }
+            ranProviders.incrementAndGet();
             try {
                 log.debug("제공자 {} 스크래핑 시작 - 제한 건수: {}", provider, limit);
-
                 List<News> scrapedNews = requester.scrap(publishTimeAfter, limit).get();
-
-                log.debug("제공자 {} 스크래핑 완료 - 조회 건수: {}",
-                        provider, scrapedNews.size());
-
+                log.debug("제공자 {} 스크래핑 완료 - 조회 건수: {}", provider, scrapedNews.size());
+                held.add(permit.get());
                 return scrapedNews;
-
             } catch (Exception e) {
+                crawlRunGate.release(permit.get());
                 log.error("제공자 뉴스 스크래핑 실패: {}", provider, e);
                 throw new RuntimeException("제공자 스크래핑 실패: " + provider, e);
             }
         });
+    }
+
+    private void recordFailure(NewsProvider provider, Throwable error) {
+        try {
+            failureSink.record(provider, error);
+        } catch (RuntimeException failure) {
+            log.error("뉴스 수집 장애 기록에 실패했습니다 provider={}", provider, failure);
+        }
+    }
+
+    private void writeRunCounts(ChunkContext chunkContext) {
+        var context = chunkContext.getStepContext().getStepExecution().getJobExecution().getExecutionContext();
+        context.putInt("newsCrawlRan", ranProviders.get());
+        context.putInt("newsCrawlLockSkips", lockSkips.get());
     }
 
     public CrawlingMetrics getCrawlingMetrics() {
@@ -170,6 +210,8 @@ public class NewsCrawlingTasklet implements Tasklet {
         scrapedNewsCount.clear();
         errorCount.clear();
         totalScrapedCount.set(0);
+        lockSkips.set(0);
+        ranProviders.set(0);
         log.info("크롤링 지표 초기화 완료");
     }
 

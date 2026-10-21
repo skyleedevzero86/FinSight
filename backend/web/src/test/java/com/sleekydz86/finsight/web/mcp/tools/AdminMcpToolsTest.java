@@ -5,6 +5,7 @@ import com.sleekydz86.finsight.core.health.domain.port.in.HealthQueryUseCase;
 import com.sleekydz86.finsight.core.health.domain.vo.HealthStatus;
 import com.sleekydz86.finsight.core.health.domain.vo.SystemMetrics;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -25,32 +26,47 @@ class AdminMcpToolsTest {
     }
 
     @Test
+    @DisplayName("서버 상태는 관리자만 조회한다")
     void getServerHealth_requiresAdmin() {
+        // when
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 "user@example.com",
                 null,
                 List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+
+        // given
         AdminMcpTools tools = tools(new FixedHealthQuery("UP", "정상"));
 
+        // then
         assertThatThrownBy(tools::getServerHealth)
                 .hasMessageContaining("관리자 권한이 필요합니다");
     }
 
     @Test
+    @DisplayName("관리자에게는 서버 상태를 반환한다")
     void getServerHealth_returnsStatusForAdmin() {
+        // when
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(
                 "admin@example.com",
                 null,
                 List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+
+        // given
         AdminMcpTools tools = tools(new FixedHealthQuery("UP", "정상"));
 
+        // then
         assertThat(tools.getServerHealth()).isEqualTo(new AdminMcpTools.HealthItem("UP", "정상"));
     }
 
     @Test
+    @DisplayName("내 즐겨찾기는 로그인이 필요하다")
     void listMyFavorites_requiresLogin() {
+        // given
         AccountMcpTools tools = new AccountMcpTools(null, null, null);
 
+        // when
+
+        // then
         assertThatThrownBy(() -> tools.listMyFavorites(null, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("로그인이 필요합니다.");

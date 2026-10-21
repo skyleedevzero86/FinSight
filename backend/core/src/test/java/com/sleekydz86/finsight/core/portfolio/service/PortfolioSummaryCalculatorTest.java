@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.portfolio.domain.PortfolioHolding;
 import com.sleekydz86.finsight.core.portfolio.domain.PortfolioMonthPoint;
 import com.sleekydz86.finsight.core.portfolio.domain.PortfolioSummary;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.YearMonth;
 import java.util.List;
@@ -17,9 +18,14 @@ class PortfolioSummaryCalculatorTest {
     private static final YearMonth TODAY = YearMonth.of(2026, 10);
 
     @Test
-    void 자산이_없으면_순자산과_목표는_0이고_등록_안내를_준다() {
+    @DisplayName("자산이 없으면 순자산과 목표는 0이고 등록 안내를 준다")
+    void zeroNetWorthAndGoalWithRegistrationGuideWhenNoAsset() {
+        // given
         PortfolioSummary summary = PortfolioSummaryCalculator.summarize(List.of(), List.of(), TODAY, false);
 
+        // when
+
+        // then
         assertThat(summary.netWorth()).isZero();
         assertThat(summary.goalPercentTenths()).isZero();
         assertThat(summary.monthDelta()).isNull();
@@ -28,9 +34,14 @@ class PortfolioSummaryCalculatorTest {
     }
 
     @Test
-    void 총자산에서_부채를_뺀_순자산과_1억_진행률을_계산한다() {
+    @DisplayName("총자산에서 부채를 뺀 순자산과 1억 진행률을 계산한다")
+    void calculatesNetWorthAfterDebtAndProgressTowardOneHundredMillion() {
+        // given
         PortfolioSummary summary = PortfolioSummaryCalculator.summarize(sampleHoldings(), List.of(), TODAY, false);
 
+        // when
+
+        // then
         assertThat(summary.totalAssets()).isEqualTo(99_520_000L);
         assertThat(summary.totalLiabilities()).isEqualTo(26_000_000L);
         assertThat(summary.netWorth()).isEqualTo(73_520_000L);
@@ -41,33 +52,45 @@ class PortfolioSummaryCalculatorTest {
     }
 
     @Test
-    void 지난달_기록이_있으면_이번_달_증감을_계산한다() {
+    @DisplayName("지난달 기록이 있으면 이번 달 증감을 계산한다")
+    void calculatesThisMonthChangeWhenLastMonthExists() {
+        // given
         PortfolioMonthPoint previous = new PortfolioMonthPoint(YearMonth.of(2026, 9), 70_900_000L, 26_000_000L);
-
         PortfolioSummary summary = PortfolioSummaryCalculator.summarize(sampleHoldings(), List.of(previous), TODAY, false);
 
+        // when
+
+        // then
         assertThat(summary.monthDelta()).isEqualTo(2_620_000L);
         assertThat(summary.yearDelta()).isEqualTo(2_620_000L);
     }
 
     @Test
-    void 올해_이전_기록이_있으면_올해_증감을_계산한다() {
+    @DisplayName("올해 이전 기록이 있으면 올해 증감을 계산한다")
+    void calculatesThisYearChangeWhenEarlierRecordExists() {
+        // given
         PortfolioMonthPoint lastYear = new PortfolioMonthPoint(YearMonth.of(2025, 12), 65_210_000L, 28_000_000L);
-
         PortfolioSummary summary = PortfolioSummaryCalculator.summarize(sampleHoldings(), List.of(lastYear), TODAY, false);
 
+        // when
+
+        // then
         assertThat(summary.yearDelta()).isEqualTo(8_310_000L);
     }
 
     @Test
-    void 취득가가_있으면_손익률을_계산하고_기록은_최신월이_먼저다() {
+    @DisplayName("취득가가 있으면 손익률을 계산하고 기록은 최신월이 먼저다")
+    void calculatesProfitRateFromCostAndListsLatestMonthFirst() {
+        // given
         PortfolioHolding coded = new PortfolioHolding(
                 1L, "KODEX", PortfolioAssetKind.ASSET, PortfolioAssetCategory.STOCK_ETF, 14_300_000L, null, 11_800_000L);
         PortfolioMonthPoint august = new PortfolioMonthPoint(YearMonth.of(2026, 8), 68_920_000L, 26_000_000L);
         PortfolioMonthPoint september = new PortfolioMonthPoint(YearMonth.of(2026, 9), 70_900_000L, 26_000_000L);
-
         PortfolioSummary summary = PortfolioSummaryCalculator.summarize(List.of(coded), List.of(august, september), TODAY, true);
 
+        // when
+
+        // then
         assertThat(summary.assets().get(0).profitRate()).isEqualTo((14_300_000d - 11_800_000d) * 100d / 11_800_000d);
         assertThat(summary.history()).extracting(PortfolioSummary.HistoryRow::yearMonth)
                 .containsExactly("2026-09", "2026-08");
@@ -76,9 +99,14 @@ class PortfolioSummaryCalculatorTest {
     }
 
     @Test
-    void 비중이_큰_자산은_경고_문구에_이름을_넣는다() {
+    @DisplayName("비중이 큰 자산은 경고 문구에 이름을 넣는다")
+    void putsTheLargestHoldingNameInTheWarning() {
+        // given
         PortfolioSummary summary = PortfolioSummaryCalculator.summarize(sampleHoldings(), List.of(), TODAY, false);
 
+        // when
+
+        // then
         assertThat(summary.insights()).extracting(PortfolioSummary.InsightLine::text)
                 .anyMatch(text -> text.contains("주식·ETF") && text.contains("35%"));
     }

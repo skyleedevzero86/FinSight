@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.portfolio.domain.PortfolioDiagnosis;
 import com.sleekydz86.finsight.core.portfolio.domain.PortfolioHolding;
 import com.sleekydz86.finsight.core.portfolio.domain.PortfolioSummary;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.YearMonth;
@@ -19,9 +20,15 @@ import static org.mockito.Mockito.mock;
 class PortfolioLlamaNarratorTest {
 
     @Test
-    void 올람라가_꺼져_있으면_규칙_문구를_유지한다() {
+    @DisplayName("올람라가 꺼져 있으면 규칙 문구를 유지한다")
+    void keepsRuleTextWhenOllamaIsOff() {
+        // given
         OllamaProperties properties = new OllamaProperties();
+
+        // when
         properties.setEnabled(false);
+
+        // given
         PortfolioLlamaNarrator narrator = new PortfolioLlamaNarrator(mock(WebClient.class), properties, new ObjectMapper());
         PortfolioSummary summary = PortfolioSummaryCalculator.summarize(
                 List.of(new PortfolioHolding(
@@ -30,23 +37,33 @@ class PortfolioLlamaNarratorTest {
                 YearMonth.of(2026, 10),
                 false);
 
+        // when
         PortfolioDiagnosis diagnosis = narrator.narrate(summary);
 
+        // then
         assertThat(diagnosis.source()).isEqualTo(PortfolioDiagnosis.RULE);
         assertThat(diagnosis.advice()).isEqualTo(summary.advice());
         assertThat(diagnosis.insights()).isEqualTo(summary.insights());
     }
 
     @Test
-    void 자산이_없으면_라마를_호출하지_않는다() {
+    @DisplayName("자산이 없으면 라마를 호출하지 않는다")
+    void doesNotCallLlamaWithoutAssets() {
+        // given
         OllamaProperties properties = new OllamaProperties();
+
+        // when
         properties.setEnabled(true);
         properties.setPortfolioModel("llama2");
+
+        // given
         PortfolioLlamaNarrator narrator = new PortfolioLlamaNarrator(mock(WebClient.class), properties, new ObjectMapper());
         PortfolioSummary summary = PortfolioSummaryCalculator.summarize(List.of(), List.of(), YearMonth.of(2026, 10), false);
 
+        // when
         PortfolioDiagnosis diagnosis = narrator.narrate(summary);
 
+        // then
         assertThat(diagnosis.source()).isEqualTo(PortfolioDiagnosis.RULE);
         assertThat(diagnosis.advice()).isEqualTo("자산을 등록하면 순자산과 구성이 계산됩니다.");
     }

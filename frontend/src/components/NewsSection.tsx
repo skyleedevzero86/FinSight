@@ -5,7 +5,8 @@ import VodThumbnail from "@/components/VodThumbnail"
 import { useEffect, useState } from "react"
 import { Maximize2 } from "lucide-react"
 import { newsImageSrc } from "@/lib/newsImage"
-import { fetchStoredNews, type StoredNewsCard } from "@/lib/publicNews"
+import SentimentBadge from "@/components/news/SentimentBadge"
+import { fetchStoredNews, sentimentExpression, type StoredNewsCard } from "@/lib/publicNews"
 import {
   fetchLiveVodFeed,
   flattenLiveVodFeedItems,
@@ -88,16 +89,26 @@ export default function NewsSection() {
 
   useEffect(() => {
     let cancelled = false
-    void (async () => {
-      const yahoo = await fetchStoredNews(6, "YAHOO_FINANCE")
-      const alpha = yahoo && yahoo.length >= 6 ? [] : await fetchStoredNews(6, "ALPHA_VANTAGE")
-      if (cancelled) return
-      const merged = [...(yahoo ?? []), ...(alpha ?? [])].slice(0, 6)
-      setCards(merged)
-      setCardsReady(true)
-    })()
+    let timer = 0
+    let attempts = 0
+    const load = () => {
+      void (async () => {
+        const yahoo = await fetchStoredNews(6, "YAHOO_FINANCE")
+        const alpha = yahoo && yahoo.length >= 6 ? [] : await fetchStoredNews(6, "ALPHA_VANTAGE")
+        if (cancelled) return
+        const merged = [...(yahoo ?? []), ...(alpha ?? [])].slice(0, 6)
+        setCards(merged)
+        setCardsReady(true)
+        if (merged.some((item) => !item.aiReady) && attempts < 15) {
+          attempts += 1
+          timer = window.setTimeout(load, 8000)
+        }
+      })()
+    }
+    load()
     return () => {
       cancelled = true
+      window.clearTimeout(timer)
     }
   }, [])
 
@@ -143,12 +154,16 @@ export default function NewsSection() {
                           alt={item.title}
                           className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
                         />
+                        <SentimentBadge sentiment={item.sentiment} />
                       </div>
                       <div className="p-4 md:p-5">
                         <h3 className="text-[15px] font-bold leading-snug tracking-tight text-[#231f20] line-clamp-2 md:text-base group-hover:text-finsight-primary">
                           {item.title}
                         </h3>
                         <p className="mt-3 text-xs text-[#737475]">{cardSource(item.provider)}</p>
+                        {sentimentExpression(item.sentiment) ? (
+                          <p className="mt-1 text-xs text-[#444]">{sentimentExpression(item.sentiment)}</p>
+                        ) : null}
                       </div>
                     </Link>
                   ))}
@@ -167,11 +182,15 @@ export default function NewsSection() {
                             alt={item.title}
                             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
                           />
+                          <SentimentBadge sentiment={item.sentiment} compact />
                         </div>
                         <h3 className="line-clamp-2 text-xs font-bold leading-snug text-[#231f20] md:text-[13px] group-hover:text-finsight-primary">
                           {item.title}
                         </h3>
                         <p className="mt-1 text-[10px] text-[#737475] md:text-xs">{cardSource(item.provider)}</p>
+                        {sentimentExpression(item.sentiment) ? (
+                          <p className="mt-1 text-[10px] text-[#444] md:text-xs">{sentimentExpression(item.sentiment)}</p>
+                        ) : null}
                       </Link>
                     ))}
                   </div>

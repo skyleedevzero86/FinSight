@@ -9,6 +9,7 @@ import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,30 +28,46 @@ class NewsAiProcessingServiceTest {
     private static final Executor DIRECT = command -> command.run();
 
     @Test
-    void 번역_결과를_원본_출처에_붙인다() {
+    @DisplayName("번역 결과를 원본 출처에 붙인다")
+    void attachesTranslationToTheOriginalSource() {
+        // given
         News source = sourceNews(9L);
         News analyzed = News.createWithoutAI(new NewsMeta(NewsProvider.ALL, LocalDateTime.now(), "AI Generated"), source.getOriginalContent())
                 .updateAiAnalysis("금리 동결 요약", "연준이 금리를 동결했다", "금리를 유지했다.", List.of(TargetCategory.SPY), SentimentType.NEUTRAL, 0.4);
         News result = new NewsAiProcessingService(new FixedAnalysis(analyzed), DIRECT).processNewsWithAI(source);
 
+        // when
+
+        // then
         assertThat(result.getNewsMeta().getSourceUrl()).isEqualTo("https://example.com/fed");
         assertThat(result.getTranslatedContent().getTitle()).isEqualTo("연준이 금리를 동결했다");
         assertThat(result.getAiOverView().getOverview()).isEqualTo("금리 동결 요약");
     }
 
     @Test
-    void 분석이_없으면_원본을_유지한다() {
+    @DisplayName("분석이 없으면 원본을 유지한다")
+    void keepsOriginalWhenAnalysisIsMissing() {
+        // given
         News source = sourceNews(10L);
         News result = new NewsAiProcessingService(new FixedAnalysis(null), DIRECT).processNewsWithAI(source);
 
+        // when
+
+        // then
         assertThat(result.getTranslatedContent()).isNull();
         assertThat(result.getNewsMeta().getSourceUrl()).isEqualTo("https://example.com/fed");
     }
 
     @Test
-    void 여러_기사를_겹쳐서_분석하고_순서를_유지한다() throws Exception {
+    @DisplayName("여러 기사를 겹쳐서 분석하고 순서를 유지한다")
+    void analyzesArticlesConcurrentlyAndKeepsOrder() throws Exception {
+        // given
         OverlappingAi ai = new OverlappingAi();
         ExecutorService pool = Executors.newFixedThreadPool(2);
+
+        // when
+
+        // then
         try {
             NewsAiProcessingService service = new NewsAiProcessingService(ai, pool);
             List<News> analyzed = service.processNewsWithAI(List.of(

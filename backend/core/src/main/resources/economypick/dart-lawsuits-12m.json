@@ -1,0 +1,269 @@
+{
+  "generatedAt": "2026-06-18T12:40:36.549Z",
+  "category": "lawsuits",
+  "period": "12개월",
+  "totalCompanies": 100,
+  "events": 26,
+  "data": [
+    {
+      "stockCode": "043220",
+      "corpCode": "00317487",
+      "companyName": "티에스넥스젠",
+      "marketCap": 272,
+      "reportName": "기타경영사항(자율공시)              (상장폐지결정 효력정지 가처분 신청)",
+      "rceptNo": "20260609900527",
+      "date": "20260609",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "237750",
+      "corpCode": "00525864",
+      "companyName": "피앤씨테크",
+      "marketCap": 261,
+      "reportName": "소송등의판결ㆍ결정              ",
+      "rceptNo": "20260601901775",
+      "date": "20260601",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "043220",
+      "corpCode": "00317487",
+      "companyName": "티에스넥스젠",
+      "marketCap": 272,
+      "reportName": "주요사항보고서(회생절차개시신청)",
+      "rceptNo": "20260520000394",
+      "date": "20260520",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "043220",
+      "corpCode": "00317487",
+      "companyName": "티에스넥스젠",
+      "marketCap": 272,
+      "reportName": "주권매매거래정지기간변경              (회생절차 개시신청)",
+      "rceptNo": "20260520900789",
+      "date": "20260520",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "043220",
+      "corpCode": "00317487",
+      "companyName": "티에스넥스젠",
+      "marketCap": 272,
+      "reportName": "소송등의판결ㆍ결정(일정금액이상의청구)              ",
+      "rceptNo": "20260507901044",
+      "date": "20260507",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "115160",
+      "corpCode": "00787057",
+      "companyName": "휴맥스",
+      "marketCap": 271,
+      "reportName": "소송등의제기ㆍ신청(일정금액이상의청구)              ",
+      "rceptNo": "20260330902328",
+      "date": "20260330",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "237750",
+      "corpCode": "00525864",
+      "companyName": "피앤씨테크",
+      "marketCap": 261,
+      "reportName": "소송등의제기ㆍ신청(경영권분쟁소송)              (회계장부열람등사 가처분)",
+      "rceptNo": "20260327902302",
+      "date": "20260327",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "237750",
+      "corpCode": "00525864",
+      "companyName": "피앤씨테크",
+      "marketCap": 261,
+      "reportName": "소송등의제기ㆍ신청(경영권분쟁소송)              (전자등록주식반환청구 등)",
+      "rceptNo": "20260129901014",
+      "date": "20260129",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "043220",
+      "corpCode": "00317487",
+      "companyName": "티에스넥스젠",
+      "marketCap": 272,
+      "reportName": "소송등의제기ㆍ신청(일정금액이상의청구)              ",
+      "rceptNo": "20251230900556",
+      "date": "20251230",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "304840",
+      "corpCode": "01118281",
+      "companyName": "피플바이오",
+      "marketCap": 250,
+      "reportName": "[기재정정]경영권변경등에관한계약체결              ",
+      "rceptNo": "20251219900872",
+      "date": "20251219",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "304840",
+      "corpCode": "01118281",
+      "companyName": "피플바이오",
+      "marketCap": 250,
+      "reportName": "기타주요경영사항              (제3자배정 유상증자결정 철회 및 경영권 변경 등에 관한 계약 해제)",
+      "rceptNo": "20251219900913",
+      "date": "20251219",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "045510",
+      "corpCode": "00147772",
+      "companyName": "정원엔시스",
+      "marketCap": 265,
+      "reportName": "소송등의판결ㆍ결정              (회계장부등 열람ㆍ등사 가처분)",
+      "rceptNo": "20251203900223",
+      "date": "20251203",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "304840",
+      "corpCode": "01118281",
+      "companyName": "피플바이오",
+      "marketCap": 250,
+      "reportName": "경영권변경등에관한계약체결              ",
+      "rceptNo": "20251113900016",
+      "date": "20251113",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "043220",
+      "corpCode": "00317487",
+      "companyName": "티에스넥스젠",
+      "marketCap": 272,
+      "reportName": "소송등의판결ㆍ결정(일정금액이상의청구)              (신탁수익권 등 가압류)",
+      "rceptNo": "20251024900641",
+      "date": "20251024",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "257370",
+      "corpCode": "01144569",
+      "companyName": "피엔티엠에스",
+      "marketCap": 279,
+      "reportName": "소송등의판결ㆍ결정(일정금액이상의청구)              (사해행위취소)",
+      "rceptNo": "20251023900207",
+      "date": "20251023",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "043220",
+      "corpCode": "00317487",
+      "companyName": "티에스넥스젠",
+      "marketCap": 272,
+      "reportName": "소송등의판결ㆍ결정              (임시총회소집허가 신청 취하)",
+      "rceptNo": "20251022900220",
+      "date": "20251022",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "043220",
+      "corpCode": "00317487",
+      "companyName": "티에스넥스젠",
+      "marketCap": 272,
+      "reportName": "소송등의판결ㆍ결정              (주주명부열람등사 가처분)",
+      "rceptNo": "20250923900172",
+      "date": "20250923",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "237750",
+      "corpCode": "00525864",
+      "companyName": "피앤씨테크",
+      "marketCap": 261,
+      "reportName": "[기재정정]소송등의판결ㆍ결정              ",
+      "rceptNo": "20250917900059",
+      "date": "20250917",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "237750",
+      "corpCode": "00525864",
+      "companyName": "피앤씨테크",
+      "marketCap": 261,
+      "reportName": "소송등의판결ㆍ결정              ",
+      "rceptNo": "20250916900455",
+      "date": "20250916",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "043220",
+      "corpCode": "00317487",
+      "companyName": "티에스넥스젠",
+      "marketCap": 272,
+      "reportName": "소송등의제기ㆍ신청(경영권분쟁소송)              (주주명부열람등사 가처분)",
+      "rceptNo": "20250915900270",
+      "date": "20250915",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "317240",
+      "corpCode": "01353024",
+      "companyName": "TS트릴리온",
+      "marketCap": 258,
+      "reportName": "소송등의판결ㆍ결정              (회계장부 열람 및 등사청구-소취하)",
+      "rceptNo": "20250818900397",
+      "date": "20250818",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "045510",
+      "corpCode": "00147772",
+      "companyName": "정원엔시스",
+      "marketCap": 265,
+      "reportName": "소송등의제기ㆍ신청(경영권분쟁소송)              (회계장부등 열람ㆍ등사 가처분)",
+      "rceptNo": "20250818900177",
+      "date": "20250818",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "317240",
+      "corpCode": "01353024",
+      "companyName": "TS트릴리온",
+      "marketCap": 258,
+      "reportName": "소송등의판결ㆍ결정              (신주발행무효-취하)",
+      "rceptNo": "20250814902764",
+      "date": "20250814",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "021880",
+      "corpCode": "00136101",
+      "companyName": "메이슨캐피탈",
+      "marketCap": 289,
+      "reportName": "소송등의제기ㆍ신청(일정금액이상의청구)              ",
+      "rceptNo": "20250725900169",
+      "date": "20250725",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "317240",
+      "corpCode": "01353024",
+      "companyName": "TS트릴리온",
+      "marketCap": 258,
+      "reportName": "소송등의판결ㆍ결정(일정금액이상의청구)              ",
+      "rceptNo": "20250723900094",
+      "date": "20250723",
+      "category": "소송/분쟁"
+    },
+    {
+      "stockCode": "317240",
+      "corpCode": "01353024",
+      "companyName": "TS트릴리온",
+      "marketCap": 258,
+      "reportName": "소송등의판결ㆍ결정              (신주발행효력정지가처분-항고)",
+      "rceptNo": "20250702900319",
+      "date": "20250702",
+      "category": "소송/분쟁"
+    }
+  ]
+}

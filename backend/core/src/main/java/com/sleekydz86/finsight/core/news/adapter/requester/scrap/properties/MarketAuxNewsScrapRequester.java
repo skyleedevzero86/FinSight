@@ -56,7 +56,6 @@ public class MarketAuxNewsScrapRequester implements NewsScrapRequester {
                 .bodyToMono(MarketAuxResponse.class)
                 .map(this::convertToNews)
                 .doOnError(error -> log.error("MarketAux에서 뉴스 조회 실패: {}", error.getMessage()))
-                .onErrorReturn(List.of())
                 .toFuture();
     }
 

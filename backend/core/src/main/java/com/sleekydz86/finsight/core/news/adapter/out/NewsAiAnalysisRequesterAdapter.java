@@ -219,10 +219,11 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
 
         return aiChatResponse.getAnalyses().stream()
                 .map(analysis -> {
+                    double score = analysis.getSentimentRatio() == null ? 0.0 : analysis.getSentimentRatio();
                     var aiOverview = new com.sleekydz86.finsight.core.news.domain.vo.AiOverview(
                             analysis.getOverView(),
                             analysis.getSentimentType(),
-                            analysis.getSentimentRatio(),
+                            score,
                             analysis.getCategories());
 
                     var translatedContent = new com.sleekydz86.finsight.core.news.domain.vo.Content(
@@ -241,7 +242,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
                                     analysis.getTranslatedContent(),
                                     analysis.getCategories(),
                                     analysis.getSentimentType(),
-                                    analysis.getSentimentRatio());
+                                    analysis.getSentimentRatio() == null ? 0.0 : analysis.getSentimentRatio());
                 })
                 .collect(Collectors.toList());
     }

@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight;
 
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -9,7 +10,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 class WebApplicationTests {
 
     @Test
+    @DisplayName("웹 애플리케이션 컨텍스트가 뜬다")
     void contextLoads() {
+        // given
+        // when
+        // then
     }
 
 }

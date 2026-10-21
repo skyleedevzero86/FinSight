@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeVide
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeVideoListResponse;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeVideoSearchRequest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.util.List;
 
@@ -15,11 +16,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 class LiveVodMcpToolsTest {
 
     @Test
+    @DisplayName("라이브 VOD 목록은 구간을 펼쳐 반환한다")
     void listLiveVod_flattensSections() {
+        // given
         LiveVodMcpTools tools = new LiveVodMcpTools(new FixedLiveVodQuery());
 
+        // when
         LiveVodMcpTools.LiveVodListResult result = tools.listLiveVod("market");
 
+        // then
         assertThat(result.tab()).isEqualTo("MARKET");
         assertThat(result.items()).containsExactly(
                 new LiveVodMcpTools.LiveVodItem("v1", "시장 브리핑", "채널", "/live-vod/watch/v1", "추천"));

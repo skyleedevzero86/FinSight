@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioShare
 import com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioShareReportJpaRepository;
 import com.sleekydz86.finsight.core.portfolio.domain.PortfolioShareDetection;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -50,14 +51,18 @@ class PortfolioShareDetectionServiceTest {
     }
 
     @Test
-    void 문구와_신고_사유를_함께_센다() {
+    @DisplayName("문구와 신고 사유를 함께 센다")
+    void countsTextTogetherWithReportReason() {
+        // given
         when(shareRepository.findByVisibilityOrderByCreatedAtDescIdDesc(eq("PUBLIC"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(share())));
         when(reportRepository.findAll()).thenReturn(List.of(
                 new PortfolioShareReportJpaEntity(9L, 3L, "투자 사기", "계좌번호를 요구합니다", LocalDateTime.of(2026, 10, 10, 1, 0))));
 
+        // when
         PortfolioShareDetection detection = detectionService.detect();
 
+        // then
         assertThat(detection.source()).isEqualTo("RULE");
         assertThat(detection.chips()).extracting(PortfolioShareDetection.Chip::label)
                 .contains("오픈채팅 URL", "투자 사기");

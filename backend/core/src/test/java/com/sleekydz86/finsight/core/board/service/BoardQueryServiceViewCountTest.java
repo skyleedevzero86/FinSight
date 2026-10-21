@@ -9,6 +9,7 @@ import com.sleekydz86.finsight.core.board.domain.port.out.BoardReactionPersisten
 import com.sleekydz86.finsight.core.board.domain.port.out.BoardScrapPersistencePort;
 import com.sleekydz86.finsight.core.board.markdown.MarkdownRenderingService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -37,7 +38,9 @@ class BoardQueryServiceViewCountTest {
     private BoardViewCountService boardViewCountService;
 
     @Test
-    void 상세_응답의_조회수는_증가_전에_읽은_값이다() {
+    @DisplayName("상세 응답의 조회수는 증가 전에 읽은 값이다")
+    void detailViewCountIsTheValueReadBeforeIncrement() {
+        // given
         LocalDateTime now = LocalDateTime.of(2026, 10, 9, 1, 0);
         Board loaded = new Board(
                 1L,
@@ -65,8 +68,10 @@ class BoardQueryServiceViewCountTest {
                 new MarkdownRenderingService(),
                 boardViewCountService);
 
+        // when
         BoardDetailResponse response = service.getBoardDetail(1L, null, false, true);
 
+        // then
         verify(boardViewCountService).incrementSafely(1L);
         assertThat(response.getViewCount()).isEqualTo(7);
     }

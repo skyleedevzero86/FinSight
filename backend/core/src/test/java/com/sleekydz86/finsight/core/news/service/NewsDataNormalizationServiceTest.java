@@ -57,12 +57,14 @@ class NewsDataNormalizationServiceTest {
 
     @Test
     @DisplayName("뉴스 데이터 정규화 및 중복제거 성공")
-    void 뉴스_데이터_정규화_및_중복제거_성공() {
-
+    void normalizesNewsAndRemovesDuplicates() {
+        // given
         List<News> newsList = List.of(testNews, htmlTestNews);
 
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
+        // then
         assertThat(normalizedNews).isNotNull();
         assertThat(normalizedNews).hasSize(2);
         assertThat(normalizedNews)
@@ -75,15 +77,20 @@ class NewsDataNormalizationServiceTest {
 
     @Test
     @DisplayName("HTML 태그 제거 정규화 성공")
-    void HTML_태그_제거_정규화_성공() {
-
+    void removesHtmlTagsDuringNormalization() {
+        // given
         News newsWithHtml = createNewsWithHtmlTags();
 
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(List.of(newsWithHtml));
 
+        // then
         assertThat(normalizedNews).hasSize(1);
+
+        // when
         News normalized = normalizedNews.get(0);
 
+        // then
         assertThat(normalized.getOriginalContent().getTitle())
                 .doesNotContain("<", ">", "&lt;", "&gt;");
         assertThat(normalized.getOriginalContent().getContent())
@@ -92,24 +99,28 @@ class NewsDataNormalizationServiceTest {
 
     @Test
     @DisplayName("빈 데이터는 결과에서 빠진다")
-    void 빈_데이터_처리_성공() {
-
+    void handlesEmptyData() {
+        // given
         List<News> newsList = List.of(emptyTestNews);
 
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
+        // then
         assertThat(normalizedNews).isEmpty();
     }
 
     @Test
     @DisplayName("서비스 통계 조회 성공")
-    void 서비스_통계_조회_성공() {
-
+    void readsServiceStatistics() {
+        // given
         List<News> newsList = List.of(testNews, htmlTestNews, emptyTestNews);
 
+        // when
         normalizationService.normalizeAndDeduplicate(newsList);
         Map<String, Object> statistics = normalizationService.getServiceStatistics();
 
+        // then
         assertThat(statistics).isNotNull();
         assertThat(statistics.get("totalProcessedCount")).isEqualTo(3L);
         assertThat(statistics.get("successCount")).isEqualTo(2L);
@@ -119,15 +130,20 @@ class NewsDataNormalizationServiceTest {
 
     @Test
     @DisplayName("특수문자 처리 정규화 성공")
-    void 특수문자_처리_정규화_성공() {
-
+    void normalizesSpecialCharacters() {
+        // given
         List<News> newsList = List.of(specialCharTestNews);
 
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
+        // then
         assertThat(normalizedNews).hasSize(1);
+
+        // when
         News normalized = normalizedNews.get(0);
 
+        // then
         assertThat(normalized.getOriginalContent().getTitle())
                 .contains("특수문자", "테스트", "제목");
         assertThat(normalized.getOriginalContent().getContent())
@@ -136,15 +152,20 @@ class NewsDataNormalizationServiceTest {
 
     @Test
     @DisplayName("긴 컨텐츠 처리 정규화 성공")
-    void 긴_컨텐츠_처리_정규화_성공() {
-
+    void normalizesLongContent() {
+        // given
         List<News> newsList = List.of(longContentTestNews);
 
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
+        // then
         assertThat(normalizedNews).hasSize(1);
+
+        // when
         News normalized = normalizedNews.get(0);
 
+        // then
         assertThat(normalized.getOriginalContent().getTitle()).isNotNull();
         assertThat(normalized.getOriginalContent().getContent()).isNotNull();
         assertThat(normalized.getOriginalContent().getContent().length()).isGreaterThan(1000);
@@ -152,36 +173,42 @@ class NewsDataNormalizationServiceTest {
 
     @Test
     @DisplayName("중복 뉴스 제거 성공")
-    void 중복_뉴스_제거_성공() {
-
+    void removesDuplicateNews() {
+        // given
         News duplicateNews = createDuplicateNews(testNews);
         List<News> newsList = List.of(testNews, duplicateNews);
 
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
 
+        // then
         assertThat(normalizedNews).hasSize(1);
         assertThat(normalizedNews.get(0).getId()).isEqualTo(testNews.getId());
     }
 
     @Test
     @DisplayName("내용이 없는 뉴스는 결과에서 빠진다")
-    void 내용이_없는_뉴스는_결과에서_빠진다() {
-
+    void dropsNewsWithoutContent() {
+        // given
         News invalidNews = createInvalidNews();
 
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(List.of(invalidNews));
 
+        // then
         assertThat(normalizedNews).isEmpty();
     }
 
     @Test
     @DisplayName("대용량 뉴스 리스트 처리 성공")
-    void 대용량_뉴스_리스트_처리_성공() {
-
+    void handlesLargeNewsList() {
+        // given
         List<News> largeNewsList = createLargeNewsList(100);
 
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(largeNewsList);
 
+        // then
         assertThat(normalizedNews).hasSize(100);
         assertThat(normalizedNews).allMatch(news ->
                 news.getOriginalContent() != null &&
@@ -190,59 +217,79 @@ class NewsDataNormalizationServiceTest {
 
     @Test
     @DisplayName("정규화 성능 측정 성공")
-    void 정규화_성능_측정_성공() {
-
+    void measuresNormalizationPerformance() {
+        // given
         List<News> newsList = createLargeNewsList(50);
-
         long startTime = System.currentTimeMillis();
+
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(newsList);
+
+        // given
         long endTime = System.currentTimeMillis();
 
+        // then
         assertThat(normalizedNews).hasSize(50);
+
+        // when
         long processingTime = endTime - startTime;
+
+        // then
         assertThat(processingTime).isLessThan(5000);
     }
 
     @Test
     @DisplayName("유니코드 정규화 성공")
-    void 유니코드_정규화_성공() {
-
+    void normalizesUnicode() {
+        // given
         News unicodeNews = createUnicodeTestNews();
 
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(List.of(unicodeNews));
 
+        // then
         assertThat(normalizedNews).hasSize(1);
+
+        // when
         News normalized = normalizedNews.get(0);
 
+        // then
         assertThat(normalized.getOriginalContent().getTitle()).isNotNull();
         assertThat(normalized.getOriginalContent().getContent()).isNotNull();
     }
 
     @Test
     @DisplayName("이모지 처리 정규화 성공")
-    void 이모지_처리_정규화_성공() {
-
+    void normalizesEmoji() {
+        // given
         News emojiNews = createEmojiTestNews();
 
+        // when
         List<News> normalizedNews = normalizationService.normalizeAndDeduplicate(List.of(emojiNews));
 
+        // then
         assertThat(normalizedNews).hasSize(1);
+
+        // when
         News normalized = normalizedNews.get(0);
 
+        // then
         assertThat(normalized.getOriginalContent().getTitle()).isNotNull();
         assertThat(normalized.getOriginalContent().getContent()).isNotNull();
     }
 
     @Test
     @DisplayName("캐시 클리어 성공")
-    void 캐시_클리어_성공() {
-
+    void clearsCache() {
+        // given
         List<News> newsList = List.of(testNews);
 
+        // when
         normalizationService.normalizeAndDeduplicate(newsList);
         normalizationService.clearCache();
-
         Map<String, Object> statistics = normalizationService.getServiceStatistics();
+
+        // then
         assertThat(statistics.get("cacheSize")).isEqualTo(0);
     }
 

@@ -1,6 +1,7 @@
 package com.sleekydz86.finsight.core.global.config;
 
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -23,7 +24,13 @@ class SecurityConfigTest {
     private MockMvc mockMvc;
 
     @Test
-    void 보안_헤더가_올바르게_설정되어야_한다() throws Exception {
+    @DisplayName("보안 헤더가 올바르게 설정되어야 한다")
+    void setsSecurityHeaders() throws Exception {
+        // given
+
+        // when
+
+        // then
         mockMvc.perform(get("/health"))
                 .andExpect(status().isOk())
                 .andExpect(header().string("X-XSS-Protection", "1; mode=block"))
@@ -34,37 +41,66 @@ class SecurityConfigTest {
     }
 
     @Test
-    void 인증되지_않은_사용자는_보호된_리소스에_접근할_수_없어야_한다() throws Exception {
+    @DisplayName("인증되지 않은 사용자는 보호된 리소스에 접근할 수 없어야 한다")
+    void unauthenticatedUserCannotAccessProtectedResource() throws Exception {
+        // given
+
+        // when
+
+        // then
         mockMvc.perform(get("/news/search"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
+    @DisplayName("인증된 사용자는 보호된 리소스에 접근할 수 있어야 한다")
     @WithMockUser(roles = "USER")
-    void 인증된_사용자는_보호된_리소스에_접근할_수_있어야_한다() throws Exception {
+    void authenticatedUserCanAccessProtectedResource() throws Exception {
+        // given
+
+        // when
+
+        // then
         mockMvc.perform(get("/news/search"))
                 .andExpect(status().isOk());
     }
 
     @Test
+    @DisplayName("일반 사용자는 관리자 리소스에 접근할 수 없어야 한다")
     @WithMockUser(roles = "USER")
-    void 일반_사용자는_관리자_리소스에_접근할_수_없어야_한다() throws Exception {
+    void regularUserCannotAccessAdminResource() throws Exception {
+        // given
+
+        // when
+
+        // then
         mockMvc.perform(get("/actuator/info"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
+    @DisplayName("관리자는 관리자 리소스에 접근할 수 있어야 한다")
     @WithMockUser(roles = "ADMIN")
-    void 관리자는_관리자_리소스에_접근할_수_있어야_한다() throws Exception {
+    void adminCanAccessAdminResource() throws Exception {
+        // given
+
+        // when
+
+        // then
         mockMvc.perform(get("/actuator/info"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    void 공개_엔드포인트는_인증_없이_접근할_수_있어야_한다() throws Exception {
+    @DisplayName("공개 엔드포인트는 인증 없이 접근할 수 있어야 한다")
+    void publicEndpointIsAccessibleWithoutAuthentication() throws Exception {
+        // given
+
+        // when
+
+        // then
         mockMvc.perform(get("/health"))
                 .andExpect(status().isOk());
-
         mockMvc.perform(post("/auth/login"))
                 .andExpect(status().isBadRequest());
     }

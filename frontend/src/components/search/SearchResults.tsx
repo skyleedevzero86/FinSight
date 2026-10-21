@@ -9,9 +9,6 @@ type Section = { key: string; label: string; total: number; note: string; hits: 
 type Result = {
   query: string
   total: number
-  tookMs: number
-  engine: string
-  cached: boolean
   sections: Section[]
 }
 
@@ -78,72 +75,34 @@ export default function SearchResults({ query }: { query: string }) {
   }, [query])
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-10">
-      <h1 className="text-center text-xl font-bold text-[#231f20]">검색</h1>
-      <form action="/search" className="mx-auto mt-4 flex max-w-md border border-neutral-300 bg-white">
-        <input
-          type="search"
-          name="q"
-          defaultValue={query}
-          placeholder="검색어를 입력해주세요"
-          className="min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm text-gray-900 outline-none"
-          autoComplete="off"
-        />
-        <button type="submit" className="px-4 text-sm text-slate-700">검색</button>
+    <div className="mx-auto w-full max-w-4xl px-4 py-10">
+      <h1 className="text-center text-2xl font-bold text-[#231f20]">검색</h1>
+      <form action="/search" className="mt-6 border border-neutral-200 bg-white px-5 py-4">
+        <div className="flex items-center gap-3">
+          <label htmlFor="search-q" className="shrink-0 text-sm text-neutral-500">검색어</label>
+          <input
+            id="search-q"
+            type="search"
+            name="q"
+            defaultValue={query}
+            placeholder="검색어를 입력해주세요"
+            className="min-w-0 flex-1 border border-neutral-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none"
+            autoComplete="off"
+          />
+          <button type="submit" className="shrink-0 bg-neutral-800 px-4 py-2 text-sm text-white">검색</button>
+        </div>
       </form>
       {!query ? <p className="mt-8 text-center text-sm text-slate-500">검색어를 입력해 주세요.</p> : null}
-      {error ? <p className="mt-8 text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="mt-8 text-center text-sm text-red-600">{error}</p> : null}
       {query && !result && !error ? <p className="mt-8 text-center text-sm text-slate-500">검색 중입니다.</p> : null}
       {query && result ? (
         <>
-          <p className="mt-8 text-sm text-slate-600">
-            <span className="text-rose-600">{result.query}</span>
-            {particle(result.query)} 총 <span className="font-bold text-rose-600">{result.total.toLocaleString("ko-KR")}</span>
-            건이 검색되었습니다.
+          <p className="mt-8 text-center text-sm text-rose-500">
+            {result.query}{particle(result.query)} 총 {result.total.toLocaleString("ko-KR")}건이 검색되었습니다.
           </p>
-          <p className="mt-1 text-xs text-slate-400">
-            {result.tookMs}ms · {engineLabel(result.engine)}{result.cached ? " · Redis 캐시" : ""}
-          </p>
-          <div className="mt-6 space-y-8">
+          <div className="mt-8 space-y-8">
             {result.sections.map((section) => (
-              <section key={section.key}>
-                <h2 className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                  <span className={`inline-block h-3 w-3 ${TONE[section.key] ?? "bg-slate-400"}`} />
-                  {section.label}
-                  {section.key === "activity" && section.note ? null : (
-                    <span className="font-medium text-slate-400">({section.total.toLocaleString("ko-KR")}건)</span>
-                  )}
-                  <Link
-                    href={SECTION_MORE[section.key] ?? "/search"}
-                    className="ml-auto text-xs font-medium text-slate-500 hover:text-sky-700 hover:underline"
-                  >
-                    자세히보기
-                  </Link>
-                </h2>
-                {section.key === "activity" && section.note ? (
-                  <LockedActivity query={result.query} message={section.note} />
-                ) : (
-                  <>
-                    {section.hits.length === 0 ? (
-                      <p className="mt-3 text-sm text-slate-400">검색된 항목이 없습니다.</p>
-                    ) : null}
-                    <ul className="mt-3 space-y-4">
-                      {section.hits.map((hit) => (
-                        <li key={`${section.key}-${hit.href}-${hit.title}`}>
-                          <Link href={hit.href || "/search"} className="text-sm font-semibold text-sky-700 hover:underline">
-                            <Highlight text={hit.title} query={result.query} />
-                          </Link>
-                          {hit.snippet && !sameVisibleText(hit.snippet, hit.title) ? (
-                            <p className="mt-1 text-sm leading-6 text-slate-600">
-                              <Highlight text={hit.snippet} query={result.query} />
-                            </p>
-                          ) : null}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </section>
+              <SearchSection key={section.key} section={section} query={result.query} />
             ))}
           </div>
         </>
@@ -152,10 +111,62 @@ export default function SearchResults({ query }: { query: string }) {
   )
 }
 
+function SearchSection({ section, query }: { section: Section; query: string }) {
+  const locked = section.key === "activity" && section.note
+  const more = section.total > section.hits.length
+  return (
+    <section>
+      <h2 className="flex items-center gap-2 text-sm font-bold text-neutral-900">
+        <span className={`inline-block h-3 w-3 ${TONE[section.key] ?? "bg-slate-400"}`} />
+        {section.label}
+        {locked ? null : (
+          <span className="font-medium text-neutral-500">({section.total.toLocaleString("ko-KR")}건)</span>
+        )}
+      </h2>
+      {locked ? <LockedActivity query={query} message={section.note} /> : <SectionHits section={section} query={query} />}
+      {more && !locked ? (
+        <Link
+          href={SECTION_MORE[section.key] ?? "/search"}
+          className="mt-3 block border border-neutral-200 py-3 text-center text-sm text-neutral-600 hover:bg-neutral-50"
+        >
+          자세히보기
+        </Link>
+      ) : null}
+    </section>
+  )
+}
+
+function SectionHits({ section, query }: { section: Section; query: string }) {
+  if (section.hits.length === 0) {
+    return <p className="mt-3 border border-neutral-200 px-4 py-8 text-center text-sm text-neutral-400">검색된 항목이 없습니다.</p>
+  }
+  return (
+    <ul className="mt-3 space-y-3">
+      {section.hits.map((hit) => (
+        <li key={`${section.key}-${hit.href}-${hit.title}`} className="border border-neutral-200 px-4 py-3">
+          <div className="flex items-start justify-between gap-4">
+            <Link href={hit.href || "/search"} className="min-w-0 text-sm font-semibold text-sky-600 hover:underline">
+              <Highlight text={hit.title} query={query} />
+            </Link>
+            <Link href={hit.href || "/search"} className="shrink-0 text-xs text-neutral-500 hover:underline">
+              자세히보기
+            </Link>
+          </div>
+          {hit.snippet && !sameVisibleText(hit.snippet, hit.title) ? (
+            <p className="mt-1 line-clamp-2 text-sm leading-6 text-neutral-500">
+              <Highlight text={hit.snippet} query={query} />
+            </p>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function LockedActivity({ query, message }: { query: string; message: string }) {
   const rows = ["내 글", "내 댓글", "알림"]
   return (
-    <div className="relative mt-3 min-h-36">
+    <div className="relative mt-3 min-h-40 border border-neutral-200 px-4 py-8">
       <ul className="pointer-events-none select-none space-y-4 blur-[6px]" aria-hidden>
         {rows.map((label) => (
           <li key={label}>
@@ -165,7 +176,7 @@ function LockedActivity({ query, message }: { query: string; message: string }) 
         ))}
       </ul>
       <div className="absolute inset-0 flex items-center justify-center">
-        <Link href="/login" className="bg-white/90 px-4 py-2 text-sm font-semibold text-slate-800 shadow-sm">
+        <Link href="/login" className="border border-neutral-300 bg-white px-4 py-2 text-sm text-neutral-800">
           {message}
         </Link>
       </div>
@@ -185,7 +196,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   while (found >= 0) {
     if (found > cursor) parts.push(text.slice(cursor, found))
     parts.push(
-      <span key={key} className="font-semibold text-rose-600">
+      <span key={key} className="font-bold">
         {text.slice(found, found + target.length)}
       </span>,
     )
@@ -203,21 +214,12 @@ function particle(word: string) {
   return (code - 0xac00) % 28 === 0 ? "로" : "으로"
 }
 
-function engineLabel(engine: string) {
-  if (engine === "ELASTICSEARCH") return "Elasticsearch"
-  if (engine === "REDIS") return "Redis"
-  return "MySQL"
-}
-
 function parseResult(body: unknown): Result {
   const data = asRecord(asRecord(body)?.data)
   const sections = Array.isArray(data?.sections) ? data.sections : []
   return {
     query: typeof data?.query === "string" ? data.query : "",
     total: typeof data?.total === "number" ? data.total : 0,
-    tookMs: typeof data?.tookMs === "number" ? data.tookMs : 0,
-    engine: typeof data?.engine === "string" ? data.engine : "MYSQL",
-    cached: data?.cached === true,
     sections: sections.flatMap(parseSection),
   }
 }

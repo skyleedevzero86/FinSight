@@ -61,7 +61,6 @@ public class YahooFinanceNewsScrapRequester implements NewsScrapRequester {
                 .map(YahooFinanceNewsScrapRequester::fromRss)
                 .onErrorResume(error -> searchAfterRssFailure(error))
                 .map(items -> keepFresh(items, publishTimeAfter, limit))
-                .onErrorReturn(List.of())
                 .toFuture();
     }
 

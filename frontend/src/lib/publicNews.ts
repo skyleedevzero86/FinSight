@@ -31,10 +31,14 @@ function text(value: unknown): string {
   return typeof value === "string" ? value.trim() : ""
 }
 
+function hasHangul(value: string): boolean {
+  return /[가-힣]/.test(value)
+}
+
 function koreanOrNotice(translated: string, original: string): { value: string; ready: boolean } {
   const fixedTranslated = repairText(translated)
   const fixedOriginal = repairText(original)
-  if (fixedTranslated && fixedTranslated !== fixedOriginal) {
+  if (fixedTranslated && fixedTranslated !== fixedOriginal && hasHangul(fixedTranslated)) {
     return { value: fixedTranslated, ready: true }
   }
   return { value: fixedOriginal || "제목 없음", ready: false }

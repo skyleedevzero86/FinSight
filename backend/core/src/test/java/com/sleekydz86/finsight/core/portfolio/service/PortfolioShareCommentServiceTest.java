@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioShare
 import com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioShareJpaRepository;
 import com.sleekydz86.finsight.core.portfolio.domain.PortfolioShareCommentItem;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -40,17 +41,27 @@ class PortfolioShareCommentServiceTest {
     }
 
     @Test
-    void 댓글을_저장하고_작성자_이름을_가린다() {
+    @DisplayName("댓글을 저장하고 작성자 이름을 가린다")
+    void savesCommentAndMasksAuthorName() {
+        // given
         PortfolioShareJpaEntity share = share();
         PortfolioShareCommentJpaEntity stored = new PortfolioShareCommentJpaEntity(
                 4L, 7L, "studio_kim", "응원합니다", LocalDateTime.of(2026, 10, 10, 19, 40));
+
+        // when
         ReflectionTestUtils.setField(stored, "id", 9L);
+
+        // given
         when(shareRepository.findById(4L)).thenReturn(Optional.of(share));
         when(commentRepository.findTop30ByShareIdOrderByIdDesc(4L)).thenReturn(List.of(stored));
 
+        // when
         List<PortfolioShareCommentItem> comments = commentService.add(7L, "studio_kim", 4L, " 응원합니다 ");
 
+        // given
         ArgumentCaptor<PortfolioShareCommentJpaEntity> captor = ArgumentCaptor.forClass(PortfolioShareCommentJpaEntity.class);
+
+        // then
         verify(commentRepository).save(captor.capture());
         assertThat(captor.getValue().getContent()).isEqualTo("응원합니다");
         assertThat(comments).hasSize(1);
@@ -59,11 +70,18 @@ class PortfolioShareCommentServiceTest {
     }
 
     @Test
-    void 삭제된_게시물에는_댓글을_남기지_않는다() {
+    @DisplayName("삭제된 게시물에는 댓글을 남기지 않는다")
+    void doesNotCommentOnDeletedPost() {
+        // given
         PortfolioShareJpaEntity share = share();
+
+        // when
         share.applyModeration("REMOVED");
+
+        // given
         when(shareRepository.findById(4L)).thenReturn(Optional.of(share));
 
+        // then
         assertThatThrownBy(() -> commentService.add(7L, "studio_kim", 4L, "댓글"))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("삭제된 게시물");

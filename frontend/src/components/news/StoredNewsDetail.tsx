@@ -90,21 +90,29 @@ export default function StoredNewsDetail({ newsId }: { newsId: string }) {
 
   useEffect(() => {
     let alive = true
-    fetchNewsAiDown().then((down) => {
-      if (alive) setAiDown(down)
-    })
-    fetchStoredNewsDetail(newsId).then((result) => {
-      if (!alive) return
-      if (result === "missing") {
-        setMissing(true)
-        return
-      }
-      if (!result) {
-        setFailed(true)
-        return
-      }
-      setDetail(result)
-    })
+    let timer = 0
+    let attempts = 0
+    const load = () => {
+      Promise.all([fetchStoredNewsDetail(newsId), fetchNewsAiDown()]).then(([result, down]) => {
+        if (!alive) return
+        setAiDown(down)
+        if (result === "missing") {
+          setMissing(true)
+          return
+        }
+        if (!result) {
+          setFailed(true)
+          return
+        }
+        setFailed(false)
+        setDetail(result)
+        if (!down && !result.aiReady && attempts < 15) {
+          attempts += 1
+          timer = window.setTimeout(load, 8000)
+        }
+      })
+    }
+    load()
     Promise.all([fetchStoredNews(12), fetchSimilarNews(newsId, 5)]).then(([rows, similar]) => {
       if (!alive) return
       if (rows) {
@@ -121,6 +129,7 @@ export default function StoredNewsDetail({ newsId }: { newsId: string }) {
     })
     return () => {
       alive = false
+      window.clearTimeout(timer)
     }
   }, [newsId])
 
@@ -150,7 +159,7 @@ export default function StoredNewsDetail({ newsId }: { newsId: string }) {
             뉴스 목록
           </Link>
         </p>
-        {aiDown || !detail.aiReady ? (
+        {aiDown ? (
           <p role="alert" className="mb-4 border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-gray-900">
             {NEWS_ADMIN_NOTICE}
           </p>
@@ -187,7 +196,7 @@ export default function StoredNewsDetail({ newsId }: { newsId: string }) {
         ) : null}
         <ArticleImage imageUrl={detail.imageUrl || fallbackImage} />
         <p className="mt-6 whitespace-pre-wrap text-base leading-7 text-gray-900">{detail.body}</p>
-        <p className="mt-6 text-right text-sm text-gray-800">감정: {sentiment ?? NEWS_ADMIN_NOTICE}</p>
+        {sentiment ? <p className="mt-6 text-right text-sm text-gray-800">감정: {sentiment}</p> : null}
         <NewsArticleComments newsId={newsId} />
       </article>
       <aside>

@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.portfolio.domain.PortfolioAssetKind;
 import com.sleekydz86.finsight.core.portfolio.domain.PortfolioHolding;
 import com.sleekydz86.finsight.core.portfolio.domain.PortfolioSummary;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.YearMonth;
 import java.util.List;
@@ -27,12 +28,16 @@ class PortfolioGoalAlarmTest {
     private final PortfolioGoalAlarm alarm = new PortfolioGoalAlarm(repository, inboxService);
 
     @Test
-    void 목표_순자산이면_활동_알림을_한_번_만든다() {
+    @DisplayName("목표 순자산이면 활동 알림을 한 번 만든다")
+    void createsOneActivityAlertWhenNetWorthReachesGoal() {
+        // given
         when(repository.existsByRecipientUserIdAndRefTypeAndRefId(7L, PortfolioGoalAlarm.REF_TYPE, PortfolioSummary.GOAL_AMOUNT))
                 .thenReturn(false);
 
+        // when
         alarm.notifyIfReached(7L, summary(PortfolioSummary.GOAL_AMOUNT));
 
+        // then
         verify(inboxService).createForUser(
                 eq(7L),
                 eq(InboxCategory.ADMIN),
@@ -47,12 +52,19 @@ class PortfolioGoalAlarmTest {
     }
 
     @Test
-    void 목표_미만이거나_이미_알렸으면_다시_만들지_않는다() {
+    @DisplayName("목표 미만이거나 이미 알렸으면 다시 만들지 않는다")
+    void doesNotCreateAgainWhenBelowGoalOrAlreadyAlerted() {
+        // when
         alarm.notifyIfReached(7L, summary(PortfolioSummary.GOAL_AMOUNT - 1));
+
+        // given
         when(repository.existsByRecipientUserIdAndRefTypeAndRefId(7L, PortfolioGoalAlarm.REF_TYPE, PortfolioSummary.GOAL_AMOUNT))
                 .thenReturn(true);
+
+        // when
         alarm.notifyIfReached(7L, summary(PortfolioSummary.GOAL_AMOUNT));
 
+        // then
         verify(inboxService, never()).createForUser(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }

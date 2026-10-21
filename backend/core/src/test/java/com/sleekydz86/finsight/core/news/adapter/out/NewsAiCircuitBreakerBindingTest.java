@@ -3,6 +3,7 @@ package com.sleekydz86.finsight.core.news.adapter.out;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import com.sleekydz86.finsight.core.global.config.NewsAiCircuitBreakerConfig;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.actuate.autoconfigure.security.servlet.ManagementWebSecurityAutoConfiguration;
@@ -27,9 +28,14 @@ class NewsAiCircuitBreakerBindingTest {
     private CircuitBreakerRegistry registry;
 
     @Test
-    void 뉴스_AI_서킷은_5번_호출부터_실패율을_본다() {
+    @DisplayName("뉴스 AI 서킷은 5번 호출부터 실패율을 본다")
+    void newsAiCircuitReadsFailureRateFromTheFifthCall() {
+        // given
+
+        // when
         var config = registry.circuitBreaker("newsAiCircuitBreaker").getCircuitBreakerConfig();
 
+        // then
         assertThat(config.getMinimumNumberOfCalls()).isEqualTo(5);
         assertThat(config.getSlidingWindowSize()).isEqualTo(10);
     }
