@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { useState } from "react"
 import { newsImageSrc } from "@/lib/newsImage"
-import type { StoredNewsCard } from "@/lib/publicNews"
+import SentimentBadge from "@/components/news/SentimentBadge"
+import { sentimentExpression, type StoredNewsCard } from "@/lib/publicNews"
 import "@/styles/section-news.css"
 
 const PAGE_SIZE = 8
@@ -35,12 +36,15 @@ function excerpt(value: string): string {
 function NewsThumb({ item, className }: { item: StoredNewsCard; className: string }) {
   const [src, setSrc] = useState(newsImageSrc(item.imageUrl))
   return (
-    <img
-      className={className}
-      src={src}
-      alt=""
-      onError={() => setSrc(FALLBACK_IMAGE)}
-    />
+    <span className="sn-thumb-wrap">
+      <img
+        className={className}
+        src={src}
+        alt=""
+        onError={() => setSrc(FALLBACK_IMAGE)}
+      />
+      <SentimentBadge sentiment={item.sentiment} compact={className.includes("sn-rank")} />
+    </span>
   )
 }
 
@@ -55,7 +59,10 @@ function ArticleRow({ item }: { item: StoredNewsCard }) {
           {item.title}
         </Link>
         <p className="sn-excerpt">{excerpt(item.summary)}</p>
-        <p className="sn-time">{relativeTime(item.publishedAt)}</p>
+        <p className="sn-time">
+          <span className="sn-sentiment">{sentimentExpression(item.sentiment) ?? ""}</span>
+          {relativeTime(item.publishedAt)}
+        </p>
       </div>
     </article>
   )

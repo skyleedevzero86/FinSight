@@ -92,6 +92,15 @@ public class NewsDetailResponse {
     public Comments getComments() { return comments; }
     public List<News> getRelatedNews() { return relatedNews; }
 
+    public NewsDetailResponse withSentiment(SentimentType type, double score) {
+        if (type == null || sentimentType != null) {
+            return this;
+        }
+        return new NewsDetailResponse(id, newsProvider, originalTitle, originalContent,
+                translatedTitle, translatedContent, overview, type, score, categories,
+                publishedTime, scrapedTime, sourceUrl, imageUrl, statistics, comments, relatedNews);
+    }
+
     @Override
     public String toString() {
         return "NewsDetailResponse{" +

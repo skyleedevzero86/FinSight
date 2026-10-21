@@ -1,11 +1,14 @@
 package com.sleekydz86.finsight.core.news.adapter.requester.overview.properties;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sleekydz86.finsight.core.global.AiModel;
 import com.sleekydz86.finsight.core.news.domain.port.out.requester.NewsAiRequester;
 import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatRequest;
 import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatResponse;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
+import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -16,7 +19,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Component
@@ -65,11 +70,12 @@ public class OllamaAnalysisRequester implements NewsAiRequester {
             Map<String, Object> body = Map.of(
                     "model", ollamaProperties.getModel(),
                     "messages", List.of(
-                            Map.of("role", "system", "content", "You are a Korean financial news analyst. Reply with JSON only."),
+                            Map.of("role", "system", "content", "당신은 금융 뉴스를 한국어로 번역하고 감정을 판단합니다. JSON만 반환합니다."),
                             Map.of("role", "user", "content", prompt)
                     ),
                     "stream", false,
-                    "options", Map.of("temperature", 0)
+                    "format", "json",
+                    "options", Map.of("temperature", 0, "num_predict", 400)
             );
 
             return webClient.post()
@@ -86,14 +92,21 @@ public class OllamaAnalysisRequester implements NewsAiRequester {
     }
 
     private String buildPrompt(AiChatRequest aiChatRequest) throws JsonProcessingException {
-        String inputJson = mapper.writeValueAsString(aiChatRequest.getNewsItems());
+        List<AiChatRequest.NewsItemRequest> items = aiChatRequest.getNewsItems() == null
+                ? List.of()
+                : aiChatRequest.getNewsItems();
+        List<Map<String, String>> clipped = new ArrayList<>();
+        for (AiChatRequest.NewsItemRequest item : items) {
+            clipped.add(Map.of("title", clip(item.getTitle()), "content", clip(item.getContent())));
+        }
         return String.join("\n",
-                "Analyze each news item. Return ONLY a JSON array.",
-                "Each object keys: overView, translatedTitle, translatedContent, categories, sentimentType, sentimentRatio.",
-                "categories: subset of [SPY, QQQ, BTC, AAPL, MSFT, NVDA, GOOGL, META, TSLA, NONE].",
-                "sentimentType: POSITIVE | NEUTRAL | NEGATIVE.",
-                "Input:",
-                inputJson
+                "제목과 본문을 자연스러운 한국어로 번역하고 감정을 판단하세요.",
+                "translatedTitle, translatedContent, overView는 한글 문장이어야 합니다.",
+                "sentimentType은 POSITIVE, NEUTRAL, NEGATIVE 중 하나.",
+                "sentimentRatio는 0.0 이상 1.0 이하.",
+                "categories는 [SPY, QQQ, BTC, AAPL, MSFT, NVDA, GOOGL, META, TSLA, NONE] 안에서만.",
+                "JSON 배열만 반환하세요.",
+                mapper.writeValueAsString(clipped)
         );
     }
 
@@ -108,24 +121,156 @@ public class OllamaAnalysisRequester implements NewsAiRequester {
             if (content == null || content.isBlank()) {
                 return Mono.error(new RuntimeException("Ollama 응답 content가 비어 있습니다"));
             }
-            String json = extractJsonArray(content);
-            List<AiChatResponse.NewsAnalysis> analyses = mapper.readValue(
-                    json,
-                    mapper.getTypeFactory().constructCollectionType(List.class, AiChatResponse.NewsAnalysis.class)
-            );
-            return Mono.just(new AiChatResponse(analyses));
-        } catch (Exception e) {
+            return Mono.just(new AiChatResponse(readAnalyses(content)));
+        } catch (RuntimeException e) {
             return Mono.error(new RuntimeException("Ollama JSON 파싱 오류: " + e.getMessage(), e));
         }
     }
 
-    private String extractJsonArray(String content) {
-        int start = content.indexOf('[');
-        int end = content.lastIndexOf(']');
-        if (start >= 0 && end > start) {
-            return content.substring(start, end + 1);
+    private List<AiChatResponse.NewsAnalysis> readAnalyses(String content) {
+        try {
+            JsonNode root = mapper.readTree(jsonPayload(content));
+            List<JsonNode> rows = new ArrayList<>();
+            if (root.isArray()) {
+                root.forEach(rows::add);
+            } else if (root.isObject()) {
+                rows.add(root);
+            }
+            if (rows.isEmpty()) {
+                throw new IllegalArgumentException("Ollama 응답에 분석 결과가 없습니다");
+            }
+            List<AiChatResponse.NewsAnalysis> analyses = new ArrayList<>();
+            for (JsonNode row : rows) {
+                analyses.add(toAnalysis(row));
+            }
+            return analyses;
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Ollama JSON을 읽지 못했습니다", e);
         }
-        throw new IllegalArgumentException("Ollama 응답에서 JSON 배열을 찾을 수 없습니다");
+    }
+
+    private static AiChatResponse.NewsAnalysis toAnalysis(JsonNode row) {
+        String overview = firstText(row, "overView", "overview");
+        String title = firstText(row, "translatedTitle", "title");
+        String body = firstText(row, "translatedContent", "content");
+        if (body.isBlank()) {
+            body = overview;
+        }
+        return new AiChatResponse.NewsAnalysis(
+                overview,
+                title,
+                body,
+                categoriesOf(row.get("categories")),
+                sentimentOf(firstText(row, "sentimentType")),
+                ratioOf(row.get("sentimentRatio")));
+    }
+
+    static String jsonPayload(String content) {
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException("Ollama 응답이 비어 있습니다");
+        }
+        String trimmed = stripFence(content.trim());
+        int arrayAt = trimmed.indexOf('[');
+        int objectAt = trimmed.indexOf('{');
+        if (arrayAt >= 0 && (objectAt < 0 || arrayAt < objectAt)) {
+            int end = trimmed.lastIndexOf(']');
+            if (end > arrayAt) {
+                return trimmed.substring(arrayAt, end + 1);
+            }
+        }
+        if (objectAt >= 0) {
+            int end = trimmed.lastIndexOf('}');
+            if (end > objectAt) {
+                return trimmed.substring(objectAt, end + 1);
+            }
+        }
+        throw new IllegalArgumentException("Ollama 응답에서 JSON을 찾을 수 없습니다");
+    }
+
+    private static String stripFence(String content) {
+        if (!content.startsWith("```")) {
+            return content;
+        }
+        int start = content.indexOf('\n');
+        int end = content.lastIndexOf("```");
+        if (start >= 0 && end > start) {
+            return content.substring(start + 1, end).trim();
+        }
+        return content;
+    }
+
+    private static String clip(String value) {
+        if (value == null) {
+            return "";
+        }
+        String trimmed = value.trim();
+        return trimmed.length() <= 280 ? trimmed : trimmed.substring(0, 280);
+    }
+
+    private static String firstText(JsonNode row, String... names) {
+        if (row == null) {
+            return "";
+        }
+        for (String name : names) {
+            JsonNode node = row.get(name);
+            if (node != null && !node.isNull() && !node.asText("").isBlank()) {
+                return node.asText("").trim();
+            }
+        }
+        return "";
+    }
+
+    private static SentimentType sentimentOf(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        String upper = raw.toUpperCase(Locale.ROOT);
+        if (upper.contains("POSITIVE")) {
+            return SentimentType.POSITIVE;
+        }
+        if (upper.contains("NEGATIVE")) {
+            return SentimentType.NEGATIVE;
+        }
+        if (upper.contains("NEUTRAL")) {
+            return SentimentType.NEUTRAL;
+        }
+        return null;
+    }
+
+    private static List<TargetCategory> categoriesOf(JsonNode node) {
+        if (node == null || !node.isArray()) {
+            return List.of();
+        }
+        List<TargetCategory> categories = new ArrayList<>();
+        for (JsonNode item : node) {
+            TargetCategory category = categoryOf(item.asText(""));
+            if (category != null) {
+                categories.add(category);
+            }
+        }
+        return categories;
+    }
+
+    private static TargetCategory categoryOf(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return TargetCategory.valueOf(raw.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    private static Double ratioOf(JsonNode node) {
+        if (node == null || !node.isNumber()) {
+            return null;
+        }
+        double ratio = node.asDouble();
+        if (ratio < 0 || ratio > 1) {
+            return null;
+        }
+        return ratio;
     }
 
     private String normalizeBaseUrl(String baseUrl) {

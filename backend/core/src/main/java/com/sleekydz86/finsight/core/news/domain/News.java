@@ -150,11 +150,12 @@ public class News {
                         Double sentimentRatio) {
 
                 Content newTranslatedContent = new Content(translatedTitle, translatedContent);
+                double score = sentimentRatio == null ? 0.0 : sentimentRatio;
 
                 AiOverview newAiOverView = new AiOverview(
                                 overview,
                                 sentimentType,
-                                sentimentRatio,
+                                score,
                                 categories);
 
                 return new News(

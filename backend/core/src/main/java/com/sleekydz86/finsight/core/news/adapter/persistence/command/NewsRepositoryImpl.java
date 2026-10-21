@@ -98,15 +98,19 @@ public class NewsRepositoryImpl implements NewsPersistencePort {
         if (overview == null) {
             return;
         }
-        entity.setOverview(overview.getOverview());
-        entity.setSentimentType(overview.getSentimentType());
-        entity.setSentimentScore(overview.getSentimentScore());
-        entity.setSentimentStatus(SentimentStatus.DONE);
+        if (overview.getOverview() != null && !overview.getOverview().isBlank()) {
+            entity.setOverview(overview.getOverview());
+        }
+        if (overview.getSentimentType() != null) {
+            entity.setSentimentType(overview.getSentimentType());
+            entity.setSentimentScore(overview.getSentimentScore());
+            entity.setSentimentStatus(SentimentStatus.DONE);
+        }
         replaceCategories(entity, overview.getTargetCategories());
     }
 
     private static void replaceCategories(NewsJpaEntity entity, List<TargetCategory> categories) {
-        if (categories == null) {
+        if (categories == null || categories.isEmpty()) {
             return;
         }
         entity.getTargetCategories().clear();
