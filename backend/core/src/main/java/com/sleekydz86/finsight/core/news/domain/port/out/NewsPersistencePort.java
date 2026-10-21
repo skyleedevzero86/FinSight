@@ -11,6 +11,8 @@ import java.util.Optional;
 public interface NewsPersistencePort {
     Newses saveAllNews(List<News> newses);
 
+    void saveStoredAnalysis(News news);
+
     List<News> omitStoredDuplicates(List<News> newses);
     Newses findByOverviewIsNull();
     Newses findAllByFilters(NewsQueryRequest request);

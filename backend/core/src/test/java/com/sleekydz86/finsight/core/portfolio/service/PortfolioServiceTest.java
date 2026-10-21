@@ -14,6 +14,7 @@ import com.sleekydz86.finsight.core.search.config.ElasticsearchProperties;
 import com.sleekydz86.finsight.core.user.domain.User;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -64,28 +65,40 @@ class PortfolioServiceTest {
     }
 
     @Test
-    void 이름이_비어_있으면_자산을_저장하지_않는다() {
+    @DisplayName("이름이 비어 있으면 자산을 저장하지 않는다")
+    void doesNotSaveAssetWhenNameIsBlank() {
+        // given
         PortfolioAssetCommand command = new PortfolioAssetCommand("  ", "ASSET", "CASH", 10_000L, null, null, null, null, null, null);
 
+        // then
         assertThatThrownBy(() -> portfolioService.register(1L, command))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("자산 이름");
+
+        // when
         verifyNoInteractions(assetRepository);
     }
 
     @Test
-    void 설명이_없으면_공유를_저장하지_않는다() {
+    @DisplayName("설명이 없으면 공유를 저장하지 않는다")
+    void doesNotSaveShareWhenDescriptionIsMissing() {
+        // given
         PortfolioShareCommand command = new PortfolioShareCommand(
                 "  ", "PUBLIC", "BAND", true, true, true, true, false, false, false, false);
 
+        // then
         assertThatThrownBy(() -> portfolioService.publish(1L, command))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("공유 설명");
+
+        // when
         verifyNoInteractions(shareRepository);
     }
 
     @Test
-    void 전체_공개_공유는_사용자명과_금액_구간을_저장한다() {
+    @DisplayName("전체 공개 공유는 사용자명과 금액 구간을 저장한다")
+    void publicShareStoresMaskedNameAndAmountBand() {
+        // given
         PortfolioAssetJpaEntity asset = new PortfolioAssetJpaEntity(
                 1L, "KODEX 미국S&P500", PortfolioAssetKind.ASSET, PortfolioAssetCategory.STOCK_ETF,
                 20_000_000L, null, "미래에셋 ISA 110-123-456789", null, null, null, null);
@@ -94,6 +107,7 @@ class PortfolioServiceTest {
         when(snapshotRepository.findByUserIdOrderByYearMonthAsc(1L)).thenReturn(List.of());
         when(userPersistencePort.findById(1L)).thenReturn(Optional.of(User.builder().username("studio_kim").build()));
 
+        // when
         portfolioService.publish(1L, new PortfolioShareCommand(
                 "이번 달 생활비와 투자를 나눠 적었습니다.",
                 "PUBLIC",
@@ -107,9 +121,16 @@ class PortfolioServiceTest {
                 false,
                 false));
 
+        // given
         ArgumentCaptor<PortfolioShareJpaEntity> captor = ArgumentCaptor.forClass(PortfolioShareJpaEntity.class);
+
+        // then
         verify(shareRepository).save(captor.capture());
+
+        // when
         PortfolioShareJpaEntity saved = captor.getValue();
+
+        // then
         assertThat(saved.getAuthorName()).isEqualTo("studio_kim");
         assertThat(saved.getMessage()).isEqualTo("이번 달 생활비와 투자를 나눠 적었습니다.");
         assertThat(saved.getVisibility()).isEqualTo("PUBLIC");
@@ -119,19 +140,29 @@ class PortfolioServiceTest {
     }
 
     @Test
-    void 공개_목록은_공개_카드만_최신순으로_조회한다() {
+    @DisplayName("공개 목록은 공개 카드만 최신순으로 조회한다")
+    void publicListReturnsOnlyPublicCardsLatestFirst() {
+        // given
         when(shareRepository.findByVisibilityOrderByCreatedAtDescIdDesc(eq("PUBLIC"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
         when(shareRepository.findByVisibilityAndCreatedAtGreaterThanEqual(eq("PUBLIC"), any())).thenReturn(List.of());
 
+        // when
+
+        // then
         assertThat(portfolioService.listPublicShares(0, 2).cards()).isEmpty();
         assertThat(portfolioService.listPublicShares(0, 2).hasNext()).isFalse();
     }
 
     @Test
-    void 등록된_자산이_없으면_이번_달_기록을_거절한다() {
+    @DisplayName("등록된 자산이 없으면 이번 달 기록을 거절한다")
+    void rejectsThisMonthRecordWhenNoAssetIsRegistered() {
+        // given
         when(assetRepository.findByUserIdOrderByValuationAmountDescIdAsc(1L)).thenReturn(List.of());
 
+        // when
+
+        // then
         assertThatThrownBy(() -> portfolioService.recordCurrentMonth(1L, null))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("등록된 자산이 없어");

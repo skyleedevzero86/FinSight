@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.global.exception;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -32,7 +33,13 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void 기본_예외_처리_테스트() throws Exception {
+    @DisplayName("기본 예외 처리 테스트")
+    void handlesDefaultException() throws Exception {
+        // given
+
+        // when
+
+        // then
         mockMvc.perform(post("/test/exception")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
@@ -41,7 +48,13 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void 검증_예외_처리_테스트() throws Exception {
+    @DisplayName("검증 예외 처리 테스트")
+    void handlesValidationException() throws Exception {
+        // given
+
+        // when
+
+        // then
         mockMvc.perform(post("/test/validation")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"\",\"age\":null}"))
@@ -50,7 +63,13 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    void 인증_실패_예외_처리_테스트() throws Exception {
+    @DisplayName("인증 실패 예외 처리 테스트")
+    void handlesAuthenticationFailure() throws Exception {
+        // given
+
+        // when
+
+        // then
         mockMvc.perform(post("/test/auth-failed")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))

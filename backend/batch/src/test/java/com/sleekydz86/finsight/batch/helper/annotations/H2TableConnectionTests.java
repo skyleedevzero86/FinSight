@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.batch.helper.annotations;
 
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,9 +19,12 @@ public class H2TableConnectionTests {
     private EntityManager entityManager;
 
     @Test
+    @DisplayName("H2 테이블 스키마를 출력한다")
     public void printTableSchemas() {
+        // given
         log.info("테이블 정보 조회 테스트");
 
+        // when
         List<String> tables = entityManager
                 .createNativeQuery(
                         "SELECT TABLE_NAME " +
@@ -50,6 +54,7 @@ public class H2TableConnectionTests {
             }
         }
 
+        // then
         log.info("=========================");
     }
 }

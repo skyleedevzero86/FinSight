@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.news.crawl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
@@ -19,7 +20,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NewsCrawlCauseClassifierTest {
 
     @Test
-    void 정답_장애셋의_원인_분류가_맞다() {
+    @DisplayName("정답 장애셋의 원인 분류가 맞다")
+    void classifiesKnownIncidentCauses() {
+        // given
         List<Labeled> gold = goldSet();
         int correct = 0;
         for (Labeled labeled : gold) {
@@ -30,13 +33,23 @@ class NewsCrawlCauseClassifierTest {
                 correct++;
             }
         }
+
+        // when
         System.out.println("장애 원인 분류 정확도 " + correct + "/" + gold.size());
+
+        // then
         assertThat(correct).isEqualTo(gold.size());
     }
 
     @Test
-    void 재처리_가능_여부는_서버_정책으로_정한다() {
+    @DisplayName("재처리 가능 여부는 서버 정책으로 정한다")
+    void serverPolicyDecidesWhetherRetryIsAllowed() {
+        // given
         LocalDateTime occurred = LocalDateTime.of(2026, 10, 15, 9, 0);
+
+        // when
+
+        // then
         assertThat(NewsCrawlRetryPolicy.retryable(NewsCrawlCause.HTTP_401, null, occurred, occurred)).isFalse();
         assertThat(NewsCrawlRetryPolicy.retryable(NewsCrawlCause.HTTP_403, null, occurred, occurred)).isFalse();
         assertThat(NewsCrawlRetryPolicy.retryable(NewsCrawlCause.HTTP_404, null, occurred, occurred)).isFalse();

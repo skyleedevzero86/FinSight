@@ -88,16 +88,26 @@ export default function NewsSection() {
 
   useEffect(() => {
     let cancelled = false
-    void (async () => {
-      const yahoo = await fetchStoredNews(6, "YAHOO_FINANCE")
-      const alpha = yahoo && yahoo.length >= 6 ? [] : await fetchStoredNews(6, "ALPHA_VANTAGE")
-      if (cancelled) return
-      const merged = [...(yahoo ?? []), ...(alpha ?? [])].slice(0, 6)
-      setCards(merged)
-      setCardsReady(true)
-    })()
+    let timer = 0
+    let attempts = 0
+    const load = () => {
+      void (async () => {
+        const yahoo = await fetchStoredNews(6, "YAHOO_FINANCE")
+        const alpha = yahoo && yahoo.length >= 6 ? [] : await fetchStoredNews(6, "ALPHA_VANTAGE")
+        if (cancelled) return
+        const merged = [...(yahoo ?? []), ...(alpha ?? [])].slice(0, 6)
+        setCards(merged)
+        setCardsReady(true)
+        if (merged.some((item) => !item.aiReady) && attempts < 15) {
+          attempts += 1
+          timer = window.setTimeout(load, 8000)
+        }
+      })()
+    }
+    load()
     return () => {
       cancelled = true
+      window.clearTimeout(timer)
     }
   }, [])
 

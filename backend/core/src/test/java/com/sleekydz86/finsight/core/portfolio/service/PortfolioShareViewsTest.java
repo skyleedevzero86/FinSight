@@ -3,6 +3,7 @@ package com.sleekydz86.finsight.core.portfolio.service;
 import com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioShareJpaEntity;
 import com.sleekydz86.finsight.core.portfolio.domain.PortfolioShareView;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.time.LocalDateTime;
 
@@ -11,7 +12,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PortfolioShareViewsTest {
 
     @Test
-    void 저장된_문구만_있으면_종목명_없이_세_구간을_만든다() {
+    @DisplayName("저장된 문구만 있으면 종목명 없이 세 구간을 만든다")
+    void buildsThreeBandsWithoutTickerWhenOnlyStoredTextExists() {
+        // given
         PortfolioShareJpaEntity share = new PortfolioShareJpaEntity(
                 0L,
                 "month_park",
@@ -25,9 +28,11 @@ class PortfolioShareViewsTest {
                 true,
                 false,
                 LocalDateTime.of(2026, 10, 9, 8, 40));
-
         PortfolioShareView view = PortfolioShareViews.from(share);
 
+        // when
+
+        // then
         assertThat(view.showExactNames()).isFalse();
         assertThat(view.showDebt()).isFalse();
         assertThat(view.amountMode()).isEqualTo("BAND");

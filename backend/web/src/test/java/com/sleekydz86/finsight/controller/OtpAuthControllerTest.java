@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.auth.service.OtpAuthenticationService;
 import com.sleekydz86.finsight.core.user.service.UserService;
 import com.sleekydz86.finsight.web.controller.AuthController;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -49,14 +50,18 @@ class OtpAuthControllerTest {
     private ObjectMapper objectMapper;
 
     @Test
+    @DisplayName("OTP 설정 요청 테스트")
     @WithMockUser
-    void OTP_설정_요청_테스트() throws Exception {
+    void otpSetupRequest() throws Exception {
+        // given
         OtpSetupRequest request = new OtpSetupRequest("test@example.com");
         OtpSetupResponse response = new OtpSetupResponse("secret", "qrCode", "message");
-
         when(otpAuthenticationService.setupOtp(any(OtpSetupRequest.class)))
                 .thenReturn(response);
 
+        // when
+
+        // then
         mockMvc.perform(post("/api/v1/auth/otp/setup")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -65,14 +70,18 @@ class OtpAuthControllerTest {
     }
 
     @Test
+    @DisplayName("OTP 검증 요청 테스트")
     @WithMockUser
-    void OTP_검증_요청_테스트() throws Exception {
+    void otpVerifyRequest() throws Exception {
+        // given
         OtpVerifyRequest request = new OtpVerifyRequest("test@example.com", "123456");
         OtpVerifyResponse response = new OtpVerifyResponse(true, "성공");
-
         when(otpAuthenticationService.verifyOtp(any(OtpVerifyRequest.class)))
                 .thenReturn(response);
 
+        // when
+
+        // then
         mockMvc.perform(post("/api/v1/auth/otp/verify")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -81,13 +90,17 @@ class OtpAuthControllerTest {
     }
 
     @Test
+    @DisplayName("OTP 로그인 요청 테스트")
     @WithMockUser
-    void OTP_로그인_요청_테스트() throws Exception {
+    void otpLoginRequest() throws Exception {
+        // given
         OtpLoginRequest request = new OtpLoginRequest("test@example.com", "password123!", "123456");
-
         when(otpAuthenticationService.loginWithOtp(any(OtpLoginRequest.class)))
                 .thenReturn(com.sleekydz86.finsight.core.global.dto.ApiResponse.success(null, "성공"));
 
+        // when
+
+        // then
         mockMvc.perform(post("/api/v1/auth/login/otp")
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)

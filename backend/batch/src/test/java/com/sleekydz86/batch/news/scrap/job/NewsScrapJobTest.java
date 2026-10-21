@@ -6,6 +6,7 @@ import com.sleekydz86.finsight.core.news.adapter.requester.NewsScrapRequester;
 import com.sleekydz86.finsight.core.news.adapter.requester.overview.properties.NewsOpenAiAnalysisRequester;
 import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsJpaRepository;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.JobExecution;
@@ -61,10 +62,14 @@ public class NewsScrapJobTest {
         }
 
         @Test
-        public void 뉴스를_크롤링하고_ai_분석을_정상적으로_진행한다() throws Exception {
+        @DisplayName("뉴스를 크롤링하고 ai 분석을 정상적으로 진행한다")
+        public void crawlsNewsAndCompletesAiAnalysis() throws Exception {
+            // given
 
+            // when
                 JobExecution jobExecution = jobLauncherTestUtils.launchJob();
 
+            // then
                 assertThat(jobExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
         }
 }

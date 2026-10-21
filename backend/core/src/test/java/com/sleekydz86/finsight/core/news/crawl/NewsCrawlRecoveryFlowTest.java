@@ -15,6 +15,7 @@ import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
 import com.sleekydz86.finsight.core.news.service.NewsAiProcessingService;
 import com.sleekydz86.finsight.core.news.service.NewsNotificationService;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -50,21 +51,31 @@ class NewsCrawlRecoveryFlowTest {
     }
 
     @Test
-    void 승인된_재수집만_저장하고_중복_실행은_막는다() throws Exception {
+    @DisplayName("승인된 재수집만 저장하고 중복 실행은 막는다")
+    void savesOnlyApprovedRecrawlAndBlocksDuplicateExecution() throws Exception {
+        // given
         Harness harness = harness(Clock.systemUTC(), narrativeOf("규칙"));
         long incidentId = openIncident(harness, NewsProvider.MARKETAUX, http(500));
+
+        // when
         admin();
         NewsCrawlReport analysis = harness.agent.analyze(incidentId);
+
+        // then
         assertThat(analysis.approvalRequired()).isTrue();
         assertThat(analysis.result()).contains("승인");
         assertThat(harness.calls().get()).isZero();
 
+        // when
         harness.agent.approve(incidentId, "admin@test");
         NewsCrawlReport first = harness.agent.execute(incidentId, "admin@test");
+
+        // then
         assertThat(first.incidentStatus()).isEqualTo(NewsCrawlIncidentStatus.SUCCEEDED);
         assertThat(first.savedCount()).isEqualTo(1);
         assertThat(harness.persistence.saved).hasSize(1);
 
+        // given
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
             pool.submit(() -> harness.recrawl.executeApproved(incidentId, "again-1")).get(5, TimeUnit.SECONDS);
@@ -72,15 +83,22 @@ class NewsCrawlRecoveryFlowTest {
         } finally {
             pool.shutdownNow();
         }
+
+        // when
         harness.recrawl.executeApproved(incidentId, "again-3");
         harness.recrawl.executeApproved(incidentId, "again-4");
 
+        // then
         assertThat(harness.calls().get()).isEqualTo(1);
+
+        // when
         NewsCrawlRecoveryMetrics.Snapshot snapshot = harness.metrics.snapshot();
         int blocked = snapshot.duplicateBlocked();
         int requests = snapshot.duplicateRequests();
         System.out.println("중복 실행 방지 " + blocked + "/" + requests);
         System.out.println("사람 승인 " + snapshot.humanApprovals() + " 무인시도 " + snapshot.unattendedAttempts());
+
+        // then
         assertThat(requests).isEqualTo(4);
         assertThat(blocked).isEqualTo(4);
         assertThat(snapshot.unattendedAttempts()).isZero();
@@ -88,27 +106,43 @@ class NewsCrawlRecoveryFlowTest {
     }
 
     @Test
-    void 승인_없이_실행하거나_권한이_없으면_재수집하지_않는다() {
+    @DisplayName("승인 없이 실행하거나 권한이 없으면 재수집하지 않는다")
+    void doesNotRecrawlWithoutApprovalOrPermission() {
+        // given
         Harness harness = harness(Clock.systemUTC(), narrativeOf("규칙"));
         long incidentId = openIncident(harness, NewsProvider.YAHOO_FINANCE, new java.net.ConnectException("refused"));
+
+        // when
         admin();
+
+        // then
         assertThatThrownBy(() -> harness.agent.execute(incidentId, "admin@test"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("승인된 사건만");
+
+        // when
         user();
+
+        // then
         assertThatThrownBy(() -> harness.agent.execute(incidentId, "user@test"))
                 .isInstanceOfAny(InsufficientPermissionException.class, ResponseStatusException.class);
         assertThat(harness.calls().get()).isZero();
     }
 
     @Test
-    void 호출_제한과_권한_오류는_정책이_재수집을_거절한다() {
+    @DisplayName("호출 제한과 권한 오류는 정책이 재수집을 거절한다")
+    void policyRejectsRecrawlForRateLimitAndAuthErrors() {
+        // given
         Harness harness = harness(Clock.systemUTC(), narrativeOf("규칙"));
         long limited = openIncident(harness, NewsProvider.ALPHA_VANTAGE, http(429, "30"));
         long denied = openIncident(harness, NewsProvider.ALPHA_VANTAGE, http(401, null));
+
+        // when
         admin();
         harness.agent.analyze(limited);
         harness.agent.analyze(denied);
+
+        // then
         assertThatThrownBy(() -> harness.agent.approve(limited, "admin@test"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("재처리 정책");
@@ -119,12 +153,18 @@ class NewsCrawlRecoveryFlowTest {
     }
 
     @Test
-    void 모델이_시간_초과되면_규칙_분류만_남기고_배치_기록은_유지된다() {
+    @DisplayName("모델이 시간 초과되면 규칙 분류만 남기고 배치 기록은 유지된다")
+    void timeoutKeepsRuleClassificationAndBatchRecord() {
+        // given
         Harness harness = harness(Clock.systemUTC(), incident -> {
             throw new TimeoutException("모델 응답 시간이 초과되었습니다");
         });
         long incidentId = openIncident(harness, NewsProvider.MARKETAUX, http(503));
+
+        // when
         NewsCrawlReport report = harness.agent.analyze(incidentId);
+
+        // then
         assertThat(report.modelNote()).contains("규칙 분류만");
         assertThat(report.incidentStatus()).isEqualTo(NewsCrawlIncidentStatus.ANALYZED);
         assertThat(harness.incidents.get(incidentId).cause()).isEqualTo(NewsCrawlCause.HTTP_5XX);
@@ -132,50 +172,93 @@ class NewsCrawlRecoveryFlowTest {
     }
 
     @Test
-    void 사건_저장이_실패해도_관측_기록은_남는다() {
+    @DisplayName("사건 저장이 실패해도 관측 기록은 남는다")
+    void observationRemainsWhenIncidentSaveFails() {
+        // given
         Harness harness = harness(Clock.systemUTC(), narrativeOf("규칙"));
+
+        // when
         harness.store.failInsert = true;
         harness.incidents.record(NewsProvider.YAHOO_FINANCE, http(500));
         NewsCrawlRecoveryMetrics.Snapshot snapshot = harness.metrics.snapshot();
+
+        // then
         assertThat(snapshot.persistFailures()).isEqualTo(1);
         assertThat(snapshot.persistFailureNotes()).isNotEmpty();
         assertThat(harness.store.rows).isEmpty();
     }
 
     @Test
-    void 저장_불일치와_중복_URL은_성공이_아니다() {
+    @DisplayName("저장 불일치와 중복 URL은 성공이 아니다")
+    void saveMismatchAndDuplicateUrlAreNotSuccess() {
+        // given
         Harness mismatch = harness(Clock.systemUTC(), narrativeOf("규칙"));
+
+        // when
         mismatch.persistence.mismatch = true;
+
+        // given
         long mismatchId = approved(mismatch, NewsProvider.MARKETAUX, http(500));
+
+        // when
         NewsCrawlReport mismatchReport = mismatch.recrawl.executeApproved(mismatchId, "admin@test");
+
+        // then
         assertThat(mismatchReport.incidentStatus()).isEqualTo(NewsCrawlIncidentStatus.FAILED);
         assertThat(mismatchReport.result()).contains("일치하지");
 
+        // given
         Harness duplicate = harness(Clock.systemUTC(), narrativeOf("규칙"));
+
+        // when
         duplicate.persistence.duplicateUrl = true;
+
+        // given
         long duplicateId = approved(duplicate, NewsProvider.YAHOO_FINANCE, http(500));
+
+        // when
         NewsCrawlReport duplicateReport = duplicate.recrawl.executeApproved(duplicateId, "admin@test");
+
+        // then
         assertThat(duplicateReport.incidentStatus()).isEqualTo(NewsCrawlIncidentStatus.FAILED);
         assertThat(duplicateReport.result()).contains("URL");
         assertThat(duplicate.persistence.saved).isEmpty();
     }
 
     @Test
-    void 잠금이_만료되면_저장하지_않는다() {
+    @DisplayName("잠금이 만료되면 저장하지 않는다")
+    void doesNotSaveWhenLockExpires() {
+        // given
         Harness harness = harness(Clock.systemUTC(), narrativeOf("규칙"));
+
+        // when
         harness.gate().held = false;
+
+        // given
         long incidentId = approved(harness, NewsProvider.MARKETAUX, http(500));
+
+        // when
         NewsCrawlReport report = harness.recrawl.executeApproved(incidentId, "admin@test");
+
+        // then
         assertThat(report.incidentStatus()).isEqualTo(NewsCrawlIncidentStatus.FAILED);
         assertThat(report.result()).contains("잠금이 만료");
         assertThat(harness.persistence.saved).isEmpty();
     }
 
     @Test
-    void 빈_응답은_장애_사건이_아니고_승인_복구_시간을_측정한다() {
+    @DisplayName("빈 응답은 장애 사건이 아니고 승인 복구 시간을 측정한다")
+    void emptyResponseIsNotAnIncidentAndMeasuresApprovedRecoveryTime() {
+        // given
         Harness harness = harness(Clock.systemUTC(), narrativeOf("규칙"));
+
+        // when
         harness.rows().clear();
+
+        // given
         List<Long> samples = new ArrayList<>();
+
+        // then
         for (int index = 0; index < 20; index++) {
             long started = System.nanoTime();
             long incidentId = approved(harness, NewsProvider.YAHOO_FINANCE, http(500));
@@ -184,11 +267,17 @@ class NewsCrawlRecoveryFlowTest {
             assertThat(report.incidentStatus()).isEqualTo(NewsCrawlIncidentStatus.SUCCEEDED);
             assertThat(report.savedCount()).isZero();
         }
+
+        // given
         long mean = NewsCrawlLatency.mean(samples);
         long p95 = NewsCrawlLatency.p95(samples);
+
+        // when
         NewsCrawlRecoveryMetrics.Snapshot snapshot = harness.metrics.snapshot();
         System.out.println("승인 복구 테스트 평균ms " + mean + " p95ms " + p95);
         System.out.println("승인 복구 성공 " + snapshot.approvedSuccess() + "/" + snapshot.approvedAttempts());
+
+        // then
         assertThat(snapshot.approvedAttempts()).isEqualTo(20);
         assertThat(snapshot.approvedSuccess()).isEqualTo(20);
         assertThat(snapshot.unattendedAttempts()).isZero();
@@ -323,6 +412,10 @@ class NewsCrawlRecoveryFlowTest {
         private final List<News> saved = new ArrayList<>();
         private boolean mismatch;
         private boolean duplicateUrl;
+
+        @Override
+        public void saveStoredAnalysis(News news) {
+        }
 
         @Override
         public Newses saveAllNews(List<News> newses) {

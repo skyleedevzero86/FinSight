@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatRes
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.service.AiModelSelectionService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -17,12 +18,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class NewsAiAnalysisRequesterAdapterTest {
 
     @Test
-    void 방금_실패한_모델은_대체_호출에서_빼다() {
+    @DisplayName("방금 실패한 모델은 대체 호출에서 빼다")
+    void excludesTheModelThatJustFailedFromFallback() {
+        // given
         CountingRequester chatgpt = new CountingRequester(AiModel.CHATGPT);
         NewsAiAnalysisRequesterAdapter adapter = new NewsAiAnalysisRequesterAdapter(
                 List.of(chatgpt),
                 new AiModelSelectionService(List.of(chatgpt)));
 
+        // when
+
+        // then
         assertThatThrownBy(() -> adapter.analyseNewses(AiModel.CHATGPT, new Content("제목", "본문")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("CHATGPT");

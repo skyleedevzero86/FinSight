@@ -26,21 +26,29 @@ export default function StoredNewsList() {
 
   useEffect(() => {
     let alive = true
-    fetchStoredNews(30).then((items) => {
-      if (!alive) return
-      if (!items) {
-        setFailed(true)
-        setRows([])
-        return
-      }
-      setFailed(false)
-      setRows(items)
-    })
-    fetchNewsAiDown().then((down) => {
-      if (alive) setAiDown(down)
-    })
+    let timer = 0
+    let attempts = 0
+    const load = () => {
+      Promise.all([fetchStoredNews(30), fetchNewsAiDown()]).then(([items, down]) => {
+        if (!alive) return
+        setAiDown(down)
+        if (!items) {
+          setFailed(true)
+          setRows([])
+          return
+        }
+        setFailed(false)
+        setRows(items)
+        if (!down && items.some((item) => !item.aiReady) && attempts < 15) {
+          attempts += 1
+          timer = window.setTimeout(load, 8000)
+        }
+      })
+    }
+    load()
     return () => {
       alive = false
+      window.clearTimeout(timer)
     }
   }, [])
 
@@ -68,7 +76,7 @@ export default function StoredNewsList() {
         </label>
       </div>
       <FinsightNewsNav />
-      {aiDown || visible.some((item) => !item.aiReady) ? (
+      {aiDown ? (
         <div className="sn-note">
           <AdminAlarm />
         </div>

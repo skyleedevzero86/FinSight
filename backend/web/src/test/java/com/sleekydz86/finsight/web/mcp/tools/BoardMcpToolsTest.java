@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.board.domain.port.in.dto.BoardSearchRequest;
 import com.sleekydz86.finsight.core.board.service.BoardQueryService;
 import com.sleekydz86.finsight.core.global.dto.PaginationResponse;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -28,12 +29,16 @@ class BoardMcpToolsTest {
     }
 
     @Test
+    @DisplayName("게시글 목록은 건수와 페이지를 유지한다")
     void listBoards_keepsCountsAndPaging() {
+        // given
         LocalDateTime createdAt = LocalDateTime.of(2026, 10, 1, 9, 0);
-        boardQuery.result = new PaginationResponse<>(List.of(notice(createdAt, 4, 2)), 0, 10, 8);
 
+        // when
+        boardQuery.result = new PaginationResponse<>(List.of(notice(createdAt, 4, 2)), 0, 10, 8);
         BoardMcpTools.BoardListResult result = tools.listBoards("notice", " 점검 ", 2, 50);
 
+        // then
         assertThat(boardQuery.last.getBoardType()).isEqualTo(BoardType.NOTICE);
         assertThat(boardQuery.last.getKeyword()).isEqualTo("점검");
         assertThat(boardQuery.last.getPage()).isEqualTo(2);
@@ -47,7 +52,11 @@ class BoardMcpToolsTest {
     }
 
     @Test
+    @DisplayName("게시글 상세는 조회수 증가를 요청하지 않는다")
     void getBoardDetail_doesNotAskToIncrementViews() {
+        // given
+
+        // when
         boardQuery.detail = new BoardDetailResponse(
                 3L,
                 "점검 안내",
@@ -68,29 +77,38 @@ class BoardMcpToolsTest {
                 LocalDateTime.of(2026, 10, 1, 9, 0),
                 null,
                 false);
-
         BoardMcpTools.BoardDetailResult result = tools.getBoardDetail(3L);
 
+        // then
         assertThat(boardQuery.incrementViewCount).isFalse();
         assertThat(result.contentPreview()).isEqualTo("미리보기");
         assertThat(result.viewCount()).isEqualTo(4);
     }
 
     @Test
+    @DisplayName("인기 게시글은 인기 조회로 읽는다")
     void listPopularBoards_usesPopularQuery() {
-        boardQuery.popular = List.of(notice(LocalDateTime.of(2026, 10, 1, 9, 0), 9, 1));
+        // given
 
+        // when
+        boardQuery.popular = List.of(notice(LocalDateTime.of(2026, 10, 1, 9, 0), 9, 1));
         BoardMcpTools.BoardListResult result = tools.listPopularBoards(1);
 
+        // then
         assertThat(boardQuery.popularLimit).isEqualTo(1);
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().getFirst().viewCount()).isEqualTo(9);
     }
 
     @Test
+    @DisplayName("유형이 비어 있으면 모든 게시글을 조회한다")
     void listBoards_blankTypeMeansAllBoards() {
+        // given
+
+        // when
         tools.listBoards("  ", null, null, null);
 
+        // then
         assertThat(boardQuery.last.getBoardType()).isNull();
         assertThat(boardQuery.last.getKeyword()).isNull();
         assertThat(boardQuery.last.getPage()).isZero();
@@ -98,7 +116,13 @@ class BoardMcpToolsTest {
     }
 
     @Test
+    @DisplayName("알 수 없는 게시글 유형은 거절한다")
     void listBoards_rejectsUnknownType() {
+        // given
+
+        // when
+
+        // then
         assertThatThrownBy(() -> tools.listBoards("SPY", null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("지원하지 않는 boardType 입니다: SPY");

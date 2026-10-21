@@ -2,6 +2,7 @@ package com.sleekydz86.finsight.core.news.crawl;
 
 import com.sleekydz86.finsight.core.global.NewsProvider;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 import org.springframework.data.redis.RedisConnectionFailureException;
 
 import java.time.Clock;
@@ -18,22 +19,33 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NewsCrawlLockTest {
 
     @Test
-    void 잠금_소유자와_만료와_펜싱_토큰을_지킨다() {
+    @DisplayName("잠금 소유자와 만료와 펜싱 토큰을 지킨다")
+    void keepsLockOwnerExpiryAndFencingToken() {
+        // given
         MemoryLockStore locks = new MemoryLockStore();
         MutableClock clock = new MutableClock(Instant.parse("2026-10-15T00:00:00Z"));
         NewsCrawlProviderGate gate = gate(locks, null, clock, new NewsCrawlRecoveryMetrics());
 
+        // when
         Optional<NewsCrawlPermit> first = gate.tryAcquire(NewsProvider.YAHOO_FINANCE, "batch-1", Duration.ofSeconds(1));
         Optional<NewsCrawlPermit> blocked = gate.tryAcquire(NewsProvider.YAHOO_FINANCE, "manual-1", Duration.ofSeconds(1));
 
+        // then
         assertThat(first).isPresent();
         assertThat(blocked).isEmpty();
         assertThat(gate.stillHeld(first.get())).isTrue();
         assertThat(locks.release(NewsProvider.YAHOO_FINANCE, "manual-1", first.get().fencingToken())).isFalse();
 
+        // when
         clock.plusSeconds(2);
+
+        // then
         assertThat(gate.stillHeld(first.get())).isFalse();
+
+        // when
         Optional<NewsCrawlPermit> stolen = gate.tryAcquire(NewsProvider.YAHOO_FINANCE, "agent-1", Duration.ofSeconds(1));
+
+        // then
         assertThat(stolen).isPresent();
         assertThat(stolen.get().fencingToken()).isNotEqualTo(first.get().fencingToken());
         assertThat(locks.release(NewsProvider.YAHOO_FINANCE, first.get().owner(), first.get().fencingToken())).isFalse();
@@ -41,18 +53,29 @@ class NewsCrawlLockTest {
     }
 
     @Test
-    void Redis가_죽어도_DB_잠금으로_중복_실행을_막는다() {
+    @DisplayName("Redis가 죽어도 DB 잠금으로 중복 실행을 막는다")
+    void dbLockPreventsDuplicateExecutionWhenRedisIsDown() {
+        // given
         MemoryLockStore locks = new MemoryLockStore();
         NewsCrawlRecoveryMetrics metrics = new NewsCrawlRecoveryMetrics();
         NewsCrawlProviderGate gate = gate(locks, new DownRedis(), Clock.systemUTC(), metrics);
 
+        // when
+
+        // then
         assertThat(gate.tryAcquire(NewsProvider.MARKETAUX, "batch-1", Duration.ofMinutes(2))).isPresent();
         assertThat(gate.tryAcquire(NewsProvider.MARKETAUX, "manual-1", Duration.ofMinutes(2))).isEmpty();
         assertThat(metrics.snapshot().redisFailures()).isGreaterThan(0);
     }
 
     @Test
-    void 잠금만_건너뛴_실행은_성공이_아니다() {
+    @DisplayName("잠금만 건너뛴 실행은 성공이 아니다")
+    void skippingOnlyTheLockIsNotSuccess() {
+        // given
+
+        // when
+
+        // then
         assertThat(NewsCrawlLatency.lockSkipOnly(0, 3)).isTrue();
         assertThat(NewsCrawlLatency.lockSkipOnly(1, 2)).isFalse();
         assertThat(NewsCrawlLatency.lockSkipOnly(0, 0)).isFalse();

@@ -15,6 +15,7 @@ import com.sleekydz86.finsight.core.media.youtube.domain.port.in.dto.YoutubeVide
 import com.sleekydz86.finsight.core.media.youtube.domain.port.out.YoutubeImportSourcePersistencePort;
 import com.sleekydz86.finsight.core.media.youtube.domain.port.out.YoutubeVideoMetaPersistencePort;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -71,15 +72,19 @@ class YoutubeMediaEnrichVideoTest {
     }
 
     @Test
-    void 게시_영상도_요약과_핵심포인트를_저장한다() {
+    @DisplayName("게시 영상도 요약과 핵심포인트를 저장한다")
+    void savesSummaryAndKeyPointsForPublishedVideo() {
+        // given
         when(aiContentRequester.generate(any(), any())).thenReturn(YoutubeGeneratedContent.builder()
                 .summary("국채 금리 흐름을 정리한 영상입니다.")
                 .editorComment("제목에 나온 금리만 짚습니다.")
                 .keyPoints(List.of("국채 금리", "순환매", "제목 범위"))
                 .build());
 
+        // when
         YoutubeVideoDetailResponse detail = service.enrichVideo(7L);
 
+        // then
         assertThat(detail.getImportStatus()).isEqualTo(YoutubeImportStatus.PUBLISHED);
         assertThat(detail.getSummary()).isEqualTo("국채 금리 흐름을 정리한 영상입니다.");
         assertThat(detail.getEditorComment()).isEqualTo("제목에 나온 금리만 짚습니다.");
@@ -89,12 +94,16 @@ class YoutubeMediaEnrichVideoTest {
     }
 
     @Test
-    void 생성에_실패하면_실패시각을_남긴다() {
+    @DisplayName("생성에 실패하면 실패시각을 남긴다")
+    void recordsFailureTimeWhenCreationFails() {
+        // given
         when(aiContentRequester.generate(any(), any()))
                 .thenThrow(new AiAnalysisFailedException("llama3.2", "영상 보강 문장을 만들지 못했습니다."));
 
+        // when
         YoutubeVideoDetailResponse detail = service.enrichVideo(7L);
 
+        // then
         assertThat(detail.getAiStatus()).isEqualTo("FAILED");
         assertThat(detail.getAiFailedAt()).isNotNull();
         assertThat(detail.getSummary()).isNull();

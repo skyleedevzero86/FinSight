@@ -4,6 +4,7 @@ import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.crawl.NewsCrawlLockStore;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,24 +78,38 @@ class NewsCrawlIncidentMysqlTest {
     }
 
     @Test
-    void 장애_사건과_실행_시도_잠금_테이블을_만든다() {
+    @DisplayName("장애 사건과 실행 시도 잠금 테이블을 만든다")
+    void createsIncidentAttemptAndLockTables() {
+        // given
+
+        // then
         assertThat(integer("select success from flyway_schema_history where version = '41'")).isEqualTo(1);
         assertThat(comment("news_crawl_incident", "cause")).contains("HTTP_429");
         assertThat(comment("news_crawl_attempt", "status")).contains("SKIPPED");
         assertThat(comment("news_crawl_provider_lock", "fencing_token")).contains("펜싱 토큰");
         assertThat(tableComment("news_crawl_incident")).contains("장애 사건");
+
+        // when
         log.info("뉴스 수집 장애 사건, 실행 시도, 제공처 잠금 테이블을 확인했습니다");
     }
 
     @Test
-    void 같은_제공처를_두_소유자가_동시에_선점하면_이전_토큰은_해제되지_않는다() throws Exception {
+    @DisplayName("같은 제공처를 두 소유자가 동시에 선점하면 이전 토큰은 해제되지 않는다")
+    void previousTokenCannotReleaseWhenTwoOwnersAcquireTheSameProvider() throws Exception {
+        // given
         LocalDateTime now = LocalDateTime.of(2026, 10, 16, 0, 0);
+
+        // when
         jdbc.update("""
                 insert into news_crawl_provider_lock (provider, owner, fencing_token, expires_at)
                 values ('MARKETAUX', 'seed', 1, '2000-01-01 00:00:00.000000')
                 """);
+
+        // given
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService pool = Executors.newFixedThreadPool(2);
+
+        // then
         try {
             Future<Optional<Long>> batch = pool.submit(acquire("batch-mysql", now, start));
             Future<Optional<Long>> manual = pool.submit(acquire("manual-mysql", now, start));

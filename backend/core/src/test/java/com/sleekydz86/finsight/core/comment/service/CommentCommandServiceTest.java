@@ -11,6 +11,7 @@ import com.sleekydz86.finsight.core.global.exception.CommentNotFoundException;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -73,13 +74,16 @@ class CommentCommandServiceTest {
     }
 
     @Test
-    void 댓글_생성_성공() {
-
+    @DisplayName("댓글 생성 성공")
+    void createsComment() {
+        // given
         when(newsPersistencePort.findById(1L)).thenReturn(Optional.of(new News()));
         when(commentPersistencePort.save(any(Comment.class))).thenReturn(comment);
 
+        // when
         Comment result = commentCommandService.createComment("test@example.com", "USER", commentCreateRequest);
 
+        // then
         assertThat(result).isNotNull();
         assertThat(result.getContent()).isEqualTo("테스트 댓글 내용");
         assertThat(result.getAuthorEmail()).isEqualTo("test@example.com");
@@ -88,20 +92,28 @@ class CommentCommandServiceTest {
     }
 
     @Test
-    void 존재하지_않는_댓글_수정시_예외_발생() {
-
+    @DisplayName("존재하지 않는 댓글 수정시 예외 발생")
+    void throwsWhenUpdatingMissingComment() {
+        // given
         when(commentPersistencePort.findById(1L)).thenReturn(Optional.empty());
 
+        // when
+
+        // then
         assertThatThrownBy(() -> commentCommandService.updateComment("test@example.com", 1L,
                 new com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentUpdateRequest("수정된 내용")))
                 .isInstanceOf(com.sleekydz86.finsight.core.global.exception.NewsNotFoundException.class);
     }
 
     @Test
-    void 권한이_없는_사용자가_댓글_수정시_예외_발생() {
-
+    @DisplayName("권한이 없는 사용자가 댓글 수정시 예외 발생")
+    void throwsWhenUserWithoutPermissionUpdatesComment() {
+        // given
         when(commentPersistencePort.findById(1L)).thenReturn(Optional.of(comment));
 
+        // when
+
+        // then
         assertThatThrownBy(() -> commentCommandService.updateComment("other@example.com", 1L,
                 new com.sleekydz86.finsight.core.comment.domain.port.in.dto.CommentUpdateRequest("수정된 내용")))
                 .isInstanceOf(com.sleekydz86.finsight.core.global.exception.InsufficientPermissionException.class);

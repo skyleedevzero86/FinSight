@@ -11,6 +11,7 @@ import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import com.sleekydz86.finsight.core.news.service.NewsQueryService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
@@ -31,11 +32,15 @@ class NewsMcpToolsTest {
     }
 
     @Test
+    @DisplayName("최신 뉴스는 요약과 감정을 유지한다")
     void listLatestNews_keepsOverviewAndSentiment() {
-        newsQuery.latest = new Newses(List.of(sampleNews()));
+        // given
 
+        // when
+        newsQuery.latest = new Newses(List.of(sampleNews()));
         NewsMcpTools.NewsListResult result = tools.listLatestNews(null);
 
+        // then
         assertThat(newsQuery.latestLimit).isEqualTo(10);
         assertThat(result.count()).isEqualTo(1);
         assertThat(result.items()).containsExactly(new NewsMcpTools.NewsSummary(
@@ -49,14 +54,25 @@ class NewsMcpToolsTest {
     }
 
     @Test
+    @DisplayName("최신 뉴스의 너무 큰 개수는 제한한다")
     void listLatestNews_capsOversizedLimit() {
+        // given
+
+        // when
         tools.listLatestNews(100);
 
+        // then
         assertThat(newsQuery.latestLimit).isEqualTo(50);
     }
 
     @Test
+    @DisplayName("알 수 없는 뉴스 카테고리는 거절한다")
     void listNewsByCategory_rejectsUnknownCategory() {
+        // given
+
+        // when
+
+        // then
         assertThatThrownBy(() -> tools.listNewsByCategory("KOSPI", 10))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("입력값: KOSPI")
@@ -64,19 +80,28 @@ class NewsMcpToolsTest {
     }
 
     @Test
+    @DisplayName("카테고리 뉴스는 반환 개수를 제한한다")
     void listNewsByCategory_capsReturnedItems() {
-        newsQuery.byCategory = new Newses(List.of(sampleNews(), sampleNews()));
+        // given
 
+        // when
+        newsQuery.byCategory = new Newses(List.of(sampleNews(), sampleNews()));
         NewsMcpTools.NewsListResult result = tools.listNewsByCategory("spy", 1);
 
+        // then
         assertThat(newsQuery.category).isEqualTo("spy");
         assertThat(result.count()).isEqualTo(1);
     }
 
     @Test
+    @DisplayName("뉴스 상세는 미리보기로 매핑한다")
     void getNewsDetail_mapsPreview() {
+        // given
+
+        // when
         NewsMcpTools.NewsDetailResult detail = tools.getNewsDetail(7L);
 
+        // then
         assertThat(newsQuery.detailId).isEqualTo(7L);
         assertThat(detail.title()).isEqualTo("번역 제목");
         assertThat(detail.sentiment()).isEqualTo("POSITIVE");
@@ -84,9 +109,14 @@ class NewsMcpToolsTest {
     }
 
     @Test
+    @DisplayName("인기 뉴스는 인기 목록에서 읽는다")
     void listPopularNews_readsPopularFeed() {
+        // given
+
+        // when
         newsQuery.popular = new Newses(List.of(sampleNews()));
 
+        // then
         assertThat(tools.listPopularNews(3).count()).isEqualTo(1);
         assertThat(newsQuery.popularLimit).isEqualTo(3);
     }

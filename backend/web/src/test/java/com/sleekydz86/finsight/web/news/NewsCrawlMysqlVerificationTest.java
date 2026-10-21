@@ -7,6 +7,7 @@ import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -109,18 +110,25 @@ class NewsCrawlMysqlVerificationTest {
     }
 
     @Test
+    @DisplayName("V40은 중복 주소를 합치고 자식을 옮긴다")
     @Order(1)
     void v40CollapsesDuplicateUrlsAndMovesChildren() throws Exception {
+        // given
         keptId = insertNews(DUP_SLASH, 2);
         droppedId = insertNews(DUP_PLAIN, 5);
         long otherId = insertNews(KEPT_OTHER, 1);
+
+        // when
         seedChildren(keptId, droppedId);
 
+        // given
         Path directory = Files.createTempDirectory("v40-only");
         try (InputStream input = new ClassPathResource("db/migration/V40__news_source_url_unique.sql").getInputStream()) {
             Files.copy(input, directory.resolve("V40__news_source_url_unique.sql"));
         }
         String location = "filesystem:" + directory.toAbsolutePath().toString().replace('\\', '/');
+
+        // when
         Flyway.configure()
                 .dataSource(jdbc.getDataSource())
                 .locations(location)
@@ -129,6 +137,7 @@ class NewsCrawlMysqlVerificationTest {
                 .load()
                 .migrate();
 
+        // then
         assertThat(count("select count(*) from news")).isEqualTo(2);
         assertThat(count("select count(*) from news where id = ?", droppedId)).isZero();
         assertThat(text("select source_url from news where id = ?", keptId)).isEqualTo(DUP_PLAIN);
@@ -152,18 +161,33 @@ class NewsCrawlMysqlVerificationTest {
         assertThatThrownBy(() -> insertNews(DUP_PLAIN, 1))
                 .isInstanceOf(org.springframework.dao.DuplicateKeyException.class);
 
+        // given
         String collation = text("select @@collation_database");
+
+        // when
         boolean caseInsensitive = collation.endsWith("_ci");
+
+        // given
         boolean secondInserted = insertCaseVariant();
+
+        // when
         log.info("V40 검증 collation={} 대소문자 두 번째 행 삽입={}", collation, secondInserted);
+
+        // then
         assertThat(secondInserted).isEqualTo(!caseInsensitive);
     }
 
     @Test
+    @DisplayName("동시 저장에서 유니크 충돌이 나도 다른 기사는 남긴다")
     @Order(2)
     void concurrentSaveKeepsSiblingWhenUniqueConflicts() throws Exception {
+        // when
         gated.arm(2);
+
+        // given
         ExecutorService pool = Executors.newFixedThreadPool(2);
+
+        // then
         try {
             Future<List<String>> first = pool.submit(save(SHARED, OWN_A));
             Future<List<String>> second = pool.submit(save(SHARED, OWN_B));
@@ -179,41 +203,68 @@ class NewsCrawlMysqlVerificationTest {
         assertThat(count("select count(*) from news where source_url = ?", SHARED)).isEqualTo(1);
         assertThat(count("select count(*) from news where source_url = ?", OWN_A)).isEqualTo(1);
         assertThat(count("select count(*) from news where source_url = ?", OWN_B)).isEqualTo(1);
+
+        // when
         log.info("동시 저장 검증 shared=1 ownA=1 ownB=1");
     }
 
     @Test
+    @DisplayName("실패한 단계를 다시 실행해도 커밋된 뉴스를 중복 저장하지 않는다")
     @Order(3)
     void failedStepRestartKeepsCommittedNewsWithoutDuplicate() throws Exception {
+        // given
         try (Connection connection = jdbc.getDataSource().getConnection()) {
             ScriptUtils.executeSqlScript(connection, new ClassPathResource("org/springframework/batch/core/schema-mysql.sql"));
         }
+
+        // when
         PlatformTransactionManager transactionManager = context.getBean(PlatformTransactionManager.class);
+
+        // given
         JobRepository repository = jobRepository();
         AtomicBoolean failed = new AtomicBoolean(false);
+
+        // when
         Tasklet tasklet = (StepContribution contribution, ChunkContext chunkContext) -> {
             newsRepository.saveAllNews(List.of(article(RESTART)));
             if (failed.compareAndSet(false, true)) {
                 throw new IllegalStateException("재시작 검증을 위해 첫 실행을 실패시킵니다");
             }
             return RepeatStatus.FINISHED;
-        };
+        }
+;
+
+        // given
         Job job = new JobBuilder("newsSaveRestartJob", repository)
                 .start(new StepBuilder("saveStep", repository).tasklet(tasklet, transactionManager).build())
                 .build();
         TaskExecutorJobLauncher launcher = new TaskExecutorJobLauncher();
+
+        // when
         launcher.setJobRepository(repository);
         launcher.setTaskExecutor(Runnable::run);
         launcher.afterPropertiesSet();
+
+        // given
         JobParameters parameters = new JobParametersBuilder().addLong("run", 1L).toJobParameters();
 
+        // when
         JobExecution first = launcher.run(job, parameters);
+
+        // given
         int afterFailure = count("select count(*) from news where source_url = ?", RESTART);
+
+        // when
         JobExecution second = launcher.run(job, parameters);
+
+        // given
         int afterRestart = count("select count(*) from news where source_url = ?", RESTART);
 
+        // when
         log.info("배치 재시작 검증 first={} rowsAfterFailure={} second={} rowsAfterRestart={}",
                 first.getStatus(), afterFailure, second.getStatus(), afterRestart);
+
+        // then
         assertThat(first.getStatus()).isEqualTo(BatchStatus.FAILED);
         assertThat(afterFailure).as(String.valueOf(first.getAllFailureExceptions())).isEqualTo(1);
         assertThat(second.getStatus()).isEqualTo(BatchStatus.COMPLETED);

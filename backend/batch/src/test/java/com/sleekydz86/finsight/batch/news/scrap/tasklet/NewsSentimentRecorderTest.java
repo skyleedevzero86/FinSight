@@ -6,16 +6,20 @@ import com.sleekydz86.finsight.core.news.domain.vo.SentimentAnalysisResult;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentStatus;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class NewsSentimentRecorderTest {
 
     @Test
+    @DisplayName("DJL 결과는 요약을 바꾸지 않는다")
     void djlResultDoesNotReplaceSummary() {
+        // given
         NewsJpaEntity news = news();
-        news.setOverview("기존 요약");
 
+        // when
+        news.setOverview("기존 요약");
         NewsSentimentRecorder.applyDjl(news, DjlSentimentResult.builder()
                 .label("POSITIVE")
                 .score(0.6)
@@ -27,6 +31,7 @@ class NewsSentimentRecorderTest {
                 .modelName("cardiffnlp/twitter-roberta-base-sentiment-latest")
                 .build());
 
+        // then
         assertThat(news.getOverview()).isEqualTo("기존 요약");
         assertThat(news.getSentimentStatus()).isEqualTo(SentimentStatus.DONE);
         assertThat(news.getSentimentType()).isEqualTo(SentimentType.POSITIVE);
@@ -38,13 +43,17 @@ class NewsSentimentRecorderTest {
     }
 
     @Test
+    @DisplayName("키워드 폴백은 요약을 유지하고 시도 횟수를 센다")
     void keywordFallbackKeepsSummaryAndCountsAttempt() {
+        // given
         NewsJpaEntity news = news();
-        news.setOverview("기존 요약");
 
+        // when
+        news.setOverview("기존 요약");
         NewsSentimentRecorder.applyKeyword(news, SentimentAnalysisResult.success(
                 SentimentType.NEGATIVE, 0.2, 3L, "키워드 감성"));
 
+        // then
         assertThat(news.getOverview()).isEqualTo("기존 요약");
         assertThat(news.getSentimentStatus()).isEqualTo(SentimentStatus.KEYWORD);
         assertThat(news.getSentimentType()).isEqualTo(SentimentType.NEGATIVE);
@@ -53,12 +62,16 @@ class NewsSentimentRecorderTest {
     }
 
     @Test
+    @DisplayName("실패하면 요약을 지우지 않고 시도 횟수만 올린다")
     void failureIncrementsAttemptWithoutClearingSummary() {
+        // given
         NewsJpaEntity news = news();
-        news.setOverview("기존 요약");
 
+        // when
+        news.setOverview("기존 요약");
         NewsSentimentRecorder.markFailed(news);
 
+        // then
         assertThat(news.getOverview()).isEqualTo("기존 요약");
         assertThat(news.getSentimentStatus()).isEqualTo(SentimentStatus.FAILED);
         assertThat(news.getSentimentAttempts()).isEqualTo(1);

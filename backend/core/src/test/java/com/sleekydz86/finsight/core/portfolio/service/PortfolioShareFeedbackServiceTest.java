@@ -8,6 +8,7 @@ import com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioShare
 import com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioShareReportJpaRepository;
 import com.sleekydz86.finsight.core.portfolio.domain.PortfolioShareDetail;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -45,7 +46,9 @@ class PortfolioShareFeedbackServiceTest {
     }
 
     @Test
-    void 싫어요는_경고로_보이고_같은_반응을_다시_누르면_지운다() {
+    @DisplayName("싫어요는 경고로 보이고 같은 반응을 다시 누르면 지운다")
+    void dislikeShowsWarningAndClearsWhenPressedAgain() {
+        // given
         PortfolioShareJpaEntity share = share();
         when(shareRepository.findById(4L)).thenReturn(Optional.of(share));
         when(reactionRepository.findByShareIdAndUserId(4L, 7L)).thenReturn(Optional.empty());
@@ -54,9 +57,13 @@ class PortfolioShareFeedbackServiceTest {
         when(reportRepository.countByShareId(4L)).thenReturn(0L);
         when(reportRepository.findByShareIdAndUserId(4L, 7L)).thenReturn(Optional.empty());
 
+        // when
         PortfolioShareDetail detail = feedbackService.react(7L, 4L, "DISLIKE");
 
+        // given
         ArgumentCaptor<PortfolioShareReactionJpaEntity> captor = ArgumentCaptor.forClass(PortfolioShareReactionJpaEntity.class);
+
+        // then
         verify(reactionRepository).save(captor.capture());
         assertThat(captor.getValue().getReactionType()).isEqualTo("DISLIKE");
         assertThat(detail.card().moderationStatus()).isEqualTo("WARN");
@@ -64,7 +71,9 @@ class PortfolioShareFeedbackServiceTest {
     }
 
     @Test
-    void 신고하면_블라인드로_보인다() {
+    @DisplayName("신고하면 블라인드로 보인다")
+    void reportShowsBlind() {
+        // given
         PortfolioShareJpaEntity share = share();
         when(shareRepository.findById(4L)).thenReturn(Optional.of(share));
         when(reportRepository.findByShareIdAndUserId(4L, 7L)).thenReturn(Optional.empty());
@@ -73,10 +82,14 @@ class PortfolioShareFeedbackServiceTest {
         when(reportRepository.countByShareId(4L)).thenReturn(1L);
         when(reactionRepository.findByShareIdAndUserId(4L, 7L)).thenReturn(Optional.empty());
 
+        // when
         PortfolioShareDetail detail = feedbackService.report(7L, 4L, "투자 사기", "계좌번호를 요구합니다");
 
+        // given
         ArgumentCaptor<com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioShareReportJpaEntity> captor =
                 ArgumentCaptor.forClass(com.sleekydz86.finsight.core.portfolio.adapter.persistence.PortfolioShareReportJpaEntity.class);
+
+        // then
         verify(reportRepository).save(captor.capture());
         assertThat(captor.getValue().getReason()).isEqualTo("투자 사기");
         assertThat(captor.getValue().getNote()).isEqualTo("계좌번호를 요구합니다");
@@ -86,13 +99,20 @@ class PortfolioShareFeedbackServiceTest {
     }
 
     @Test
-    void 블라인드_카드에는_반응할_수_없다() {
+    @DisplayName("블라인드 카드에는 반응할 수 없다")
+    void cannotReactToBlindCard() {
+        // given
         PortfolioShareJpaEntity share = share();
+
+        // when
         share.applyModeration("BLIND");
+
+        // given
         when(shareRepository.findById(4L)).thenReturn(Optional.of(share));
         when(reactionRepository.countByShareIdAndReactionType(4L, "DISLIKE")).thenReturn(0L);
         when(reportRepository.countByShareId(4L)).thenReturn(0L);
 
+        // then
         assertThatThrownBy(() -> feedbackService.react(7L, 4L, "LIKE"))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("블라인드");

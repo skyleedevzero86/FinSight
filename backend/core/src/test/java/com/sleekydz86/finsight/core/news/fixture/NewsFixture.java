@@ -8,7 +8,7 @@ import java.util.Collections;
 
 public class NewsFixture {
 
-    public static AiOverview 인공지능_오버뷰_생성_비트코인_긍정적_30프로() {
+    public static AiOverview positiveBitcoinOverview() {
         return new AiOverview(
                 "overview",
                 SentimentType.POSITIVE,
@@ -17,7 +17,7 @@ public class NewsFixture {
         );
     }
 
-    public static News 뉴스_생성_블룸버그_비트코인() {
+    public static News bloombergBitcoinNews() {
         return new News(
                 1L,
                 new NewsMeta(
@@ -28,11 +28,11 @@ public class NewsFixture {
                 LocalDateTime.now(),
                 new Content("originalTitle", "originalContent"),
                 new Content("translatedTitle", "translatedContent"),
-                인공지능_오버뷰_생성_비트코인_긍정적_30프로()
+                positiveBitcoinOverview()
         );
     }
 
-    public static News 뉴스_생성_블룸버그_테슬라() {
+    public static News bloombergTeslaNews() {
         return new News(
                 1L,
                 new NewsMeta(
@@ -43,7 +43,7 @@ public class NewsFixture {
                 LocalDateTime.now(),
                 new Content("originalTitle", "originalContent"),
                 new Content("translatedTitle", "translatedContent"),
-                인공지능_오버뷰_생성_비트코인_긍정적_30프로()
+                positiveBitcoinOverview()
                         .copyWithTargetCategories(Collections.singletonList(TargetCategory.TSLA))
         );
     }

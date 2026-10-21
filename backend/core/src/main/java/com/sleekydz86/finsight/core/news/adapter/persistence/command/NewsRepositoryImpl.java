@@ -7,7 +7,10 @@ import com.sleekydz86.finsight.core.news.domain.Newses;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsQueryRequest;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsSearchRequest;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
+import com.sleekydz86.finsight.core.news.domain.vo.AiOverview;
+import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsSourceUrls;
+import com.sleekydz86.finsight.core.news.domain.vo.SentimentStatus;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +21,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -59,6 +63,58 @@ public class NewsRepositoryImpl implements NewsPersistencePort {
             }
         }
         return new Newses(saved);
+    }
+
+    @Override
+    public void saveStoredAnalysis(News news) {
+        if (news == null || news.getId() == null || news.getId() <= 0) {
+            return;
+        }
+        freshInsert.executeWithoutResult(status -> applyStoredAnalysis(news));
+    }
+
+    private void applyStoredAnalysis(News news) {
+        NewsJpaEntity entity = newsJpaRepository.findById(news.getId()).orElse(null);
+        if (entity == null) {
+            log.warn("번역을 반영할 뉴스가 없습니다 id={}", news.getId());
+            return;
+        }
+        copyTranslation(entity, news.getTranslatedContent());
+        copyOverview(entity, news.getAiOverView());
+        entity.setUpdatedAt(LocalDateTime.now());
+        newsJpaRepository.saveAndFlush(entity);
+    }
+
+    private static void copyTranslation(NewsJpaEntity entity, Content translated) {
+        if (translated == null) {
+            return;
+        }
+        entity.setTranslatedTitle(translated.getTitle());
+        String body = translated.getContent();
+        entity.setTranslatedContent(body == null || body.isBlank() ? empty(entity.getOriginalContent()) : body);
+    }
+
+    private static void copyOverview(NewsJpaEntity entity, AiOverview overview) {
+        if (overview == null) {
+            return;
+        }
+        entity.setOverview(overview.getOverview());
+        entity.setSentimentType(overview.getSentimentType());
+        entity.setSentimentScore(overview.getSentimentScore());
+        entity.setSentimentStatus(SentimentStatus.DONE);
+        replaceCategories(entity, overview.getTargetCategories());
+    }
+
+    private static void replaceCategories(NewsJpaEntity entity, List<TargetCategory> categories) {
+        if (categories == null) {
+            return;
+        }
+        entity.getTargetCategories().clear();
+        entity.getTargetCategories().addAll(categories);
+    }
+
+    private static String empty(String value) {
+        return value == null ? "" : value;
     }
 
     @Override

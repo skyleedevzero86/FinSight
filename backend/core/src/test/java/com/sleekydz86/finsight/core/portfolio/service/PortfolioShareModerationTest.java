@@ -10,6 +10,7 @@ import com.sleekydz86.finsight.core.portfolio.domain.PortfolioShareFeed.Portfoli
 import com.sleekydz86.finsight.core.search.config.ElasticsearchProperties;
 import com.sleekydz86.finsight.core.user.domain.port.out.UserPersistencePort;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -58,24 +59,35 @@ class PortfolioShareModerationTest {
     }
 
     @Test
-    void 관리자는_공유_카드를_블라인드한다() {
+    @DisplayName("관리자는 공유 카드를 블라인드한다")
+    void adminBlindsShareCard() {
+        // given
         PortfolioShareJpaEntity share = share();
         when(shareRepository.findById(4L)).thenReturn(Optional.of(share));
         when(feedbackService.toCard(any())).thenAnswer(invocation ->
                 PortfolioShareCards.from(invocation.getArgument(0), 0, 0, 0));
 
+        // when
         PortfolioShareCard card = portfolioService.moderate("MANAGER", 4L, "BLIND");
 
+        // then
         assertThat(share.getModerationStatus()).isEqualTo("BLIND");
         assertThat(card.moderationStatus()).isEqualTo("BLIND");
     }
 
     @Test
-    void 삭제된_공유는_다시_수정하지_않는다() {
+    @DisplayName("삭제된 공유는 다시 수정하지 않는다")
+    void doesNotEditDeletedShareAgain() {
+        // given
         PortfolioShareJpaEntity share = share();
+
+        // when
         share.applyModeration("REMOVED");
+
+        // given
         when(shareRepository.findById(4L)).thenReturn(Optional.of(share));
 
+        // then
         assertThatThrownBy(() -> portfolioService.moderate("ADMIN", 4L, "WARN"))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("삭제된 게시물은 수정할 수 없습니다");
@@ -83,7 +95,13 @@ class PortfolioShareModerationTest {
     }
 
     @Test
-    void 일반_사용자는_공유를_조치할_수_없다() {
+    @DisplayName("일반 사용자는 공유를 조치할 수 없다")
+    void regularUserCannotModerateShare() {
+        // given
+
+        // when
+
+        // then
         assertThatThrownBy(() -> portfolioService.moderate("USER", 4L, "REMOVED"))
                 .isInstanceOf(InsufficientPermissionException.class);
         verify(shareRepository, never()).findById(4L);
