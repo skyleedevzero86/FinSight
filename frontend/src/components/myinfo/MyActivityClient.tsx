@@ -272,7 +272,7 @@ export default function MyActivityClient() {
   const favorites = data.favorites.filter((item) => includesQuery(query, item.title, item.source))
   const posts = data.posts.filter((item) => includesQuery(query, item.title, item.boardLabel))
   const alerts = data.alerts.filter((item) => includesQuery(query, item.title, item.detail))
-  const activeItems =
+  const activeItems: (ActivityWatchItem | ActivityPostItem | ActivityAlertItem)[] =
     tab === "history" ? watches : tab === "favorites" ? favorites : tab === "posts" ? posts : alerts
   const totalPages = Math.max(1, Math.ceil(activeItems.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages - 1)
