@@ -13,7 +13,6 @@ import org.junit.jupiter.api.DisplayName;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -113,16 +112,6 @@ class NewsAiProcessingServiceTest {
         }
 
         @Override
-        public CompletableFuture<List<News>> analyseNewsesAsync(AiModel model, Content content) {
-            return CompletableFuture.completedFuture(analyseNewses(model, content));
-        }
-
-        @Override
-        public List<News> analyseNewsesBatch(AiModel model, List<Content> contents) {
-            return analyseNewses(model, contents.isEmpty() ? null : contents.get(0));
-        }
-
-        @Override
         public boolean isModelAvailable(AiModel model) {
             return true;
         }
@@ -152,16 +141,6 @@ class NewsAiProcessingServiceTest {
             } finally {
                 inFlight.decrementAndGet();
             }
-            return List.of();
-        }
-
-        @Override
-        public CompletableFuture<List<News>> analyseNewsesAsync(AiModel model, Content content) {
-            return CompletableFuture.completedFuture(List.of());
-        }
-
-        @Override
-        public List<News> analyseNewsesBatch(AiModel model, List<Content> contents) {
             return List.of();
         }
 

@@ -7,11 +7,9 @@ import com.sleekydz86.finsight.core.news.domain.Newses;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsDetailResponse;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsQueryRequest;
 import com.sleekydz86.finsight.core.news.domain.port.in.dto.NewsSearchRequest;
-import com.sleekydz86.finsight.core.news.domain.port.out.DjlSentimentAnalysisPort;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsAiAnalysisRequesterPort;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsPersistencePort;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
-import com.sleekydz86.finsight.core.news.domain.vo.DjlSentimentResult;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
 import com.sleekydz86.finsight.core.news.domain.vo.SentimentType;
 import com.sleekydz86.finsight.core.news.domain.vo.TargetCategory;
@@ -21,9 +19,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -131,42 +127,39 @@ class StoredNewsTranslationServiceTest {
     }
 
     @Test
-    @DisplayName("번역이 없는 기사는 조회 때 감정을 붙인다")
-    void attachesSentimentWhileTitleIsStillEnglish() {
-        // given
-        MemoryNews news = new MemoryNews();
-        CountingAi ai = new CountingAi("Fed holds rates");
-        FixedSentiment sentiment = new FixedSentiment(true);
-        StoredNewsTranslationService service = new StoredNewsTranslationService(
-                new NewsAiProcessingService(ai, DIRECT), news, DIRECT, sentiment);
-
-        // when
-        Newses filled = service.fill(new Newses(List.of(english(8L))));
-        service.fill(filled);
-
-        // then
-        assertThat(sentiment.calls()).isEqualTo(1);
-        assertThat(filled.getNewses().get(0).getAiOverView().getSentimentType()).isEqualTo(SentimentType.POSITIVE);
-        assertThat(news.saved.get(0).getAiOverView().getSentimentType()).isEqualTo(SentimentType.POSITIVE);
-    }
-
-    @Test
-    @DisplayName("감정 모델이 실패하면 목록 조회는 그대로 둔다")
-    void keepsNewsWhenSentimentModelFails() {
+    @DisplayName("조회는 감정을 계산하지 않고 번역만 맡긴다")
+    void leavesSentimentForTheBatch() {
         // given
         MemoryNews news = new MemoryNews();
         CountingAi ai = new CountingAi("연준이 금리를 유지했다");
-        FixedSentiment sentiment = new FixedSentiment(false);
-        StoredNewsTranslationService service = new StoredNewsTranslationService(
-                new NewsAiProcessingService(ai, DIRECT), news, DIRECT, sentiment);
 
         // when
-        Newses filled = service.fill(new Newses(List.of(english(9L))));
+        Newses filled = service(ai, news).fill(new Newses(List.of(english(8L))));
 
         // then
         assertThat(filled.getNewses().get(0).getAiOverView()).isNull();
         assertThat(news.saved).hasSize(1);
         assertThat(news.saved.get(0).getTranslatedContent().getTitle()).isEqualTo("연준이 금리를 유지했다");
+    }
+
+    @Test
+    @DisplayName("번역은 받은 실행기에만 맡긴다")
+    void queuesTranslationOnTheGivenExecutor() {
+        // given
+        MemoryNews news = new MemoryNews();
+        CountingAi ai = new CountingAi("연준이 금리를 유지했다");
+        List<Runnable> queued = new ArrayList<>();
+        StoredNewsTranslationService service = new StoredNewsTranslationService(
+                new NewsAiProcessingService(ai, DIRECT), news, queued::add);
+
+        // when
+        service.fill(new Newses(List.of(english(11L))));
+
+        // then
+        assertThat(ai.calls()).isZero();
+        assertThat(queued).hasSize(1);
+        queued.get(0).run();
+        assertThat(ai.calls()).isEqualTo(1);
     }
 
     private static StoredNewsTranslationService service(CountingAi ai, MemoryNews news) {
@@ -209,16 +202,6 @@ class StoredNewsTranslationServiceTest {
         }
 
         @Override
-        public CompletableFuture<List<News>> analyseNewsesAsync(AiModel model, Content content) {
-            return CompletableFuture.completedFuture(analyseNewses(model, content));
-        }
-
-        @Override
-        public List<News> analyseNewsesBatch(AiModel model, List<Content> contents) {
-            return analyseNewses(model, contents.isEmpty() ? null : contents.get(0));
-        }
-
-        @Override
         public boolean isModelAvailable(AiModel model) {
             return true;
         }
@@ -226,59 +209,6 @@ class StoredNewsTranslationServiceTest {
         @Override
         public List<AiModel> getAvailableModels() {
             return List.of(AiModel.CHATGPT);
-        }
-    }
-
-    private static final class FixedSentiment implements DjlSentimentAnalysisPort {
-        private final boolean success;
-        private final AtomicInteger calls = new AtomicInteger();
-
-        private FixedSentiment(boolean success) {
-            this.success = success;
-        }
-
-        private int calls() {
-            return calls.get();
-        }
-
-        @Override
-        public DjlSentimentResult analyzeSentiment(String text) {
-            return analyzeNewsContent(null);
-        }
-
-        @Override
-        public CompletableFuture<DjlSentimentResult> analyzeSentimentAsync(String text) {
-            return CompletableFuture.completedFuture(analyzeSentiment(text));
-        }
-
-        @Override
-        public List<DjlSentimentResult> analyzeSentimentBatch(List<String> texts) {
-            return List.of();
-        }
-
-        @Override
-        public DjlSentimentResult analyzeNewsContent(Content content) {
-            calls.incrementAndGet();
-            return DjlSentimentResult.builder()
-                    .label("POSITIVE")
-                    .score(0.8)
-                    .success(success)
-                    .build();
-        }
-
-        @Override
-        public boolean isModelAvailable() {
-            return true;
-        }
-
-        @Override
-        public List<String> getAvailableModels() {
-            return List.of("fixed");
-        }
-
-        @Override
-        public Map<String, Object> getModelMetadata() {
-            return Map.of();
         }
     }
 

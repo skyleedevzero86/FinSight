@@ -33,6 +33,28 @@ class EconomyPickCatalogTest {
     }
 
     @Test
+    @DisplayName("종목정보 칸에는 시가총액과 순위만 넣고 위험 점수는 넣지 않는다")
+    void keepsCompanySlotsFreeOfRiskScore() {
+        // given
+        KosdaqSignalService service = new KosdaqSignalService(new CassandraSnapshotCatalog(new ObjectMapper()));
+
+        // when
+        var rows = service.rows();
+
+        // then
+        assertThat(rows).allSatisfy(row -> {
+            assertThat(row.metrics()).hasSize(8);
+            assertThat(row.metrics()).noneMatch(value -> value.startsWith("위험"));
+            assertThat(row.metrics().get(2)).isEmpty();
+            assertThat(row.metrics().get(6)).isEmpty();
+            assertThat(row.metrics().get(7)).isEmpty();
+        });
+        assertThat(rows).anyMatch(row -> row.detail().contains("위험"));
+        assertThat(rows).anyMatch(row -> !row.metrics().get(0).isBlank());
+        assertThat(rows).anyMatch(row -> row.metrics().get(1).endsWith("위"));
+    }
+
+    @Test
     @DisplayName("야후 차트 응답에서 봉을 읽는다")
     void readsBarsFromYahooChartResponse() {
         // given

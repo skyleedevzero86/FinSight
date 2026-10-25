@@ -17,6 +17,8 @@ import org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfi
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(
@@ -28,7 +30,7 @@ class NewsAiCircuitBreakerBindingTest {
     private CircuitBreakerRegistry registry;
 
     @Test
-    @DisplayName("뉴스 AI 서킷은 5번 호출부터 실패율을 본다")
+    @DisplayName("뉴스 AI 서킷은 5회부터 실패율을 보고 20초를 넘는 호출의 절반은 느린 실패로 본다")
     void newsAiCircuitReadsFailureRateFromTheFifthCall() {
         // given
 
@@ -38,6 +40,9 @@ class NewsAiCircuitBreakerBindingTest {
         // then
         assertThat(config.getMinimumNumberOfCalls()).isEqualTo(5);
         assertThat(config.getSlidingWindowSize()).isEqualTo(10);
+        assertThat(config.getSlowCallDurationThreshold()).isEqualTo(Duration.ofSeconds(20));
+        assertThat(config.getSlowCallRateThreshold()).isEqualTo(50f);
+        assertThat(config.getPermittedNumberOfCallsInHalfOpenState()).isEqualTo(2);
     }
 
     @SpringBootConfiguration

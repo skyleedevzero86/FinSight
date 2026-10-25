@@ -103,8 +103,7 @@ public class KosdaqSignalService {
                 "코스닥 시그널",
                 quote == null ? "—" : quote.volume(),
                 signal.rules() + " · 위험 " + signal.risk(),
-                metrics(quote == null ? "—" : quote.marketCap(), "위험 " + signal.risk(),
-                        quote == null ? "—" : quote.volume(), signal.changePct(), "코스닥", signal.rules(), "—", "—"));
+                companyMetrics(quote));
     }
 
     private PickRow moverRow(Anomaly mover) {
@@ -119,8 +118,7 @@ public class KosdaqSignalService {
                 "코스닥 시그널",
                 blank(mover.volume()),
                 "고변동 " + QuoteText.percent(mover.changePercent()),
-                metrics(blank(mover.marketCap()), "고변동", blank(mover.volume()), blank(mover.change()),
-                        "코스닥", "변동성", "—", "—"));
+                companyMetrics(mover));
     }
 
     private Anomaly quote(String code) {
@@ -154,8 +152,20 @@ public class KosdaqSignalService {
         return (int) signals.stream().filter(signal -> signal.rules().contains(label)).count();
     }
 
-    private List<String> metrics(String... values) {
-        return List.of(values);
+    private List<String> companyMetrics(Anomaly quote) {
+        return List.of(
+                quote == null ? "" : filled(quote.marketCap()),
+                quote == null || quote.rank() <= 0 ? "" : quote.rank() + "위",
+                "",
+                "",
+                "",
+                "",
+                "",
+                "");
+    }
+
+    private String filled(String value) {
+        return value == null || value.isBlank() ? "" : value;
     }
 
     private String blank(String value) {
