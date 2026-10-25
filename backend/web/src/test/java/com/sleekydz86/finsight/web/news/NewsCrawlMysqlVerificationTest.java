@@ -5,7 +5,6 @@ import com.sleekydz86.finsight.core.news.adapter.persistence.command.NewsReposit
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.vo.Content;
 import com.sleekydz86.finsight.core.news.domain.vo.NewsMeta;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,9 +42,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import javax.sql.DataSource;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -110,7 +107,7 @@ class NewsCrawlMysqlVerificationTest {
     }
 
     @Test
-    @DisplayName("V40은 중복 주소를 합치고 자식을 옮긴다")
+    @DisplayName("중복 주소를 합치고 자식을 옮긴다")
     @Order(1)
     void v40CollapsesDuplicateUrlsAndMovesChildren() throws Exception {
         // given
@@ -122,20 +119,16 @@ class NewsCrawlMysqlVerificationTest {
         seedChildren(keptId, droppedId);
 
         // given
-        Path directory = Files.createTempDirectory("v40-only");
-        try (InputStream input = new ClassPathResource("db/migration/V40__news_source_url_unique.sql").getInputStream()) {
-            Files.copy(input, directory.resolve("V40__news_source_url_unique.sql"));
+        String sql = new ClassPathResource("db/migration/finsight_data.sql").getContentAsString(StandardCharsets.UTF_8);
+        int start = sql.indexOf("-- V40: 뉴스 원문 URL");
+        if (start < 0) {
+            throw new IllegalStateException("뉴스 원문 URL 정리를 찾지 못했습니다. 파일: finsight_data.sql");
         }
-        String location = "filesystem:" + directory.toAbsolutePath().toString().replace('\\', '/');
 
         // when
-        Flyway.configure()
-                .dataSource(jdbc.getDataSource())
-                .locations(location)
-                .baselineOnMigrate(true)
-                .baselineVersion("0")
-                .load()
-                .migrate();
+        try (Connection connection = jdbc.getDataSource().getConnection()) {
+            ScriptUtils.executeSqlScript(connection, new ByteArrayResource(sql.substring(start).getBytes(StandardCharsets.UTF_8)));
+        }
 
         // then
         assertThat(count("select count(*) from news")).isEqualTo(2);
@@ -157,7 +150,6 @@ class NewsCrawlMysqlVerificationTest {
                 where TABLE_SCHEMA = DATABASE() and TABLE_NAME = 'news'
                   and CONSTRAINT_NAME = 'uk_news_source_url' and CONSTRAINT_TYPE = 'UNIQUE'
                 """)).isEqualTo(1);
-        assertThat(integer("select success from flyway_schema_history where version = '40'")).isEqualTo(1);
         assertThatThrownBy(() -> insertNews(DUP_PLAIN, 1))
                 .isInstanceOf(org.springframework.dao.DuplicateKeyException.class);
 
@@ -171,7 +163,7 @@ class NewsCrawlMysqlVerificationTest {
         boolean secondInserted = insertCaseVariant();
 
         // when
-        log.info("V40 검증 collation={} 대소문자 두 번째 행 삽입={}", collation, secondInserted);
+        log.info("원문 URL 유니크 검증 collation={} 대소문자 두 번째 행 삽입={}", collation, secondInserted);
 
         // then
         assertThat(secondInserted).isEqualTo(!caseInsensitive);

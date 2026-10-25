@@ -2,23 +2,24 @@ package com.sleekydz86.finsight.web.news;
 
 import com.sleekydz86.finsight.core.global.NewsProvider;
 import com.sleekydz86.finsight.core.news.crawl.NewsCrawlLockStore;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import javax.sql.DataSource;
-import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -34,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NewsCrawlIncidentMysqlTest {
 
     private static final Logger log = LoggerFactory.getLogger(NewsCrawlIncidentMysqlTest.class);
-    private static final String MIGRATION = "V41__news_crawl_incident.sql";
+    private static final String MIGRATION = "finsight_tables.sql";
 
     @Container
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>(DockerImageName.parse("mysql:8.0"));
@@ -50,26 +51,14 @@ class NewsCrawlIncidentMysqlTest {
         dataSource.setPassword(MYSQL.getPassword());
         dataSource.setDriverClassName(MYSQL.getDriverClassName());
         jdbc = new JdbcTemplate(dataSource);
-        Path directory = Files.createTempDirectory("news-crawl-incident");
         Path source = Path.of("src/main/resources/db/migration").resolve(MIGRATION);
-        if (!Files.exists(source)) {
+        if (!java.nio.file.Files.exists(source)) {
             source = Path.of("web/src/main/resources/db/migration").resolve(MIGRATION);
         }
-        Files.copy(source, directory.resolve(MIGRATION));
-        String location = "filesystem:" + directory.toAbsolutePath().toString().replace('\\', '/');
-        int applied = Flyway.configure()
-                .dataSource(dataSource)
-                .locations(location)
-                .baselineOnMigrate(true)
-                .baselineVersion("0")
-                .load()
-                .migrate()
-                .migrationsExecuted;
-        if (applied == 1) {
-            log.info("뉴스 수집 장애 테이블을 적용했습니다 건수={}", applied);
-        } else {
-            log.error("뉴스 수집 장애 테이블 적용 건수가 예상과 다릅니다 건수={}", applied);
+        try (Connection connection = dataSource.getConnection()) {
+            ScriptUtils.executeSqlScript(connection, new FileSystemResource(source));
         }
+        log.info("뉴스 수집 장애 테이블을 적용했습니다");
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         context.registerBean(DataSource.class, () -> dataSource);
         context.register(NewsCrawlLockMysqlSlice.class);
@@ -83,7 +72,6 @@ class NewsCrawlIncidentMysqlTest {
         // given
 
         // then
-        assertThat(integer("select success from flyway_schema_history where version = '41'")).isEqualTo(1);
         assertThat(comment("news_crawl_incident", "cause")).contains("HTTP_429");
         assertThat(comment("news_crawl_attempt", "status")).contains("SKIPPED");
         assertThat(comment("news_crawl_provider_lock", "fencing_token")).contains("펜싱 토큰");
