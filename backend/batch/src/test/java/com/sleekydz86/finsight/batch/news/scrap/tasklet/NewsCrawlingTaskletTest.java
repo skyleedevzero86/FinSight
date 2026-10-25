@@ -35,7 +35,10 @@ import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,7 +58,9 @@ class NewsCrawlingTaskletTest {
                 new NewsNotificationService(null),
                 openGate(),
                 (provider, error) -> {
-                });
+                },
+                new DirectExecutor(),
+                Duration.ofMinutes(2));
 
         // when
         RepeatStatus status = tasklet.execute(contribution(), chunkContext());
@@ -86,7 +91,9 @@ class NewsCrawlingTaskletTest {
                 new NewsNotificationService(null),
                 openGate(),
                 (provider, error) -> {
-                });
+                },
+                new DirectExecutor(),
+                Duration.ofMinutes(2));
 
         // when
         RepeatStatus status = tasklet.execute(contribution(), chunkContext());
@@ -110,7 +117,9 @@ class NewsCrawlingTaskletTest {
                 new NewsNotificationService(null),
                 openGate(),
                 (provider, error) -> {
-                });
+                },
+                new DirectExecutor(),
+                Duration.ofMinutes(2));
 
         // when
 
@@ -134,7 +143,9 @@ class NewsCrawlingTaskletTest {
                 closedGate(),
                 (provider, error) -> {
                     throw new IllegalStateException("잠금 건너뜀은 장애 사건이 아닙니다");
-                });
+                },
+                new DirectExecutor(),
+                Duration.ofMinutes(2));
 
         // when
         RepeatStatus status = tasklet.execute(new StepContribution(stepExecution), new ChunkContext(new StepContext(stepExecution)));
@@ -159,13 +170,50 @@ class NewsCrawlingTaskletTest {
                 new NewsAiProcessingService(new EmptyAiAnalysis(), new DirectExecutor()),
                 new NewsNotificationService(null),
                 openGate(),
-                (provider, error) -> recorded.add(provider));
+                (provider, error) -> recorded.add(provider),
+                new DirectExecutor(),
+                Duration.ofMinutes(2));
 
         // when
         tasklet.execute(contribution(), chunkContext());
 
         // then
         assertThat(recorded).containsExactly(NewsProvider.MARKETAUX);
+    }
+
+    @Test
+    @DisplayName("멈춘 제공처는 시간 초과로 실패하고 나머지는 저장되며 잠금이 풀린다")
+    void stuckProviderTimesOutAndOthersStillSave() throws Exception {
+        // given
+        RecordingNewsPersistence persistence = new RecordingNewsPersistence();
+        TrackingCrawlGate gate = new TrackingCrawlGate();
+        CopyOnWriteArrayList<NewsProvider> recorded = new CopyOnWriteArrayList<>();
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        NewsCrawlingTasklet tasklet = new NewsCrawlingTasklet(
+                List.of(successRequester(), new HangingRequester(NewsProvider.MARKETAUX)),
+                persistence,
+                new NewsAiProcessingService(new EmptyAiAnalysis(), new DirectExecutor()),
+                new NewsNotificationService(null),
+                gate,
+                (provider, error) -> recorded.add(provider),
+                pool,
+                Duration.ofMillis(200));
+
+        // when
+        RepeatStatus status;
+        try {
+            status = tasklet.execute(contribution(), chunkContext());
+        } finally {
+            pool.shutdownNow();
+        }
+
+        // then
+        assertThat(status).isEqualTo(RepeatStatus.FINISHED);
+        assertThat(persistence.saved).extracting(news -> news.getOriginalContent().getTitle())
+                .containsExactly("저장된 뉴스");
+        assertThat(recorded).containsExactly(NewsProvider.MARKETAUX);
+        assertThat(gate.released).contains(NewsProvider.MARKETAUX);
+        assertThat(gate.held).isEmpty();
     }
 
     private static NewsCrawlRunGate openGate() {
@@ -234,6 +282,47 @@ class NewsCrawlingTaskletTest {
         }
     }
 
+    private static final class HangingRequester implements NewsScrapRequester {
+        private final NewsProvider provider;
+
+        private HangingRequester(NewsProvider provider) {
+            this.provider = provider;
+        }
+
+        @Override
+        public NewsProvider supports() {
+            return provider;
+        }
+
+        @Override
+        public CompletableFuture<List<News>> scrap(LocalDateTime publishTimeAfter, int limit) {
+            return new CompletableFuture<>();
+        }
+    }
+
+    private static final class TrackingCrawlGate implements NewsCrawlRunGate {
+        private final Set<NewsCrawlPermit> held = ConcurrentHashMap.newKeySet();
+        private final List<NewsProvider> released = new CopyOnWriteArrayList<>();
+
+        @Override
+        public Optional<NewsCrawlPermit> tryAcquire(NewsProvider provider, String owner, Duration ttl) {
+            NewsCrawlPermit permit = new NewsCrawlPermit(provider, owner, 1L);
+            held.add(permit);
+            return Optional.of(permit);
+        }
+
+        @Override
+        public void release(NewsCrawlPermit permit) {
+            held.remove(permit);
+            released.add(permit.provider());
+        }
+
+        @Override
+        public boolean stillHeld(NewsCrawlPermit permit) {
+            return held.contains(permit);
+        }
+    }
+
     private static final class FixedRequester implements NewsScrapRequester {
         private final NewsProvider provider;
         private final CompletableFuture<List<News>> future;
@@ -261,16 +350,6 @@ class NewsCrawlingTaskletTest {
         }
 
         @Override
-        public CompletableFuture<List<News>> analyseNewsesAsync(AiModel model, Content content) {
-            return CompletableFuture.completedFuture(List.of());
-        }
-
-        @Override
-        public List<News> analyseNewsesBatch(AiModel model, List<Content> contents) {
-            return List.of();
-        }
-
-        @Override
         public boolean isModelAvailable(AiModel model) {
             return false;
         }
@@ -287,16 +366,6 @@ class NewsCrawlingTaskletTest {
         @Override
         public List<News> analyseNewses(AiModel model, Content content) {
             calls.incrementAndGet();
-            return List.of();
-        }
-
-        @Override
-        public CompletableFuture<List<News>> analyseNewsesAsync(AiModel model, Content content) {
-            return CompletableFuture.completedFuture(analyseNewses(model, content));
-        }
-
-        @Override
-        public List<News> analyseNewsesBatch(AiModel model, List<Content> contents) {
             return List.of();
         }
 

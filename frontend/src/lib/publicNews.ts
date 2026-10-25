@@ -242,14 +242,14 @@ export function sentimentLabel(type: string | null): string | null {
   if (type === "POSITIVE") return "긍정"
   if (type === "NEGATIVE") return "부정"
   if (type === "NEUTRAL") return "중립"
-  return null
+  return type ? null : "분석 전"
 }
 
 export function sentimentExpression(type: string | null): string | null {
   if (type === "POSITIVE") return "긍정 · 오를 수 있는 흐름"
   if (type === "NEGATIVE") return "부정 · 내릴 수 있는 흐름"
   if (type === "NEUTRAL") return "중립 · 방향이 아직 없음"
-  return null
+  return type ? null : "분석 전"
 }
 
 function meaningfulCategories(codes: string[]): string[] {

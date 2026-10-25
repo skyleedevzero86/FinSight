@@ -489,16 +489,6 @@ class NewsCrawlRecoveryFlowTest {
         }
 
         @Override
-        public CompletableFuture<List<News>> analyseNewsesAsync(AiModel model, Content content) {
-            return CompletableFuture.completedFuture(List.of());
-        }
-
-        @Override
-        public List<News> analyseNewsesBatch(AiModel model, List<Content> contents) {
-            return List.of();
-        }
-
-        @Override
         public boolean isModelAvailable(AiModel model) {
             return false;
         }

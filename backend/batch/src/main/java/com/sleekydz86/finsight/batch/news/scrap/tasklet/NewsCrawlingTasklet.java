@@ -16,6 +16,8 @@ import org.springframework.batch.core.StepContribution;
 import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.repeat.RepeatStatus;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -27,6 +29,8 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -41,6 +45,8 @@ public class NewsCrawlingTasklet implements Tasklet {
     private final NewsNotificationService newsNotificationService;
     private final NewsCrawlRunGate crawlRunGate;
     private final NewsCrawlFailureSink failureSink;
+    private final Executor newsCrawlExecutor;
+    private final Duration providerTimeout;
 
     private final ConcurrentHashMap<NewsProvider, AtomicInteger> scrapedNewsCount = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<NewsProvider, AtomicInteger> errorCount = new ConcurrentHashMap<>();
@@ -54,7 +60,9 @@ public class NewsCrawlingTasklet implements Tasklet {
             NewsAiProcessingService newsAiProcessingService,
             NewsNotificationService newsNotificationService,
             NewsCrawlRunGate crawlRunGate,
-            NewsCrawlFailureSink failureSink) {
+            NewsCrawlFailureSink failureSink,
+            @Qualifier("newsCrawlExecutor") Executor newsCrawlExecutor,
+            @Value("${finsight.crawl.provider-timeout:PT90S}") Duration providerTimeout) {
         this.newsScrapRequesters = newsScrapRequesters.stream()
                 .collect(Collectors.toMap(
                         NewsScrapRequester::supports,
@@ -65,6 +73,8 @@ public class NewsCrawlingTasklet implements Tasklet {
         this.newsNotificationService = newsNotificationService;
         this.crawlRunGate = crawlRunGate;
         this.failureSink = failureSink;
+        this.newsCrawlExecutor = newsCrawlExecutor;
+        this.providerTimeout = providerTimeout;
     }
 
     @Override
@@ -166,7 +176,7 @@ public class NewsCrawlingTasklet implements Tasklet {
             ranProviders.incrementAndGet();
             try {
                 log.debug("제공자 {} 스크래핑 시작 - 제한 건수: {}", provider, limit);
-                List<News> scrapedNews = requester.scrap(publishTimeAfter, limit).get();
+                List<News> scrapedNews = scrapWithinLimit(requester, publishTimeAfter, limit);
                 log.debug("제공자 {} 스크래핑 완료 - 조회 건수: {}", provider, scrapedNews.size());
                 held.add(permit.get());
                 return scrapedNews;
@@ -175,7 +185,16 @@ public class NewsCrawlingTasklet implements Tasklet {
                 log.error("제공자 뉴스 스크래핑 실패: {}", provider, e);
                 throw new RuntimeException("제공자 스크래핑 실패: " + provider, e);
             }
-        });
+        }, newsCrawlExecutor);
+    }
+
+    private List<News> scrapWithinLimit(
+            NewsScrapRequester requester,
+            LocalDateTime publishTimeAfter,
+            int limit) throws Exception {
+        return requester.scrap(publishTimeAfter, limit)
+                .orTimeout(providerTimeout.toMillis(), TimeUnit.MILLISECONDS)
+                .get();
     }
 
     private void recordFailure(NewsProvider provider, Throwable error) {

@@ -83,7 +83,7 @@ public class CassandraSnapshotCatalog {
         }
         double change = node.path("changePercent").asDouble(0);
         return new Anomaly(text(node, "name"), code, text(node, "price"), text(node, "change"), change,
-                text(node, "volume"), text(node, "marketCap"));
+                text(node, "volume"), text(node, "marketCap"), node.path("rank").asInt(0));
     }
 
     private List<JsonNode> array(ObjectMapper objectMapper, String file, String field) {
@@ -120,6 +120,7 @@ public class CassandraSnapshotCatalog {
     public record Company(String name, String code, List<RiskRuleEngine.Filing> filings) {
     }
 
-    public record Anomaly(String name, String code, String price, String change, double changePercent, String volume, String marketCap) {
+    public record Anomaly(String name, String code, String price, String change, double changePercent, String volume,
+            String marketCap, int rank) {
     }
 }

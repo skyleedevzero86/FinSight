@@ -35,7 +35,17 @@ function MoodFace({ tone }: { tone: Tone }) {
 export default function SentimentBadge({ sentiment, compact = false }: { sentiment: string | null; compact?: boolean }) {
   const tone = toneOf(sentiment)
   const label = sentimentLabel(sentiment)
-  if (!tone || !label) return null
+  if (!label) return null
+  if (!tone) {
+    return (
+      <span
+        className={`pointer-events-none absolute bottom-1.5 right-1.5 rounded bg-white/95 px-1 font-bold leading-none text-gray-500 ${compact ? "text-[9px]" : "text-[11px]"}`}
+        aria-label={label}
+      >
+        {label}
+      </span>
+    )
+  }
   const face = compact ? "h-[22px] w-[22px]" : "h-7 w-7"
   const word = compact ? "text-[9px]" : "text-[11px]"
   return (

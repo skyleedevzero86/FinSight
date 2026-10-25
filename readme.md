@@ -23,7 +23,7 @@
 
 - **Backend**: Java 21, Spring Boot 3.5.4, Spring Security, JPA, QueryDSL, Redis, Flyway, Batch, WebSocket, Resilience4j, Micrometer/Actuator, Jasypt, Spring AI MCP Server
 - **AI/NLP**: OpenAI, Ollama/Llama, Hugging Face Inference, DJL(PyTorch CPU), OpenNLP
-- **Infra**: MySQL 8.4, Redis 7, MinIO/S3(에디터 에셋), H2(테스트). 클러스터 배포는 `infra/k8s` (k3s `local-path`)
+- **Infra**: MySQL 8.4, Redis 7, MinIO/S3(에디터 에셋), H2(테스트). 로컬 실행은 Docker Compose이고, k8s는 `infra/k8s` 매니페스트 작성까지다.
 - **알림**: Spring Mail, Solapi(SMS), FCM, Slack/Webhook 등
 - **Frontend**: Next.js 15, React 19, TypeScript, Tailwind CSS 4, ESLint
 
@@ -199,7 +199,7 @@ pnpm run dev
 
 ## Kubernetes
 
-Compose와 분리된 k3s 매니페스트입니다. <br/>
+Compose와 분리된 k3s 매니페스트입니다. 클러스터에 적용한 상태는 아니고, 로컬에서 도는 스택은 Docker Compose입니다. <br/>
 MySQL·MinIO는 StatefulSet+PVC, Redis는 PVC 없는 캐시, web/frontend는 Deployment, batch는 CronJob입니다. <br/>
 Ingress는 frontend와 web만 노출합니다.<br/>
 
@@ -227,3 +227,15 @@ kubectl apply -k .
 ### (로컬)
 
 <img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/18a38f1d-c507-4ee6-8dc6-dae050046d10" />
+
+## 한계와 다음 단계
+
+| 한계 | 지금 동작 |
+| --- | --- |
+| 검색 | Elasticsearch가 꺼져 있거나 검색이 실패하면 뉴스·실시간 VOD·커뮤니티를 MySQL로 조회한다. 한 섹션만 0건이면 그 섹션만 MySQL로 채운다. |
+| AI 서킷 | `newsAiCircuitBreaker`는 선택한 모델 호출만 센다. 빈 응답, 요청기 없음, 예외, 20초를 넘는 호출(느린 비율 50%, 최소 5회, 창 10, 실패율 50%)이 실패다. 대체 모델 시도는 서킷 밖에서 이루어져 집계되지 않는다. 열린 상태는 60초이고, 시험 호출 2번이 성공하면 닫힌다. |
+| 뉴스 수집 | 제공처 시간 제한은 `finsight.crawl.provider-timeout`이고 기본값은 90초(`PT90S`)이고, 제공처 잠금(2분)보다 짧게 둔다. 넘기면 그 제공처만 실패로 기록하고 수집 잠금을 바로 푼다. 다른 제공처 저장은 계속된다. |
+| URL 중복 | 정규화 범위는 앞뒤 공백, 끝 슬래시, scheme·host 소문자다. 같은 제목이라도 경로나 호스트가 다르면 따로 저장한다. |
+| 번역 | 최신 목록과 뉴스 상세를 열 때, 번역 제목이 없는 기사는 응답을 기다리지 않고 전용 풀에서 다시 번역한다. 그 조회에는 번역 전 제목이 남을 수 있다. 감정은 조회 중에 계산하지 않으며, 배치 전에는 화면에 분석 전으로 보인다. |
+| Kubernetes | 로컬 실행은 Docker Compose다. `infra/k8s`는 매니페스트 작성까지이고, 클러스터의 `finsight-k8s`에는 리소스가 없다. |
+| CI에서 건너뛰는 테스트 | `./gradlew test` 272개 중 17개는 `@Disabled`라 항상 건너뛴다. API 키 유무로 건너뛰는 테스트는 없다. 대상은 컨텍스트가 뜨지 않는 통합 테스트다. `WebApplicationTests`, `AuthControllerTest`, `OtpAuthControllerTest`는 로컬 MySQL, `CatalogSearchMysqlRepositoryTest`도 로컬 MySQL, `CoreApplicationTests`는 빈 중복, `BatchApplicationTests`, `NewsScrapJobTest`, `H2TableConnectionTests`는 `JavaMailSender`, `SecurityConfigTest`는 보안 통합 검증 보류다. MySQL Testcontainers 테스트 2개는 Docker가 있으면 실행된다. |

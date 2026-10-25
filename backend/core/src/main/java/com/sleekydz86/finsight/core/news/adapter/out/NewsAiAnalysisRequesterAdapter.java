@@ -2,10 +2,12 @@ package com.sleekydz86.finsight.core.news.adapter.out;
 
 import com.sleekydz86.finsight.core.global.AiModel;
 import com.sleekydz86.finsight.core.news.domain.port.out.requester.NewsAiRequester;
+import com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatResponse;
 import com.sleekydz86.finsight.core.news.domain.News;
 import com.sleekydz86.finsight.core.news.domain.port.out.NewsAiAnalysisRequesterPort;
 import com.sleekydz86.finsight.core.news.domain.vo.*;
 import com.sleekydz86.finsight.core.news.service.AiModelSelectionService;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +15,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -40,72 +41,74 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
     }
 
     @Override
-    @CircuitBreaker(name = "newsAiCircuitBreaker", fallbackMethod = "analyseNewsesOpen")
+    @CircuitBreaker(name = "newsAiCircuitBreaker", fallbackMethod = "analyseNewsesFallback")
     public List<News> analyseNewses(AiModel model, Content content) {
         totalRequests.incrementAndGet();
+        log.debug("AI 분석 시작 - 모델: {}, 제목: {}", model, content.getTitle());
+        NewsAiRequester requester = aiRequesters.get(model);
+        if (requester == null) {
+            log.error("모델 {}에 사용 가능한 AI 요청기가 없습니다", model);
+            failedRequests.incrementAndGet();
+            throw new MissingAiRequester(model);
+        }
+        return completeSelectedCall(model, content, requestSelected(model, content, requester));
+    }
 
+    private List<News> analyseNewsesFallback(AiModel model, Content content, Throwable throwable) {
+        String title = content == null ? "" : content.getTitle();
+        if (throwable instanceof CallNotPermittedException) {
+            log.warn("AI 분석 서킷이 열려 호출을 건너뜁니다. 모델: {}, 제목: {}", model, title);
+            return List.of();
+        }
+        if (content == null) {
+            log.error("모든 모델이 실패했습니다. 모델: {}, 제목: {}, 원인: {}", model, title, throwable.getMessage());
+            return List.of();
+        }
+        return alternativesOrFailure(model, content, throwable);
+    }
+
+    private AiChatResponse requestSelected(
+            AiModel model, Content content, NewsAiRequester requester) {
         try {
-            log.debug("AI 분석 시작 - 모델: {}, 제목: {}", model, content.getTitle());
-
-            NewsAiRequester requester = selectRequester(model);
-            if (requester == null) {
-                log.error("모델 {}에 사용 가능한 AI 요청기가 없습니다", model);
-                failedRequests.incrementAndGet();
-                return executeFallbackStrategy(content, model, "사용 가능한 요청기 없음");
-            }
-
-            var aiChatRequest = createAiChatRequest(content);
-            var aiChatResponse = requester.request(aiChatRequest);
-
-            if (aiChatResponse == null || aiChatResponse.getAnalyses() == null || aiChatResponse.getAnalyses().isEmpty()) {
-                log.warn("모델 {} AI 분석 응답이 비어 있습니다", model);
-                return executeFallbackStrategy(content, model, "빈 AI 응답");
-            }
-
-            List<News> analyzedNews = convertToNews(aiChatResponse, content);
-
-            successfulRequests.incrementAndGet();
-            aiModelSelectionService.recordModelUsage(model);
-
-            log.debug("AI 분석 완료 - 모델: {}", model);
-            return analyzedNews;
-
-        } catch (Exception e) {
-            log.error("AI 분석 실패 - 모델: {}, 제목: {}", model, content.getTitle(), e);
+            return requester.request(createAiChatRequest(content));
+        } catch (Exception exception) {
             failedRequests.incrementAndGet();
             aiModelSelectionService.recordModelError(model);
-
-            List<News> fallback = executeFallbackStrategy(content, model, "예외 발생: " + e.getMessage());
-            if (!fallback.isEmpty()) {
-                return fallback;
-            }
-            throw new IllegalStateException("AI 분석에 실패했습니다. 모델: " + model, e);
+            log.error("AI 분석 실패 - 모델: {}, 제목: {}", model, content.getTitle(), exception);
+            throw new IllegalStateException("AI 분석에 실패했습니다. 모델: " + model, exception);
         }
     }
 
-    private List<News> analyseNewsesOpen(AiModel model, Content content, Throwable throwable) {
-        String title = content == null ? "" : content.getTitle();
-        log.warn("AI 분석 서킷이 열려 호출을 건너뜁니다. 모델: {}, 제목: {}", model, title);
-        return List.of();
+    private List<News> completeSelectedCall(
+            AiModel model,
+            Content content,
+            AiChatResponse response) {
+        if (response == null || response.getAnalyses() == null || response.getAnalyses().isEmpty()) {
+            failedRequests.incrementAndGet();
+            log.warn("모델 {} AI 분석 응답이 비어 있습니다", model);
+            throw new EmptyAiResponse(model);
+        }
+        successfulRequests.incrementAndGet();
+        aiModelSelectionService.recordModelUsage(model);
+        log.debug("AI 분석 완료 - 모델: {}", model);
+        return convertToNews(response, content);
     }
 
-    private List<News> executeFallbackStrategy(Content content, AiModel failedModel, String fallbackReason) {
-        log.info("폴백 전략 실행 - 제목: {}, 사유: {}", content.getTitle(), fallbackReason);
-
-        try {
-            List<News> fallbackResult = tryAlternativeModels(content, failedModel);
-            if (!fallbackResult.isEmpty()) {
-                log.info("대체 모델 폴백 성공");
-                return fallbackResult;
-            }
-
-            log.info("최종 폴백으로 기본 분석 생성");
-            return generateBasicAnalysis(content);
-
-        } catch (Exception e) {
-            log.error("폴백 전략도 실패했습니다", e);
+    private List<News> alternativesOrFailure(AiModel model, Content content, Throwable throwable) {
+        List<News> alternative = tryAlternativeModels(content, model);
+        if (!alternative.isEmpty()) {
+            log.info("대체 모델 폴백 성공");
+            return alternative;
+        }
+        log.error("모든 모델이 실패했습니다. 모델: {}, 제목: {}, 원인: {}",
+                model, content.getTitle(), throwable.getMessage());
+        if (throwable instanceof EmptyAiResponse || throwable instanceof MissingAiRequester) {
             return generateBasicAnalysis(content);
         }
+        if (throwable instanceof IllegalStateException illegalState) {
+            throw illegalState;
+        }
+        throw new IllegalStateException("AI 분석에 실패했습니다. 모델: " + model, throwable);
     }
 
     private List<News> tryAlternativeModels(Content content, AiModel failedModel) {
@@ -146,21 +149,6 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
     }
 
     @Override
-    public CompletableFuture<List<News>> analyseNewsesAsync(AiModel model, Content content) {
-        return CompletableFuture.supplyAsync(() -> analyseNewses(model, content));
-    }
-
-    @Override
-    public List<News> analyseNewsesBatch(AiModel model, List<Content> contents) {
-        log.info("배치 AI 분석 시작 - 모델: {}, 콘텐츠 {}건", model, contents.size());
-
-        return contents.parallelStream()
-                .map(content -> analyseNewses(model, content))
-                .flatMap(List::stream)
-                .collect(Collectors.toList());
-    }
-
-    @Override
     public boolean isModelAvailable(AiModel model) {
         return aiRequesters.containsKey(model);
     }
@@ -168,15 +156,6 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
     @Override
     public List<AiModel> getAvailableModels() {
         return aiRequesters.keySet().stream().toList();
-    }
-
-    private NewsAiRequester selectRequester(AiModel model) {
-        if (isModelAvailable(model)) {
-            return aiRequesters.get(model);
-        }
-
-        log.warn("요청 모델 {} 사용 불가, 대체 모델 선택", model);
-        return aiModelSelectionService.selectModelByPriority();
     }
 
     private com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatRequest createAiChatRequest(
@@ -214,7 +193,7 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
     }
 
     private List<News> convertToNews(
-            com.sleekydz86.finsight.core.news.domain.port.out.requester.dto.AiChatResponse aiChatResponse,
+            AiChatResponse aiChatResponse,
             Content originalContent) {
 
         return aiChatResponse.getAnalyses().stream()
@@ -279,5 +258,17 @@ public class NewsAiAnalysisRequesterAdapter implements NewsAiAnalysisRequesterPo
             int successfulRequests,
             int failedRequests,
             double successRate) {
+    }
+
+    private static final class EmptyAiResponse extends IllegalStateException {
+        private EmptyAiResponse(AiModel model) {
+            super("AI 분석 응답이 비어 있습니다. 모델: " + model);
+        }
+    }
+
+    private static final class MissingAiRequester extends IllegalStateException {
+        private MissingAiRequester(AiModel model) {
+            super("사용 가능한 AI 요청기가 없습니다. 모델: " + model);
+        }
     }
 }

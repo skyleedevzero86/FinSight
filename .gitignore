@@ -3,6 +3,8 @@
 *.md
 *.yml
 **/*.yml
+!.github/workflows/
+!.github/workflows/*.yml
 docs/
 
 # Compiled class file

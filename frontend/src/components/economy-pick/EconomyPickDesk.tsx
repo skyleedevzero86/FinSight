@@ -103,9 +103,14 @@ function StockPane(props: Props) {
   )
 }
 
+function shownMetric(value: string | undefined): boolean {
+  const trimmed = value?.trim() ?? ""
+  return trimmed.length > 0 && trimmed !== "—" && trimmed !== "-"
+}
+
 function InfoPane(props: Props) {
   const pills = props.selected.metrics.length > 0
-    ? [props.selected.market, props.selected.metrics[1], props.selected.metrics[5]].filter(Boolean)
+    ? [props.selected.market, props.selected.metrics[1], props.selected.metrics[5]].filter(shownMetric)
     : THEME_PILLS
   return (
     <div id="stock-information" className="stock-information app-view">
@@ -145,19 +150,22 @@ function InfoPane(props: Props) {
 }
 
 function Summary({ selected }: { selected: Stock }) {
-  const cells = selected.metrics.length === 8
+  const cells = (selected.metrics.length === 8
     ? INFO_TITLES.map((title, index) => [title, selected.metrics[index]] as [string, string])
     : COMPANY_INFO_ROWS.flat()
+  ).filter(([, contents]) => shownMetric(contents))
   return (
     <>
-      <div className="company-information ep-as-company-grid">
-        {cells.map(([title, contents]) => (
-          <div key={`${selected.symbol}-${title}`} className="ep-as-company-cell">
-            <p className="t">{title}</p>
-            <p className="v">{contents}</p>
-          </div>
-        ))}
-      </div>
+      {cells.length > 0 ? (
+        <div className="company-information ep-as-company-grid">
+          {cells.map(([title, contents]) => (
+            <div key={`${selected.symbol}-${title}`} className="ep-as-company-cell">
+              <p className="t">{title}</p>
+              <p className="v">{contents}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <section id="company-description" className="ep-as-company-desc">
         <p>{selected.detail || `${selected.name} 시세와 섹터 시그널을 이 화면에서 봅니다.`}</p>
       </section>
@@ -444,12 +452,13 @@ function NewsPane({ news, note, trump }: { news: EconomyPickNewsItem[]; note: st
 }
 
 function MetricList({ title, rows }: { title: string; rows: string[] }) {
-  if (rows.length === 0) return null
+  const filled = rows.filter(shownMetric)
+  if (filled.length === 0) return null
   return (
     <>
       <h2 className="ep-as-section-title">{title}</h2>
       <ul className="ep-as-list-ul">
-        {rows.map((row, index) => <li key={`${index}-${row}`}><span className="key">{row}</span></li>)}
+        {filled.map((row, index) => <li key={`${index}-${row}`}><span className="key">{row}</span></li>)}
       </ul>
     </>
   )
