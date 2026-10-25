@@ -5,6 +5,8 @@
 **/*.yml
 !.github/workflows/
 !.github/workflows/*.yml
+!frontend/content/**/*.md
+!frontend/public/terms-of-service.md
 docs/
 
 # Compiled class file
