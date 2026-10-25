@@ -122,7 +122,7 @@ async function loadMyComments(): Promise<ActivityAlertItem[]> {
     const data = unwrapApiData<{ content?: unknown[] }>(await res.json())
     const rows = Array.isArray(data?.content) ? data.content : []
     return rows
-      .map((raw, index) => {
+      .map((raw, index): ActivityAlertItem | null => {
         const row = asRecord(raw)
         const content = readText(row?.content)
         if (!content) return null
@@ -137,7 +137,7 @@ async function loadMyComments(): Promise<ActivityAlertItem[]> {
           unread: false,
         }
       })
-      .filter((row): row is ActivityAlertItem => Boolean(row))
+      .filter((row): row is ActivityAlertItem => row !== null)
   } catch (error) {
     console.error("내 활동 댓글을 불러오지 못했습니다.", error)
     return []
